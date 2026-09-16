@@ -18,11 +18,14 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleLogin = () => {
-    const ok = login(email, password);
-    if (!ok) {
-      setError('Credenziali non valide. Controlla email e password, oppure crea un nuovo account.');
+  const handleLogin = async () => {
+    setIsSubmitting(true);
+    const { error: loginError } = await login(email, password);
+    setIsSubmitting(false);
+    if (loginError) {
+      setError(loginError);
       return;
     }
     router.replace(hasOnboarded ? '/' : '/onboarding');
@@ -84,7 +87,7 @@ export default function LoginScreen() {
         ) : null}
       </View>
 
-      <PrimaryButton label="Accedi" onPress={handleLogin} disabled={!email || !password} />
+      <PrimaryButton label="Accedi" onPress={handleLogin} disabled={!email || !password || isSubmitting} />
 
       <Pressable onPress={() => router.replace('/register')} hitSlop={8}>
         <ThemedText type="caption" style={{ textAlign: 'center', color: theme.accent }}>

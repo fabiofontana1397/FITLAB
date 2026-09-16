@@ -18,11 +18,20 @@ export default function RegisterScreen() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const canSubmit = name.trim().length > 0 && email.includes('@') && password.length >= 4;
+  // Supabase's own minimum_password_length default (see supabase/config.toml).
+  const canSubmit = name.trim().length > 0 && email.includes('@') && password.length >= 6 && !isSubmitting;
 
-  const handleRegister = () => {
-    register({ name: name.trim(), email: email.trim(), password });
+  const handleRegister = async () => {
+    setIsSubmitting(true);
+    const { error: registerError } = await register(name.trim(), email.trim(), password);
+    setIsSubmitting(false);
+    if (registerError) {
+      setError(registerError);
+      return;
+    }
     updateProfile({ name: name.trim() });
     router.replace('/onboarding');
   };
@@ -54,6 +63,11 @@ export default function RegisterScreen() {
           theme={theme}
         />
         <Field label="Password" value={password} onChangeText={setPassword} placeholder="••••••••" secureTextEntry theme={theme} />
+        {error ? (
+          <ThemedText type="caption" style={{ color: theme.danger }}>
+            {error}
+          </ThemedText>
+        ) : null}
       </View>
 
       <PrimaryButton label="Continua" onPress={handleRegister} disabled={!canSubmit} />

@@ -1,7 +1,9 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+import { fetchPlanStrategy } from '@/lib/api/plan-strategy';
 import { generateDietPlan } from '@/lib/planning/diet-planner';
+import { computePlanDurationMonths } from '@/lib/planning/plan-duration';
 import { generateTrainingPlan } from '@/lib/planning/training-planner';
 import type { DietPlan, TrainingPlan } from '@/lib/planning/types';
 import { appJsonStorage } from '@/store/storage';
@@ -9,31 +11,45 @@ import { appJsonStorage } from '@/store/storage';
 type PlanState = {
   dietPlan: DietPlan | null;
   trainingPlan: TrainingPlan | null;
+  isGenerating: boolean;
   generatePlans: (
     answers: Record<string, unknown>,
     targets: { dailyCalorieTarget: number; macroTargetsG: { protein: number; carbs: number; fats: number } }
-  ) => void;
+  ) => Promise<void>;
 };
 
 /**
  * Holds the generated multi-month diet/training plans. Kept separate from
  * the day-to-day logging stores (nutrition-store, training-store) — this is
  * a prospective plan to view/export, not a log of what actually happened.
+ *
+ * generatePlans first tries to get a real AI-grounded strategy (split
+ * choice, set/rep scheme, calorie/macro periodization — see
+ * lib/planning/strategy-types.ts) from the generate-plan-strategy Edge
+ * Function, which reasons from the two reference PDFs plus authoritative
+ * web search. If that's unavailable for any reason (no Claude key
+ * configured, network error, timeout), it falls back to the original
+ * deterministic tables — onboarding never blocks on the AI call.
  */
 export const usePlanStore = create<PlanState>()(
   persist(
     (set) => ({
       dietPlan: null,
       trainingPlan: null,
-      generatePlans: (answers, targets) => {
+      isGenerating: false,
+      generatePlans: async (answers, targets) => {
         const mode = answers.mode as string | undefined;
+        set({ isGenerating: true });
+        const durationMonths = computePlanDurationMonths(answers);
+        const strategy = await fetchPlanStrategy(answers, targets.dailyCalorieTarget, targets.macroTargetsG, durationMonths);
         set({
-          dietPlan: mode === 'training' ? null : generateDietPlan({ answers, ...targets }),
-          trainingPlan: mode === 'diet' ? null : generateTrainingPlan({ answers }),
+          dietPlan: mode === 'training' ? null : generateDietPlan({ answers, ...targets, strategy: strategy?.diet }),
+          trainingPlan: mode === 'diet' ? null : generateTrainingPlan({ answers, strategy: strategy?.training }),
+          isGenerating: false,
         });
       },
     }),
-    { name: 'fitbro/plans', storage: appJsonStorage }
+    { name: 'fitbro/plans', storage: appJsonStorage, partialize: (state) => ({ dietPlan: state.dietPlan, trainingPlan: state.trainingPlan }) }
   )
 );
 

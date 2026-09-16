@@ -1,44 +1,59 @@
+import type { Session, User } from '@supabase/supabase-js';
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 
-import { appJsonStorage } from '@/store/storage';
-
-export type Account = {
-  name: string;
-  email: string;
-  password: string;
-};
+import { supabase } from '@/lib/supabase/client';
 
 type AuthState = {
-  account: Account | null;
+  session: Session | null;
+  user: User | null;
   isAuthenticated: boolean;
-  register: (account: Account) => void;
-  login: (email: string, password: string) => boolean;
-  logout: () => void;
+  // True until the initial getSession() resolves — replaces the old
+  // zustand-persist "hydrated" check in _layout.tsx, since the session is
+  // now supabase-js's own concern, not a second persisted copy of it.
+  isLoading: boolean;
+  register: (name: string, email: string, password: string) => Promise<{ error: string | null }>;
+  login: (email: string, password: string) => Promise<{ error: string | null }>;
+  logout: () => Promise<void>;
 };
 
-/**
- * Local-only mock auth: there is no backend yet, so "login" just checks
- * against the single account persisted on this device. Good enough to
- * gate the app behind a real welcome/sign-in flow now; swap for real
- * auth once a backend exists.
- */
-export const useAuthStore = create<AuthState>()(
-  persist(
-    (set, get) => ({
-      account: null,
-      isAuthenticated: false,
-      register: (account) => set({ account, isAuthenticated: true }),
-      login: (email, password) => {
-        const { account } = get();
-        if (account && account.email.toLowerCase() === email.trim().toLowerCase() && account.password === password) {
-          set({ isAuthenticated: true });
-          return true;
-        }
-        return false;
-      },
-      logout: () => set({ isAuthenticated: false }),
-    }),
-    { name: 'fitbro/auth', storage: appJsonStorage }
-  )
-);
+// Real Supabase Auth (GoTrue) replaces the old local mock that just
+// compared a plaintext password stored in AsyncStorage. No `persist`
+// middleware here — supabase-js already persists the session itself via
+// the AsyncStorage-backed storage adapter in lib/supabase/client.ts; a
+// second persisted copy here would just be a staleness risk.
+export const useAuthStore = create<AuthState>((set) => ({
+  session: null,
+  user: null,
+  isAuthenticated: false,
+  isLoading: true,
+  register: async (name, email, password) => {
+    // The `handle_new_user` Postgres trigger creates the matching
+    // `profiles` row from this same signup metadata.
+    const { error } = await supabase.auth.signUp({ email, password, options: { data: { name } } });
+    return { error: error?.message ?? null };
+  },
+  login: async (email, password) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    return { error: error?.message ?? null };
+  },
+  logout: async () => {
+    await supabase.auth.signOut();
+  },
+}));
+
+/** Call once at app start (see _layout.tsx). Hydrates the initial session
+ * and keeps the store in sync afterward (token refresh, sign-out from
+ * another tab/device, etc). Returns an unsubscribe function. */
+export function initAuthListener(): () => void {
+  supabase.auth.getSession().then(({ data: { session } }) => {
+    useAuthStore.setState({ session, user: session?.user ?? null, isAuthenticated: !!session, isLoading: false });
+  });
+
+  const {
+    data: { subscription },
+  } = supabase.auth.onAuthStateChange((_event, session) => {
+    useAuthStore.setState({ session, user: session?.user ?? null, isAuthenticated: !!session, isLoading: false });
+  });
+
+  return () => subscription.unsubscribe();
+}

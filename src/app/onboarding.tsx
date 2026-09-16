@@ -124,7 +124,12 @@ export default function OnboardingScreen() {
       hydrationTargetMl: results.hydrationTargetMl,
     });
     resetStartingWeight(Number(answers.currentWeightKg) || 80, daysAgoISO(0));
-    generatePlans(answers, { dailyCalorieTarget: results.dailyCalorieTarget, macroTargetsG: results.macroTargetsG });
+    // Fire-and-forget, same as before this became AI-assisted: the
+    // congratulations/roadmap screens don't need the plan immediately, and
+    // the AI strategy call (web search + RAG) can take a few seconds —
+    // onboarding should never block on it. `fetchPlanStrategy` never
+    // throws (falls back to null on any failure), so this is safe.
+    void generatePlans(answers, { dailyCalorieTarget: results.dailyCalorieTarget, macroTargetsG: results.macroTargetsG });
     router.push('/onboarding-created');
   };
 

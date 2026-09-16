@@ -10,9 +10,24 @@ import {
   type SplitLabel,
 } from './exercise-library';
 import { computePlanDurationMonths } from './plan-duration';
+import type { TrainingStrategy } from './strategy-types';
 import type { PlanPhaseKind, TrainingDayPlan, TrainingExerciseEntry, TrainingMonthPlan, TrainingPlan } from './types';
 
-export type TrainingPlanInput = { answers: Record<string, unknown> };
+export type TrainingPlanInput = { answers: Record<string, unknown>; strategy?: TrainingStrategy | null };
+
+// SplitLabel is a closed set that indexes GYM_EXERCISES/HOME_EXERCISES
+// directly (exercisePool[splitLabel]) — an AI-produced strategy is
+// free-form text, not guaranteed to stay within that vocabulary (observed
+// in practice: a real response once used "Upper A"/"Lower A" instead of
+// "Upper"/"Lower"), and an invalid label would crash the lookup. Filter to
+// only the labels the catalog actually has, so a strategy with any
+// out-of-vocabulary label falls back to the deterministic default instead
+// of throwing.
+const VALID_SPLIT_LABELS = new Set<SplitLabel>(['Full Body', 'Upper', 'Lower', 'Push', 'Pull', 'Legs']);
+function sanitizeSplitLabels(labels: string[] | undefined): SplitLabel[] {
+  if (!labels) return [];
+  return labels.filter((l): l is SplitLabel => VALID_SPLIT_LABELS.has(l as SplitLabel));
+}
 
 function freqNum(value: unknown): number {
   if (value === '6+') return 6;
@@ -56,7 +71,7 @@ function phaseNote(phase: PlanPhaseKind): string {
  * neither was selected, since there's nothing to build a program for.
  */
 export function generateTrainingPlan(input: TrainingPlanInput): TrainingPlan | null {
-  const { answers } = input;
+  const { answers, strategy } = input;
   const activities = Array.isArray(answers.activitiesPracticed) ? (answers.activitiesPracticed as string[]) : [];
   const practicesGym = activities.includes('gym');
   const practicesRunning = activities.includes('running');
@@ -77,12 +92,18 @@ export function generateTrainingPlan(input: TrainingPlanInput): TrainingPlan | n
   runDays = Math.min(runDays, 6 - gymDays);
 
   const exercisePool = answers.trainingLocation === 'home' ? HOME_EXERCISES : GYM_EXERCISES;
-  const splitLabels: SplitLabel[] = gymDays > 0 ? (SPLIT_BY_FREQUENCY[gymDays] ?? SPLIT_BY_FREQUENCY[3]) : [];
+  const sanitizedStrategySplits = sanitizeSplitLabels(strategy?.splitLabels);
+  const splitLabels: SplitLabel[] =
+    sanitizedStrategySplits.length > 0
+      ? sanitizedStrategySplits
+      : gymDays > 0
+        ? (SPLIT_BY_FREQUENCY[gymDays] ?? SPLIT_BY_FREQUENCY[3])
+        : [];
 
   const focusGym = typeof answers.focus_gym === 'string' ? answers.focus_gym : 'hypertrophy';
   const focusRunning = typeof answers.focus_running === 'string' ? answers.focus_running : 'endurance';
-  const gymScheme = FOCUS_SCHEME[focusGym] ?? FOCUS_SCHEME.hypertrophy;
-  const runSessions = RUNNING_SESSIONS[focusRunning] ?? RUNNING_SESSIONS.endurance;
+  const gymScheme = strategy?.gymScheme ?? FOCUS_SCHEME[focusGym] ?? FOCUS_SCHEME.hypertrophy;
+  const runSessions = strategy?.runSessions ?? RUNNING_SESSIONS[focusRunning] ?? RUNNING_SESSIONS.endurance;
 
   const combinedDays = Math.max(gymDays + runDays, 1);
   const dayIndices = WEEKDAY_PATTERN[combinedDays] ?? WEEKDAY_PATTERN[3];
@@ -116,11 +137,12 @@ export function generateTrainingPlan(input: TrainingPlanInput): TrainingPlan | n
       week[dayIdx] = { weekday: WEEKDAY_LABELS[dayIdx], type: 'cardio', title: 'Corsa', note: session };
     });
 
+    const monthlyFocus = strategy?.monthlyFocus?.find((m) => m.monthIndex === monthIndex);
     months.push({
       monthIndex,
       phase,
-      title: `Mese ${monthIndex} · ${phaseTitle(phase)}`,
-      focusNote: phaseNote(phase),
+      title: monthlyFocus?.title ?? `Mese ${monthIndex} · ${phaseTitle(phase)}`,
+      focusNote: monthlyFocus?.focusNote ?? phaseNote(phase),
       weeklySplit: week,
     });
   }

@@ -40,7 +40,7 @@ export default function ChatScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
-  const { messages, isTyping, send } = useChatStore();
+  const { messages, isTyping, error, loadHistory, send } = useChatStore();
   const [draft, setDraft] = useState('');
   const listRef = useRef<FlatList<ChatMessage>>(null);
 
@@ -50,6 +50,7 @@ export default function ChatScreen() {
 
   useEffect(() => {
     progress.value = withSpring(1, { damping: 15, stiffness: 110, mass: 0.9 });
+    loadHistory();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -101,8 +102,8 @@ export default function ChatScreen() {
           <View style={[styles.header, { paddingTop: insets.top + Spacing.two }]}>
             <View style={{ flex: 1 }}>
               <ThemedText type="subtitle">Coach FITBRO</ThemedText>
-              <ThemedText type="caption" themeColor="textSecondary">
-                {isTyping ? 'Sta scrivendo…' : 'Nutrizionista & personal trainer AI'}
+              <ThemedText type="caption" themeColor={error ? undefined : 'textSecondary'} style={error ? { color: theme.danger } : undefined}>
+                {error ?? (isTyping ? 'Sta scrivendo…' : 'Nutrizionista & personal trainer AI')}
               </ThemedText>
             </View>
             <Pressable onPress={handleClose} hitSlop={8}>

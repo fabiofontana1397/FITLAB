@@ -19,7 +19,7 @@ import { useWeightSeries, weightDateGranularity, type WeightRange } from '@/hook
 import { dailyStepsTarget, stepsHistory } from '@/lib/mock/activity';
 import { latestSnapshot } from '@/lib/mock/body';
 import { currentWeekDates, daysAgoISO, mondayIndex } from '@/lib/mock/dates';
-import { insights } from '@/lib/mock/progress';
+import { useCoachInsights } from '@/hooks/use-coach-insights';
 import { estimateDailyBurnedKcal, estimateStepsKcal, estimateTrainingBonusKcal } from '@/lib/nutrition/targets';
 import { WEEKDAY_LABELS } from '@/lib/planning/exercise-library';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
@@ -114,6 +114,7 @@ export default function HomeScreen() {
 
   const [weightRange, setWeightRange] = useState<WeightRange>('settimana');
   const weightSeries = useWeightSeries(bodyEntries, weightRange);
+  const { insights, isLoading: insightsLoading, refresh: refreshInsights } = useCoachInsights();
 
   // One entry per weekday of the CURRENT calendar week — past days read
   // from what was actually logged, today is live, and days still ahead
@@ -413,7 +414,11 @@ export default function HomeScreen() {
       ) : null}
 
       <View>
-        <SectionHeader title="Consigli del coach AI" />
+        <SectionHeader
+          title="Consigli del coach AI"
+          action={insightsLoading ? 'Aggiornamento…' : 'Aggiorna'}
+          onActionPress={insightsLoading ? undefined : refreshInsights}
+        />
         <View style={{ gap: Spacing.three }}>
           {insights.map((insight) => (
             <InsightCard key={insight.id} tone={insight.tone} headline={insight.headline} body={insight.body} />

@@ -5,12 +5,14 @@ import { MEAL_SLOTS } from '@/store/nutrition-store';
 import { WEEKDAY_LABELS } from './exercise-library';
 import { buildFoodPools, pick } from './food-pools';
 import { computePlanDurationMonths } from './plan-duration';
+import type { DietStrategy } from './strategy-types';
 import type { DietDayPlan, DietMonthPlan, DietPlan, PlanMeal, PlanMealItem, PlanPhaseKind } from './types';
 
 export type DietPlanInput = {
   answers: Record<string, unknown>;
   dailyCalorieTarget: number;
   macroTargetsG: { protein: number; carbs: number; fats: number };
+  strategy?: DietStrategy | null;
 };
 
 function phaseForMonth(monthIndex: number, totalMonths: number): PlanPhaseKind {
@@ -136,7 +138,7 @@ function buildWeeklySplit(monthIndex: number, calorieTarget: number, pools: Retu
 }
 
 export function generateDietPlan(input: DietPlanInput): DietPlan {
-  const { answers, dailyCalorieTarget, macroTargetsG } = input;
+  const { answers, dailyCalorieTarget, macroTargetsG, strategy } = input;
   const goal = (answers.goal as Goal) ?? 'generalHealth';
   const durationMonths = computePlanDurationMonths(answers);
   const pools = buildFoodPools(answers);
@@ -144,14 +146,16 @@ export function generateDietPlan(input: DietPlanInput): DietPlan {
   const months: DietMonthPlan[] = [];
   for (let monthIndex = 1; monthIndex <= durationMonths; monthIndex++) {
     const phase = phaseForMonth(monthIndex, durationMonths);
-    const calorieTarget = monthCalorieTarget(phase, dailyCalorieTarget, goal);
-    const macros = monthMacros(calorieTarget, dailyCalorieTarget, macroTargetsG);
+    const strategyTarget = strategy?.monthlyTargets?.find((m) => m.monthIndex === monthIndex);
+    const calorieTarget = strategyTarget?.calorieTarget ?? monthCalorieTarget(phase, dailyCalorieTarget, goal);
+    const macros = strategyTarget?.macroTargetsG ?? monthMacros(calorieTarget, dailyCalorieTarget, macroTargetsG);
+    const monthlyFocus = strategy?.monthlyFocus?.find((m) => m.monthIndex === monthIndex);
 
     months.push({
       monthIndex,
       phase,
-      title: `Mese ${monthIndex} · ${phaseTitle(phase, goal)}`,
-      focusNote: phaseNote(phase, goal),
+      title: monthlyFocus?.title ?? `Mese ${monthIndex} · ${phaseTitle(phase, goal)}`,
+      focusNote: monthlyFocus?.focusNote ?? phaseNote(phase, goal),
       calorieTarget,
       macroTargetsG: macros,
       weeklySplit: buildWeeklySplit(monthIndex, calorieTarget, pools),
