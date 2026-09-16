@@ -6,6 +6,7 @@ import type { IconName } from '@/components/ui/icon';
 import { addDaysISO, daysAgoISO } from '@/lib/mock/dates';
 import { findFood } from '@/lib/mock/food-database';
 import type { UserProfile } from '@/lib/mock/types';
+import { withAuthRetry } from '@/lib/supabase/retry';
 import { useAuthStore } from '@/store/auth-store';
 import { appJsonStorage } from '@/store/storage';
 
@@ -95,7 +96,10 @@ export const useNutritionStore = create<NutritionState>()(
         const userId = currentUserId();
         if (!userId) return;
         try {
-          const [entries, seededDates] = await Promise.all([fetchMealEntries(userId), fetchSeededDates(userId)]);
+          const [entries, seededDates] = await Promise.all([
+            withAuthRetry(() => fetchMealEntries(userId)),
+            withAuthRetry(() => fetchSeededDates(userId)),
+          ]);
           // Server is canonical once it has any data; a brand-new account
           // with zero rows keeps the local state instead of wiping it.
           if (entries.length > 0 || seededDates.length > 0) {

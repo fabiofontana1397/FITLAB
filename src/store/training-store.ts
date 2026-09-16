@@ -4,6 +4,7 @@ import { persist } from 'zustand/middleware';
 import { fetchStaticTemplateLogs, insertStaticTemplateLog } from '@/lib/api/training';
 import { daysAgoISO } from '@/lib/mock/dates';
 import type { Sport } from '@/lib/mock/types';
+import { withAuthRetry } from '@/lib/supabase/retry';
 import { useAuthStore } from '@/store/auth-store';
 import { appJsonStorage } from '@/store/storage';
 
@@ -151,7 +152,7 @@ export const useTrainingStore = create<TrainingState>()(
         const userId = currentUserId();
         if (!userId) return;
         try {
-          const logs = await fetchStaticTemplateLogs(userId);
+          const logs = await withAuthRetry(() => fetchStaticTemplateLogs(userId));
           // Server is canonical once it has any data; a brand-new account
           // with zero rows keeps the local seeded demo logs instead of
           // wiping them to an empty list.

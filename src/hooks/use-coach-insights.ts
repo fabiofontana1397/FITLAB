@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { buildClientContext } from '@/lib/assistant/build-client-context';
 import type { Insight } from '@/lib/mock/types';
 import { supabase } from '@/lib/supabase/client';
+import { withAuthRetry } from '@/lib/supabase/retry';
 import { useAuthStore } from '@/store/auth-store';
 
 /** Replaces the static, non-data-grounded `insights` import from
@@ -17,14 +18,26 @@ export function useCoachInsights() {
 
   const fetchInsights = useCallback(async () => {
     if (!userId) return;
-    const { data, error } = await supabase
-      .from('coach_insights')
-      .select('id, tone, headline, body')
-      .eq('dismissed', false)
-      .order('generated_at', { ascending: false })
-      .limit(4);
-    if (!error && data) setInsights(data as Insight[]);
-    setHasLoadedOnce(true);
+    try {
+      // withAuthRetry only retries on a THROWN error, but supabase-js
+      // resolves query errors instead of throwing — re-throw so a
+      // transient post-signup clock-skew failure here gets retried too.
+      const { data } = await withAuthRetry(async () => {
+        const result = await supabase
+          .from('coach_insights')
+          .select('id, tone, headline, body')
+          .eq('dismissed', false)
+          .order('generated_at', { ascending: false })
+          .limit(4);
+        if (result.error) throw result.error;
+        return result;
+      });
+      if (data) setInsights(data as Insight[]);
+    } catch {
+      // Same as before: a failed fetch just leaves insights as-is.
+    } finally {
+      setHasLoadedOnce(true);
+    }
   }, [userId]);
 
   const refresh = useCallback(async () => {
@@ -32,8 +45,10 @@ export function useCoachInsights() {
     setIsLoading(true);
     try {
       const clientContext = buildClientContext();
-      const { error } = await supabase.functions.invoke('generate-insights', { body: { clientContext } });
-      if (error) throw error;
+      await withAuthRetry(async () => {
+        const { error } = await supabase.functions.invoke('generate-insights', { body: { clientContext } });
+        if (error) throw error;
+      });
       await fetchInsights();
     } catch (err) {
       console.warn('generate-insights failed', err);

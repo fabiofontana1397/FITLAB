@@ -1,10 +1,13 @@
+import { useEffect, useState } from 'react';
 import { Image, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { GlassSurface } from '@/components/glass/glass-surface';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
+import { PrimaryButton } from '@/components/ui/primary-button';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { analyzePhoto } from '@/lib/api/photo-analysis';
 import { generatePhotoDetailInsight } from '@/lib/assistant/photo-insight';
 import type { BodyMetricSnapshot } from '@/lib/mock/types';
 import { formatFullDay } from '@/lib/mock/dates';
@@ -17,14 +20,41 @@ export type PhotoDetailModalProps = {
   onClose: () => void;
 };
 
-/** Opened by tapping a progress photo: the shot at full size, with the AI
- * coach's feedback on shot quality and — the part that actually matters —
- * a data-grounded comparison against the previous photo in the same pose. */
+/** Opened by tapping a progress photo: the shot at full size, with the
+ * deterministic quick tip shown instantly, plus an on-demand button that
+ * calls real Claude vision on the actual pixels — not automatic on every
+ * open, since (unlike the quick tip) it's a genuine per-call cost/latency. */
 export function PhotoDetailModal({ photo, allPhotos, entries, onClose }: PhotoDetailModalProps) {
   const theme = useTheme();
+  const [aiObservation, setAiObservation] = useState<string | null>(null);
+  const [aiState, setAiState] = useState<'idle' | 'loading' | 'error'>('idle');
+
+  useEffect(() => {
+    // Resets the AI panel when a different photo is opened in the same
+    // modal instance (Modal stays mounted, only the `photo` prop changes).
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- prop-driven reset, not derived render state
+    setAiObservation(null);
+    setAiState('idle');
+  }, [photo?.id]);
+
   if (!photo) return null;
 
   const insight = generatePhotoDetailInsight(photo, allPhotos, entries);
+
+  const samePoseSorted = allPhotos.filter((p) => p.pose === photo.pose).sort((a, b) => a.date.localeCompare(b.date));
+  const indexInPose = samePoseSorted.findIndex((p) => p.id === photo.id);
+  const previousPhoto = indexInPose > 0 ? samePoseSorted[indexInPose - 1] : undefined;
+
+  const handleAnalyze = async () => {
+    setAiState('loading');
+    const result = await analyzePhoto(photo.id, previousPhoto?.id);
+    if (result) {
+      setAiObservation(result);
+      setAiState('idle');
+    } else {
+      setAiState('error');
+    }
+  };
 
   return (
     <Modal visible={photo != null} transparent animationType="fade" onRequestClose={onClose}>
@@ -52,7 +82,32 @@ export function PhotoDetailModal({ photo, allPhotos, entries, onClose }: PhotoDe
                   {insight}
                 </ThemedText>
               </View>
+
+              {aiObservation ? (
+                <View style={[styles.insightRow, { marginTop: Spacing.three }]}>
+                  <Icon name="camera" size={16} color={theme.accent} />
+                  <ThemedText type="small" style={{ flex: 1 }}>
+                    {aiObservation}
+                  </ThemedText>
+                </View>
+              ) : null}
+
+              {aiState === 'error' ? (
+                <ThemedText type="caption" themeColor="textSecondary" style={{ marginTop: Spacing.two }}>
+                  Analisi non disponibile al momento. Riprova più tardi.
+                </ThemedText>
+              ) : null}
             </ScrollView>
+
+            {!aiObservation ? (
+              <PrimaryButton
+                label={aiState === 'loading' ? 'Analisi in corso…' : 'Analizza con AI'}
+                icon="sparkle"
+                variant="outline"
+                disabled={aiState === 'loading'}
+                onPress={handleAnalyze}
+              />
+            ) : null}
           </GlassSurface>
         </Pressable>
       </Pressable>

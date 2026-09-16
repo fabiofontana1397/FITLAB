@@ -10,6 +10,7 @@ import {
   insertGeneratedPlanLog,
 } from '@/lib/api/training-progress';
 import { daysAgoISO } from '@/lib/mock/dates';
+import { withAuthRetry } from '@/lib/supabase/retry';
 import { useAuthStore } from '@/store/auth-store';
 import { appJsonStorage } from '@/store/storage';
 
@@ -80,7 +81,10 @@ export const useTrainingProgressStore = create<TrainingProgressState>()(
         const userId = currentUserId();
         if (!userId) return;
         try {
-          const [sets, completed] = await Promise.all([fetchGeneratedPlanLogs(userId), fetchCompletedExercises(userId)]);
+          const [sets, completed] = await Promise.all([
+            withAuthRetry(() => fetchGeneratedPlanLogs(userId)),
+            withAuthRetry(() => fetchCompletedExercises(userId)),
+          ]);
           if (sets.length > 0 || completed.length > 0) set({ sets, completed });
         } catch (err) {
           console.warn('training-progress-store syncFromServer failed', err);

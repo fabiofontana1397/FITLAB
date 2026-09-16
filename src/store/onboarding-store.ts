@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 import { deleteOnboardingAnswers, fetchOnboardingAnswers, upsertOnboardingAnswers } from '@/lib/api/onboarding';
+import { withAuthRetry } from '@/lib/supabase/retry';
+import { useAppStore } from '@/store/app-store';
 import { useAuthStore } from '@/store/auth-store';
 import { appJsonStorage } from '@/store/storage';
 
@@ -44,8 +46,16 @@ export const useOnboardingStore = create<OnboardingAnswersState>()(
         const userId = currentUserId();
         if (!userId) return;
         try {
-          const answers = await fetchOnboardingAnswers(userId);
-          if (answers && Object.keys(answers).length > 0) set({ answers });
+          const answers = await withAuthRetry(() => fetchOnboardingAnswers(userId));
+          if (answers && Object.keys(answers).length > 0) {
+            set({ answers });
+            // Multi-device gap: hasOnboarded is otherwise local-only
+            // (app-store.ts), so a second device with a real, already-
+            // onboarded account would wrongly redirect back into the
+            // questionnaire. The server having answers at all is proof
+            // onboarding was already completed somewhere.
+            if (!useAppStore.getState().hasOnboarded) useAppStore.getState().setHasOnboarded(true);
+          }
         } catch (err) {
           console.warn('onboarding-store syncFromServer failed', err);
         }

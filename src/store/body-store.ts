@@ -5,6 +5,7 @@ import { deleteBodyPhoto, fetchBodyMetrics, fetchBodyPhotos, replaceAllBodyMetri
 import { bodyHistorySeed } from '@/lib/mock/body';
 import { daysAgoISO } from '@/lib/mock/dates';
 import type { BodyMetricSnapshot } from '@/lib/mock/types';
+import { withAuthRetry } from '@/lib/supabase/retry';
 import { useAuthStore } from '@/store/auth-store';
 import { appJsonStorage } from '@/store/storage';
 
@@ -133,7 +134,10 @@ export const useBodyStore = create<BodyState>()(
         const userId = currentUserId();
         if (!userId) return;
         try {
-          const [entries, photos] = await Promise.all([fetchBodyMetrics(userId), fetchBodyPhotos(userId)]);
+          const [entries, photos] = await Promise.all([
+            withAuthRetry(() => fetchBodyMetrics(userId)),
+            withAuthRetry(() => fetchBodyPhotos(userId)),
+          ]);
           // Server is canonical once it has any data; a brand-new account
           // with zero rows keeps the local seed/demo state instead of
           // wiping it to an empty list.

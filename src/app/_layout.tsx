@@ -52,6 +52,15 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   if (isAuthenticated && !hasOnboarded && !pathname.startsWith('/onboarding')) {
     return <Redirect href="/onboarding" />;
   }
+  // Multi-device case: a second device lands here on the stale local
+  // hasOnboarded=false before onboarding-store's syncFromServer corrects
+  // it (the server already has answers). Once corrected, bounce back out
+  // — but only from the questionnaire entry itself, never from
+  // onboarding-created/-roadmap, which a user actually completing the
+  // real flow reaches with hasOnboarded still false the whole way through.
+  if (isAuthenticated && hasOnboarded && pathname === '/onboarding') {
+    return <Redirect href="/" />;
+  }
 
   return <>{children}</>;
 }

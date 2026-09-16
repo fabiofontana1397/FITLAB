@@ -7,6 +7,7 @@ import { generateDietPlan } from '@/lib/planning/diet-planner';
 import { computePlanDurationMonths } from '@/lib/planning/plan-duration';
 import { generateTrainingPlan } from '@/lib/planning/training-planner';
 import type { DietPlan, TrainingPlan } from '@/lib/planning/types';
+import { withAuthRetry } from '@/lib/supabase/retry';
 import { useAuthStore } from '@/store/auth-store';
 import { appJsonStorage } from '@/store/storage';
 
@@ -69,7 +70,10 @@ export const usePlanStore = create<PlanState>()(
         const userId = currentUserId();
         if (!userId) return;
         try {
-          const [dietPlan, trainingPlan] = await Promise.all([fetchDietPlan(userId), fetchTrainingPlan(userId)]);
+          const [dietPlan, trainingPlan] = await Promise.all([
+            withAuthRetry(() => fetchDietPlan(userId)),
+            withAuthRetry(() => fetchTrainingPlan(userId)),
+          ]);
           // Only overwrite local state with what the server actually has —
           // a plan that hasn't been generated yet (new account, still mid-
           // onboarding) must not wipe a plan just generated locally moments
