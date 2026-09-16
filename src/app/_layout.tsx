@@ -8,6 +8,11 @@ import { initSupabaseAuthLifecycle } from '@/lib/supabase/client';
 import { useAppStore } from '@/store/app-store';
 import { initAuthListener, useAuthStore } from '@/store/auth-store';
 import { useBodyStore } from '@/store/body-store';
+import { useNutritionStore } from '@/store/nutrition-store';
+import { useOnboardingStore } from '@/store/onboarding-store';
+import { usePlanStore } from '@/store/plan-store';
+import { useTrainingStore } from '@/store/training-store';
+import { useTrainingProgressStore } from '@/store/training-progress-store';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -23,12 +28,17 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   const hasOnboarded = useAppStore((s) => s.hasOnboarded);
   const appHydrated = useStoreHydrated(useAppStore);
 
-  // Server-authoritative body-store refresh, fired once per sign-in (not
-  // on every render) — covers both a fresh login and a cold app start with
-  // an already-valid session.
+  // Server-authoritative refresh for every migrated domain, fired once per
+  // sign-in (not on every render) — covers both a fresh login and a cold
+  // app start with an already-valid session.
   useEffect(() => {
     if (isAuthenticated) {
       useBodyStore.getState().syncFromServer();
+      useNutritionStore.getState().syncFromServer();
+      useTrainingStore.getState().syncFromServer();
+      useTrainingProgressStore.getState().syncFromServer();
+      usePlanStore.getState().syncFromServer();
+      useOnboardingStore.getState().syncFromServer();
     }
   }, [isAuthenticated]);
 

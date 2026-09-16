@@ -1,8 +1,10 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+import { fetchStaticTemplateLogs, insertStaticTemplateLog } from '@/lib/api/training';
 import { daysAgoISO } from '@/lib/mock/dates';
 import type { Sport } from '@/lib/mock/types';
+import { useAuthStore } from '@/store/auth-store';
 import { appJsonStorage } from '@/store/storage';
 
 export type ExerciseTemplate = {
@@ -126,23 +128,40 @@ type TrainingState = {
   plan: WeeklyPlan;
   logs: ExerciseSetLog[];
   logSet: (templateId: string, exerciseId: string, reps: number, weightKg: number, date?: string) => void;
+  syncFromServer: () => Promise<void>;
 };
+
+function currentUserId(): string | null {
+  return useAuthStore.getState().user?.id ?? null;
+}
 
 export const useTrainingStore = create<TrainingState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       templates: TEMPLATES,
       plan: DEFAULT_PLAN,
       logs: seedLogs(),
-      logSet: (templateId, exerciseId, reps, weightKg, date = daysAgoISO(0)) =>
-        set((state) => ({
-          logs: [
-            ...state.logs,
-            { id: `${exerciseId}-${date}-${Date.now()}`, date, templateId, exerciseId, reps, weightKg },
-          ],
-        })),
+      logSet: (templateId, exerciseId, reps, weightKg, date = daysAgoISO(0)) => {
+        const log: ExerciseSetLog = { id: `${exerciseId}-${date}-${Date.now()}`, date, templateId, exerciseId, reps, weightKg };
+        set((state) => ({ logs: [...state.logs, log] }));
+        const userId = currentUserId();
+        if (userId) insertStaticTemplateLog(userId, log).catch((err) => console.warn('insertStaticTemplateLog failed', err));
+      },
+      syncFromServer: async () => {
+        const userId = currentUserId();
+        if (!userId) return;
+        try {
+          const logs = await fetchStaticTemplateLogs(userId);
+          // Server is canonical once it has any data; a brand-new account
+          // with zero rows keeps the local seeded demo logs instead of
+          // wiping them to an empty list.
+          if (logs.length > 0) set({ logs });
+        } catch (err) {
+          console.warn('training-store syncFromServer failed', err);
+        }
+      },
     }),
-    { name: 'fitbro/training', storage: appJsonStorage }
+    { name: 'fitbro/training', storage: appJsonStorage, partialize: (state) => ({ templates: state.templates, plan: state.plan, logs: state.logs }) }
   )
 );
 

@@ -1,10 +1,12 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+import { deleteMealEntry, fetchMealEntries, fetchSeededDates, insertMealEntries, insertMealEntry, insertSeededDate, updateMealEntry } from '@/lib/api/nutrition';
 import type { IconName } from '@/components/ui/icon';
 import { addDaysISO, daysAgoISO } from '@/lib/mock/dates';
 import { findFood } from '@/lib/mock/food-database';
 import type { UserProfile } from '@/lib/mock/types';
+import { useAuthStore } from '@/store/auth-store';
 import { appJsonStorage } from '@/store/storage';
 
 export type MealSlot =
@@ -43,34 +45,66 @@ type NutritionState = {
   updateEntry: (id: string, foodId: string, grams: number) => void;
   removeEntry: (id: string) => void;
   seedDayFromPlan: (date: string, dayMeals: { slotId: string; items: { foodId: string; grams: number }[] }[]) => void;
+  syncFromServer: () => Promise<void>;
 };
+
+function currentUserId(): string | null {
+  return useAuthStore.getState().user?.id ?? null;
+}
 
 export const useNutritionStore = create<NutritionState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       entries: [],
       seededDates: [],
-      addEntry: (slot, foodId, grams, date = daysAgoISO(0)) =>
-        set((state) => ({
-          entries: [...state.entries, { id: `${foodId}-${Date.now()}`, date, slot, foodId, grams }],
-        })),
-      updateEntry: (id, foodId, grams) =>
-        set((state) => ({ entries: state.entries.map((e) => (e.id === id ? { ...e, foodId, grams } : e)) })),
-      removeEntry: (id) => set((state) => ({ entries: state.entries.filter((e) => e.id !== id) })),
-      seedDayFromPlan: (date, dayMeals) =>
-        set((state) => {
-          if (state.seededDates.includes(date)) return state;
-          const newEntries: MealFoodEntry[] = dayMeals.flatMap((meal) =>
-            meal.items.map((item, i) => ({
-              id: `plan-${date}-${meal.slotId}-${i}`,
-              date,
-              slot: meal.slotId as MealSlot,
-              foodId: item.foodId,
-              grams: item.grams,
-            }))
-          );
-          return { entries: [...state.entries, ...newEntries], seededDates: [...state.seededDates, date] };
-        }),
+      addEntry: (slot, foodId, grams, date = daysAgoISO(0)) => {
+        const entry: MealFoodEntry = { id: `${foodId}-${Date.now()}`, date, slot, foodId, grams };
+        set((state) => ({ entries: [...state.entries, entry] }));
+        const userId = currentUserId();
+        if (userId) insertMealEntry(userId, entry).catch((err) => console.warn('insertMealEntry failed', err));
+      },
+      updateEntry: (id, foodId, grams) => {
+        set((state) => ({ entries: state.entries.map((e) => (e.id === id ? { ...e, foodId, grams } : e)) }));
+        const userId = currentUserId();
+        if (userId) updateMealEntry(userId, id, foodId, grams).catch((err) => console.warn('updateMealEntry failed', err));
+      },
+      removeEntry: (id) => {
+        set((state) => ({ entries: state.entries.filter((e) => e.id !== id) }));
+        const userId = currentUserId();
+        if (userId) deleteMealEntry(userId, id).catch((err) => console.warn('deleteMealEntry failed', err));
+      },
+      seedDayFromPlan: (date, dayMeals) => {
+        if (get().seededDates.includes(date)) return;
+        const newEntries: MealFoodEntry[] = dayMeals.flatMap((meal) =>
+          meal.items.map((item, i) => ({
+            id: `plan-${date}-${meal.slotId}-${i}`,
+            date,
+            slot: meal.slotId as MealSlot,
+            foodId: item.foodId,
+            grams: item.grams,
+          }))
+        );
+        set((state) => ({ entries: [...state.entries, ...newEntries], seededDates: [...state.seededDates, date] }));
+        const userId = currentUserId();
+        if (userId) {
+          insertMealEntries(userId, newEntries).catch((err) => console.warn('insertMealEntries failed', err));
+          insertSeededDate(userId, date).catch((err) => console.warn('insertSeededDate failed', err));
+        }
+      },
+      syncFromServer: async () => {
+        const userId = currentUserId();
+        if (!userId) return;
+        try {
+          const [entries, seededDates] = await Promise.all([fetchMealEntries(userId), fetchSeededDates(userId)]);
+          // Server is canonical once it has any data; a brand-new account
+          // with zero rows keeps the local state instead of wiping it.
+          if (entries.length > 0 || seededDates.length > 0) {
+            set({ entries, seededDates });
+          }
+        } catch (err) {
+          console.warn('nutrition-store syncFromServer failed', err);
+        }
+      },
     }),
     { name: 'fitbro/nutrition', storage: appJsonStorage }
   )
