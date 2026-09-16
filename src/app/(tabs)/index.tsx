@@ -95,7 +95,7 @@ export default function HomeScreen() {
         : 'Recupero attivo';
 
   const latestBody = latestSnapshot(bodyEntries);
-  const startBody = bodyEntries[0];
+  const startBody = bodyEntries[0] ?? latestBody;
   const doneSoFar = startBody.weightKg - latestBody.weightKg;
 
   // Rest/cardio days (or no plan at all) have no checkboxes to tick, so a

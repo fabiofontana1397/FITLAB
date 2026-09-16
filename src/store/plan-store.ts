@@ -20,6 +20,8 @@ type PlanState = {
     targets: { dailyCalorieTarget: number; macroTargetsG: { protein: number; carbs: number; fats: number } }
   ) => Promise<void>;
   syncFromServer: () => Promise<void>;
+  /** Local-only reset on logout — see user-store.ts's clearLocal for why. */
+  clearLocal: () => void;
 };
 
 function currentUserId(): string | null {
@@ -84,6 +86,7 @@ export const usePlanStore = create<PlanState>()(
           console.warn('plan-store syncFromServer failed', err);
         }
       },
+      clearLocal: () => set({ dietPlan: null, trainingPlan: null, isGenerating: false }),
     }),
     { name: 'fitbro/plans', storage: appJsonStorage, partialize: (state) => ({ dietPlan: state.dietPlan, trainingPlan: state.trainingPlan }) }
   )

@@ -47,6 +47,8 @@ type NutritionState = {
   removeEntry: (id: string) => void;
   seedDayFromPlan: (date: string, dayMeals: { slotId: string; items: { foodId: string; grams: number }[] }[]) => void;
   syncFromServer: () => Promise<void>;
+  /** Local-only reset on logout — see user-store.ts's clearLocal for why. */
+  clearLocal: () => void;
 };
 
 function currentUserId(): string | null {
@@ -109,6 +111,7 @@ export const useNutritionStore = create<NutritionState>()(
           console.warn('nutrition-store syncFromServer failed', err);
         }
       },
+      clearLocal: () => set({ entries: [], seededDates: [] }),
     }),
     { name: 'fitbro/nutrition', storage: appJsonStorage }
   )

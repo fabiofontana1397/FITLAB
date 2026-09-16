@@ -32,6 +32,8 @@ type TrainingProgressState = {
   removeSet: (id: string) => void;
   toggleCompleted: (exerciseId: string, date: string) => void;
   syncFromServer: () => Promise<void>;
+  /** Local-only reset on logout — see user-store.ts's clearLocal for why. */
+  clearLocal: () => void;
 };
 
 function currentUserId(): string | null {
@@ -90,6 +92,7 @@ export const useTrainingProgressStore = create<TrainingProgressState>()(
           console.warn('training-progress-store syncFromServer failed', err);
         }
       },
+      clearLocal: () => set({ sets: [], completed: [] }),
     }),
     { name: 'fitbro/training-progress', storage: appJsonStorage }
   )

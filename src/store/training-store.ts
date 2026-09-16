@@ -86,50 +86,15 @@ const DEFAULT_PLAN: WeeklyPlan = [
   { type: 'rest' }, // Dom
 ];
 
-function seedLogs(): ExerciseSetLog[] {
-  const entries: [string, string, number, number[]][] = [
-    // templateId, exerciseId, daysAgoBase, weights over sessions (oldest -> newest)
-    ['push', 'panca-piana', 0, [82.5, 87.5, 90]],
-    ['push', 'military-press', 0, [45, 47.5, 50]],
-    ['push', 'dip-parallele', 0, [0, 5, 10]],
-    ['pull', 'stacco-da-terra', 0, [130, 135, 140]],
-    ['pull', 'trazioni-zavorrate', 0, [5, 7.5, 10]],
-    ['pull', 'rematore-bilanciere', 0, [60, 65, 70]],
-    ['legs', 'back-squat', 0, [110, 115, 120]],
-    ['legs', 'romanian-deadlift', 0, [90, 95, 100]],
-  ];
-  const sessionOffsets = [21, 11, 4]; // days ago, oldest first
-  const logs: ExerciseSetLog[] = [];
-  for (const [templateId, exerciseId, , weights] of entries) {
-    weights.forEach((weightKg, i) => {
-      const offset = sessionOffsets[i];
-      logs.push({
-        id: `${exerciseId}-${offset}-1`,
-        date: daysAgoISO(offset),
-        templateId,
-        exerciseId,
-        reps: 6,
-        weightKg,
-      });
-      logs.push({
-        id: `${exerciseId}-${offset}-2`,
-        date: daysAgoISO(offset),
-        templateId,
-        exerciseId,
-        reps: 6,
-        weightKg,
-      });
-    });
-  }
-  return logs;
-}
-
 type TrainingState = {
   templates: WorkoutTemplate[];
   plan: WeeklyPlan;
   logs: ExerciseSetLog[];
   logSet: (templateId: string, exerciseId: string, reps: number, weightKg: number, date?: string) => void;
   syncFromServer: () => Promise<void>;
+  /** Local-only reset on logout — see user-store.ts's clearLocal for why.
+   * templates/plan are static app config, not user data, so they stay. */
+  clearLocal: () => void;
 };
 
 function currentUserId(): string | null {
@@ -141,7 +106,7 @@ export const useTrainingStore = create<TrainingState>()(
     (set, get) => ({
       templates: TEMPLATES,
       plan: DEFAULT_PLAN,
-      logs: seedLogs(),
+      logs: [],
       logSet: (templateId, exerciseId, reps, weightKg, date = daysAgoISO(0)) => {
         const log: ExerciseSetLog = { id: `${exerciseId}-${date}-${Date.now()}`, date, templateId, exerciseId, reps, weightKg };
         set((state) => ({ logs: [...state.logs, log] }));
@@ -153,14 +118,12 @@ export const useTrainingStore = create<TrainingState>()(
         if (!userId) return;
         try {
           const logs = await withAuthRetry(() => fetchStaticTemplateLogs(userId));
-          // Server is canonical once it has any data; a brand-new account
-          // with zero rows keeps the local seeded demo logs instead of
-          // wiping them to an empty list.
-          if (logs.length > 0) set({ logs });
+          set({ logs });
         } catch (err) {
           console.warn('training-store syncFromServer failed', err);
         }
       },
+      clearLocal: () => set({ logs: [] }),
     }),
     { name: 'fitbro/training', storage: appJsonStorage, partialize: (state) => ({ templates: state.templates, plan: state.plan, logs: state.logs }) }
   )

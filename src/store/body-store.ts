@@ -2,12 +2,28 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 import { deleteBodyPhoto, fetchBodyMetrics, fetchBodyPhotos, replaceAllBodyMetrics, upsertBodyMetric, uploadBodyPhoto } from '@/lib/api/body';
-import { bodyHistorySeed } from '@/lib/mock/body';
 import { daysAgoISO } from '@/lib/mock/dates';
 import type { BodyMetricSnapshot } from '@/lib/mock/types';
 import { withAuthRetry } from '@/lib/supabase/retry';
 import { useAuthStore } from '@/store/auth-store';
 import { appJsonStorage } from '@/store/storage';
+
+// A real new account has no history yet — this is the "no previous entry
+// to carry fields over from" fallback, not fabricated data (every field is
+// zero/neutral, never a plausible-looking invented measurement).
+const EMPTY_SNAPSHOT: Omit<BodyMetricSnapshot, 'date'> = {
+  weightKg: 0,
+  bodyFatPct: 0,
+  muscleMassKg: 0,
+  shouldersCm: 0,
+  chestCm: 0,
+  bicepsCm: 0,
+  waistCm: 0,
+  hipsCm: 0,
+  thighCm: 0,
+  restingHeartRate: 0,
+  sleepHours: 0,
+};
 
 // The fixed shot list a progress-photo session should cover — see the
 // instructions card on the Corpo screen. Front/back get a relaxed AND a
@@ -47,6 +63,8 @@ type BodyState = {
   // sync. Acceptable for quick, redoable actions (a weight entry, a
   // photo) in this pass; a real mutation queue is a legitimate later ask.
   syncFromServer: () => Promise<void>;
+  /** Local-only reset on logout — see user-store.ts's clearLocal for why. */
+  clearLocal: () => void;
 };
 
 function currentUserId(): string | null {
@@ -56,12 +74,12 @@ function currentUserId(): string | null {
 export const useBodyStore = create<BodyState>()(
   persist(
     (set, get) => ({
-      entries: bodyHistorySeed,
+      entries: [],
       photos: [],
 
       addWeightEntry: (weightKg, date = daysAgoISO(0)) => {
         set((state) => {
-          const last = state.entries[state.entries.length - 1];
+          const last = state.entries[state.entries.length - 1] ?? EMPTY_SNAPSHOT;
           const existingIndex = state.entries.findIndex((e) => e.date === date);
           const nextEntry: BodyMetricSnapshot = { ...last, date, weightKg };
           if (existingIndex >= 0) {
@@ -77,11 +95,11 @@ export const useBodyStore = create<BodyState>()(
       },
 
       // Called from onboarding: a real first-time user has no history yet, so this
-      // replaces the seeded demo history with a single fresh entry instead of
-      // grafting a user-entered weight onto an unrelated canned trend.
+      // replaces whatever's there (a stale/leftover entry) with a single fresh one
+      // instead of grafting a user-entered weight onto unrelated old data.
       resetStartingWeight: (weightKg, date = daysAgoISO(0)) => {
         set((state) => {
-          const template = state.entries[state.entries.length - 1];
+          const template = state.entries[state.entries.length - 1] ?? EMPTY_SNAPSHOT;
           return { entries: [{ ...template, date, weightKg }] };
         });
         const userId = currentUserId();
@@ -91,7 +109,7 @@ export const useBodyStore = create<BodyState>()(
 
       addMeasurement: (partial, date = daysAgoISO(0)) => {
         set((state) => {
-          const last = state.entries[state.entries.length - 1];
+          const last = state.entries[state.entries.length - 1] ?? EMPTY_SNAPSHOT;
           const existingIndex = state.entries.findIndex((e) => e.date === date);
           if (existingIndex >= 0) {
             const entries = [...state.entries];
@@ -139,8 +157,8 @@ export const useBodyStore = create<BodyState>()(
             withAuthRetry(() => fetchBodyPhotos(userId)),
           ]);
           // Server is canonical once it has any data; a brand-new account
-          // with zero rows keeps the local seed/demo state instead of
-          // wiping it to an empty list.
+          // with zero rows keeps whatever's already local (normally also
+          // empty) instead of forcing a redundant overwrite.
           set({
             entries: entries.length > 0 ? entries : get().entries,
             photos,
@@ -149,6 +167,7 @@ export const useBodyStore = create<BodyState>()(
           console.warn('body-store syncFromServer failed', err);
         }
       },
+      clearLocal: () => set({ entries: [], photos: [] }),
     }),
     { name: 'fitbro/body', storage: appJsonStorage }
   )

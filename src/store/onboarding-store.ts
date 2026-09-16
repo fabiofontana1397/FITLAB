@@ -14,6 +14,9 @@ type OnboardingAnswersState = {
   setAnswer: (id: string, value: AnswerValue) => void;
   reset: () => void;
   syncFromServer: () => Promise<void>;
+  /** Local-only reset on logout (no server call, unlike `reset`) — see
+   * user-store.ts's clearLocal for why. */
+  clearLocal: () => void;
 };
 
 function currentUserId(): string | null {
@@ -60,6 +63,7 @@ export const useOnboardingStore = create<OnboardingAnswersState>()(
           console.warn('onboarding-store syncFromServer failed', err);
         }
       },
+      clearLocal: () => set({ answers: {} }),
     }),
     { name: 'fitbro/onboarding-answers', storage: appJsonStorage }
   )

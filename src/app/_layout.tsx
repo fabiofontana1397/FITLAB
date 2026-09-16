@@ -1,5 +1,5 @@
 import { DarkTheme, DefaultTheme, Redirect, Stack, ThemeProvider, usePathname } from 'expo-router';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -13,6 +13,7 @@ import { useOnboardingStore } from '@/store/onboarding-store';
 import { usePlanStore } from '@/store/plan-store';
 import { useTrainingStore } from '@/store/training-store';
 import { useTrainingProgressStore } from '@/store/training-progress-store';
+import { useUserStore } from '@/store/user-store';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -27,19 +28,36 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   const authLoading = useAuthStore((s) => s.isLoading);
   const hasOnboarded = useAppStore((s) => s.hasOnboarded);
   const appHydrated = useStoreHydrated(useAppStore);
+  const wasAuthenticated = useRef(isAuthenticated);
 
   // Server-authoritative refresh for every migrated domain, fired once per
   // sign-in (not on every render) — covers both a fresh login and a cold
-  // app start with an already-valid session.
+  // app start with an already-valid session. On sign-out, clear every local
+  // store instead: without this, a different account signing in on the
+  // same device would see the previous account's cached data (a real report
+  // from testing) until/unless the server happened to overwrite every
+  // field — several stores intentionally keep local state when the server
+  // has zero rows, which is exactly wrong for "a new account on this device".
   useEffect(() => {
     if (isAuthenticated) {
+      useUserStore.getState().syncFromServer();
       useBodyStore.getState().syncFromServer();
       useNutritionStore.getState().syncFromServer();
       useTrainingStore.getState().syncFromServer();
       useTrainingProgressStore.getState().syncFromServer();
       usePlanStore.getState().syncFromServer();
       useOnboardingStore.getState().syncFromServer();
+    } else if (wasAuthenticated.current) {
+      useUserStore.getState().clearLocal();
+      useBodyStore.getState().clearLocal();
+      useNutritionStore.getState().clearLocal();
+      useTrainingStore.getState().clearLocal();
+      useTrainingProgressStore.getState().clearLocal();
+      usePlanStore.getState().clearLocal();
+      useOnboardingStore.getState().clearLocal();
+      useAppStore.getState().setHasOnboarded(false);
     }
+    wasAuthenticated.current = isAuthenticated;
   }, [isAuthenticated]);
 
   if (authLoading || !appHydrated) return null;
