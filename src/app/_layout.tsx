@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useHandleAuthRedirect } from '@/hooks/use-handle-auth-redirect';
 import { useStoreHydrated } from '@/hooks/use-store-hydrated';
 import { initSupabaseAuthLifecycle } from '@/lib/supabase/client';
 import { useAppStore } from '@/store/app-store';
@@ -20,7 +21,7 @@ SplashScreen.preventAutoHideAsync();
 // Routes reachable without an account — every other route (including deep
 // links like /onboarding or /profile opened directly, bypassing "/") must
 // still go through the welcome/onboarding gate below.
-const PUBLIC_ROUTES = new Set(['/welcome', '/login', '/register']);
+const PUBLIC_ROUTES = new Set(['/welcome', '/login', '/register', '/forgot-password', '/reset-password']);
 
 function AuthGate({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -85,6 +86,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+  useHandleAuthRedirect();
 
   useEffect(() => {
     SplashScreen.hideAsync();
@@ -104,6 +106,8 @@ export default function RootLayout() {
           <Stack.Screen name="welcome" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
           <Stack.Screen name="login" />
           <Stack.Screen name="register" />
+          <Stack.Screen name="forgot-password" />
+          <Stack.Screen name="reset-password" />
           <Stack.Screen name="onboarding" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
           <Stack.Screen name="onboarding-created" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
           <Stack.Screen name="onboarding-roadmap" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />

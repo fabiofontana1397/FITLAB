@@ -20,21 +20,44 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [needsEmailConfirmation, setNeedsEmailConfirmation] = useState(false);
 
   // Supabase's own minimum_password_length default (see supabase/config.toml).
   const canSubmit = name.trim().length > 0 && email.includes('@') && password.length >= 6 && !isSubmitting;
 
   const handleRegister = async () => {
     setIsSubmitting(true);
-    const { error: registerError } = await register(name.trim(), email.trim(), password);
+    const { error: registerError, needsEmailConfirmation: pending } = await register(name.trim(), email.trim(), password);
     setIsSubmitting(false);
     if (registerError) {
       setError(registerError);
       return;
     }
+    if (pending) {
+      setNeedsEmailConfirmation(true);
+      return;
+    }
     updateProfile({ name: name.trim() });
     router.replace('/onboarding');
   };
+
+  if (needsEmailConfirmation) {
+    return (
+      <ScreenScroll>
+        <View style={{ gap: Spacing.one }}>
+          <ThemedText type="display">Conferma la tua email</ThemedText>
+          <ThemedText type="default" themeColor="textSecondary">
+            Ti abbiamo mandato un link di conferma a {email.trim()}. Aprilo per attivare l&apos;account, poi torna qui.
+          </ThemedText>
+        </View>
+        <Pressable onPress={() => router.replace('/login')} hitSlop={8}>
+          <ThemedText type="caption" style={{ textAlign: 'center', color: theme.accent }}>
+            Torna al login
+          </ThemedText>
+        </Pressable>
+      </ScreenScroll>
+    );
+  }
 
   return (
     <ScreenScroll>
