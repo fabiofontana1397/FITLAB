@@ -4,6 +4,9 @@
  * lib/mock/food-database ids, so the diet planner can build a believable
  * sample day instead of picking foods at random.
  */
+import { FOOD_DATABASE } from '@/lib/mock/food-database';
+
+export type MealType = 'breakfast' | 'main' | 'snack' | 'any';
 
 const PROTEIN_SOURCES: Record<string, string[]> = {
   chicken: ['chicken-breast'],
@@ -18,6 +21,22 @@ const PROTEIN_SOURCES: Record<string, string[]> = {
   tofu: ['tofu'],
 };
 
+// Which meal(s) each protein source is realistic for — this is what stops
+// a "colazione" slot from getting served lean beef or canned tuna just
+// because that's what's in the user's chosen protein pool.
+const PROTEIN_MEAL_TYPE: Record<string, MealType> = {
+  chicken: 'main',
+  turkey: 'main',
+  beef: 'main',
+  eggs: 'any',
+  fish: 'main',
+  legumes: 'main',
+  dairy: 'any',
+  yogurt: 'any',
+  proteinPowder: 'any',
+  tofu: 'main',
+};
+
 const CARB_SOURCES: Record<string, string[]> = {
   rice: ['rice-basmati'],
   pasta: ['pasta'],
@@ -27,6 +46,17 @@ const CARB_SOURCES: Record<string, string[]> = {
   cereals: ['quinoa', 'couscous'],
   legumes: ['chickpeas', 'lentils'],
   fruit: ['banana', 'apple', 'orange'],
+};
+
+const CARB_MEAL_TYPE: Record<string, MealType> = {
+  rice: 'main',
+  pasta: 'main',
+  potatoes: 'main',
+  bread: 'any',
+  oats: 'breakfast',
+  cereals: 'main',
+  legumes: 'main',
+  fruit: 'any',
 };
 
 const FAT_SOURCES: Record<string, string[]> = {
@@ -77,18 +107,115 @@ function filterByDietaryPattern(ids: string[], pattern: unknown): string[] {
   return filtered.length > 0 ? filtered : ids.filter((id) => !MEAT_IDS.has(id) && !FISH_IDS.has(id));
 }
 
+function idsToMealTypeMap(sourceMap: Record<string, string[]>, mealTypeBySourceKey: Record<string, MealType>): Record<string, MealType> {
+  const result: Record<string, MealType> = {};
+  for (const [key, ids] of Object.entries(sourceMap)) {
+    const mealType = mealTypeBySourceKey[key] ?? 'any';
+    for (const id of ids) result[id] = mealType;
+  }
+  return result;
+}
+
+const PROTEIN_ID_MEAL_TYPE = idsToMealTypeMap(PROTEIN_SOURCES, PROTEIN_MEAL_TYPE);
+const CARB_ID_MEAL_TYPE = idsToMealTypeMap(CARB_SOURCES, CARB_MEAL_TYPE);
+
+/** Narrows a pool to foods realistic for this slot (breakfast/main/snack) —
+ * falls back to the unfiltered pool if that would leave nothing, since a
+ * user's own stated preference should never be silently dropped to zero
+ * options, only steered toward the better fit when one exists. */
+function restrictToMealType(ids: string[], mealTypeMap: Record<string, MealType>, slotType: MealType): string[] {
+  if (slotType === 'any') return ids;
+  const fitting = ids.filter((id) => {
+    const t = mealTypeMap[id] ?? 'any';
+    return t === 'any' || t === slotType;
+  });
+  return fitting.length > 0 ? fitting : ids;
+}
+
+function normalize(text: string): string {
+  return text.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+
+// Free-text (Italian) allergen/intolerance terms → whole food groups they
+// imply, so "sono intollerante al lattosio" excludes every dairy item even
+// though the user never typed a single food name from the catalog.
+const ALLERGEN_GROUPS: { keywords: string[]; ids: string[] }[] = [
+  { keywords: ['glutine', 'celiach'], ids: ['pasta', 'bread-wholegrain', 'bread-white', 'couscous', 'focaccia', 'pizza-margherita'] },
+  {
+    keywords: ['lattosio', 'latte', 'latticini', 'formaggio'],
+    ids: ['greek-yogurt', 'cottage-cheese', 'ricotta', 'skyr', 'whey-protein', 'milk-semi', 'mozzarella', 'parmesan'],
+  },
+  { keywords: ['uova', 'uovo'], ids: ['eggs', 'egg-whites'] },
+  { keywords: ['frutta secca', 'noci', 'mandorle', 'arachidi'], ids: ['almonds', 'walnuts', 'peanut-butter'] },
+  { keywords: ['pesce'], ids: ['salmon', 'tuna-canned'] },
+  { keywords: ['soia'], ids: ['tofu'] },
+];
+
+const NO_ANSWER_TEXT = new Set(['', 'no', 'nessuna', 'nessuno', 'niente', 'no.', 'n/a', 'na']);
+
+function freeTextExclusionBlob(answers: Record<string, unknown>): string {
+  const fields = ['allergies', 'intolerances', 'excludedFoods'];
+  const parts = fields
+    .map((f) => answers[f])
+    .filter((v): v is string => typeof v === 'string')
+    .map(normalize)
+    .filter((v) => !NO_ANSWER_TEXT.has(v.trim()));
+  return parts.join(' . ');
+}
+
+/** Food ids to exclude from every pool — from explicit allergies/
+ * intolerances/excludedFoods text, matched against curated allergen groups
+ * and directly against catalog food names (so typing "manzo" excludes
+ * beef-lean even without a named allergen group for it). */
+function deriveExcludedFoodIds(answers: Record<string, unknown>): Set<string> {
+  const blob = freeTextExclusionBlob(answers);
+  const excluded = new Set<string>();
+  if (blob.length === 0) return excluded;
+  for (const group of ALLERGEN_GROUPS) {
+    if (group.keywords.some((k) => blob.includes(k))) group.ids.forEach((id) => excluded.add(id));
+  }
+  for (const food of FOOD_DATABASE) {
+    if (blob.includes(normalize(food.name))) excluded.add(food.id);
+  }
+  return excluded;
+}
+
+function applyExclusions(ids: string[], excluded: Set<string>, fallback: string[]): string[] {
+  const filtered = ids.filter((id) => !excluded.has(id));
+  if (filtered.length > 0) return filtered;
+  const fallbackFiltered = fallback.filter((id) => !excluded.has(id));
+  return fallbackFiltered.length > 0 ? fallbackFiltered : ids;
+}
+
 export function buildFoodPools(answers: Record<string, unknown>) {
   const pattern = answers.dietaryPattern;
-  const protein = filterByDietaryPattern(poolFromAnswer(answers.preferredProteins, PROTEIN_SOURCES, DEFAULT_PROTEIN_POOL), pattern);
-  const carbs = poolFromAnswer(answers.preferredCarbs, CARB_SOURCES, DEFAULT_CARB_POOL);
-  const fats = filterByDietaryPattern(poolFromAnswer(answers.preferredFats, FAT_SOURCES, DEFAULT_FAT_POOL), pattern);
+  const excluded = deriveExcludedFoodIds(answers);
+
+  const protein = applyExclusions(
+    filterByDietaryPattern(poolFromAnswer(answers.preferredProteins, PROTEIN_SOURCES, DEFAULT_PROTEIN_POOL), pattern),
+    excluded,
+    filterByDietaryPattern(DEFAULT_PROTEIN_POOL, pattern)
+  );
+  const carbs = applyExclusions(poolFromAnswer(answers.preferredCarbs, CARB_SOURCES, DEFAULT_CARB_POOL), excluded, DEFAULT_CARB_POOL);
+  const fats = applyExclusions(
+    filterByDietaryPattern(poolFromAnswer(answers.preferredFats, FAT_SOURCES, DEFAULT_FAT_POOL), pattern),
+    excluded,
+    filterByDietaryPattern(DEFAULT_FAT_POOL, pattern)
+  );
+  const vegetables = applyExclusions(VEGETABLE_POOL, excluded, VEGETABLE_POOL);
+  const fruit = applyExclusions(FRUIT_POOL, excluded, FRUIT_POOL);
 
   return {
-    protein: protein.length > 0 ? protein : filterByDietaryPattern(DEFAULT_PROTEIN_POOL, pattern),
+    protein,
     carbs,
     fats,
-    vegetables: VEGETABLE_POOL,
-    fruit: FRUIT_POOL,
+    vegetables,
+    fruit,
+    /** Narrows `protein`/`carbs` to what's realistic for a given slot —
+     * see restrictToMealType's fallback behavior for why this never
+     * returns an empty pool. */
+    proteinFor: (slotType: MealType) => restrictToMealType(protein, PROTEIN_ID_MEAL_TYPE, slotType),
+    carbsFor: (slotType: MealType) => restrictToMealType(carbs, CARB_ID_MEAL_TYPE, slotType),
   };
 }
 

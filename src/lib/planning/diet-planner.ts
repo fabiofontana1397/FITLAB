@@ -1,12 +1,25 @@
 import { findFood } from '@/lib/mock/food-database';
 import type { Goal } from '@/lib/mock/types';
-import { MEAL_SLOTS } from '@/store/nutrition-store';
+import type { MealSlot } from '@/store/nutrition-store';
 
 import { WEEKDAY_LABELS } from './exercise-library';
 import { buildFoodPools, pick } from './food-pools';
+import { buildMealSlotsFromAnswers, type MealSlotDef } from './meal-slots';
 import { computePlanDurationMonths } from './plan-duration';
 import type { DietStrategy } from './strategy-types';
 import type { DietDayPlan, DietMonthPlan, DietPlan, PlanMeal, PlanMealItem, PlanPhaseKind } from './types';
+
+/** colazione/pranzo/cena get main-meal-appropriate proteins/carbs (no lean
+ * beef for breakfast); the 3 snack slots get snack-appropriate ones
+ * instead — see food-pools.ts's proteinFor/carbsFor. */
+const SLOT_MEAL_TYPE: Record<MealSlot, 'breakfast' | 'main' | 'snack'> = {
+  colazione: 'breakfast',
+  spuntinoMattina: 'snack',
+  pranzo: 'main',
+  spuntinoPomeriggio: 'snack',
+  cena: 'main',
+  spuntinoSera: 'snack',
+};
 
 export type DietPlanInput = {
   answers: Record<string, unknown>;
@@ -102,15 +115,23 @@ function buildItem(pool: string[], seed: number, targetKcal: number, portionOver
   };
 }
 
-function buildDayMeals(seed: number, calorieTarget: number, pools: ReturnType<typeof buildFoodPools>): PlanMeal[] {
-  return MEAL_SLOTS.map((slot, slotIdx) => {
+function buildDayMeals(
+  seed: number,
+  calorieTarget: number,
+  pools: ReturnType<typeof buildFoodPools>,
+  slots: MealSlotDef[]
+): PlanMeal[] {
+  return slots.map((slot, slotIdx) => {
     const slotKcal = calorieTarget * slot.sharePct;
-    const isMain = slot.sharePct >= 0.2;
+    const mealType = SLOT_MEAL_TYPE[slot.id];
+    const isMain = mealType === 'main';
     const slotSeed = seed + slotIdx;
+    const proteinPool = pools.proteinFor(mealType);
+    const carbPool = pools.carbsFor(mealType);
 
     const items: PlanMealItem[] = [
-      buildItem(pools.protein, slotSeed, slotKcal * 0.4),
-      buildItem(pools.carbs, slotSeed + 1, slotKcal * 0.35),
+      buildItem(proteinPool, slotSeed, slotKcal * 0.4),
+      buildItem(carbPool, slotSeed + 1, slotKcal * 0.35),
     ];
 
     if (isMain) {
@@ -130,10 +151,15 @@ function buildDayMeals(seed: number, calorieTarget: number, pools: ReturnType<ty
 /** One full week of day-by-day meals for the month — each weekday gets its
  * own rotation through the food pools (rather than one "example day"
  * repeated), so the plan reads as an actual schedule to follow. */
-function buildWeeklySplit(monthIndex: number, calorieTarget: number, pools: ReturnType<typeof buildFoodPools>): DietDayPlan[] {
+function buildWeeklySplit(
+  monthIndex: number,
+  calorieTarget: number,
+  pools: ReturnType<typeof buildFoodPools>,
+  slots: MealSlotDef[]
+): DietDayPlan[] {
   return WEEKDAY_LABELS.map((weekday, dayIdx) => ({
     weekday,
-    meals: buildDayMeals((monthIndex - 1) * 7 + dayIdx, calorieTarget, pools),
+    meals: buildDayMeals((monthIndex - 1) * 7 + dayIdx, calorieTarget, pools, slots),
   }));
 }
 
@@ -142,6 +168,7 @@ export function generateDietPlan(input: DietPlanInput): DietPlan {
   const goal = (answers.goal as Goal) ?? 'generalHealth';
   const durationMonths = computePlanDurationMonths(answers);
   const pools = buildFoodPools(answers);
+  const slots = buildMealSlotsFromAnswers(answers);
 
   const months: DietMonthPlan[] = [];
   for (let monthIndex = 1; monthIndex <= durationMonths; monthIndex++) {
@@ -158,7 +185,7 @@ export function generateDietPlan(input: DietPlanInput): DietPlan {
       focusNote: monthlyFocus?.focusNote ?? phaseNote(phase, goal),
       calorieTarget,
       macroTargetsG: macros,
-      weeklySplit: buildWeeklySplit(monthIndex, calorieTarget, pools),
+      weeklySplit: buildWeeklySplit(monthIndex, calorieTarget, pools, slots),
     });
   }
 

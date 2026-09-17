@@ -51,7 +51,13 @@ Nella "rationale" cita in 2-3 frasi le fonti/studi reali su cui ti sei basato �
 brevi per mese, non un paragrafo. Se il profilo non prevede allenamento in palestra/corsa imposta "training" a
 null; se non serve un piano alimentare imposta "diet" a null. "splitLabels" deve usare ESCLUSIVAMENTE i valori
 "Full Body", "Upper", "Lower", "Push", "Pull", "Legs" (uno per ogni giorno di allenamento in ordine, ripetuti se
-necessario) — sono gli unici tipi di scheda presenti nel catalogo esercizi dell'app.`;
+necessario) — sono gli unici tipi di scheda presenti nel catalogo esercizi dell'app.
+
+Se il profilo elenca LIMITAZIONI FISICHE o VINCOLI ALIMENTARI, sono vincolanti: non nominare mai nella
+"rationale" o nei "focusNote" un esercizio, un movimento o un alimento incompatibile con quanto indicato (il
+codice a valle già esclude questi esercizi/alimenti dal piano concreto — il tuo testo non deve contraddirlo
+suggerendone comunque uno). Se non sai come formulare il focus rispettando il vincolo, resta più generico
+piuttosto che nominare qualcosa di escluso.`;
 
 const SET_SCHEME_SCHEMA = {
   type: 'object',
@@ -154,16 +160,33 @@ const STRATEGY_SCHEMA = {
   additionalProperties: false,
 };
 
+function yesNo(v: unknown): boolean {
+  return v === 'yes' || v === 'sì' || v === 'si' || v === true;
+}
+
 function buildProfileSummary(body: RequestBody): string {
   const { answers, dailyCalorieTarget, macroTargetsG, durationMonths } = body;
+
+  const limitations: string[] = [];
+  if (yesNo(answers.hasPain) && answers.painDetails) limitations.push(`dolori/limitazioni attuali: ${answers.painDetails}`);
+  if (yesNo(answers.cannotDoExercises) && answers.cannotDoDetails) limitations.push(`esercizi da NON includere: ${answers.cannotDoDetails}`);
+  if (yesNo(answers.recentInjuries) && answers.recentInjuriesDetails) limitations.push(`infortuni recenti: ${answers.recentInjuriesDetails}`);
+
+  const foodConstraints: string[] = [];
+  if (answers.allergies) foodConstraints.push(`allergie: ${answers.allergies}`);
+  if (answers.intolerances) foodConstraints.push(`intolleranze: ${answers.intolerances}`);
+  if (answers.excludedFoods) foodConstraints.push(`alimenti da escludere: ${answers.excludedFoods}`);
+  if (answers.includedFoods) foodConstraints.push(`alimenti da includere se possibile: ${answers.includedFoods}`);
+
   return `Profilo utente:
 - Obiettivo: ${answers.goal ?? 'sconosciuto'}
 - Attività praticate: ${JSON.stringify(answers.activitiesPracticed ?? [])}
 - Focus palestra: ${answers.focus_gym ?? 'n/d'}, Focus corsa: ${answers.focus_running ?? 'n/d'}
-- Giorni disponibili: ${answers.availableDays ?? 'n/d'}, Frequenza palestra: ${answers.freq_gym ?? 'n/d'}, Frequenza corsa: ${answers.freq_running ?? 'n/d'}
+- Giorni disponibili: ${answers.availableDays ?? 'n/d'}, Durata sessione: ${answers.sessionDuration ?? 'n/d'}, Frequenza palestra: ${answers.freq_gym ?? 'n/d'}, Frequenza corsa: ${answers.freq_running ?? 'n/d'}
 - Luogo allenamento: ${answers.trainingLocation ?? 'palestra'}
-- Pattern alimentare: ${answers.dietaryPattern ?? 'onnivoro'}
-- Target calorico finale: ${dailyCalorieTarget} kcal, macro finali: ${JSON.stringify(macroTargetsG)}
+${limitations.length > 0 ? `- LIMITAZIONI FISICHE (vincolanti, non contraddire mai nella rationale/focusNote): ${limitations.join('; ')}\n` : ''}- Pattern alimentare: ${answers.dietaryPattern ?? 'onnivoro'}
+- Pasti al giorno: ${answers.mealsPerDay ?? 'n/d'}, orari: colazione ${answers.breakfastTime ?? 'n/d'} / pranzo ${answers.lunchTime ?? 'n/d'} / cena ${answers.dinnerTime ?? 'n/d'}, spuntini: ${answers.snacks ?? 'n/d'}
+${foodConstraints.length > 0 ? `- VINCOLI ALIMENTARI (vincolanti, non contraddire mai nella rationale/focusNote): ${foodConstraints.join('; ')}\n` : ''}- Target calorico finale: ${dailyCalorieTarget} kcal, macro finali: ${JSON.stringify(macroTargetsG)}
 - Durata piano: ${durationMonths} mesi (mese 1 = adattamento, ultimo = consolidamento, gli intermedi = progressione)`;
 }
 

@@ -1,3 +1,4 @@
+import { deriveExerciseExclusions, selectExercises } from './exercise-constraints';
 import {
   FOCUS_SCHEME,
   GYM_EXERCISES,
@@ -12,6 +13,25 @@ import {
 import { computePlanDurationMonths } from './plan-duration';
 import type { TrainingStrategy } from './strategy-types';
 import type { PlanPhaseKind, TrainingDayPlan, TrainingExerciseEntry, TrainingMonthPlan, TrainingPlan } from './types';
+
+/** How many exercises a session can reasonably fit — matched to the
+ * questionnaire's actual sessionDuration answer instead of always 4. */
+function exerciseCountForDuration(value: unknown): number {
+  switch (value) {
+    case 'lt30':
+      return 3;
+    case '30-45':
+      return 4;
+    case '45-60':
+      return 5;
+    case '60-90':
+      return 6;
+    case 'gt90':
+      return 6;
+    default:
+      return 4;
+  }
+}
 
 export type TrainingPlanInput = { answers: Record<string, unknown>; strategy?: TrainingStrategy | null };
 
@@ -92,6 +112,8 @@ export function generateTrainingPlan(input: TrainingPlanInput): TrainingPlan | n
   runDays = Math.min(runDays, 6 - gymDays);
 
   const exercisePool = answers.trainingLocation === 'home' ? HOME_EXERCISES : GYM_EXERCISES;
+  const exclusions = deriveExerciseExclusions(answers);
+  const exerciseCount = exerciseCountForDuration(answers.sessionDuration);
   const sanitizedStrategySplits = sanitizeSplitLabels(strategy?.splitLabels);
   const splitLabels: SplitLabel[] =
     sanitizedStrategySplits.length > 0
@@ -120,7 +142,8 @@ export function generateTrainingPlan(input: TrainingPlanInput): TrainingPlan | n
 
     gymSlots.forEach((dayIdx, i) => {
       const splitLabel = splitLabels[i % splitLabels.length];
-      const exercises: TrainingExerciseEntry[] = exercisePool[splitLabel].map((def) => ({
+      const selected = selectExercises(exercisePool[splitLabel], exerciseCount, exclusions);
+      const exercises: TrainingExerciseEntry[] = selected.map((def) => ({
         id: def.id,
         name: def.name,
         sets: scheme.sets,
