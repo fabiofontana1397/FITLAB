@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { GlassSurface } from '@/components/glass/glass-surface';
 import { QuestionBlock } from '@/components/onboarding/question-block';
@@ -66,6 +66,14 @@ export default function OnboardingScreen() {
 
   const [mode, setMode] = useState<OnboardingMode | null>((answers.mode as OnboardingMode) ?? null);
   const [screenIndex, setScreenIndex] = useState(0);
+  const scrollRef = useRef<ScrollView>(null);
+
+  // Each step is a fresh set of questions — landing mid-scroll from the
+  // previous (often longer) step made it easy to miss the step title and
+  // the first question or two entirely.
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+  }, [screenIndex]);
 
   const activeSteps = useMemo(() => (mode ? stepsForMode(mode) : []), [mode]);
   const isIntroScreen = screenIndex === 0;
@@ -134,7 +142,7 @@ export default function OnboardingScreen() {
   };
 
   return (
-    <ScreenScroll contentContainerStyle={{ justifyContent: 'space-between', flex: 1 }}>
+    <ScreenScroll ref={scrollRef} contentContainerStyle={{ justifyContent: 'space-between', flex: 1 }}>
       <View style={{ gap: Spacing.five }}>
         {isIntroScreen ? (
           <View style={{ gap: Spacing.four }}>
