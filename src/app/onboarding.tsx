@@ -146,7 +146,7 @@ export default function OnboardingScreen() {
               </ThemedText>
             </View>
             <View style={{ gap: Spacing.two }}>
-              <ThemedText type="smallBold">Cosa vuoi costruire con FITBRO?</ThemedText>
+              <ThemedText type="smallBold">Cosa vuoi costruire con FITLAB?</ThemedText>
               <View style={{ gap: Spacing.three }}>
                 {MODE_OPTIONS.map((option) => {
                   const selected = mode === option.value;

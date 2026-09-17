@@ -169,6 +169,6 @@ export const useBodyStore = create<BodyState>()(
       },
       clearLocal: () => set({ entries: [], photos: [] }),
     }),
-    { name: 'fitbro/body', storage: appJsonStorage }
+    { name: 'fitlab/body', storage: appJsonStorage }
   )
 );

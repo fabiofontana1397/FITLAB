@@ -105,7 +105,7 @@ export async function exportDietPlanPdf(input: DietPlanPdfInput) {
     <thead><tr><th>Pasto</th><th>Alimenti</th><th>Totale</th></tr></thead>
     <tbody>${rows}</tbody>
   </table>
-  <div class="footer">Generato da FITBRO. Il piano si aggiorna nel tempo in base ai tuoi progressi reali.</div>
+  <div class="footer">Generato da FITLAB. Il piano si aggiorna nel tempo in base ai tuoi progressi reali.</div>
 </body>
 </html>`;
 
@@ -184,7 +184,7 @@ export async function exportTrainingPlanPdf(input: TrainingPlanPdfInput) {
     <thead><tr><th>Esercizio</th><th>Serie</th><th>Ripetizioni</th><th>Recupero</th><th>Descrizione</th><th>Carico</th></tr></thead>
     <tbody>${rows}</tbody>
   </table>
-  <div class="footer">Generato da FITBRO. Il piano si aggiorna nel tempo in base ai tuoi progressi reali.</div>
+  <div class="footer">Generato da FITLAB. Il piano si aggiorna nel tempo in base ai tuoi progressi reali.</div>
 </body>
 </html>`;
 

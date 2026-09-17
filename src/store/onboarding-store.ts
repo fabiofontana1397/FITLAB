@@ -65,6 +65,6 @@ export const useOnboardingStore = create<OnboardingAnswersState>()(
       },
       clearLocal: () => set({ answers: {} }),
     }),
-    { name: 'fitbro/onboarding-answers', storage: appJsonStorage }
+    { name: 'fitlab/onboarding-answers', storage: appJsonStorage }
   )
 );

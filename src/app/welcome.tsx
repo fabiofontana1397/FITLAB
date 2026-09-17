@@ -23,7 +23,7 @@ export default function WelcomeScreen() {
           </View>
         </GlassSurface>
         <ThemedText type="hero" style={{ textAlign: 'center' }}>
-          FITBRO
+          FITLAB
         </ThemedText>
         <ThemedText type="default" themeColor="textSecondary" style={{ textAlign: 'center' }}>
           Il tuo personal operating system per corpo, allenamento e alimentazione.

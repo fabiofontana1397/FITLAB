@@ -1,5 +1,5 @@
 /**
- * FITBRO design tokens.
+ * FITLAB design tokens.
  *
  * Palette: black / white / gray neutrals with a single high-energy orange
  * accent reserved for CTAs, progress, active state and achievements.

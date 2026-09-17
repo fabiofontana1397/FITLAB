@@ -206,7 +206,7 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
   {
     id: 'goal',
     title: 'Obiettivo',
-    subtitle: 'Cosa vuoi ottenere con FITBRO?',
+    subtitle: 'Cosa vuoi ottenere con FITLAB?',
     questions: [
       {
         id: 'goal',

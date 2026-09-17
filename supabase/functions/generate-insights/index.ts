@@ -12,7 +12,7 @@ import { createUserScopedClient, getAuthenticatedUser } from '../_shared/supabas
 type RequestBody = { clientContext?: ClientContext };
 type Insight = { tone: 'positive' | 'warning' | 'neutral'; headline: string; body: string };
 
-const SYSTEM_PROMPT = `Sei il coach AI di FITBRO. Genera 3-4 brevi "insight" motivazionali in italiano per la home
+const SYSTEM_PROMPT = `Sei il coach AI di FITLAB. Genera 3-4 brevi "insight" motivazionali in italiano per la home
 dell'utente, basandoti SOLO sui dati reali forniti — non inventare mai metriche non presenti nei dati (es. sonno,
 passi, ritmo di corsa) se non sono esplicitamente inclusi. Se un dominio (corpo, nutrizione, allenamento) non ha
 abbastanza dati per un insight affidabile, ometti quel dominio invece di inventare un trend.

@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "FITBRO",
-    "slug": "FITBRO",
+    "name": "FITLAB",
+    "slug": "FITLAB",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "fitbro",
+    "scheme": "fitlab",
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon"

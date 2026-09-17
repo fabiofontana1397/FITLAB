@@ -157,7 +157,7 @@ export default function ProfileScreen() {
       </Pressable>
 
       <ThemedText type="caption" themeColor="textTertiary" style={{ textAlign: 'center' }}>
-        FITBRO · v0.1.0 prototype
+        FITLAB · v0.1.0 prototype
       </ThemedText>
     </ScreenScroll>
   );

@@ -81,6 +81,6 @@ export const useUserStore = create<UserState>()(
       },
       clearLocal: () => set(DEFAULT_PROFILE),
     }),
-    { name: 'fitbro/user', storage: appJsonStorage }
+    { name: 'fitlab/user', storage: appJsonStorage }
   )
 );

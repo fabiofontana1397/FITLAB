@@ -21,7 +21,7 @@ type ChatState = {
 const WELCOME_MESSAGE: ChatMessage = {
   id: 'welcome',
   role: 'assistant',
-  text: 'Ciao! Sono il tuo coach FITBRO — chiedimi di allenamento, dieta, misure o del tuo obiettivo.',
+  text: 'Ciao! Sono il tuo coach FITLAB — chiedimi di allenamento, dieta, misure o del tuo obiettivo.',
 };
 
 export const useChatStore = create<ChatState>((set, get) => ({

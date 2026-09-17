@@ -58,7 +58,7 @@ function drawFooter(doc: jsPDF, pageWidth: number, pageHeight: number) {
   doc.setFontSize(8);
   doc.setTextColor(153, 153, 153);
   doc.text(
-    'Generato da FITBRO. Il piano si aggiorna nel tempo in base ai tuoi progressi reali.',
+    'Generato da FITLAB. Il piano si aggiorna nel tempo in base ai tuoi progressi reali.',
     MARGIN,
     pageHeight - 24
   );

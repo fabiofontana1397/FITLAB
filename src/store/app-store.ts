@@ -22,6 +22,6 @@ export const useAppStore = create<AppState>()(
       setHasOnboarded: (value) => set({ hasOnboarded: value }),
       setAppearance: (mode) => set({ appearance: mode }),
     }),
-    { name: 'fitbro/app', storage: appJsonStorage }
+    { name: 'fitlab/app', storage: appJsonStorage }
   )
 );

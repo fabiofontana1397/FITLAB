@@ -101,7 +101,7 @@ export default function ChatScreen() {
           behavior={Platform.select({ ios: 'padding', default: undefined })}>
           <View style={[styles.header, { paddingTop: insets.top + Spacing.two }]}>
             <View style={{ flex: 1 }}>
-              <ThemedText type="subtitle">Coach FITBRO</ThemedText>
+              <ThemedText type="subtitle">Coach FITLAB</ThemedText>
               <ThemedText type="caption" themeColor={error ? undefined : 'textSecondary'} style={error ? { color: theme.danger } : undefined}>
                 {error ?? (isTyping ? 'Sta scrivendo…' : 'Nutrizionista & personal trainer AI')}
               </ThemedText>

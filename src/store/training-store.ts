@@ -125,7 +125,7 @@ export const useTrainingStore = create<TrainingState>()(
       },
       clearLocal: () => set({ logs: [] }),
     }),
-    { name: 'fitbro/training', storage: appJsonStorage, partialize: (state) => ({ templates: state.templates, plan: state.plan, logs: state.logs }) }
+    { name: 'fitlab/training', storage: appJsonStorage, partialize: (state) => ({ templates: state.templates, plan: state.plan, logs: state.logs }) }
   )
 );
 

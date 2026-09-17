@@ -88,7 +88,7 @@ export const usePlanStore = create<PlanState>()(
       },
       clearLocal: () => set({ dietPlan: null, trainingPlan: null, isGenerating: false }),
     }),
-    { name: 'fitbro/plans', storage: appJsonStorage, partialize: (state) => ({ dietPlan: state.dietPlan, trainingPlan: state.trainingPlan }) }
+    { name: 'fitlab/plans', storage: appJsonStorage, partialize: (state) => ({ dietPlan: state.dietPlan, trainingPlan: state.trainingPlan }) }
   )
 );
 

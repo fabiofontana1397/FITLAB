@@ -94,7 +94,7 @@ export const useTrainingProgressStore = create<TrainingProgressState>()(
       },
       clearLocal: () => set({ sets: [], completed: [] }),
     }),
-    { name: 'fitbro/training-progress', storage: appJsonStorage }
+    { name: 'fitlab/training-progress', storage: appJsonStorage }
   )
 );
 

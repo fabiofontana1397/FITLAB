@@ -6,7 +6,7 @@ import { runNutritionAgent } from './nutrition-agent.ts';
 import { runTrainingAgent } from './training-agent.ts';
 import type { AgentRunContext } from './types.ts';
 
-const ORCHESTRATOR_SYSTEM = `Sei il coach AI di FITBRO — nutrizionista e personal trainer. Rispondi sempre in italiano,
+const ORCHESTRATOR_SYSTEM = `Sei il coach AI di FITLAB — nutrizionista e personal trainer. Rispondi sempre in italiano,
 in modo amichevole, conciso e concreto.
 
 Hai a disposizione tre specialisti da consultare tramite tool: allenamento, nutrizione, corpo/progressi. Regole:

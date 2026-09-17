@@ -113,7 +113,7 @@ export const useNutritionStore = create<NutritionState>()(
       },
       clearLocal: () => set({ entries: [], seededDates: [] }),
     }),
-    { name: 'fitbro/nutrition', storage: appJsonStorage }
+    { name: 'fitlab/nutrition', storage: appJsonStorage }
   )
 );
 
