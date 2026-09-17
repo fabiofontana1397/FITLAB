@@ -119,14 +119,34 @@ export default function HomeScreen() {
   // One entry per weekday of the CURRENT calendar week — past days read
   // from what was actually logged, today is live, and days still ahead
   // simply have nothing yet (0% rings, no burn plotted) rather than a
-  // fabricated forecast.
+  // fabricated forecast. Critically, "past" here means before THIS
+  // account existed too: resetStartingWeight (onboarding) creates the
+  // account's first body_metrics entry on signup day, so any calendar day
+  // before that literally predates the account — a BMR-based burn
+  // estimate for those days would otherwise render as if a full week of
+  // real activity already happened for a brand-new signup.
   const weekDates = useMemo(() => currentWeekDates(new Date()), []);
+  const accountStartDate = bodyEntries[0]?.date ?? today;
   const weekDays = useMemo(() => {
     const monthIdx = trainingPlan ? currentMonthIndex(trainingPlan) : null;
     const month = trainingPlan?.months.find((m) => m.monthIndex === monthIdx);
     const split = month?.weeklySplit ?? [];
 
     return weekDates.map((date, i) => {
+      if (date < accountStartDate) {
+        return {
+          date,
+          label: WEEKDAY_LABELS[i][0],
+          isToday: false,
+          hasHappened: false,
+          trainingProgress: 0,
+          dietProgress: 0,
+          stepsProgress: 0,
+          burnedKcal: 0,
+          eatenKcal: 0,
+        };
+      }
+
       const dayPlan = split[i];
       const exercises = dayPlan?.type === 'workout' ? (dayPlan.exercises ?? []) : [];
       const completed = exercises.filter((ex) => isExerciseCompleted(completedExercises, ex.id, date)).length;
@@ -160,7 +180,7 @@ export default function HomeScreen() {
         eatenKcal: dayTotals.kcal,
       };
     });
-  }, [trainingPlan, weekDates, completedExercises, nutritionEntries, calorieTarget, currentUser, latestBody.weightKg, onboardingAnswers, today]);
+  }, [trainingPlan, weekDates, accountStartDate, completedExercises, nutritionEntries, calorieTarget, currentUser, latestBody.weightKg, onboardingAnswers, today]);
 
   const todayBurn = weekDays.find((d) => d.isToday);
   const weekBurnedSoFar = weekDays.filter((d) => d.hasHappened).reduce((sum, d) => sum + d.burnedKcal, 0);
