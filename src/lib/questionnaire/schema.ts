@@ -1,3 +1,10 @@
+// Bump whenever a question is added/removed/renamed in a way that changes
+// how a stored answers blob should be interpreted (spec §3.1/§11, Passo 8)
+// — written alongside every answers upsert (see lib/api/onboarding.ts) so
+// existing responses can always be traced back to the schema version that
+// collected them.
+export const QUESTIONNAIRE_VERSION = 1;
+
 export type QuestionType = 'single' | 'multi' | 'scale' | 'number' | 'text' | 'longtext';
 
 export type QuestionOption = { value: string; label: string };

@@ -2,6 +2,7 @@
 // answers map, stored as one jsonb column (mirrors the client's own
 // Record<string, AnswerValue> shape exactly, no per-field mapping needed).
 import { supabase } from '@/lib/supabase/client';
+import { QUESTIONNAIRE_VERSION } from '@/lib/questionnaire/schema';
 import type { AnswerValue } from '@/store/onboarding-store';
 
 export async function fetchOnboardingAnswers(userId: string): Promise<Record<string, AnswerValue> | null> {
@@ -11,7 +12,9 @@ export async function fetchOnboardingAnswers(userId: string): Promise<Record<str
 }
 
 export async function upsertOnboardingAnswers(userId: string, answers: Record<string, AnswerValue>): Promise<void> {
-  const { error } = await supabase.from('onboarding_answers').upsert({ user_id: userId, answers }, { onConflict: 'user_id' });
+  const { error } = await supabase
+    .from('onboarding_answers')
+    .upsert({ user_id: userId, answers, questionnaire_version: QUESTIONNAIRE_VERSION }, { onConflict: 'user_id' });
   if (error) throw error;
 }
 

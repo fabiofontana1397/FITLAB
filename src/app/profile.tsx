@@ -12,8 +12,10 @@ import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { seedOneMonthOfTestData } from '@/lib/dev/seed-test-data';
 import { sportIcon, sportMeta } from '@/lib/mock';
+import { findQuestion, labelFor } from '@/lib/questionnaire/schema';
 import { useAppStore, type AppearanceMode } from '@/store/app-store';
 import { useAuthStore } from '@/store/auth-store';
+import { useOnboardingStore } from '@/store/onboarding-store';
 import { useUserStore } from '@/store/user-store';
 
 const GOAL_LABEL: Record<string, string> = {
@@ -31,9 +33,19 @@ const APPEARANCE_OPTIONS: { value: AppearanceMode; label: string }[] = [
   { value: 'dark', label: 'Scuro' },
 ];
 
+// Multi-select answers (e.g. supplements) join every selected option's
+// label — labelFor only resolves a single string value.
+function multiLabelFor(questionId: string, value: unknown): string | undefined {
+  const question = findQuestion(questionId);
+  if (!question?.options || !Array.isArray(value) || value.length === 0) return undefined;
+  const labels = value.map((v) => question.options!.find((o) => o.value === v)?.label).filter((l): l is string => Boolean(l));
+  return labels.length > 0 ? labels.join(', ') : undefined;
+}
+
 export default function ProfileScreen() {
   const theme = useTheme();
   const currentUser = useUserStore();
+  const onboardingAnswers = useOnboardingStore((s) => s.answers);
   const appearance = useAppStore((s) => s.appearance);
   const setAppearance = useAppStore((s) => s.setAppearance);
   const setHasOnboarded = useAppStore((s) => s.setHasOnboarded);
@@ -74,6 +86,18 @@ export default function ProfileScreen() {
       setIsReviewingTarget(false);
     }
   };
+
+  // "Keep-no-algoritmo" fields (spec §11/§13 point 4) — collected in the
+  // questionnaire but deliberately never fed into any calculation; surfaced
+  // here read-only for the user/coach's own reference instead of staying
+  // invisible after being answered.
+  const habitRows = [
+    { label: 'Mangia fuori', value: labelFor(findQuestion('eatingOut'), onboardingAnswers.eatingOut) },
+    { label: 'Livello di fame', value: labelFor(findQuestion('hungerLevel'), onboardingAnswers.hungerLevel) },
+    { label: 'Caffè', value: labelFor(findQuestion('coffeeIntake'), onboardingAnswers.coffeeIntake) },
+    { label: 'Alcol', value: labelFor(findQuestion('alcoholIntake'), onboardingAnswers.alcoholIntake) },
+    { label: 'Integratori', value: multiLabelFor('supplements', onboardingAnswers.supplements) },
+  ].filter((r): r is { label: string; value: string } => Boolean(r.value));
 
   return (
     <ScreenScroll>
@@ -149,6 +173,20 @@ export default function ProfileScreen() {
           </ThemedText>
         </GlassSurface>
       </View>
+
+      {habitRows.length > 0 ? (
+        <View>
+          <SectionHeader title="Abitudini" />
+          <GlassSurface level="card" radius={Radius.large} style={{ padding: Spacing.three, gap: Spacing.two }}>
+            {habitRows.map((row) => (
+              <Row key={row.label} label={row.label} value={row.value} />
+            ))}
+            <ThemedText type="caption" themeColor="textTertiary">
+              Informazioni raccolte nel questionario, mostrate qui per riferimento — non influenzano il calcolo del piano.
+            </ThemedText>
+          </GlassSurface>
+        </View>
+      ) : null}
 
       <View>
         <SectionHeader title="Integrazioni" />

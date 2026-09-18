@@ -91,9 +91,18 @@ export function buildMealSlotsFromAnswers(answers: Record<string, unknown>): Mea
     spuntinoSera: fromMinutes(toMinutes(dinnerTime) + 120),
   };
 
+  // Questionnaire Keep+Use (spec §11/§13 point 4): hungerLevel/cravings were
+  // collected but never used. A user who reports frequent hunger/cravings
+  // gets slightly larger snack slots relative to main meals — the total
+  // calorie target is unchanged, this only redistributes it toward more
+  // frequent smaller feedings, a standard strategy for high hunger.
+  const hungerAnswer = typeof answers.hungerLevel === 'string' ? answers.hungerLevel : 'moderate';
+  const cravingsScore = Number(answers.cravings) || 0;
+  const snackWeightBoost = (hungerAnswer === 'much' || hungerAnswer === 'constant' ? 1.2 : 1) * (cravingsScore >= 4 ? 1.1 : 1);
+
   const slots = [
     ...anchors,
-    ...finalSnacks.map((id) => ({ id, time: snackTimes[id], weight: MEAL_WEIGHTS[id] })),
+    ...finalSnacks.map((id) => ({ id, time: snackTimes[id], weight: MEAL_WEIGHTS[id] * snackWeightBoost })),
   ].sort((a, b) => toMinutes(a.time) - toMinutes(b.time));
 
   const totalWeight = slots.reduce((sum, s) => sum + s.weight, 0);
