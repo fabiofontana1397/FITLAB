@@ -154,7 +154,9 @@ const ALLERGEN_GROUPS: { keywords: string[]; ids: string[] }[] = [
 const NO_ANSWER_TEXT = new Set(['', 'no', 'nessuna', 'nessuno', 'niente', 'no.', 'n/a', 'na']);
 
 function freeTextExclusionBlob(answers: Record<string, unknown>): string {
-  const fields = ['allergies', 'intolerances', 'excludedFoods'];
+  // allergiesIntolerances merges the questionnaire's former separate
+  // allergies/intolerances fields into one (v2, schema.ts).
+  const fields = ['allergiesIntolerances', 'excludedFoods'];
   const parts = fields
     .map((f) => answers[f])
     .filter((v): v is string => typeof v === 'string')

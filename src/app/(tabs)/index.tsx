@@ -117,7 +117,7 @@ export default function HomeScreen() {
     todayPlanDay?.type === 'workout' && workoutExercises.length > 0 && completedCount === workoutExercises.length;
   const todayTrainingKcal = estimateTrainingBonusKcal({
     sex: currentUser.sex,
-    ageRange: currentUser.ageRange,
+    age: currentUser.age,
     heightCm: currentUser.heightCm,
     weightKg: latestBody.weightKg,
     sessionDurationBucket: onboardingAnswers.sessionDuration as string | undefined,
@@ -177,7 +177,7 @@ export default function HomeScreen() {
 
       const burnedKcal = estimateDailyBurnedKcal({
         sex: currentUser.sex,
-        ageRange: currentUser.ageRange,
+        age: currentUser.age,
         heightCm: currentUser.heightCm,
         weightKg: latestBody.weightKg,
         jobActivity: onboardingAnswers.jobActivity as string | undefined,

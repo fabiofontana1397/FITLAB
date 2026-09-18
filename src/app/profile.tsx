@@ -33,15 +33,6 @@ const APPEARANCE_OPTIONS: { value: AppearanceMode; label: string }[] = [
   { value: 'dark', label: 'Scuro' },
 ];
 
-// Multi-select answers (e.g. supplements) join every selected option's
-// label — labelFor only resolves a single string value.
-function multiLabelFor(questionId: string, value: unknown): string | undefined {
-  const question = findQuestion(questionId);
-  if (!question?.options || !Array.isArray(value) || value.length === 0) return undefined;
-  const labels = value.map((v) => question.options!.find((o) => o.value === v)?.label).filter((l): l is string => Boolean(l));
-  return labels.length > 0 ? labels.join(', ') : undefined;
-}
-
 export default function ProfileScreen() {
   const theme = useTheme();
   const currentUser = useUserStore();
@@ -93,10 +84,13 @@ export default function ProfileScreen() {
   // invisible after being answered.
   const habitRows = [
     { label: 'Mangia fuori', value: labelFor(findQuestion('eatingOut'), onboardingAnswers.eatingOut) },
-    { label: 'Livello di fame', value: labelFor(findQuestion('hungerLevel'), onboardingAnswers.hungerLevel) },
     { label: 'Caffè', value: labelFor(findQuestion('coffeeIntake'), onboardingAnswers.coffeeIntake) },
     { label: 'Alcol', value: labelFor(findQuestion('alcoholIntake'), onboardingAnswers.alcoholIntake) },
-    { label: 'Integratori', value: multiLabelFor('supplements', onboardingAnswers.supplements) },
+    // hungerLevel/supplements were removed in questionnaire v2 (schema.ts) —
+    // kept out of this list going forward; labelFor on a now-unknown
+    // question id safely resolves to undefined (filtered out below) rather
+    // than crash, so an account still holding v1 answers just silently
+    // shows one row fewer instead of erroring.
   ].filter((r): r is { label: string; value: string } => Boolean(r.value));
 
   return (

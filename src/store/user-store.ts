@@ -14,7 +14,7 @@ import { appJsonStorage } from '@/store/storage';
 const DEFAULT_PROFILE: UserProfile = {
   name: '',
   sex: 'unspecified',
-  ageRange: '',
+  age: 0,
   goal: 'generalHealth',
   sports: [],
   heightCm: 0,
@@ -32,7 +32,7 @@ export type FinalizeOnboardingInput = {
   goal: Goal;
   sports: Sport[];
   sex: Sex;
-  ageRange: string;
+  age: number;
   heightCm: number;
   targetWeightKg: number;
   dailyCalorieTarget: number;

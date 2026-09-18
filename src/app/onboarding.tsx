@@ -94,7 +94,7 @@ export default function OnboardingScreen() {
     if (!isResultsScreen) return null;
     return computeNutritionTargets({
       sex: (answers.sex as Sex) ?? 'unspecified',
-      ageRange: (answers.ageRange as string) ?? '25-34',
+      age: Number(answers.age) || 30,
       heightCm: Number(answers.heightCm) || 180,
       currentWeightKg: Number(answers.currentWeightKg) || 80,
       goal: (answers.goal as Goal) ?? 'generalHealth',
@@ -102,10 +102,6 @@ export default function OnboardingScreen() {
       weeklyTrainingDays: deriveWeeklyTrainingDays(answers),
       dailyStepsBucket: answers.dailySteps as string | undefined,
       sleepHoursBucket: answers.sleepHoursRange as string | undefined,
-      hasDeadline: answers.hasDeadline as string | undefined,
-      deadlineDate: answers.deadlineDate as string | undefined,
-      successWeightKg: answers.successWeightKg != null ? Number(answers.successWeightKg) || undefined : undefined,
-      targetWeightKg: answers.targetWeightKg != null ? Number(answers.targetWeightKg) || undefined : undefined,
     });
   }, [isResultsScreen, answers]);
 
@@ -130,7 +126,7 @@ export default function OnboardingScreen() {
       goal: (answers.goal as Goal) ?? 'generalHealth',
       sports: sports.length > 0 ? sports : ['gym'],
       sex: (answers.sex as Sex) ?? 'unspecified',
-      ageRange: (answers.ageRange as string) ?? '25-34',
+      age: Number(answers.age) || 30,
       heightCm: Number(answers.heightCm) || 180,
       targetWeightKg: Number(answers.targetWeightKg) || 75,
       dailyCalorieTarget: results.dailyCalorieTarget,
@@ -251,7 +247,7 @@ export default function OnboardingScreen() {
                   <FactTile
                     icon="calendar"
                     label="Età · Sesso"
-                    value={`${labelFor(findQuestion('ageRange'), answers.ageRange) ?? '–'} · ${labelFor(findQuestion('sex'), answers.sex) ?? '–'}`}
+                    value={`${answers.age ?? '–'} anni · ${labelFor(findQuestion('sex'), answers.sex) ?? '–'}`}
                   />
                 </View>
               </GlassSurface>
@@ -265,11 +261,14 @@ export default function OnboardingScreen() {
                     value={labelFor(findQuestion('dietaryPattern'), answers.dietaryPattern) ?? 'Nessuna preferenza'}
                   />
                   <InfoRow
-                    label="Pasti al giorno"
-                    value={labelFor(findQuestion('mealsPerDay'), answers.mealsPerDay) ?? '–'}
+                    label="Pasti selezionati"
+                    value={
+                      Array.isArray(answers.mealsSelected) && answers.mealsSelected.length > 0
+                        ? answers.mealsSelected.map((m) => labelFor(findQuestion('mealsSelected'), m) ?? m).join(', ')
+                        : '–'
+                    }
                   />
-                  {answers.allergies ? <InfoRow label="Allergie" value={String(answers.allergies)} /> : null}
-                  {answers.intolerances ? <InfoRow label="Intolleranze" value={String(answers.intolerances)} /> : null}
+                  {answers.allergiesIntolerances ? <InfoRow label="Allergie/intolleranze" value={String(answers.allergiesIntolerances)} /> : null}
                 </SummarySection>
               </FadeInView>
             ) : null}

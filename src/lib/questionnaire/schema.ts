@@ -3,7 +3,7 @@
 // — written alongside every answers upsert (see lib/api/onboarding.ts) so
 // existing responses can always be traced back to the schema version that
 // collected them.
-export const QUESTIONNAIRE_VERSION = 1;
+export const QUESTIONNAIRE_VERSION = 2;
 
 export type QuestionType = 'single' | 'multi' | 'scale' | 'number' | 'text' | 'longtext';
 
@@ -64,31 +64,23 @@ export function isQuestionVisible(question: Question, answers: Record<string, un
  * answer can double as the user's `sports` profile field.
  */
 const ACTIVITY_OPTIONS: QuestionOption[] = [
-  { value: 'gym', label: 'Pesi' },
+  { value: 'gym', label: 'Palestra' },
+  { value: 'functional', label: 'CrossFit-Functional' },
   { value: 'running', label: 'Corsa' },
   { value: 'cycling', label: 'Ciclismo' },
   { value: 'swimming', label: 'Nuoto' },
   { value: 'tennis', label: 'Tennis/padel' },
-  { value: 'functional', label: 'CrossFit / Functional' },
-  { value: 'calcio', label: 'Calcio' },
-  { value: 'artiMarziali', label: 'Arti marziali' },
-  { value: 'camminata', label: 'Camminata' },
-  { value: 'escursionismo', label: 'Escursionismo' },
   { value: 'altro', label: 'Altro' },
 ];
 
 /** Maps `activitiesPracticed` answer values onto the app's Sport enum. */
 export const ACTIVITY_TO_SPORT: Record<string, 'gym' | 'functional' | 'running' | 'swimming' | 'tennis' | 'cycling' | 'other'> = {
   gym: 'gym',
+  functional: 'functional',
   running: 'running',
   cycling: 'cycling',
   swimming: 'swimming',
   tennis: 'tennis',
-  functional: 'functional',
-  calcio: 'other',
-  artiMarziali: 'other',
-  camminata: 'other',
-  escursionismo: 'other',
   altro: 'other',
 };
 
@@ -100,6 +92,11 @@ export const ACTIVITY_TO_SPORT: Record<string, 'gym' | 'functional' | 'running' 
  */
 export const TRAINABLE_ACTIVITIES = new Set(['gym', 'running']);
 
+// "1x-6+ a settimana" cover a real weekly cadence the training planner can
+// schedule; "biweekly"/"monthly" are below one session a week — collected
+// for TDEE/context purposes (see deriveWeeklyTrainingDays) but not turned
+// into a weekly training-planner slot (there's no "every other week" plan
+// day in the generated program's model).
 const FREQUENCY_OPTIONS: QuestionOption[] = [
   { value: '1', label: '1x a settimana' },
   { value: '2', label: '2x a settimana' },
@@ -107,6 +104,21 @@ const FREQUENCY_OPTIONS: QuestionOption[] = [
   { value: '4', label: '4x a settimana' },
   { value: '5', label: '5x a settimana' },
   { value: '6+', label: '6+ a settimana' },
+  { value: 'biweekly', label: 'Una volta ogni 2 settimane' },
+  { value: 'monthly', label: 'Una volta al mese' },
+];
+
+const GYM_EXPERIENCE_OPTIONS: QuestionOption[] = [
+  { value: 'never', label: 'Mai praticata' },
+  { value: '3-12months', label: '3-12 mesi' },
+  { value: '1-3years', label: '1-3 anni' },
+  { value: '3plusYears', label: '3+ anni' },
+];
+
+const GYM_SKILL_LEVEL_OPTIONS: QuestionOption[] = [
+  { value: 'beginner', label: 'Principiante' },
+  { value: 'intermediate', label: 'Intermedio' },
+  { value: 'expert', label: 'Esperto' },
 ];
 
 const FOCUS_OPTIONS_BY_ACTIVITY: Record<string, QuestionOption[]> = {
@@ -128,11 +140,12 @@ const FOCUS_OPTIONS_BY_ACTIVITY: Record<string, QuestionOption[]> = {
 
 /**
  * Builds the dynamic per-activity questions for the Training step: a
- * frequency question for every selected activity, plus (for gym/running
- * only — the two the app can generate a real program for) a "what do you
- * want to improve" question with sport-specific options. Everything else
- * (tennis, nuoto, ecc.) only gets the frequency question, purely so it can
- * be placed on the weekly calendar.
+ * frequency question for every selected activity, gym-specific experience/
+ * skill-level questions only for "gym", plus (for gym/running only — the
+ * two the app can generate a real program for) a "what do you want to
+ * improve" question with sport-specific options. Everything else (tennis,
+ * nuoto, ecc.) only gets the frequency question, purely so it can be placed
+ * on the weekly calendar.
  */
 export function buildActivityQuestions(activities: string[]): Question[] {
   const questions: Question[] = [];
@@ -144,6 +157,20 @@ export function buildActivityQuestions(activities: string[]): Question[] {
       label: `Quante volte pratichi: ${label}?`,
       options: FREQUENCY_OPTIONS,
     });
+    if (activity === 'gym') {
+      questions.push({
+        id: 'gymExperience',
+        type: 'single',
+        label: 'Da quanto tempo pratichi palestra?',
+        options: GYM_EXPERIENCE_OPTIONS,
+      });
+      questions.push({
+        id: 'gymSkillLevel',
+        type: 'single',
+        label: 'Come valuteresti la tua esperienza con i pesi?',
+        options: GYM_SKILL_LEVEL_OPTIONS,
+      });
+    }
     const focusOptions = FOCUS_OPTIONS_BY_ACTIVITY[activity];
     if (focusOptions) {
       questions.push({
@@ -171,24 +198,37 @@ export function stepsForMode(mode: OnboardingMode): OnboardingStep[] {
   });
 }
 
+// The 6 meal-slot ids matching meal_entries.slot's check constraint (see
+// supabase/migrations/0005_nutrition.sql) — `mealsSelected` lets the user
+// pick these directly instead of the old mealsPerDay-count +
+// snacks-which-slot pair. src/lib/planning/meal-slots.ts reads this answer
+// directly to decide which slots the generated diet plan includes.
+export const MEAL_SLOT_OPTIONS: QuestionOption[] = [
+  { value: 'colazione', label: 'Colazione' },
+  { value: 'spuntinoMattina', label: 'Spuntino mattina' },
+  { value: 'pranzo', label: 'Pranzo' },
+  { value: 'spuntinoPomeriggio', label: 'Spuntino pomeriggio' },
+  { value: 'cena', label: 'Cena' },
+  { value: 'spuntinoSera', label: 'Spuntino pre-nanna' },
+];
+
+const EATING_OUT_OPTIONS: QuestionOption[] = [
+  { value: 'rarely', label: 'Quasi mai' },
+  { value: '1', label: '1 volta a settimana' },
+  { value: '2', label: '2 volte a settimana' },
+  { value: '3', label: '3 volte a settimana' },
+  { value: '4', label: '4 volte a settimana' },
+  { value: '5', label: '5 volte a settimana' },
+  { value: '6', label: '6 volte a settimana' },
+  { value: 'gt6', label: 'Più di 6 volte a settimana' },
+];
+
 export const ONBOARDING_STEPS: OnboardingStep[] = [
   {
     id: 'physical',
     title: 'Profilo fisico',
     questions: [
-      {
-        id: 'ageRange',
-        type: 'single',
-        label: 'Età',
-        options: [
-          { value: 'lt18', label: 'Meno di 18' },
-          { value: '18-24', label: '18–24' },
-          { value: '25-34', label: '25–34' },
-          { value: '35-44', label: '35–44' },
-          { value: '45-54', label: '45–54' },
-          { value: '55+', label: '55+' },
-        ],
-      },
+      { id: 'age', type: 'number', label: 'Età', unit: 'anni' },
       {
         id: 'sex',
         type: 'single',
@@ -196,18 +236,10 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
         options: [
           { value: 'male', label: 'Uomo' },
           { value: 'female', label: 'Donna' },
-          { value: 'unspecified', label: 'Preferisco non specificarlo' },
         ],
       },
       { id: 'heightCm', type: 'number', label: 'Altezza', unit: 'cm' },
       { id: 'currentWeightKg', type: 'number', label: 'Peso attuale', unit: 'kg' },
-      { id: 'targetWeightKg', type: 'number', label: 'Peso desiderato', unit: 'kg' },
-      { id: 'neckCm', type: 'number', label: 'Collo', unit: 'cm', optional: true },
-      { id: 'chestCm', type: 'number', label: 'Petto', unit: 'cm', optional: true },
-      { id: 'waistCm', type: 'number', label: 'Girovita', unit: 'cm', optional: true },
-      { id: 'hipsCm', type: 'number', label: 'Fianchi', unit: 'cm', optional: true },
-      { id: 'armCm', type: 'number', label: 'Braccia (bicipite)', unit: 'cm', optional: true },
-      { id: 'thighCm', type: 'number', label: 'Cosce', unit: 'cm', optional: true },
     ],
   },
   {
@@ -228,17 +260,7 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
           { value: 'generalHealth', label: 'Migliorare salute e benessere generale' },
         ],
       },
-      {
-        id: 'hasDeadline',
-        type: 'single',
-        label: 'Hai una scadenza o un evento specifico?',
-        options: [
-          { value: 'no', label: 'No' },
-          { value: 'yes', label: 'Sì' },
-        ],
-      },
-      { id: 'deadlineDate', type: 'text', label: 'Se sì, data', placeholder: 'gg/mm/aaaa', optional: true },
-      { id: 'successWeightKg', type: 'number', label: 'Peso che consideri un successo', unit: 'kg', optional: true },
+      { id: 'targetWeightKg', type: 'number', label: 'Peso obiettivo', unit: 'kg', optional: true },
     ],
   },
   {
@@ -258,6 +280,18 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
         ],
       },
       {
+        id: 'generalActivityLevel',
+        type: 'single',
+        label: 'Oltre il lavoro e gli allenamenti, quanto ti muovi mediamente durante la giornata?',
+        options: [
+          { value: 'mostlySeated', label: 'Quasi sempre seduto' },
+          { value: 'occasional', label: 'Mi muovo occasionalmente' },
+          { value: 'moderate', label: 'Mi muovo abbastanza' },
+          { value: 'active', label: 'Molto attivo' },
+          { value: 'veryActive', label: 'Molto attivo fisicamente' },
+        ],
+      },
+      {
         id: 'dailySteps',
         type: 'single',
         label: 'Quanti passi fai mediamente al giorno?',
@@ -270,6 +304,8 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
           { value: 'unknown', label: 'Non lo so' },
         ],
       },
+      { id: 'bedTime', type: 'text', label: 'A che ora vai generalmente a dormire?', placeholder: '23:00' },
+      { id: 'wakeTime', type: 'text', label: 'A che ora ti svegli generalmente?', placeholder: '07:00' },
       {
         id: 'sleepHoursRange',
         type: 'single',
@@ -289,55 +325,32 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     id: 'eatingHabits',
     title: 'Alimentazione',
     questions: [
-      {
-        id: 'dietHistory',
-        type: 'single',
-        label: 'Hai seguito una dieta strutturata in passato?',
-        options: [
-          { value: 'never', label: 'Mai' },
-          { value: 'occasionally', label: 'Sì, occasionalmente' },
-          { value: 'months', label: 'Sì, per diversi mesi' },
-          { value: 'years', label: 'Sì, per diversi anni' },
-        ],
-      },
-      {
-        id: 'mealsPerDay',
-        type: 'single',
-        label: 'Quanti pasti preferisci fare al giorno?',
-        options: [
-          { value: '2', label: '2' },
-          { value: '3', label: '3' },
-          { value: '4', label: '4' },
-          { value: '5', label: '5' },
-          { value: '6+', label: '6+' },
-        ],
-      },
+      { id: 'mealsSelected', type: 'multi', label: 'Quali pasti preferisci fare al giorno?', options: MEAL_SLOT_OPTIONS },
       { id: 'breakfastTime', type: 'text', label: 'A che ora fai normalmente colazione?', placeholder: '07:30' },
+      {
+        id: 'morningSnackTime',
+        type: 'text',
+        label: 'A che ora fai normalmente lo spuntino della mattina?',
+        placeholder: '10:30',
+        dependsOn: { questionId: 'mealsSelected', equals: 'spuntinoMattina' },
+      },
       { id: 'lunchTime', type: 'text', label: 'A che ora pranzi?', placeholder: '13:00' },
+      {
+        id: 'afternoonSnackTime',
+        type: 'text',
+        label: 'A che ora fai normalmente lo spuntino del pomeriggio?',
+        placeholder: '17:30',
+        dependsOn: { questionId: 'mealsSelected', equals: 'spuntinoPomeriggio' },
+      },
       { id: 'dinnerTime', type: 'text', label: 'A che ora ceni?', placeholder: '20:00' },
       {
-        id: 'snacks',
-        type: 'single',
-        label: 'Fai spuntini?',
-        options: [
-          { value: 'no', label: 'No' },
-          { value: 'morning', label: 'Mattina' },
-          { value: 'afternoon', label: 'Pomeriggio' },
-          { value: 'evening', label: 'Sera' },
-          { value: 'multiple', label: 'Più di uno' },
-        ],
+        id: 'preSleepSnackTime',
+        type: 'text',
+        label: 'A che ora fai normalmente lo spuntino pre-nanna?',
+        placeholder: '22:30',
+        dependsOn: { questionId: 'mealsSelected', equals: 'spuntinoSera' },
       },
-      {
-        id: 'eatingOut',
-        type: 'single',
-        label: 'Mangi normalmente fuori casa?',
-        options: [
-          { value: 'rarely', label: 'Quasi mai' },
-          { value: '1-2week', label: '1–2 volte/settimana' },
-          { value: '3-5week', label: '3–5 volte/settimana' },
-          { value: 'daily', label: 'Quasi tutti i giorni' },
-        ],
-      },
+      { id: 'eatingOut', type: 'single', label: 'Quanti pasti consumi mediamente fuori casa ogni settimana?', options: EATING_OUT_OPTIONS },
     ],
   },
   {
@@ -359,10 +372,33 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
         ],
       },
       { id: 'dietaryPatternOther', type: 'text', label: 'Specifica', optional: true, dependsOn: { questionId: 'dietaryPattern', equals: 'other' } },
-      { id: 'allergies', type: 'text', label: 'Hai allergie alimentari?', placeholder: 'No, oppure elenca quali', optional: true },
-      { id: 'intolerances', type: 'text', label: 'Hai intolleranze o alimenti che digerisci male?', placeholder: 'No, oppure elenca quali', optional: true },
+      { id: 'allergiesIntolerances', type: 'text', label: 'Hai allergie alimentari, intolleranze o alimenti che digerisci male?', placeholder: 'No, oppure elenca quali', optional: true },
       { id: 'excludedFoods', type: 'longtext', label: 'Quali alimenti NON vuoi nella tua dieta?', optional: true },
       { id: 'includedFoods', type: 'longtext', label: 'Quali alimenti vuoi assolutamente includere?', optional: true },
+      { id: 'usualBreakfast', type: 'text', label: 'Cosa mangi di solito a colazione?', optional: true },
+      {
+        id: 'usualMorningSnack',
+        type: 'text',
+        label: 'Cosa mangi di solito allo spuntino della mattina?',
+        optional: true,
+        dependsOn: { questionId: 'mealsSelected', equals: 'spuntinoMattina' },
+      },
+      { id: 'usualLunch', type: 'text', label: 'Cosa mangi di solito a pranzo?', optional: true },
+      {
+        id: 'usualAfternoonSnack',
+        type: 'text',
+        label: 'Cosa mangi di solito allo spuntino del pomeriggio?',
+        optional: true,
+        dependsOn: { questionId: 'mealsSelected', equals: 'spuntinoPomeriggio' },
+      },
+      { id: 'usualDinner', type: 'text', label: 'Cosa mangi di solito a cena?', optional: true },
+      {
+        id: 'usualPreSleepSnack',
+        type: 'text',
+        label: 'Cosa mangi di solito allo spuntino pre-nanna?',
+        optional: true,
+        dependsOn: { questionId: 'mealsSelected', equals: 'spuntinoSera' },
+      },
       {
         id: 'preferredProteins',
         type: 'multi',
@@ -415,19 +451,6 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
       },
       { id: 'preferredFatsOther', type: 'text', label: 'Specifica', optional: true, dependsOn: { questionId: 'preferredFats', equals: 'other' } },
       {
-        id: 'hungerLevel',
-        type: 'single',
-        label: 'Quanto spesso hai fame durante la giornata?',
-        options: [
-          { value: 'rarely', label: 'Quasi mai' },
-          { value: 'little', label: 'Poco' },
-          { value: 'moderate', label: 'Moderatamente' },
-          { value: 'much', label: 'Molto' },
-          { value: 'constant', label: 'Quasi continuamente' },
-        ],
-      },
-      { id: 'cravings', type: 'scale', label: 'Hai spesso voglia di dolci/snack?', min: 1, max: 5 },
-      {
         id: 'coffeeIntake',
         type: 'single',
         label: 'Quanto caffè bevi?',
@@ -450,24 +473,6 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
           { value: '3+week', label: '3+ volte/settimana' },
         ],
       },
-      {
-        id: 'supplements',
-        type: 'multi',
-        label: 'Integratori utilizzati',
-        options: [
-          { value: 'protein', label: 'Proteine' },
-          { value: 'creatine', label: 'Creatina' },
-          { value: 'omega3', label: 'Omega-3' },
-          { value: 'vitaminD', label: 'Vitamina D' },
-          { value: 'multivitamin', label: 'Multivitaminico' },
-          { value: 'magnesium', label: 'Magnesio' },
-          { value: 'electrolytes', label: 'Elettroliti' },
-          { value: 'preworkout', label: 'Caffeina/pre-workout' },
-          { value: 'none', label: 'Nessuno' },
-          { value: 'other', label: 'Altro' },
-        ],
-      },
-      { id: 'supplementsOther', type: 'text', label: 'Specifica', optional: true, dependsOn: { questionId: 'supplements', equals: 'other' } },
     ],
   },
   {

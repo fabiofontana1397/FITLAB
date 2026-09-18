@@ -238,20 +238,31 @@ function buildProfileSummary(body: RequestBody): string {
   if (yesNo(answers.recentInjuries) && answers.recentInjuriesDetails) limitations.push(`infortuni recenti: ${answers.recentInjuriesDetails}`);
 
   const foodConstraints: string[] = [];
-  if (answers.allergies) foodConstraints.push(`allergie: ${answers.allergies}`);
-  if (answers.intolerances) foodConstraints.push(`intolleranze: ${answers.intolerances}`);
+  if (answers.allergiesIntolerances) foodConstraints.push(`allergie/intolleranze: ${answers.allergiesIntolerances}`);
   if (answers.excludedFoods) foodConstraints.push(`alimenti da escludere: ${answers.excludedFoods}`);
   if (answers.includedFoods) foodConstraints.push(`alimenti da includere se possibile: ${answers.includedFoods}`);
+
+  const usualMeals: string[] = [];
+  if (answers.usualBreakfast) usualMeals.push(`colazione: ${answers.usualBreakfast}`);
+  if (answers.usualLunch) usualMeals.push(`pranzo: ${answers.usualLunch}`);
+  if (answers.usualDinner) usualMeals.push(`cena: ${answers.usualDinner}`);
+  if (answers.usualMorningSnack) usualMeals.push(`spuntino mattina: ${answers.usualMorningSnack}`);
+  if (answers.usualAfternoonSnack) usualMeals.push(`spuntino pomeriggio: ${answers.usualAfternoonSnack}`);
+  if (answers.usualPreSleepSnack) usualMeals.push(`spuntino pre-nanna: ${answers.usualPreSleepSnack}`);
+
+  const gymBackground: string[] = [];
+  if (answers.gymExperience) gymBackground.push(`da quanto tempo: ${answers.gymExperience}`);
+  if (answers.gymSkillLevel) gymBackground.push(`livello: ${answers.gymSkillLevel}`);
 
   return `Profilo utente:
 - Obiettivo: ${answers.goal ?? 'sconosciuto'}
 - Attività praticate: ${JSON.stringify(answers.activitiesPracticed ?? [])}
 - Focus palestra: ${answers.focus_gym ?? 'n/d'}, Focus corsa: ${answers.focus_running ?? 'n/d'}
-- Giorni disponibili: ${answers.availableDays ?? 'n/d'}, Durata sessione: ${answers.sessionDuration ?? 'n/d'}, Frequenza palestra: ${answers.freq_gym ?? 'n/d'}, Frequenza corsa: ${answers.freq_running ?? 'n/d'}
+${gymBackground.length > 0 ? `- Esperienza in palestra: ${gymBackground.join(', ')}\n` : ''}- Giorni disponibili: ${answers.availableDays ?? 'n/d'}, Durata sessione: ${answers.sessionDuration ?? 'n/d'}, Frequenza palestra: ${answers.freq_gym ?? 'n/d'}, Frequenza corsa: ${answers.freq_running ?? 'n/d'}
 - Luogo allenamento: ${answers.trainingLocation ?? 'palestra'}
 ${limitations.length > 0 ? `- LIMITAZIONI FISICHE (vincolanti, non contraddire mai nella rationale/focusNote): ${limitations.join('; ')}\n` : ''}- Pattern alimentare: ${answers.dietaryPattern ?? 'onnivoro'}
-- Pasti al giorno: ${answers.mealsPerDay ?? 'n/d'}, orari: colazione ${answers.breakfastTime ?? 'n/d'} / pranzo ${answers.lunchTime ?? 'n/d'} / cena ${answers.dinnerTime ?? 'n/d'}, spuntini: ${answers.snacks ?? 'n/d'}
-${foodConstraints.length > 0 ? `- VINCOLI ALIMENTARI (vincolanti, non contraddire mai nella rationale/focusNote): ${foodConstraints.join('; ')}\n` : ''}- Target calorico finale: ${dailyCalorieTarget} kcal, macro finali: ${JSON.stringify(macroTargetsG)}
+- Pasti selezionati: ${JSON.stringify(answers.mealsSelected ?? [])}, orari: colazione ${answers.breakfastTime ?? 'n/d'} / pranzo ${answers.lunchTime ?? 'n/d'} / cena ${answers.dinnerTime ?? 'n/d'}
+${usualMeals.length > 0 ? `- Cosa mangia di solito (contesto, non vincolante): ${usualMeals.join('; ')}\n` : ''}${foodConstraints.length > 0 ? `- VINCOLI ALIMENTARI (vincolanti, non contraddire mai nella rationale/focusNote): ${foodConstraints.join('; ')}\n` : ''}- Target calorico finale: ${dailyCalorieTarget} kcal, macro finali: ${JSON.stringify(macroTargetsG)}
 - Durata piano: ${durationMonths} mesi (mese 1 = adattamento, ultimo = consolidamento, gli intermedi = progressione)`;
 }
 

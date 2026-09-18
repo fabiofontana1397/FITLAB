@@ -4,7 +4,7 @@ import type { Goal, Sex, Sport, UserProfile } from '@/lib/mock/types';
 type ProfileRow = {
   name: string;
   sex: string;
-  age_range: string;
+  age: number | null;
   goal: string;
   sports: string[];
   height_cm: number;
@@ -20,7 +20,7 @@ function fromRow(row: ProfileRow): UserProfile {
   return {
     name: row.name,
     sex: row.sex as Sex,
-    ageRange: row.age_range,
+    age: row.age ?? 0,
     goal: row.goal as Goal,
     sports: row.sports as Sport[],
     heightCm: row.height_cm,
@@ -37,7 +37,7 @@ function fromRow(row: ProfileRow): UserProfile {
 export async function fetchProfile(userId: string): Promise<UserProfile | null> {
   const { data, error } = await supabase
     .from('profiles')
-    .select('name, sex, age_range, goal, sports, height_cm, target_weight_kg, daily_calorie_target, protein_g, carbs_g, fats_g, hydration_target_ml')
+    .select('name, sex, age, goal, sports, height_cm, target_weight_kg, daily_calorie_target, protein_g, carbs_g, fats_g, hydration_target_ml')
     .eq('user_id', userId)
     .maybeSingle();
   if (error) throw error;
@@ -49,7 +49,7 @@ export async function upsertProfile(userId: string, profile: UserProfile): Promi
     user_id: userId,
     name: profile.name,
     sex: profile.sex,
-    age_range: profile.ageRange,
+    age: profile.age,
     goal: profile.goal,
     sports: profile.sports,
     height_cm: profile.heightCm,

@@ -1,14 +1,5 @@
 import type { Goal, Sex } from '@/lib/mock/types';
 
-const AGE_RANGE_MIDPOINT: Record<string, number> = {
-  lt18: 17,
-  '18-24': 21,
-  '25-34': 29,
-  '35-44': 39,
-  '45-54': 49,
-  '55+': 60,
-};
-
 const JOB_ACTIVITY_MULTIPLIER: Record<string, number> = {
   sedentary: 1.2,
   seatedMobile: 1.3,
@@ -64,53 +55,15 @@ const SLEEP_HOURS_BUMP: Record<string, number> = {
   gt8: 0,
 };
 
-// Never recommend below this regardless of how aggressive a deadline-driven
-// adjustment would otherwise be (see deadlineAdjustedCalorieTarget) —
-// covers the "calorie target sotto soglia di sicurezza" edge case (spec
-// §13, edge case table) with a clamp rather than a hard reject, since this
-// app has no review workflow to route a rejected value to.
+// Never recommend below this — a floor of last resort, independent of
+// whatever combination of inputs produced the goal-driven target (spec §13
+// edge case table, "calorie target sotto soglia di sicurezza").
 const MIN_SAFE_CALORIE_TARGET = 1200;
-// Caps how far a deadline can steepen/loosen the goal-driven default target.
-const MAX_DEADLINE_ADJUST_FRACTION = 0.15;
-const KCAL_PER_KG_BODY_MASS = 7700;
-
-function parseItalianDate(value: unknown): Date | null {
-  if (typeof value !== 'string') return null;
-  const match = value.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (!match) return null;
-  const [, d, m, y] = match;
-  const date = new Date(Number(y), Number(m) - 1, Number(d));
-  return Number.isNaN(date.getTime()) ? null : date;
-}
-
-/**
- * Nudges the goal-driven calorie target toward whatever rate is actually
- * needed to hit a user-declared deadline (hasDeadline/deadlineDate/
- * successWeightKg — collected since the first version of the questionnaire
- * but never used, spec §11/§13 point 4). Bounded on both sides: capped at
- * ±15% of the base target (a deadline can steepen the plan, not override
- * physiology), and never below MIN_SAFE_CALORIE_TARGET. Returns `base`
- * unchanged whenever any required input is missing/unparseable.
- */
-function deadlineAdjustedCalorieTarget(base: number, input: NutritionTargetsInput): number {
-  if (input.hasDeadline !== 'yes' && input.hasDeadline !== 'sì' && input.hasDeadline !== 'si') return base;
-  const deadline = parseItalianDate(input.deadlineDate);
-  const targetWeightKg = input.successWeightKg ?? input.targetWeightKg;
-  if (!deadline || targetWeightKg == null || !input.currentWeightKg) return base;
-
-  const weeksLeft = Math.max((deadline.getTime() - Date.now()) / (7 * 24 * 3600 * 1000), 1);
-  const kgDelta = targetWeightKg - input.currentWeightKg; // negative = weight loss needed
-  const weeklyRateNeeded = kgDelta / weeksLeft;
-  const dailyDeltaNeeded = (weeklyRateNeeded * KCAL_PER_KG_BODY_MASS) / 7;
-
-  const maxDelta = base * MAX_DEADLINE_ADJUST_FRACTION;
-  const clampedDelta = Math.min(Math.max(dailyDeltaNeeded, -maxDelta), maxDelta);
-  return Math.max(Math.round(base + clampedDelta), MIN_SAFE_CALORIE_TARGET);
-}
 
 export type NutritionTargetsInput = {
   sex: Sex;
-  ageRange: string;
+  /** Precise age in years (questionnaire v2 — replaces the earlier ageRange bucket). */
+  age: number;
   heightCm: number;
   currentWeightKg: number;
   goal: Goal;
@@ -121,11 +74,6 @@ export type NutritionTargetsInput = {
   dailyStepsBucket?: string;
   /** Questionnaire `sleepHoursRange` bucket (lt5/5-6/6-7/7-8/gt8). */
   sleepHoursBucket?: string;
-  /** Questionnaire hasDeadline/deadlineDate ('gg/mm/aaaa')/successWeightKg — see deadlineAdjustedCalorieTarget. */
-  hasDeadline?: string;
-  deadlineDate?: string;
-  successWeightKg?: number;
-  targetWeightKg?: number;
 };
 
 export type NutritionTargets = {
@@ -160,8 +108,7 @@ export function deriveWeeklyTrainingDays(answers: Record<string, unknown>): numb
 }
 
 export function computeNutritionTargets(input: NutritionTargetsInput): NutritionTargets {
-  const age = AGE_RANGE_MIDPOINT[input.ageRange] ?? 30;
-  const bmr = bmrMifflinStJeor(input.sex, input.currentWeightKg, input.heightCm, age);
+  const bmr = bmrMifflinStJeor(input.sex, input.currentWeightKg, input.heightCm, input.age);
 
   const jobMultiplier = JOB_ACTIVITY_MULTIPLIER[input.jobActivity ?? 'sedentary'] ?? 1.2;
   const trainingDays = input.weeklyTrainingDays ?? 0;
@@ -170,8 +117,7 @@ export function computeNutritionTargets(input: NutritionTargetsInput): Nutrition
   const sleepBump = SLEEP_HOURS_BUMP[input.sleepHoursBucket ?? '6-7'] ?? 0;
   const tdee = bmr * (jobMultiplier + trainingBump + stepsBump + sleepBump);
 
-  const goalDrivenTarget = Math.round(tdee * GOAL_CALORIE_FACTOR[input.goal]);
-  const dailyCalorieTarget = deadlineAdjustedCalorieTarget(goalDrivenTarget, input);
+  const dailyCalorieTarget = Math.max(Math.round(tdee * GOAL_CALORIE_FACTOR[input.goal]), MIN_SAFE_CALORIE_TARGET);
 
   const proteinG = Math.round(GOAL_PROTEIN_PER_KG[input.goal] * input.currentWeightKg);
   const fatsG = Math.round((dailyCalorieTarget * 0.25) / 9);
@@ -234,15 +180,14 @@ export type EnergyExpenditureBreakdown = {
  * comes from instead of a single opaque figure. */
 export function estimateEnergyExpenditureBreakdown(input: {
   sex: Sex;
-  ageRange: string;
+  age: number;
   heightCm: number;
   weightKg: number;
   jobActivity?: string;
   sessionDurationBucket?: string;
   trainedThisDay: boolean;
 }): EnergyExpenditureBreakdown {
-  const age = AGE_RANGE_MIDPOINT[input.ageRange] ?? 30;
-  const bmr = bmrMifflinStJeor(input.sex, input.weightKg, input.heightCm, age);
+  const bmr = bmrMifflinStJeor(input.sex, input.weightKg, input.heightCm, input.age);
   const jobMultiplier = JOB_ACTIVITY_MULTIPLIER[input.jobActivity ?? 'sedentary'] ?? 1.2;
   const resting = Math.round(bmr);
   const baselineActivity = Math.round(bmr * (jobMultiplier - 1));
@@ -259,7 +204,7 @@ export function estimateEnergyExpenditureBreakdown(input: {
  * estimateEnergyExpenditureBreakdown for callers that only need the total. */
 export function estimateDailyBurnedKcal(input: {
   sex: Sex;
-  ageRange: string;
+  age: number;
   heightCm: number;
   weightKg: number;
   jobActivity?: string;
@@ -274,7 +219,7 @@ export function estimateDailyBurnedKcal(input: {
  * "calories from training" apart from resting/baseline-activity burn. */
 export function estimateTrainingBonusKcal(input: {
   sex: Sex;
-  ageRange: string;
+  age: number;
   heightCm: number;
   weightKg: number;
   sessionDurationBucket?: string;

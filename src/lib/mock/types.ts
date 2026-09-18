@@ -7,7 +7,9 @@ export type Sex = 'male' | 'female' | 'unspecified';
 export type UserProfile = {
   name: string;
   sex: Sex;
-  ageRange: string;
+  /** Precise age in years (questionnaire v2) — replaces the earlier
+   * ageRange bucket ("25-34"). */
+  age: number;
   goal: Goal;
   sports: Sport[];
   heightCm: number;
