@@ -156,8 +156,20 @@ export function GoalTrendChart({ points, target, dateGranularity, width, height 
 
   const { segments, xy, targetY, xTicks, yTicks } = useMemo(() => buildChart(points, target, plotWidth, height), [points, target, plotWidth, height]);
 
+  // Sub-pixel-different onLayout measurements (common on web, especially
+  // once a horizontal scrollbar for the plot appears/disappears) used to
+  // feed straight back into measuredWidth -> plotWidth -> the ScrollView's
+  // own size -> another onLayout firing, a real "Maximum update depth
+  // exceeded" render loop, not just a lint nit. Same guard already proven
+  // in app-tabs.tsx's FloatingTabBar: only commit a change big enough to be
+  // real, so the measurement settles instead of oscillating forever.
+  const lastMeasuredWidth = useRef<number | null>(null);
   const onLayout = (e: LayoutChangeEvent) => {
-    if (width == null) setMeasuredWidth(e.nativeEvent.layout.width);
+    if (width != null) return;
+    const measured = e.nativeEvent.layout.width;
+    if (lastMeasuredWidth.current != null && Math.abs(measured - lastMeasuredWidth.current) < 1) return;
+    lastMeasuredWidth.current = measured;
+    setMeasuredWidth(measured);
   };
 
   const visibleWidth = Math.max(containerWidth - GUTTER_WIDTH, 0);
