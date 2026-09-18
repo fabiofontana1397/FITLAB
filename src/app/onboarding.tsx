@@ -86,9 +86,17 @@ export default function OnboardingScreen() {
 
   const canContinue = useMemo(() => {
     if (isIntroScreen) return mode != null;
+    // The results screen's "Conferma" doesn't just trust that every earlier
+    // "Continua" press already validated its own step — it re-checks every
+    // mandatory question across the whole questionnaire (mode-filtered
+    // steps + their dynamic per-activity questions), so there's a single
+    // real gate on the action that actually submits the profile and starts
+    // generating plans, not just a chain of per-step gates that happens to
+    // add up to the same thing today.
+    if (isResultsScreen) return mode != null && activeSteps.every((s) => getStepQuestions(s, answers).every((q) => q.optional || isAnswered(answers[q.id])));
     if (!step) return true;
     return stepQuestions.every((q) => q.optional || isAnswered(answers[q.id]));
-  }, [isIntroScreen, mode, step, stepQuestions, answers]);
+  }, [isIntroScreen, isResultsScreen, mode, activeSteps, step, stepQuestions, answers]);
 
   const results = useMemo(() => {
     if (!isResultsScreen) return null;
@@ -120,7 +128,11 @@ export default function OnboardingScreen() {
   };
 
   const confirmProfile = () => {
-    if (!results) return;
+    // Defense in depth: the "Conferma" button is already disabled unless
+    // canContinue is true (see above) — this just makes sure a future
+    // refactor that calls confirmProfile from somewhere else can't
+    // accidentally submit an incomplete profile.
+    if (!results || !canContinue) return;
 
     finalizeOnboarding({
       goal: (answers.goal as Goal) ?? 'generalHealth',
