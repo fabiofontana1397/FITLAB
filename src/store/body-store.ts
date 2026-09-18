@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-import { deleteBodyPhoto, fetchBodyMetrics, fetchBodyPhotos, replaceAllBodyMetrics, upsertBodyMetric, uploadBodyPhoto } from '@/lib/api/body';
+import { deleteBodyPhoto, fetchBodyMetrics, fetchBodyPhotos, upsertBodyMetric, uploadBodyPhoto } from '@/lib/api/body';
 import { daysAgoISO } from '@/lib/mock/dates';
 import type { BodyMetricSnapshot } from '@/lib/mock/types';
 import { withAuthRetry } from '@/lib/supabase/retry';
@@ -94,17 +94,30 @@ export const useBodyStore = create<BodyState>()(
         if (userId && saved) upsertBodyMetric(userId, saved).catch((err) => console.warn('upsertBodyMetric failed', err));
       },
 
-      // Called from onboarding: a real first-time user has no history yet, so this
-      // replaces whatever's there (a stale/leftover entry) with a single fresh one
-      // instead of grafting a user-entered weight onto unrelated old data.
+      // Called from onboarding (including redoing the questionnaire later).
+      // Used to wholesale-replace all body_metrics with a single fresh
+      // entry, which destroyed any prior weight history on every re-onboard
+      // — incompatible with trend-based features (see the Adaptive
+      // Nutrition Engine, lib/nutrition/adaptive-engine.ts) that need
+      // continuous history. Now it inserts/updates a single row marked as
+      // a baseline (source:'onboarding', isBaseline:true) without touching
+      // any other row — accountStartDate (Home) anchors on the most recent
+      // baseline instead of the very first entry ever recorded.
       resetStartingWeight: (weightKg, date = daysAgoISO(0)) => {
         set((state) => {
+          const existingIndex = state.entries.findIndex((e) => e.date === date);
           const template = state.entries[state.entries.length - 1] ?? EMPTY_SNAPSHOT;
-          return { entries: [{ ...template, date, weightKg }] };
+          const nextEntry: BodyMetricSnapshot = { ...template, date, weightKg, source: 'onboarding', isBaseline: true };
+          const entries =
+            existingIndex >= 0
+              ? state.entries.map((e, i) => (i === existingIndex ? { ...e, ...nextEntry } : e))
+              : [...state.entries, nextEntry];
+          entries.sort((a, b) => a.date.localeCompare(b.date));
+          return { entries };
         });
         const userId = currentUserId();
-        const saved = get().entries[0];
-        if (userId && saved) replaceAllBodyMetrics(userId, saved).catch((err) => console.warn('replaceAllBodyMetrics failed', err));
+        const saved = get().entries.find((e) => e.date === date);
+        if (userId && saved) upsertBodyMetric(userId, saved).catch((err) => console.warn('upsertBodyMetric (baseline) failed', err));
       },
 
       addMeasurement: (partial, date = daysAgoISO(0)) => {

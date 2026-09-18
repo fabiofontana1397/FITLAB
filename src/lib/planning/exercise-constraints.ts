@@ -48,15 +48,48 @@ function isExcluded(exercise: ExerciseDef, exclusions: ExerciseExclusions): bool
   return false;
 }
 
+/** Home-only equipment filter (see ExerciseDef.equipment): an exercise
+ * with no equipment requirement always passes; one that requires equipment
+ * passes only if the user declared owning at least one item it needs.
+ * Never returns an empty pool — if every candidate would need equipment
+ * the user doesn't have, the unfiltered pool is returned instead of
+ * leaving the split with zero options (safer than an empty session, and
+ * matches this file's other exclusion fallbacks). `equipment` is undefined
+ * for GYM_EXERCISES entries and for any `trainingLocation` other than
+ * `home` — callers should skip this filter in that case. */
+export function filterByEquipment(pool: ExerciseDef[], ownedEquipment: unknown): ExerciseDef[] {
+  const owned = Array.isArray(ownedEquipment) ? (ownedEquipment as string[]) : null;
+  if (!owned || owned.length === 0) return pool;
+  const filtered = pool.filter((e) => !e.equipment || e.equipment.length === 0 || e.equipment.some((eq) => owned.includes(eq)));
+  return filtered.length > 0 ? filtered : pool;
+}
+
 /** Takes up to `count` candidates from `pool` (already in priority order)
  * that don't conflict with the user's stated pain/injury/exercise
  * limitations — later candidates in the same split act as substitutes for
- * an excluded one, so this only falls back to the universally-safe
- * bodyweight exercise if every candidate for that split got excluded.
- * Never repeats an exercise within the same session just to hit `count`:
- * a shorter, non-redundant workout is better than the same lift 3 times. */
-export function selectExercises(pool: ExerciseDef[], count: number, exclusions: ExerciseExclusions): ExerciseDef[] {
+ * an excluded one. If every candidate for that split got excluded,
+ * `widerCatalog` (when supplied — e.g. every split's exercises combined)
+ * is searched next before falling back to the universally-safe bodyweight
+ * exercise, so a knee injury that wipes out an entire "Legs" split can
+ * still pull a compatible exercise from "Lower"/"Full Body" instead of
+ * immediately landing on Plank. Never repeats an exercise within the same
+ * session just to hit `count`: a shorter, non-redundant workout is better
+ * than the same lift 3 times. */
+export function selectExercises(
+  pool: ExerciseDef[],
+  count: number,
+  exclusions: ExerciseExclusions,
+  widerCatalog?: ExerciseDef[]
+): ExerciseDef[] {
   const allowed = pool.filter((e) => !isExcluded(e, exclusions));
-  const source = allowed.length > 0 ? allowed : [SAFE_FALLBACK_EXERCISE];
-  return source.slice(0, Math.min(count, source.length));
+  if (allowed.length > 0) return allowed.slice(0, Math.min(count, allowed.length));
+
+  if (widerCatalog) {
+    const seen = new Set(pool.map((e) => e.id));
+    const fromWiderCatalog = widerCatalog.filter((e) => !seen.has(e.id) && !isExcluded(e, exclusions));
+    const deduped = [...new Map(fromWiderCatalog.map((e) => [e.id, e])).values()];
+    if (deduped.length > 0) return deduped.slice(0, Math.min(count, deduped.length));
+  }
+
+  return [SAFE_FALLBACK_EXERCISE];
 }

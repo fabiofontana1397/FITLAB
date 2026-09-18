@@ -28,6 +28,13 @@ export type ExerciseDef = {
    * synonym) directly gets it excluded even when it doesn't load an area
    * they separately flagged. */
   keywords: string[];
+  /** Equipment (from the questionnaire's `equipment` multi-select) required
+   * to do this variant, e.g. ['dumbbells']. Empty/omitted = no equipment
+   * needed (bodyweight). Only meaningful for HOME_EXERCISES — a gym is
+   * assumed to have full equipment access, so GYM_EXERCISES leaves this
+   * unset and it's never filtered on. See exercise-constraints.ts's
+   * filterByEquipment. */
+  equipment?: string[];
 };
 
 /** Each split lists candidates in priority order — the planner takes the
@@ -91,49 +98,49 @@ export const GYM_EXERCISES: Record<SplitLabel, ExerciseDef[]> = {
 
 export const HOME_EXERCISES: Record<SplitLabel, ExerciseDef[]> = {
   'Full Body': [
-    { id: 'squat-manubri', name: 'Squat con manubri', bwMultiplier: 0.15, areas: ['knee', 'hip'], keywords: ['squat'] },
-    { id: 'push-up', name: 'Push-up', bwMultiplier: null, areas: ['shoulder', 'wrist'], keywords: ['push-up', 'push up', 'piegamenti'] },
-    { id: 'rematore-manubrio', name: 'Rematore con manubrio', bwMultiplier: 0.12, areas: ['lowerBack'], keywords: ['rematore con manubrio'] },
-    { id: 'plank', name: 'Plank', bwMultiplier: null, areas: [], keywords: ['plank'] },
-    { id: 'hip-thrust', name: 'Hip thrust', bwMultiplier: 0.3, areas: ['hip'], keywords: ['hip thrust'] },
-    { id: 'shoulder-press-manubri', name: 'Shoulder press con manubri', bwMultiplier: 0.08, areas: ['shoulder'], keywords: ['shoulder press'] },
+    { id: 'squat-manubri', name: 'Squat con manubri', bwMultiplier: 0.15, areas: ['knee', 'hip'], keywords: ['squat'], equipment: ['dumbbells'] },
+    { id: 'push-up', name: 'Push-up', bwMultiplier: null, areas: ['shoulder', 'wrist'], keywords: ['push-up', 'push up', 'piegamenti'], equipment: [] },
+    { id: 'rematore-manubrio', name: 'Rematore con manubrio', bwMultiplier: 0.12, areas: ['lowerBack'], keywords: ['rematore con manubrio'], equipment: ['dumbbells'] },
+    { id: 'plank', name: 'Plank', bwMultiplier: null, areas: [], keywords: ['plank'], equipment: [] },
+    { id: 'hip-thrust', name: 'Hip thrust', bwMultiplier: 0.3, areas: ['hip'], keywords: ['hip thrust'], equipment: [] },
+    { id: 'shoulder-press-manubri', name: 'Shoulder press con manubri', bwMultiplier: 0.08, areas: ['shoulder'], keywords: ['shoulder press'], equipment: ['dumbbells'] },
   ],
   Upper: [
-    { id: 'push-up', name: 'Push-up', bwMultiplier: null, areas: ['shoulder', 'wrist'], keywords: ['push-up', 'push up', 'piegamenti'] },
-    { id: 'rematore-elastico', name: 'Rematore con elastico', bwMultiplier: null, areas: ['lowerBack'], keywords: ['rematore con elastico'] },
-    { id: 'shoulder-press-manubri', name: 'Shoulder press con manubri', bwMultiplier: 0.08, areas: ['shoulder'], keywords: ['shoulder press'] },
-    { id: 'curl-manubri', name: 'Curl con manubri', bwMultiplier: 0.06, areas: [], keywords: ['curl'] },
-    { id: 'trazioni-lat-elastico', name: 'Trazioni o lat pulldown con elastico', bwMultiplier: null, areas: ['shoulder'], keywords: ['trazioni', 'lat pulldown'] },
-    { id: 'face-pull-elastico', name: 'Face pull con elastico', bwMultiplier: null, areas: ['shoulder'], keywords: ['face pull'] },
+    { id: 'push-up', name: 'Push-up', bwMultiplier: null, areas: ['shoulder', 'wrist'], keywords: ['push-up', 'push up', 'piegamenti'], equipment: [] },
+    { id: 'rematore-elastico', name: 'Rematore con elastico', bwMultiplier: null, areas: ['lowerBack'], keywords: ['rematore con elastico'], equipment: ['bands'] },
+    { id: 'shoulder-press-manubri', name: 'Shoulder press con manubri', bwMultiplier: 0.08, areas: ['shoulder'], keywords: ['shoulder press'], equipment: ['dumbbells'] },
+    { id: 'curl-manubri', name: 'Curl con manubri', bwMultiplier: 0.06, areas: [], keywords: ['curl'], equipment: ['dumbbells'] },
+    { id: 'trazioni-lat-elastico', name: 'Trazioni o lat pulldown con elastico', bwMultiplier: null, areas: ['shoulder'], keywords: ['trazioni', 'lat pulldown'], equipment: ['bands'] },
+    { id: 'face-pull-elastico', name: 'Face pull con elastico', bwMultiplier: null, areas: ['shoulder'], keywords: ['face pull'], equipment: ['bands'] },
   ],
   Lower: [
-    { id: 'squat-manubri', name: 'Squat con manubri', bwMultiplier: 0.15, areas: ['knee', 'hip'], keywords: ['squat'] },
-    { id: 'affondi-manubri', name: 'Affondi', bwMultiplier: 0.1, areas: ['knee', 'hip'], keywords: ['affondi', 'affondo', 'lunge'] },
-    { id: 'hip-thrust', name: 'Hip thrust', bwMultiplier: 0.3, areas: ['hip'], keywords: ['hip thrust'] },
-    { id: 'polpacci-piedi', name: 'Polpacci in piedi', bwMultiplier: 0.1, areas: [], keywords: ['polpacci'] },
-    { id: 'stacco-rumeno-manubri', name: 'Stacco rumeno con manubri', bwMultiplier: 0.2, areas: ['lowerBack', 'hip'], keywords: ['stacco rumeno'] },
-    { id: 'clamshell-elastico', name: 'Clamshell con elastico', bwMultiplier: null, areas: ['hip'], keywords: ['clamshell'] },
+    { id: 'squat-manubri', name: 'Squat con manubri', bwMultiplier: 0.15, areas: ['knee', 'hip'], keywords: ['squat'], equipment: ['dumbbells'] },
+    { id: 'affondi-manubri', name: 'Affondi', bwMultiplier: 0.1, areas: ['knee', 'hip'], keywords: ['affondi', 'affondo', 'lunge'], equipment: [] },
+    { id: 'hip-thrust', name: 'Hip thrust', bwMultiplier: 0.3, areas: ['hip'], keywords: ['hip thrust'], equipment: [] },
+    { id: 'polpacci-piedi', name: 'Polpacci in piedi', bwMultiplier: 0.1, areas: [], keywords: ['polpacci'], equipment: [] },
+    { id: 'stacco-rumeno-manubri', name: 'Stacco rumeno con manubri', bwMultiplier: 0.2, areas: ['lowerBack', 'hip'], keywords: ['stacco rumeno'], equipment: ['dumbbells'] },
+    { id: 'clamshell-elastico', name: 'Clamshell con elastico', bwMultiplier: null, areas: ['hip'], keywords: ['clamshell'], equipment: ['bands'] },
   ],
   Push: [
-    { id: 'push-up', name: 'Push-up', bwMultiplier: null, areas: ['shoulder', 'wrist'], keywords: ['push-up', 'push up', 'piegamenti'] },
-    { id: 'shoulder-press-manubri', name: 'Shoulder press con manubri', bwMultiplier: 0.08, areas: ['shoulder'], keywords: ['shoulder press'] },
-    { id: 'dip-sedia', name: 'Dip su sedia', bwMultiplier: null, areas: ['shoulder', 'wrist'], keywords: ['dip'] },
-    { id: 'alzate-laterali-manubri', name: 'Alzate laterali con manubri', bwMultiplier: 0.03, areas: ['shoulder'], keywords: ['alzate laterali'] },
+    { id: 'push-up', name: 'Push-up', bwMultiplier: null, areas: ['shoulder', 'wrist'], keywords: ['push-up', 'push up', 'piegamenti'], equipment: [] },
+    { id: 'shoulder-press-manubri', name: 'Shoulder press con manubri', bwMultiplier: 0.08, areas: ['shoulder'], keywords: ['shoulder press'], equipment: ['dumbbells'] },
+    { id: 'dip-sedia', name: 'Dip su sedia', bwMultiplier: null, areas: ['shoulder', 'wrist'], keywords: ['dip'], equipment: [] },
+    { id: 'alzate-laterali-manubri', name: 'Alzate laterali con manubri', bwMultiplier: 0.03, areas: ['shoulder'], keywords: ['alzate laterali'], equipment: ['dumbbells'] },
   ],
   Pull: [
-    { id: 'rematore-manubrio', name: 'Rematore con manubrio', bwMultiplier: 0.12, areas: ['lowerBack'], keywords: ['rematore con manubrio'] },
-    { id: 'trazioni-lat-elastico', name: 'Trazioni o lat pulldown con elastico', bwMultiplier: null, areas: ['shoulder'], keywords: ['trazioni', 'lat pulldown'] },
-    { id: 'face-pull-elastico', name: 'Face pull con elastico', bwMultiplier: null, areas: ['shoulder'], keywords: ['face pull'] },
-    { id: 'curl-manubri', name: 'Curl con manubri', bwMultiplier: 0.06, areas: [], keywords: ['curl'] },
-    { id: 'rematore-elastico', name: 'Rematore con elastico', bwMultiplier: null, areas: ['lowerBack'], keywords: ['rematore con elastico'] },
+    { id: 'rematore-manubrio', name: 'Rematore con manubrio', bwMultiplier: 0.12, areas: ['lowerBack'], keywords: ['rematore con manubrio'], equipment: ['dumbbells'] },
+    { id: 'trazioni-lat-elastico', name: 'Trazioni o lat pulldown con elastico', bwMultiplier: null, areas: ['shoulder'], keywords: ['trazioni', 'lat pulldown'], equipment: ['bands'] },
+    { id: 'face-pull-elastico', name: 'Face pull con elastico', bwMultiplier: null, areas: ['shoulder'], keywords: ['face pull'], equipment: ['bands'] },
+    { id: 'curl-manubri', name: 'Curl con manubri', bwMultiplier: 0.06, areas: [], keywords: ['curl'], equipment: ['dumbbells'] },
+    { id: 'rematore-elastico', name: 'Rematore con elastico', bwMultiplier: null, areas: ['lowerBack'], keywords: ['rematore con elastico'], equipment: ['bands'] },
   ],
   Legs: [
-    { id: 'squat-manubri', name: 'Squat con manubri', bwMultiplier: 0.15, areas: ['knee', 'hip'], keywords: ['squat'] },
-    { id: 'affondi-manubri', name: 'Affondi', bwMultiplier: 0.1, areas: ['knee', 'hip'], keywords: ['affondi', 'affondo', 'lunge'] },
-    { id: 'hip-thrust', name: 'Hip thrust', bwMultiplier: 0.3, areas: ['hip'], keywords: ['hip thrust'] },
-    { id: 'stacco-rumeno-manubri', name: 'Stacco rumeno con manubri', bwMultiplier: 0.2, areas: ['lowerBack', 'hip'], keywords: ['stacco rumeno'] },
-    { id: 'polpacci-piedi', name: 'Polpacci in piedi', bwMultiplier: 0.1, areas: [], keywords: ['polpacci'] },
-    { id: 'clamshell-elastico', name: 'Clamshell con elastico', bwMultiplier: null, areas: ['hip'], keywords: ['clamshell'] },
+    { id: 'squat-manubri', name: 'Squat con manubri', bwMultiplier: 0.15, areas: ['knee', 'hip'], keywords: ['squat'], equipment: ['dumbbells'] },
+    { id: 'affondi-manubri', name: 'Affondi', bwMultiplier: 0.1, areas: ['knee', 'hip'], keywords: ['affondi', 'affondo', 'lunge'], equipment: [] },
+    { id: 'hip-thrust', name: 'Hip thrust', bwMultiplier: 0.3, areas: ['hip'], keywords: ['hip thrust'], equipment: [] },
+    { id: 'stacco-rumeno-manubri', name: 'Stacco rumeno con manubri', bwMultiplier: 0.2, areas: ['lowerBack', 'hip'], keywords: ['stacco rumeno'], equipment: ['dumbbells'] },
+    { id: 'polpacci-piedi', name: 'Polpacci in piedi', bwMultiplier: 0.1, areas: [], keywords: ['polpacci'], equipment: [] },
+    { id: 'clamshell-elastico', name: 'Clamshell con elastico', bwMultiplier: null, areas: ['hip'], keywords: ['clamshell'], equipment: ['bands'] },
   ],
 };
 

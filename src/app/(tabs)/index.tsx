@@ -19,6 +19,7 @@ import { useWeightSeries, weightDateGranularity, type WeightRange } from '@/hook
 import { dailyStepsTarget, stepsHistory } from '@/lib/mock/activity';
 import { latestSnapshot } from '@/lib/mock/body';
 import { currentWeekDates, daysAgoISO, mondayIndex } from '@/lib/mock/dates';
+import type { BodyMetricSnapshot } from '@/lib/mock/types';
 import { useCoachInsights } from '@/hooks/use-coach-insights';
 import { estimateDailyBurnedKcal, estimateStepsKcal, estimateTrainingBonusKcal } from '@/lib/nutrition/targets';
 import { WEEKDAY_LABELS } from '@/lib/planning/exercise-library';
@@ -36,6 +37,17 @@ function greeting() {
   if (hour < 12) return 'Buongiorno';
   if (hour < 18) return 'Buon pomeriggio';
   return 'Buonasera';
+}
+
+/** Most recent body_metrics row marked as a baseline (see body-store.ts's
+ * resetStartingWeight), or undefined for accounts with none — either
+ * pre-dating the baseline column, or that have never (re)done onboarding. */
+function mostRecentBaselineDate(entries: BodyMetricSnapshot[]): string | undefined {
+  let latest: string | undefined;
+  for (const e of entries) {
+    if (e.isBaseline && (!latest || e.date > latest)) latest = e.date;
+  }
+  return latest;
 }
 
 export default function HomeScreen() {
@@ -108,6 +120,7 @@ export default function HomeScreen() {
     ageRange: currentUser.ageRange,
     heightCm: currentUser.heightCm,
     weightKg: latestBody.weightKg,
+    sessionDurationBucket: onboardingAnswers.sessionDuration as string | undefined,
     trainedThisDay: todayTrainedThisDay,
   });
   const todayStepsKcal = estimateStepsKcal(todaysSteps, latestBody.weightKg);
@@ -126,7 +139,10 @@ export default function HomeScreen() {
   // estimate for those days would otherwise render as if a full week of
   // real activity already happened for a brand-new signup.
   const weekDates = useMemo(() => currentWeekDates(new Date()), []);
-  const accountStartDate = bodyEntries[0]?.date ?? today;
+  // Prefer the most recent baseline row (resetStartingWeight now inserts
+  // rather than wipes history, see body-store.ts) — falls back to the very
+  // first entry for accounts created before that column existed.
+  const accountStartDate = mostRecentBaselineDate(bodyEntries) ?? bodyEntries[0]?.date ?? today;
   const weekDays = useMemo(() => {
     const monthIdx = trainingPlan ? currentMonthIndex(trainingPlan) : null;
     const month = trainingPlan?.months.find((m) => m.monthIndex === monthIdx);
@@ -165,6 +181,7 @@ export default function HomeScreen() {
         heightCm: currentUser.heightCm,
         weightKg: latestBody.weightKg,
         jobActivity: onboardingAnswers.jobActivity as string | undefined,
+        sessionDurationBucket: onboardingAnswers.sessionDuration as string | undefined,
         trainedThisDay,
       });
 
@@ -290,7 +307,7 @@ export default function HomeScreen() {
 
         <GlassSurface level="card" radius={Radius.large} style={styles.burnCard}>
           <View style={{ gap: Spacing.two }}>
-            <ThemedText type="smallBold">Calorie bruciate e assunte</ThemedText>
+            <ThemedText type="smallBold">Dispendio stimato e calorie assunte</ThemedText>
             <View style={styles.burnEmphasisRow}>
               <View style={{ flex: 1 }}>
                 <ThemedText type="caption" themeColor="textSecondary">
@@ -308,9 +325,9 @@ export default function HomeScreen() {
                 <ThemedText type="caption" themeColor="textSecondary">
                   Settimana
                 </ThemedText>
-                <ThemedText type="smallBold">Bruciate {Math.round(weekBurnedSoFar)} kcal</ThemedText>
+                <ThemedText type="smallBold">Dispendio stimato {Math.round(weekBurnedSoFar)} kcal</ThemedText>
                 <ThemedText type="caption" themeColor="textSecondary">
-                  Da bruciare {Math.round(Math.max(weeklyProgrammedKcal - weekBurnedSoFar, 0))} kcal
+                  Target settimanale {Math.round(weeklyProgrammedKcal)} kcal
                 </ThemedText>
               </View>
             </View>

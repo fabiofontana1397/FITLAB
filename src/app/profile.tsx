@@ -1,5 +1,6 @@
 import { router } from 'expo-router';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { useState } from 'react';
+import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { GlassSurface } from '@/components/glass/glass-surface';
 import { ScreenScroll } from '@/components/screen-scroll';
@@ -51,6 +52,27 @@ export default function ProfileScreen() {
   const handleSeedTestData = () => {
     seedOneMonthOfTestData();
     Alert.alert('Fatto', 'Un mese di dati di test (peso, pasti, allenamenti) è stato generato.');
+  };
+
+  const reviewNutritionTarget = useUserStore((s) => s.reviewNutritionTarget);
+  const [isReviewingTarget, setIsReviewingTarget] = useState(false);
+
+  const handleReviewTarget = async () => {
+    setIsReviewingTarget(true);
+    try {
+      const decision = await reviewNutritionTarget();
+      if (decision.action === 'none') {
+        Alert.alert('Target invariato', decision.reason);
+      } else {
+        const verb = decision.action === 'increase' ? 'aumentate' : 'ridotte';
+        Alert.alert('Target aggiornato', `Calorie giornaliere ${verb} di ${decision.deltaKcal} kcal.\n\n${decision.reason}`);
+      }
+    } catch (err) {
+      console.warn('reviewNutritionTarget failed', err);
+      Alert.alert('Errore', 'Non è stato possibile rivedere il target ora. Riprova più tardi.');
+    } finally {
+      setIsReviewingTarget(false);
+    }
   };
 
   return (
@@ -113,6 +135,18 @@ export default function ProfileScreen() {
           <Row label="Carboidrati" value={`${currentUser.macroTargetsG.carbs} g`} />
           <Row label="Grassi" value={`${currentUser.macroTargetsG.fats} g`} />
           <Row label="Idratazione" value={`${(currentUser.hydrationTargetMl / 1000).toFixed(1)} L`} />
+          <Pressable onPress={handleReviewTarget} disabled={isReviewingTarget} hitSlop={8} style={styles.reviewTargetRow}>
+            {isReviewingTarget ? (
+              <ActivityIndicator size="small" color={theme.accent} />
+            ) : (
+              <ThemedText type="caption" style={{ color: theme.accent }}>
+                Rivedi il mio target (beta)
+              </ThemedText>
+            )}
+          </Pressable>
+          <ThemedText type="caption" themeColor="textTertiary">
+            Confronta peso e calorie registrate negli ultimi giorni e propone una piccola correzione se il trend non è in linea con l'obiettivo — non sostituisce il consiglio di un professionista.
+          </ThemedText>
         </GlassSurface>
       </View>
 
@@ -179,6 +213,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  reviewTargetRow: {
+    alignItems: 'center',
+    paddingTop: Spacing.one,
   },
   closeButton: {
     width: 40,

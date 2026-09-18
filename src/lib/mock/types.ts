@@ -17,6 +17,8 @@ export type UserProfile = {
   hydrationTargetMl: number;
 };
 
+export type BodyMetricSource = 'onboarding' | 'manual' | 'import';
+
 export type BodyMetricSnapshot = {
   date: string;
   weightKg: number;
@@ -30,6 +32,16 @@ export type BodyMetricSnapshot = {
   thighCm: number;
   restingHeartRate: number;
   sleepHours: number;
+  /** Where this row came from — 'onboarding' rows are baseline candidates
+   * (see isBaseline). Optional/undefined for rows written before this
+   * column existed. */
+  source?: BodyMetricSource;
+  /** True for a row created by resetStartingWeight (onboarding) — marks a
+   * fresh starting point without deleting prior history, so accountStartDate
+   * (see Home) can anchor on the most recent baseline instead of the very
+   * first ever entry. Optional/undefined for rows written before this
+   * column existed (pre-baseline accounts fall back to entries[0]). */
+  isBaseline?: boolean;
 };
 
 export type InsightTone = 'positive' | 'warning' | 'neutral';

@@ -25,6 +25,8 @@ type BodyMetricRow = {
   thigh_cm: number | null;
   resting_heart_rate: number | null;
   sleep_hours: number | null;
+  source: string | null;
+  is_baseline: boolean | null;
 };
 
 function fromRow(row: BodyMetricRow): BodyMetricSnapshot {
@@ -41,6 +43,8 @@ function fromRow(row: BodyMetricRow): BodyMetricSnapshot {
     thighCm: row.thigh_cm ?? 0,
     restingHeartRate: row.resting_heart_rate ?? 0,
     sleepHours: row.sleep_hours ?? 0,
+    source: (row.source as BodyMetricSnapshot['source']) ?? undefined,
+    isBaseline: row.is_baseline ?? undefined,
   };
 }
 
@@ -59,6 +63,8 @@ function toRow(userId: string, snapshot: BodyMetricSnapshot) {
     thigh_cm: snapshot.thighCm,
     resting_heart_rate: snapshot.restingHeartRate,
     sleep_hours: snapshot.sleepHours,
+    source: snapshot.source ?? 'manual',
+    is_baseline: snapshot.isBaseline ?? false,
   };
 }
 
@@ -81,13 +87,6 @@ export async function upsertBodyMetric(userId: string, snapshot: BodyMetricSnaps
   if (error) throw error;
 }
 
-export async function replaceAllBodyMetrics(userId: string, snapshot: BodyMetricSnapshot): Promise<void> {
-  // resetStartingWeight: wholesale replace with a single fresh entry
-  // (used only at onboarding, discarding any seeded/demo history).
-  const { error: deleteError } = await supabase.from('body_metrics').delete().eq('user_id', userId);
-  if (deleteError) throw deleteError;
-  await upsertBodyMetric(userId, snapshot);
-}
 
 type BodyPhotoRow = { id: string; date: string; pose: BodyPhotoPose; storage_path: string };
 

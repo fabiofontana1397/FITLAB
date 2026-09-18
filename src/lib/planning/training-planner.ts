@@ -1,4 +1,4 @@
-import { deriveExerciseExclusions, selectExercises } from './exercise-constraints';
+import { deriveExerciseExclusions, filterByEquipment, selectExercises } from './exercise-constraints';
 import {
   FOCUS_SCHEME,
   GYM_EXERCISES,
@@ -8,6 +8,7 @@ import {
   suggestedLoadFor,
   WEEKDAY_LABELS,
   WEEKDAY_PATTERN,
+  type ExerciseDef,
   type SplitLabel,
 } from './exercise-library';
 import { computePlanDurationMonths } from './plan-duration';
@@ -111,7 +112,18 @@ export function generateTrainingPlan(input: TrainingPlanInput): TrainingPlan | n
   gymDays = Math.min(gymDays, 6);
   runDays = Math.min(runDays, 6 - gymDays);
 
-  const exercisePool = answers.trainingLocation === 'home' ? HOME_EXERCISES : GYM_EXERCISES;
+  // Equipment filtering only applies at home — a gym is assumed to have
+  // full equipment access (the questionnaire doesn't even ask the
+  // equipment question outside trainingLocation=home). Filtering per split
+  // up front (rather than inside the month loop) so it's computed once.
+  const isHome = answers.trainingLocation === 'home';
+  const basePool = isHome ? HOME_EXERCISES : GYM_EXERCISES;
+  const exercisePool: Record<SplitLabel, ExerciseDef[]> = isHome
+    ? (Object.fromEntries(
+        (Object.entries(basePool) as [SplitLabel, ExerciseDef[]][]).map(([split, list]) => [split, filterByEquipment(list, answers.equipment)])
+      ) as Record<SplitLabel, ExerciseDef[]>)
+    : basePool;
+  const wholeCatalog = Object.values(exercisePool).flat();
   const exclusions = deriveExerciseExclusions(answers);
   const exerciseCount = exerciseCountForDuration(answers.sessionDuration);
   const sanitizedStrategySplits = sanitizeSplitLabels(strategy?.splitLabels);
@@ -142,7 +154,7 @@ export function generateTrainingPlan(input: TrainingPlanInput): TrainingPlan | n
 
     gymSlots.forEach((dayIdx, i) => {
       const splitLabel = splitLabels[i % splitLabels.length];
-      const selected = selectExercises(exercisePool[splitLabel], exerciseCount, exclusions);
+      const selected = selectExercises(exercisePool[splitLabel], exerciseCount, exclusions, wholeCatalog);
       const exercises: TrainingExerciseEntry[] = selected.map((def) => ({
         id: def.id,
         name: def.name,

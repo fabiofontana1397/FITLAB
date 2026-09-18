@@ -187,23 +187,87 @@ function applyExclusions(ids: string[], excluded: Set<string>, fallback: string[
   return fallbackFiltered.length > 0 ? fallbackFiltered : ids;
 }
 
+// Which pool a FOOD_DATABASE category feeds — used to route free-text
+// `includedFoods` matches (e.g. "vorrei più quinoa") into the right pool
+// instead of only reaching the AI prompt (see generate-plan-strategy),
+// which never actually chooses concrete foods.
+function poolKeyForCategory(category: string): 'protein' | 'carbs' | 'fats' | 'vegetables' | 'fruit' | null {
+  switch (category) {
+    case 'proteine':
+    case 'latticini':
+    case 'legumi':
+      return 'protein';
+    case 'carboidrati':
+      return 'carbs';
+    case 'grassi':
+      return 'fats';
+    case 'verdura':
+      return 'vegetables';
+    case 'frutta':
+      return 'fruit';
+    default:
+      return null;
+  }
+}
+
+/** Foods the user explicitly asked to include (`includedFoods` free text),
+ * matched against catalog names the same way deriveExcludedFoodIds matches
+ * allergen/exclusion text — grouped by which pool each belongs in.
+ * Exclusions always win: a food the user also excluded (or that dietary
+ * pattern removes) is never added back in here. */
+function deriveIncludedFoodIdsByPool(answers: Record<string, unknown>, excluded: Set<string>, pattern: unknown) {
+  const result: Record<'protein' | 'carbs' | 'fats' | 'vegetables' | 'fruit', string[]> = {
+    protein: [],
+    carbs: [],
+    fats: [],
+    vegetables: [],
+    fruit: [],
+  };
+  const raw = answers.includedFoods;
+  if (typeof raw !== 'string') return result;
+  const blob = normalize(raw);
+  if (blob.trim().length === 0 || NO_ANSWER_TEXT.has(blob.trim())) return result;
+
+  const matchedIds = FOOD_DATABASE.filter((food) => blob.includes(normalize(food.name))).map((food) => food.id);
+  const afterPattern = filterByDietaryPattern(matchedIds, pattern);
+  for (const food of FOOD_DATABASE) {
+    if (!afterPattern.includes(food.id) || excluded.has(food.id)) continue;
+    const key = poolKeyForCategory(food.category);
+    if (key) result[key].push(food.id);
+  }
+  return result;
+}
+
 export function buildFoodPools(answers: Record<string, unknown>) {
   const pattern = answers.dietaryPattern;
   const excluded = deriveExcludedFoodIds(answers);
+  const included = deriveIncludedFoodIdsByPool(answers, excluded, pattern);
 
-  const protein = applyExclusions(
-    filterByDietaryPattern(poolFromAnswer(answers.preferredProteins, PROTEIN_SOURCES, DEFAULT_PROTEIN_POOL), pattern),
-    excluded,
-    filterByDietaryPattern(DEFAULT_PROTEIN_POOL, pattern)
-  );
-  const carbs = applyExclusions(poolFromAnswer(answers.preferredCarbs, CARB_SOURCES, DEFAULT_CARB_POOL), excluded, DEFAULT_CARB_POOL);
-  const fats = applyExclusions(
-    filterByDietaryPattern(poolFromAnswer(answers.preferredFats, FAT_SOURCES, DEFAULT_FAT_POOL), pattern),
-    excluded,
-    filterByDietaryPattern(DEFAULT_FAT_POOL, pattern)
-  );
-  const vegetables = applyExclusions(VEGETABLE_POOL, excluded, VEGETABLE_POOL);
-  const fruit = applyExclusions(FRUIT_POOL, excluded, FRUIT_POOL);
+  const protein = [
+    ...new Set([
+      ...applyExclusions(
+        filterByDietaryPattern(poolFromAnswer(answers.preferredProteins, PROTEIN_SOURCES, DEFAULT_PROTEIN_POOL), pattern),
+        excluded,
+        filterByDietaryPattern(DEFAULT_PROTEIN_POOL, pattern)
+      ),
+      ...included.protein,
+    ]),
+  ];
+  const carbs = [
+    ...new Set([...applyExclusions(poolFromAnswer(answers.preferredCarbs, CARB_SOURCES, DEFAULT_CARB_POOL), excluded, DEFAULT_CARB_POOL), ...included.carbs]),
+  ];
+  const fats = [
+    ...new Set([
+      ...applyExclusions(
+        filterByDietaryPattern(poolFromAnswer(answers.preferredFats, FAT_SOURCES, DEFAULT_FAT_POOL), pattern),
+        excluded,
+        filterByDietaryPattern(DEFAULT_FAT_POOL, pattern)
+      ),
+      ...included.fats,
+    ]),
+  ];
+  const vegetables = [...new Set([...applyExclusions(VEGETABLE_POOL, excluded, VEGETABLE_POOL), ...included.vegetables])];
+  const fruit = [...new Set([...applyExclusions(FRUIT_POOL, excluded, FRUIT_POOL), ...included.fruit])];
 
   return {
     protein,

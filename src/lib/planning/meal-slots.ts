@@ -1,3 +1,4 @@
+import { MEAL_WEIGHTS } from '@/lib/nutrition/meal-distribution';
 import type { MealSlot } from '@/store/nutrition-store';
 
 export type MealSlotDef = { id: MealSlot; label: string; time: string; sharePct: number };
@@ -55,9 +56,9 @@ export function buildMealSlotsFromAnswers(answers: Record<string, unknown>): Mea
   const includeBreakfast = mealsPerDay !== '2';
 
   const anchors: { id: MealSlot; time: string; weight: number }[] = [];
-  if (includeBreakfast) anchors.push({ id: 'colazione', time: breakfastTime, weight: 3 });
-  anchors.push({ id: 'pranzo', time: lunchTime, weight: 4 });
-  anchors.push({ id: 'cena', time: dinnerTime, weight: 3.5 });
+  if (includeBreakfast) anchors.push({ id: 'colazione', time: breakfastTime, weight: MEAL_WEIGHTS.colazione });
+  anchors.push({ id: 'pranzo', time: lunchTime, weight: MEAL_WEIGHTS.pranzo });
+  anchors.push({ id: 'cena', time: dinnerTime, weight: MEAL_WEIGHTS.cena });
 
   const snackIds: MealSlot[] =
     snacksAnswer === 'morning'
@@ -92,7 +93,7 @@ export function buildMealSlotsFromAnswers(answers: Record<string, unknown>): Mea
 
   const slots = [
     ...anchors,
-    ...finalSnacks.map((id) => ({ id, time: snackTimes[id], weight: 1 })),
+    ...finalSnacks.map((id) => ({ id, time: snackTimes[id], weight: MEAL_WEIGHTS[id] })),
   ].sort((a, b) => toMinutes(a.time) - toMinutes(b.time));
 
   const totalWeight = slots.reduce((sum, s) => sum + s.weight, 0);

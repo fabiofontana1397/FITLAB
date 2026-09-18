@@ -6,6 +6,7 @@ import type { IconName } from '@/components/ui/icon';
 import { addDaysISO, daysAgoISO } from '@/lib/mock/dates';
 import { findFood } from '@/lib/mock/food-database';
 import type { UserProfile } from '@/lib/mock/types';
+import { sharePctFor } from '@/lib/nutrition/meal-distribution';
 import { withAuthRetry } from '@/lib/supabase/retry';
 import { useAuthStore } from '@/store/auth-store';
 import { appJsonStorage } from '@/store/storage';
@@ -18,13 +19,20 @@ export type MealSlot =
   | 'cena'
   | 'spuntinoSera';
 
+const ALL_SLOT_IDS: MealSlot[] = ['colazione', 'spuntinoMattina', 'pranzo', 'spuntinoPomeriggio', 'cena', 'spuntinoSera'];
+
+// sharePct here is derived from the same MEAL_WEIGHTS meal-slots.ts uses to
+// build the generated plan (lib/nutrition/meal-distribution.ts) — this UI
+// always shows all 6 fixed slots (unlike the generated plan, which only
+// includes the slots a user's questionnaire answers call for), so it
+// normalizes against the full 6-slot set rather than a per-user subset.
 export const MEAL_SLOTS: { id: MealSlot; label: string; time: string; sharePct: number; icon: IconName }[] = [
-  { id: 'colazione', label: 'Colazione', time: '07:30', sharePct: 0.22, icon: 'mealSun' },
-  { id: 'spuntinoMattina', label: 'Spuntino mattina', time: '10:30', sharePct: 0.08, icon: 'mealSnack' },
-  { id: 'pranzo', label: 'Pranzo', time: '13:15', sharePct: 0.3, icon: 'mealMidday' },
-  { id: 'spuntinoPomeriggio', label: 'Spuntino pomeriggio', time: '17:00', sharePct: 0.1, icon: 'mealSnack' },
-  { id: 'cena', label: 'Cena', time: '20:00', sharePct: 0.25, icon: 'mealMoon' },
-  { id: 'spuntinoSera', label: 'Spuntino sera', time: '22:00', sharePct: 0.05, icon: 'mealSnack' },
+  { id: 'colazione', label: 'Colazione', time: '07:30', sharePct: sharePctFor('colazione', ALL_SLOT_IDS), icon: 'mealSun' },
+  { id: 'spuntinoMattina', label: 'Spuntino mattina', time: '10:30', sharePct: sharePctFor('spuntinoMattina', ALL_SLOT_IDS), icon: 'mealSnack' },
+  { id: 'pranzo', label: 'Pranzo', time: '13:15', sharePct: sharePctFor('pranzo', ALL_SLOT_IDS), icon: 'mealMidday' },
+  { id: 'spuntinoPomeriggio', label: 'Spuntino pomeriggio', time: '17:00', sharePct: sharePctFor('spuntinoPomeriggio', ALL_SLOT_IDS), icon: 'mealSnack' },
+  { id: 'cena', label: 'Cena', time: '20:00', sharePct: sharePctFor('cena', ALL_SLOT_IDS), icon: 'mealMoon' },
+  { id: 'spuntinoSera', label: 'Spuntino sera', time: '22:00', sharePct: sharePctFor('spuntinoSera', ALL_SLOT_IDS), icon: 'mealSnack' },
 ];
 
 export type MealFoodEntry = {

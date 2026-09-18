@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-import { deleteDietPlan, deleteTrainingPlan, fetchDietPlan, fetchTrainingPlan, upsertDietPlan, upsertTrainingPlan } from '@/lib/api/plans';
+import { deleteDietPlan, deleteTrainingPlan, fetchDietPlan, fetchTrainingPlan, insertPlanVersion, type PlanVersionTrigger, upsertDietPlan, upsertTrainingPlan } from '@/lib/api/plans';
 import { fetchPlanStrategy } from '@/lib/api/plan-strategy';
 import { generateDietPlan } from '@/lib/planning/diet-planner';
 import { computePlanDurationMonths } from '@/lib/planning/plan-duration';
@@ -11,13 +11,20 @@ import { withAuthRetry } from '@/lib/supabase/retry';
 import { useAuthStore } from '@/store/auth-store';
 import { appJsonStorage } from '@/store/storage';
 
+// Bump whenever the deterministic planners' logic changes materially —
+// recorded on every plan_versions row (algorithm_version) so a stored plan
+// can always be traced back to the generation logic that produced it (spec
+// §12 bis, §4.2).
+const ALGORITHM_VERSION = 'planner-2026-09-19-p0';
+
 type PlanState = {
   dietPlan: DietPlan | null;
   trainingPlan: TrainingPlan | null;
   isGenerating: boolean;
   generatePlans: (
     answers: Record<string, unknown>,
-    targets: { dailyCalorieTarget: number; macroTargetsG: { protein: number; carbs: number; fats: number } }
+    targets: { dailyCalorieTarget: number; macroTargetsG: { protein: number; carbs: number; fats: number } },
+    trigger?: PlanVersionTrigger
   ) => Promise<void>;
   syncFromServer: () => Promise<void>;
   /** Local-only reset on logout — see user-store.ts's clearLocal for why. */
@@ -50,7 +57,7 @@ export const usePlanStore = create<PlanState>()(
       dietPlan: null,
       trainingPlan: null,
       isGenerating: false,
-      generatePlans: async (answers, targets) => {
+      generatePlans: async (answers, targets, trigger = 'regenerate') => {
         const mode = answers.mode as string | undefined;
         set({ isGenerating: true });
         const durationMonths = computePlanDurationMonths(answers);
@@ -62,10 +69,18 @@ export const usePlanStore = create<PlanState>()(
 
         const userId = currentUserId();
         if (userId) {
-          (dietPlan ? upsertDietPlan(userId, dietPlan) : deleteDietPlan(userId)).catch((err) => console.warn('persist dietPlan failed', err));
-          (trainingPlan ? upsertTrainingPlan(userId, trainingPlan) : deleteTrainingPlan(userId)).catch((err) =>
-            console.warn('persist trainingPlan failed', err)
-          );
+          if (dietPlan) {
+            upsertDietPlan(userId, dietPlan).catch((err) => console.warn('persist dietPlan failed', err));
+            insertPlanVersion(userId, 'diet', trigger, ALGORITHM_VERSION).catch((err) => console.warn('insertPlanVersion (diet) failed', err));
+          } else {
+            deleteDietPlan(userId).catch((err) => console.warn('persist dietPlan failed', err));
+          }
+          if (trainingPlan) {
+            upsertTrainingPlan(userId, trainingPlan).catch((err) => console.warn('persist trainingPlan failed', err));
+            insertPlanVersion(userId, 'training', trigger, ALGORITHM_VERSION).catch((err) => console.warn('insertPlanVersion (training) failed', err));
+          } else {
+            deleteTrainingPlan(userId).catch((err) => console.warn('persist trainingPlan failed', err));
+          }
         }
       },
       syncFromServer: async () => {

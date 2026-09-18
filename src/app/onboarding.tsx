@@ -100,6 +100,11 @@ export default function OnboardingScreen() {
       goal: (answers.goal as Goal) ?? 'generalHealth',
       jobActivity: answers.jobActivity as string,
       weeklyTrainingDays: deriveWeeklyTrainingDays(answers),
+      dailyStepsBucket: answers.dailySteps as string | undefined,
+      hasDeadline: answers.hasDeadline as string | undefined,
+      deadlineDate: answers.deadlineDate as string | undefined,
+      successWeightKg: answers.successWeightKg != null ? Number(answers.successWeightKg) || undefined : undefined,
+      targetWeightKg: answers.targetWeightKg != null ? Number(answers.targetWeightKg) || undefined : undefined,
     });
   }, [isResultsScreen, answers]);
 
@@ -137,7 +142,7 @@ export default function OnboardingScreen() {
     // the AI strategy call (web search + RAG) can take a few seconds —
     // onboarding should never block on it. `fetchPlanStrategy` never
     // throws (falls back to null on any failure), so this is safe.
-    void generatePlans(answers, { dailyCalorieTarget: results.dailyCalorieTarget, macroTargetsG: results.macroTargetsG });
+    void generatePlans(answers, { dailyCalorieTarget: results.dailyCalorieTarget, macroTargetsG: results.macroTargetsG }, 'onboarding');
     router.push('/onboarding-created');
   };
 
