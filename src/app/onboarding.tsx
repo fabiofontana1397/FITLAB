@@ -101,6 +101,7 @@ export default function OnboardingScreen() {
       jobActivity: answers.jobActivity as string,
       weeklyTrainingDays: deriveWeeklyTrainingDays(answers),
       dailyStepsBucket: answers.dailySteps as string | undefined,
+      sleepHoursBucket: answers.sleepHoursRange as string | undefined,
       hasDeadline: answers.hasDeadline as string | undefined,
       deadlineDate: answers.deadlineDate as string | undefined,
       successWeightKg: answers.successWeightKg != null ? Number(answers.successWeightKg) || undefined : undefined,

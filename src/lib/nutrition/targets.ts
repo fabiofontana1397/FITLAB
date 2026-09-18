@@ -50,6 +50,20 @@ const DAILY_STEPS_BUMP: Record<string, number> = {
   unknown: 0,
 };
 
+// Small additive TDEE nudge from the questionnaire's sleepHoursRange bucket
+// — previously collected but unused (spec §11/§13 point 4, "Keep+Use").
+// Chronic short sleep measurably reduces NEAT/spontaneous activity in the
+// literature; kept intentionally small (same order of magnitude as the
+// steps bump) since this app has no direct NEAT measurement to calibrate
+// against.
+const SLEEP_HOURS_BUMP: Record<string, number> = {
+  lt5: -0.03,
+  '5-6': -0.01,
+  '6-7': 0,
+  '7-8': 0.01,
+  gt8: 0,
+};
+
 // Never recommend below this regardless of how aggressive a deadline-driven
 // adjustment would otherwise be (see deadlineAdjustedCalorieTarget) —
 // covers the "calorie target sotto soglia di sicurezza" edge case (spec
@@ -105,6 +119,8 @@ export type NutritionTargetsInput = {
   weeklyTrainingDays?: number;
   /** Questionnaire `dailySteps` bucket (lt3000/3000-5000/5000-8000/8000-12000/gt12000/unknown). */
   dailyStepsBucket?: string;
+  /** Questionnaire `sleepHoursRange` bucket (lt5/5-6/6-7/7-8/gt8). */
+  sleepHoursBucket?: string;
   /** Questionnaire hasDeadline/deadlineDate ('gg/mm/aaaa')/successWeightKg — see deadlineAdjustedCalorieTarget. */
   hasDeadline?: string;
   deadlineDate?: string;
@@ -151,7 +167,8 @@ export function computeNutritionTargets(input: NutritionTargetsInput): Nutrition
   const trainingDays = input.weeklyTrainingDays ?? 0;
   const trainingBump = Math.min(trainingDays, 6) * 0.03;
   const stepsBump = DAILY_STEPS_BUMP[input.dailyStepsBucket ?? 'unknown'] ?? 0;
-  const tdee = bmr * (jobMultiplier + trainingBump + stepsBump);
+  const sleepBump = SLEEP_HOURS_BUMP[input.sleepHoursBucket ?? '6-7'] ?? 0;
+  const tdee = bmr * (jobMultiplier + trainingBump + stepsBump + sleepBump);
 
   const goalDrivenTarget = Math.round(tdee * GOAL_CALORIE_FACTOR[input.goal]);
   const dailyCalorieTarget = deadlineAdjustedCalorieTarget(goalDrivenTarget, input);

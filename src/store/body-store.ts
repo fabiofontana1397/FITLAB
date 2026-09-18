@@ -98,7 +98,7 @@ export const useBodyStore = create<BodyState>()(
       // Used to wholesale-replace all body_metrics with a single fresh
       // entry, which destroyed any prior weight history on every re-onboard
       // — incompatible with trend-based features (see the Adaptive
-      // Nutrition Engine, lib/nutrition/adaptive-engine.ts) that need
+      // Nutrition Engine, supabase/functions/adaptation-evaluate) that need
       // continuous history. Now it inserts/updates a single row marked as
       // a baseline (source:'onboarding', isBaseline:true) without touching
       // any other row — accountStartDate (Home) anchors on the most recent

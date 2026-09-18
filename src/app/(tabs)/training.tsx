@@ -26,6 +26,7 @@ import {
   isExerciseCompleted,
   latestWeightForExercise,
   setsForExerciseOnDate,
+  suggestedNextLoadForExercise,
   useTrainingProgressStore,
 } from '@/store/training-progress-store';
 import { useUserStore } from '@/store/user-store';
@@ -166,6 +167,7 @@ export default function TrainingScreen() {
                 {(selectedDay.exercises ?? []).map((exercise) => {
                   const setsToday = setsForExerciseOnDate(progressSets, exercise.id, selectedDate);
                   const loggedTodayKg = setsToday.length ? Math.max(...setsToday.map((s) => s.weightKg)) : null;
+                  const progression = suggestedNextLoadForExercise(progressSets, exercise.id, exercise.reps, exercise.suggestedKg);
                   return (
                     <PlanExerciseRow
                       key={exercise.id}
@@ -175,7 +177,8 @@ export default function TrainingScreen() {
                       loggedTodayKg={loggedTodayKg}
                       completed={isExerciseCompleted(completedExercises, exercise.id, selectedDate)}
                       onToggleCompleted={() => toggleCompleted(exercise.id, selectedDate)}
-                      onAddLoad={(reps, weightKg) => logSet(exercise.id, exercise.name, reps, weightKg, selectedDate)}
+                      onAddLoad={(reps, weightKg, rir) => logSet(exercise.id, exercise.name, reps, weightKg, selectedDate, rir)}
+                      progressionNote={progression.note}
                     />
                   );
                 })}

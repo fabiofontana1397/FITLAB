@@ -5,16 +5,32 @@
 import { supabase } from '@/lib/supabase/client';
 import type { CompletedExercise, LoggedSet } from '@/store/training-progress-store';
 
-type ExerciseSetRow = { id: string; date: string; exercise_id: string; exercise_name: string | null; reps: number; weight_kg: number };
+type ExerciseSetRow = {
+  id: string;
+  date: string;
+  exercise_id: string;
+  exercise_name: string | null;
+  reps: number;
+  weight_kg: number;
+  rir: number | null;
+};
 
 function fromRow(row: ExerciseSetRow): LoggedSet {
-  return { id: row.id, date: row.date, exerciseId: row.exercise_id, exerciseName: row.exercise_name ?? '', reps: row.reps, weightKg: row.weight_kg };
+  return {
+    id: row.id,
+    date: row.date,
+    exerciseId: row.exercise_id,
+    exerciseName: row.exercise_name ?? '',
+    reps: row.reps,
+    weightKg: row.weight_kg,
+    rir: row.rir ?? undefined,
+  };
 }
 
 export async function fetchGeneratedPlanLogs(userId: string): Promise<LoggedSet[]> {
   const { data, error } = await supabase
     .from('exercise_sets')
-    .select('id, date, exercise_id, exercise_name, reps, weight_kg')
+    .select('id, date, exercise_id, exercise_name, reps, weight_kg, rir')
     .eq('user_id', userId)
     .eq('source', 'generated_plan');
   if (error) throw error;
@@ -30,6 +46,7 @@ export async function insertGeneratedPlanLog(userId: string, log: LoggedSet): Pr
     exercise_name: log.exerciseName,
     reps: log.reps,
     weight_kg: log.weightKg,
+    rir: log.rir ?? null,
     date: log.date,
   });
   if (error) throw error;

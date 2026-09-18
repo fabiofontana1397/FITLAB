@@ -10,6 +10,7 @@ import {
   insertGeneratedPlanLog,
 } from '@/lib/api/training-progress';
 import { daysAgoISO } from '@/lib/mock/dates';
+import { suggestNextLoad, type ProgressionSuggestion } from '@/lib/planning/progression';
 import { withAuthRetry } from '@/lib/supabase/retry';
 import { useAuthStore } from '@/store/auth-store';
 import { appJsonStorage } from '@/store/storage';
@@ -21,6 +22,10 @@ export type LoggedSet = {
   date: string;
   reps: number;
   weightKg: number;
+  /** Reps in reserve — optional, feeds lib/planning/progression.ts's load
+   * suggestion. Undefined for sets logged before this existed, or when the
+   * user skips the (optional) RIR picker in NewLoadModal. */
+  rir?: number;
 };
 
 export type CompletedExercise = { exerciseId: string; date: string };
@@ -28,7 +33,7 @@ export type CompletedExercise = { exerciseId: string; date: string };
 type TrainingProgressState = {
   sets: LoggedSet[];
   completed: CompletedExercise[];
-  logSet: (exerciseId: string, exerciseName: string, reps: number, weightKg: number, date?: string) => void;
+  logSet: (exerciseId: string, exerciseName: string, reps: number, weightKg: number, date?: string, rir?: number) => void;
   removeSet: (id: string) => void;
   toggleCompleted: (exerciseId: string, date: string) => void;
   syncFromServer: () => Promise<void>;
@@ -52,8 +57,8 @@ export const useTrainingProgressStore = create<TrainingProgressState>()(
     (set, get) => ({
       sets: [],
       completed: [],
-      logSet: (exerciseId, exerciseName, reps, weightKg, date = daysAgoISO(0)) => {
-        const log: LoggedSet = { id: `${exerciseId}-${Date.now()}`, exerciseId, exerciseName, date, reps, weightKg };
+      logSet: (exerciseId, exerciseName, reps, weightKg, date = daysAgoISO(0), rir) => {
+        const log: LoggedSet = { id: `${exerciseId}-${Date.now()}`, exerciseId, exerciseName, date, reps, weightKg, rir };
         set((state) => ({ sets: [...state.sets, log] }));
         const userId = currentUserId();
         if (userId) insertGeneratedPlanLog(userId, log).catch((err) => console.warn('insertGeneratedPlanLog failed', err));
@@ -118,6 +123,15 @@ export function historyForExercise(sets: LoggedSet[], exerciseId: string): { dat
 export function latestWeightForExercise(sets: LoggedSet[], exerciseId: string): number | null {
   const history = historyForExercise(sets, exerciseId);
   return history.length > 0 ? history[history.length - 1].weightKg : null;
+}
+
+/** Scoped progression-engine suggestion (lib/planning/progression.ts) for
+ * an exercise's next load: reacts to the most recent logged RIR if one
+ * exists, otherwise behaves exactly like latestWeightForExercise (no RIR
+ * ever logged = no behavior change from before this existed). */
+export function suggestedNextLoadForExercise(sets: LoggedSet[], exerciseId: string, targetReps: string, fallbackKg: number | null): ProgressionSuggestion {
+  const forExercise = sets.filter((s) => s.exerciseId === exerciseId).map((s) => ({ date: s.date, weightKg: s.weightKg, reps: s.reps, rir: s.rir }));
+  return suggestNextLoad(forExercise, targetReps, latestWeightForExercise(sets, exerciseId) ?? fallbackKg);
 }
 
 export function isExerciseCompleted(completed: CompletedExercise[], exerciseId: string, date: string): boolean {

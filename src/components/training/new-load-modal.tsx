@@ -17,8 +17,14 @@ export type NewLoadModalProps = {
   defaultReps: string;
   defaultWeightKg: string;
   onClose: () => void;
-  onSave: (reps: number, weightKg: number) => void;
+  onSave: (reps: number, weightKg: number, rir?: number) => void;
 };
+
+// "Reps in reserve" — how many more reps the set could have taken before
+// failure. Optional (see the note under the picker): logging it is what
+// lets the progression engine (lib/planning/progression.ts) suggest a real
+// next load instead of just repeating the last one.
+const RIR_OPTIONS = [0, 1, 2, 3, 4, 5] as const;
 
 /** Bottom-sheet quick-entry for logging an updated load on an exercise —
  * the single way to record progress now that the always-open per-set
@@ -64,16 +70,17 @@ function NewLoadForm({
   defaultReps: string;
   defaultWeightKg: string;
   onClose: () => void;
-  onSave: (reps: number, weightKg: number) => void;
+  onSave: (reps: number, weightKg: number, rir?: number) => void;
 }) {
   const [reps, setReps] = useState(defaultReps);
   const [weight, setWeight] = useState(defaultWeightKg);
+  const [rir, setRir] = useState<number | null>(null);
 
   const handleSave = () => {
     const repsNum = parseInt(reps, 10);
     const weightNum = parseFloat(weight.replace(',', '.'));
     if (!Number.isFinite(repsNum) || repsNum <= 0) return;
-    onSave(repsNum, Number.isFinite(weightNum) ? weightNum : 0);
+    onSave(repsNum, Number.isFinite(weightNum) ? weightNum : 0, rir ?? undefined);
     onClose();
   };
 
@@ -120,6 +127,33 @@ function NewLoadForm({
         </View>
       </View>
 
+      <View style={styles.rirBlock}>
+        <ThemedText type="label" themeColor="textSecondary">
+          Quante ripetizioni avresti ancora fatto? (facoltativo)
+        </ThemedText>
+        <View style={styles.rirRow}>
+          {RIR_OPTIONS.map((value) => {
+            const selected = rir === value;
+            return (
+              <Pressable
+                key={value}
+                onPress={() => setRir(selected ? null : value)}
+                style={[
+                  styles.rirChip,
+                  {
+                    backgroundColor: selected ? theme.accent : theme.backgroundElement,
+                    borderColor: selected ? theme.accent : theme.border,
+                  },
+                ]}>
+                <ThemedText type="caption" style={{ color: selected ? theme.onAccent : theme.text, fontWeight: '700' }}>
+                  {value === 5 ? '5+' : value}
+                </ThemedText>
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
+
       <PrimaryButton label="Salva carico" icon="check" onPress={handleSave} style={{ marginTop: Spacing.four }} />
     </>
   );
@@ -158,5 +192,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     paddingVertical: 12,
     fontSize: 16,
+  },
+  rirBlock: {
+    marginTop: Spacing.three,
+    gap: Spacing.two,
+  },
+  rirRow: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+  },
+  rirChip: {
+    width: 40,
+    height: 40,
+    borderRadius: Radius.pill,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

@@ -31,7 +31,11 @@ export type PlanExerciseRowProps = {
   loggedTodayKg: number | null;
   completed: boolean;
   onToggleCompleted: () => void;
-  onAddLoad: (reps: number, weightKg: number) => void;
+  onAddLoad: (reps: number, weightKg: number, rir?: number) => void;
+  /** Scoped progression-engine suggestion (lib/planning/progression.ts) —
+   * only has a `note` once the user has logged at least one RIR value for
+   * this exercise, otherwise undefined and nothing extra is shown. */
+  progressionNote?: string | null;
 };
 
 export function PlanExerciseRow({
@@ -42,6 +46,7 @@ export function PlanExerciseRow({
   completed,
   onToggleCompleted,
   onAddLoad,
+  progressionNote,
 }: PlanExerciseRowProps) {
   const theme = useTheme();
   const [infoOpen, setInfoOpen] = useState(false);
@@ -90,6 +95,11 @@ export function PlanExerciseRow({
           {!isBodyweight && referenceKg != null ? (
             <ThemedText type="smallBold">
               {isFirstTime ? 'Consigliato' : 'Ultimo carico'} {referenceKg}kg
+            </ThemedText>
+          ) : null}
+          {progressionNote ? (
+            <ThemedText type="caption" themeColor="textSecondary" style={styles.progressionNote}>
+              {progressionNote}
             </ThemedText>
           ) : null}
           <ThemedText type="caption" themeColor="textSecondary">
@@ -235,6 +245,9 @@ const styles = StyleSheet.create({
   tempoBlock: {
     marginTop: 4,
     gap: 2,
+  },
+  progressionNote: {
+    maxWidth: 160,
   },
   rightCol: {
     width: 132,

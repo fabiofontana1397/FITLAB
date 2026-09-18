@@ -160,6 +160,71 @@ const STRATEGY_SCHEMA = {
   additionalProperties: false,
 };
 
+// Rule/constraint validation on top of the JSON-schema conformance
+// output_config already guarantees (spec §4.2, "Proposta di redesign —
+// validazione dell'output AI"): the schema only proves the SHAPE is right,
+// not that the VALUES are sane. Anything that fails a check here is
+// stripped back to null/omitted rather than the whole request failing —
+// src/store/plan-store.ts and the deterministic planners already treat a
+// missing strategy field as "use the hardcoded default", so this keeps the
+// existing "AI is purely additive, never a hard dependency" guarantee
+// while adding a real safety net around the values it's allowed to affect.
+const VALID_SPLIT_LABELS = new Set(['Full Body', 'Upper', 'Lower', 'Push', 'Pull', 'Legs']);
+const MIN_SAFE_CALORIE_TARGET = 1200;
+const MAX_SANE_CALORIE_TARGET = 6000;
+const MAX_CALORIE_DEVIATION_FROM_REQUESTED = 0.25; // a monthly target more than 25% off the client's own computed target is untrusted, not "aggressive periodization"
+
+function isSaneSetScheme(scheme: unknown): scheme is { sets: number; reps: string; restSec: number; tempo: string } {
+  if (!scheme || typeof scheme !== 'object') return false;
+  const s = scheme as Record<string, unknown>;
+  return (
+    typeof s.sets === 'number' &&
+    s.sets >= 1 &&
+    s.sets <= 8 &&
+    typeof s.reps === 'string' &&
+    s.reps.length > 0 &&
+    typeof s.restSec === 'number' &&
+    s.restSec >= 15 &&
+    s.restSec <= 600 &&
+    typeof s.tempo === 'string' &&
+    /^\d+-\d+-\d+$/.test(s.tempo)
+  );
+}
+
+// deno-lint-ignore no-explicit-any
+function validateStrategy(raw: any, requestedDailyCalorieTarget: number): any {
+  const strategy = raw && typeof raw === 'object' ? raw : { training: null, diet: null };
+
+  if (strategy.training) {
+    const t = strategy.training;
+    const splitLabels = Array.isArray(t.splitLabels) ? t.splitLabels.filter((l: string) => VALID_SPLIT_LABELS.has(l)) : [];
+    const gymSchemeValid = isSaneSetScheme(t.gymScheme?.adattamento) && isSaneSetScheme(t.gymScheme?.later);
+    strategy.training =
+      splitLabels.length > 0 && gymSchemeValid
+        ? { ...t, splitLabels }
+        : null; // let the deterministic tables take over entirely rather than mix a partially-untrusted structure in
+  }
+
+  if (strategy.diet) {
+    const d = strategy.diet;
+    const monthlyTargets = Array.isArray(d.monthlyTargets)
+      ? d.monthlyTargets.filter((m: Record<string, unknown>) => {
+          const cal = m?.calorieTarget;
+          if (typeof cal !== 'number' || cal < MIN_SAFE_CALORIE_TARGET || cal > MAX_SANE_CALORIE_TARGET) return false;
+          if (requestedDailyCalorieTarget > 0) {
+            const deviation = Math.abs(cal - requestedDailyCalorieTarget) / requestedDailyCalorieTarget;
+            if (deviation > MAX_CALORIE_DEVIATION_FROM_REQUESTED) return false;
+          }
+          const macros = m?.macroTargetsG as Record<string, unknown> | undefined;
+          return macros && typeof macros.protein === 'number' && typeof macros.carbs === 'number' && typeof macros.fats === 'number';
+        })
+      : [];
+    strategy.diet = monthlyTargets.length > 0 ? { ...d, monthlyTargets } : null;
+  }
+
+  return strategy;
+}
+
 function yesNo(v: unknown): boolean {
   return v === 'yes' || v === 'sì' || v === 'si' || v === true;
 }
@@ -240,7 +305,8 @@ Deno.serve(async (req: Request) => {
     if (!textBlock || textBlock.type !== 'text') {
       throw new Error(`No text response (stop_reason: ${response.stop_reason})`);
     }
-    const strategy = JSON.parse(textBlock.text);
+    const parsed = JSON.parse(textBlock.text);
+    const strategy = validateStrategy(parsed, body.dailyCalorieTarget);
 
     return jsonResponse({ strategy });
   } catch (err) {

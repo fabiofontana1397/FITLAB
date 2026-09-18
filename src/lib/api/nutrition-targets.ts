@@ -1,9 +1,10 @@
-// Repository module for nutrition_target_history — the Adaptive Nutrition
-// Engine's audit trail (see lib/nutrition/adaptive-engine.ts and
-// FITLAB_SPEC.md §4.1 bis). Every row is either the initial onboarding
-// estimate or a later adaptive correction; profiles.daily_calorie_target
-// stays the single "current" value the rest of the app reads, this table
-// is purely historical/explanatory.
+// Repository module for nutrition_target_history (read) and the
+// adaptation-evaluate Edge Function (the Adaptive Nutrition Engine's real
+// entry point, spec §4.1 bis/§14 "POST /adaptation/evaluate"). The
+// evaluation itself — reading body_metrics/meal_entries, deciding whether
+// to nudge the target, persisting the new profile/history/plan_versions
+// rows — all happens server-side now; this module just invokes it and
+// exposes read access to the resulting history.
 import { supabase } from '@/lib/supabase/client';
 
 export type NutritionTargetSource = 'initial_estimate' | 'adaptation';
@@ -17,20 +18,6 @@ export type NutritionTargetRecord = {
   source: NutritionTargetSource;
   reason?: string;
 };
-
-export async function insertNutritionTargetHistory(userId: string, record: NutritionTargetRecord): Promise<void> {
-  const { error } = await supabase.from('nutrition_target_history').insert({
-    user_id: userId,
-    effective_date: record.effectiveDate,
-    calories: record.calories,
-    protein_g: record.proteinG,
-    carbs_g: record.carbsG,
-    fats_g: record.fatsG,
-    source: record.source,
-    reason: record.reason ?? null,
-  });
-  if (error) throw error;
-}
 
 export async function fetchNutritionTargetHistory(userId: string): Promise<NutritionTargetRecord[]> {
   const { data, error } = await supabase
@@ -48,4 +35,25 @@ export async function fetchNutritionTargetHistory(userId: string): Promise<Nutri
     source: row.source as NutritionTargetSource,
     reason: row.reason ?? undefined,
   }));
+}
+
+export type AdaptationAction = 'none' | 'increase' | 'decrease';
+
+export type AdaptationDecision = {
+  action: AdaptationAction;
+  deltaKcal: number;
+  reason: string;
+  weeklyRateKg: number | null;
+  loggedDaysInWindow: number;
+};
+
+export type AdaptationEvaluateResponse = {
+  decision: AdaptationDecision;
+  updatedProfile: { dailyCalorieTarget: number; macroTargetsG: { protein: number; carbs: number; fats: number } } | null;
+};
+
+export async function evaluateNutritionAdaptation(): Promise<AdaptationEvaluateResponse> {
+  const { data, error } = await supabase.functions.invoke('adaptation-evaluate');
+  if (error) throw error;
+  return data as AdaptationEvaluateResponse;
 }
