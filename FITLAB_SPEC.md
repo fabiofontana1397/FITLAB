@@ -79,9 +79,9 @@ carbsG   = round((dailyCalorieTarget − proteinG×4 − fatsG×9) / 4)
 
 **Passo 5 — Idratazione.** `hydrationTargetMl = round(pesoKg × 35 + (giorniAllenamento≥4 ? 350 : 0))`.
 
-**Dove finiscono questi 5 numeri?** `dailyCalorieTarget`, `proteinG`/`carbsG`/`fatsG` e `hydrationTargetMl` vengono passati a `finalizeOnboarding()` dello store `useUserStore`, che li scrive nel profilo strutturato e li sincronizza sulla tabella Postgres **`profiles`** (colonne `daily_calorie_target`, `protein_g`, `carbs_g`, `fats_g`, `hydration_target_ml`). Da questo momento sono il "budget" ufficiale dell'utente — e restano **fissi**, senza ricalcolo automatico, finché non si rifà il questionario da capo (Profilo → "Rifai il questionario").
+**Dove finiscono questi 5 numeri?** `dailyCalorieTarget`, `proteinG`/`carbsG`/`fatsG` e `hydrationTargetMl` vengono passati a `finalizeOnboarding()` dello store `useUserStore`, che li scrive nel profilo strutturato e li sincronizza sulla tabella Postgres **`profiles`** (colonne `daily_calorie_target`, `protein_g`, `carbs_g`, `fats_g`, `hydration_target_ml`) — questo è il **`current_target`**: il valore operativo, vivo, che l'Adaptive Nutrition Engine (§4.1 bis) può correggere nel tempo.
 
-> **Proposta di redesign — `initial_estimate` vs `current_target`.** Il valore appena calcolato va trattato come una **stima iniziale** (`initial_estimate`), non come un dato "vero": ogni formula predittiva del metabolismo (Mifflin-St Jeor incluso) ha un margine d'errore individuale intrinseco. Il valore realmente operativo giorno per giorno (`current_target`) dovrebbe poter discostarsi da questa stima iniziale una volta che il sistema osserva il comportamento reale dell'utente (peso e intake registrati) — è il ciclo documentato in **§4.1 bis, "Adaptive Nutrition Engine"**. Finché quel motore non è implementato, `current_target === initial_estimate` sempre.
+> ✅ **Implementato — `initial_estimate` vs `current_target`.** `finalizeOnboarding()` scrive **anche** una riga immutabile in `nutrition_target_history` (`source:'initial_estimate'`) con lo stesso valore appena calcolato — una fotografia di "dove è partita la stima", distinta dal `current_target` in `profiles` che può discostarsene. `useUserStore.initialEstimate` la espone lato client (popolata da `finalizeOnboarding` e da `syncFromServer` via `fetchLatestInitialEstimate()`); il Profilo mostra sia "Target attuale" sia "Stima iniziale (questionario)" quando i due valori sono divergenti (cioè dopo che `reviewNutritionTarget`/l'Adaptive Engine ha corretto almeno una volta il target). Ogni volta che si rifà il questionario si scrive una **nuova** riga `initial_estimate` (mai un sovrascrizione) — stessa filosofia della baseline peso in `body_metrics`.
 
 ### 0.4 Dal budget al piano vero: cosa genera i pasti e gli allenamenti concreti
 
@@ -324,25 +324,27 @@ Input: `sex, age, heightCm, currentWeightKg, goal, jobActivity, weeklyTrainingDa
 | Grassi | `fatsG = round(dailyCalorieTarget × 0.25 / 9)` — 25% fisso delle calorie | soglia minima (es. non sotto il 20% delle calorie totali), non percentuale rigida |
 | Carboidrati | `carbsG = max(round((dailyCalorieTarget − proteinG×4 − fatsG×9)/4), 0)` — quota residua esatta | quota residua calcolata **entro** il range risultante da proteine/grassi, non un unico valore fisso |
 
-Calcolato oggi **una sola volta** in onboarding; non si ricalcola mai automaticamente dopo (resta fisso finché non si rifà il questionario) — comportamento che l'Adaptive Nutrition Engine proposto di seguito supera.
+Calcolato **una sola volta** in onboarding — resta fisso come `current_target` in `profiles` finché non si rifà il questionario (nuovo `initial_estimate`) **o** finché l'Adaptive Nutrition Engine di seguito non lo corregge.
 
-### 4.1 bis — Adaptive Nutrition Engine (proposto)
+### 4.1 bis — Adaptive Nutrition Engine
 
-> Sezione proposta, non ancora implementata. Documenta il cambio di paradigma centrale della revisione: da un flusso lineare a stima singola (TDEE stimato al giorno 0 → target calorico → piano → tracking) a un **ciclo adattivo** che corregge il target nel tempo usando il comportamento reale osservato.
+> ✅ **Implementato** (come Edge Function `adaptation-evaluate`, non lato client — vedi §14). Documenta il cambio di paradigma centrale della revisione: da un flusso lineare a stima singola (TDEE stimato al giorno 0 → target calorico → piano → tracking) a un **ciclo adattivo** che corregge il target nel tempo usando il comportamento reale osservato. Trigger: client-side, su richiesta esplicita (Profilo → "Rivedi il mio target"), non un cron/job in background.
 
 **Il ciclo:**
 
 ```
 Profilo iniziale
-  → Stima iniziale RMR/TDEE (§4.1, initial_estimate)
+  → Stima iniziale RMR/TDEE (§4.1, initial_estimate — scritta in
+     nutrition_target_history, mai sovrascritta)
   → Piano nutrizionale (§4.4)
   → Food Tracking (meal_entries) ────┐
                                        ├──→ Data Quality Check
   → Weight Tracking (body_metrics) ──┘
-  → Trend Engine (finestre mobili 7 / 14 / 21 giorni su peso e intake)
+  → Trend Engine (finestra 14 giorni su peso e intake — 7/21 disponibili
+     via parametro, non ancora esposti in UI)
   → Adaptation Decision Engine
-  → Nessuna modifica  ── oppure ──  Nuovo target (current_target)
-  → Nuova versione del piano (vedi §4.5/§12 — plan_versions)
+  → Nessuna modifica  ── oppure ──  Nuovo target (current_target, in profiles)
+  → Nuova versione del piano (plan_versions, trigger:'adaptation')
 ```
 
 **Logica decisionale (pseudocodice), con isteresi esplicita** per evitare di correggere il piano per ogni piccola oscillazione del peso:
@@ -360,7 +362,7 @@ else:
     NESSUNA MODIFICA
 ```
 
-Ogni volta che questa logica produce un nuovo target, il risultato **non sovrascrive** `nutrition_targets` in place: crea una nuova riga in `plan_versions` (`trigger = 'adaptation'`) — è ciò che rende interrogabile lo storico delle correzioni nel tempo (§4.5/§12).
+Ogni volta che questa logica produce un nuovo target (`adaptation-evaluate`, in produzione): aggiorna `profiles.daily_calorie_target`/`carbs_g` (il `current_target`), **aggiunge** una riga in `nutrition_target_history` (`source:'adaptation'`, mai un update in place — la riga `initial_estimate` originale resta intatta) e una riga in `plan_versions` (`trigger:'adaptation'`) — è ciò che rende interrogabile lo storico delle correzioni nel tempo, e ciò che permette al Profilo di mostrare "Target attuale" vs "Stima iniziale" quando divergono.
 
 ### 4.2 Livello "metodologia AI" — Edge Function `generate-plan-strategy`
 

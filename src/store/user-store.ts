@@ -1,7 +1,13 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-import { evaluateNutritionAdaptation, type AdaptationDecision } from '@/lib/api/nutrition-targets';
+import { daysAgoISO } from '@/lib/mock/dates';
+import {
+  evaluateNutritionAdaptation,
+  fetchLatestInitialEstimate,
+  insertNutritionTargetHistory,
+  type AdaptationDecision,
+} from '@/lib/api/nutrition-targets';
 import { fetchProfile, upsertProfile } from '@/lib/api/profile';
 import type { Goal, Sex, Sport, UserProfile } from '@/lib/mock/types';
 import { withAuthRetry } from '@/lib/supabase/retry';
@@ -24,6 +30,13 @@ const DEFAULT_PROFILE: UserProfile = {
   hydrationTargetMl: 0,
 };
 
+// spec §0.3/§4.1 bis, "initial_estimate vs current_target": the
+// questionnaire's one-time computation is a snapshot, never mutated again
+// once written to nutrition_target_history — `dailyCalorieTarget`/
+// `macroTargetsG` above are the `current_target` half, the one
+// reviewNutritionTarget (Adaptive Nutrition Engine) is allowed to nudge.
+type InitialEstimate = { calories: number; macroTargetsG: { protein: number; carbs: number; fats: number }; effectiveDate: string } | null;
+
 function currentUserId(): string | null {
   return useAuthStore.getState().user?.id ?? null;
 }
@@ -41,6 +54,12 @@ export type FinalizeOnboardingInput = {
 };
 
 type UserState = UserProfile & {
+  /** The questionnaire's one-time `initial_estimate` (spec §0.3/§4.1 bis) —
+   * null until finalizeOnboarding runs at least once, or until
+   * syncFromServer resolves it from nutrition_target_history. Compare
+   * against dailyCalorieTarget/macroTargetsG (the live `current_target`) to
+   * see how far the Adaptive Nutrition Engine has actually nudged the plan. */
+  initialEstimate: InitialEstimate;
   finalizeOnboarding: (input: FinalizeOnboardingInput) => void;
   updateProfile: (partial: Partial<UserProfile>) => void;
   // Server-authoritative refresh on sign-in (see src/app/_layout.tsx) — the
@@ -73,10 +92,25 @@ export const useUserStore = create<UserState>()(
   persist(
     (set, get) => ({
       ...DEFAULT_PROFILE,
+      initialEstimate: null,
       finalizeOnboarding: (input) => {
-        set(input);
+        const effectiveDate = daysAgoISO(0);
+        set({ ...input, initialEstimate: { calories: input.dailyCalorieTarget, macroTargetsG: input.macroTargetsG, effectiveDate } });
         const userId = currentUserId();
-        if (userId) upsertProfile(userId, get()).catch((err) => console.warn('upsertProfile failed', err));
+        if (!userId) return;
+        upsertProfile(userId, get()).catch((err) => console.warn('upsertProfile failed', err));
+        // A fresh baseline every time the questionnaire is (re)completed —
+        // never overwrites a previous one, same philosophy as
+        // body-store.ts's resetStartingWeight — so the history stays a real
+        // audit trail of every "the estimate started here" moment.
+        insertNutritionTargetHistory(userId, {
+          effectiveDate,
+          calories: input.dailyCalorieTarget,
+          proteinG: input.macroTargetsG.protein,
+          carbsG: input.macroTargetsG.carbs,
+          fatsG: input.macroTargetsG.fats,
+          source: 'initial_estimate',
+        }).catch((err) => console.warn('insertNutritionTargetHistory (initial_estimate) failed', err));
       },
       updateProfile: (partial) => {
         set(partial);
@@ -87,13 +121,25 @@ export const useUserStore = create<UserState>()(
         const userId = currentUserId();
         if (!userId) return;
         try {
-          const profile = await withAuthRetry(() => fetchProfile(userId));
+          const [profile, initialEstimateRow] = await Promise.all([
+            withAuthRetry(() => fetchProfile(userId)),
+            withAuthRetry(() => fetchLatestInitialEstimate(userId)),
+          ]);
           if (profile) set(profile);
+          if (initialEstimateRow) {
+            set({
+              initialEstimate: {
+                calories: initialEstimateRow.calories,
+                macroTargetsG: { protein: initialEstimateRow.proteinG, carbs: initialEstimateRow.carbsG, fats: initialEstimateRow.fatsG },
+                effectiveDate: initialEstimateRow.effectiveDate,
+              },
+            });
+          }
         } catch (err) {
           console.warn('user-store syncFromServer failed', err);
         }
       },
-      clearLocal: () => set(DEFAULT_PROFILE),
+      clearLocal: () => set({ ...DEFAULT_PROFILE, initialEstimate: null }),
       reviewNutritionTarget: async () => {
         const { decision, updatedProfile } = await evaluateNutritionAdaptation();
         if (updatedProfile) {

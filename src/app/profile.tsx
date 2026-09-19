@@ -93,6 +93,13 @@ export default function ProfileScreen() {
     // shows one row fewer instead of erroring.
   ].filter((r): r is { label: string; value: string } => Boolean(r.value));
 
+  // spec §0.3/§4.1 bis, "initial_estimate vs current_target": once the
+  // Adaptive Nutrition Engine has actually nudged the live target away from
+  // what the questionnaire first computed, show both instead of only the
+  // current one — otherwise the correction is invisible to the user.
+  const initialEstimate = currentUser.initialEstimate;
+  const hasAdaptedCalories = initialEstimate != null && initialEstimate.calories !== currentUser.dailyCalorieTarget;
+
   return (
     <ScreenScroll>
       <View style={styles.header}>
@@ -148,7 +155,10 @@ export default function ProfileScreen() {
       <View>
         <SectionHeader title="Obiettivi nutrizionali" />
         <GlassSurface level="card" radius={Radius.large} style={{ padding: Spacing.three, gap: Spacing.two }}>
-          <Row label="Calorie giornaliere" value={`${currentUser.dailyCalorieTarget} kcal`} />
+          <Row label={hasAdaptedCalories ? 'Target attuale' : 'Calorie giornaliere'} value={`${currentUser.dailyCalorieTarget} kcal`} />
+          {hasAdaptedCalories ? (
+            <Row label="Stima iniziale (questionario)" value={`${initialEstimate.calories} kcal`} />
+          ) : null}
           <Row label="Proteine" value={`${currentUser.macroTargetsG.protein} g`} />
           <Row label="Carboidrati" value={`${currentUser.macroTargetsG.carbs} g`} />
           <Row label="Grassi" value={`${currentUser.macroTargetsG.fats} g`} />
