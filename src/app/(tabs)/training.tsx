@@ -104,13 +104,6 @@ export default function TrainingScreen() {
     <ScreenScroll>
       <ScreenHeader eyebrow="Il tuo programma" title="Training" />
 
-      <PrimaryButton
-        variant="outline"
-        label="Aggiungi allenamento"
-        icon="addCircle"
-        onPress={() => setLogActivityVisible(true)}
-      />
-
       {!trainingPlan ? (
         <GlassSurface level="card" radius={Radius.large} style={{ padding: Spacing.four, gap: Spacing.two }}>
           <ThemedText type="smallBold">Nessun programma generato</ThemedText>
@@ -166,6 +159,13 @@ export default function TrainingScreen() {
               isDayComplete={isDayComplete}
             />
           </View>
+
+          <PrimaryButton
+            variant="outline"
+            label="Aggiungi allenamento non programmato"
+            icon="addCircle"
+            onPress={() => setLogActivityVisible(true)}
+          />
 
           <ThemedText type="subtitle">{selectedDayHeading}</ThemedText>
 

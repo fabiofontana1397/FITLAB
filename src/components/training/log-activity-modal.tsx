@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { GlassSurface } from '@/components/glass/glass-surface';
@@ -50,12 +50,14 @@ function LogActivityForm({
   onSave: (activityType: ActivityType, intensity: ActivityIntensity, durationMinutes: number) => void;
 }) {
   const [activityType, setActivityType] = useState<ActivityType>('gym');
+  const [isTypeMenuOpen, setTypeMenuOpen] = useState(false);
   const [intensity, setIntensity] = useState<ActivityIntensity>('moderate');
   const [duration, setDuration] = useState('45');
 
   const durationMinutes = parseInt(duration, 10);
   const isValid = Number.isFinite(durationMinutes) && durationMinutes > 0;
   const estimatedKcal = isValid ? estimateActivityKcal(activityType, intensity, durationMinutes, weightKg || 75) : 0;
+  const selectedTypeLabel = ACTIVITY_TYPE_OPTIONS.find((o) => o.value === activityType)?.label ?? '';
 
   const handleSave = () => {
     if (!isValid) return;
@@ -67,7 +69,7 @@ function LogActivityForm({
     <>
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
-          <ThemedText type="subtitle">Aggiungi allenamento</ThemedText>
+          <ThemedText type="subtitle">Aggiungi allenamento non programmato</ThemedText>
           <ThemedText type="caption" themeColor="textSecondary">
             Stima le calorie bruciate in base a tipo, durata e intensità
           </ThemedText>
@@ -81,21 +83,35 @@ function LogActivityForm({
         <ThemedText type="label" themeColor="textSecondary">
           Tipo di allenamento
         </ThemedText>
-        <View style={styles.chipsRow}>
-          {ACTIVITY_TYPE_OPTIONS.map((option) => {
-            const selected = activityType === option.value;
-            return (
-              <Pressable
-                key={option.value}
-                onPress={() => setActivityType(option.value)}
-                style={[styles.chip, { backgroundColor: selected ? theme.accent : theme.backgroundElement, borderColor: selected ? theme.accent : theme.border }]}>
-                <ThemedText type="caption" style={{ color: selected ? theme.onAccent : theme.text, fontWeight: '600' }}>
-                  {option.label}
-                </ThemedText>
-              </Pressable>
-            );
-          })}
-        </View>
+        <Pressable
+          onPress={() => setTypeMenuOpen((v) => !v)}
+          style={[styles.dropdownField, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
+          <ThemedText type="small">{selectedTypeLabel}</ThemedText>
+          <Icon name={isTypeMenuOpen ? 'chevronUp' : 'chevronDown'} size={16} color={theme.textTertiary} />
+        </Pressable>
+        {isTypeMenuOpen ? (
+          <View style={[styles.dropdownMenu, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
+            <ScrollView style={styles.dropdownScroll} nestedScrollEnabled>
+              {ACTIVITY_TYPE_OPTIONS.map((option) => {
+                const selected = activityType === option.value;
+                return (
+                  <Pressable
+                    key={option.value}
+                    onPress={() => {
+                      setActivityType(option.value);
+                      setTypeMenuOpen(false);
+                    }}
+                    style={[styles.dropdownOption, selected && { backgroundColor: theme.accentSoft }]}>
+                    <ThemedText type="small" style={selected ? { color: theme.accent, fontWeight: '600' } : undefined}>
+                      {option.label}
+                    </ThemedText>
+                    {selected ? <Icon name="check" size={16} color={theme.accent} /> : null}
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+        ) : null}
       </View>
 
       <View style={{ gap: Spacing.two, marginTop: Spacing.three }}>
@@ -173,6 +189,30 @@ const styles = StyleSheet.create({
     borderRadius: Radius.pill,
     paddingHorizontal: Spacing.three,
     paddingVertical: 8,
+  },
+  dropdownField: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderRadius: Radius.small,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: 12,
+  },
+  dropdownMenu: {
+    borderWidth: 1,
+    borderRadius: Radius.small,
+    overflow: 'hidden',
+  },
+  dropdownScroll: {
+    maxHeight: 220,
+  },
+  dropdownOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.three,
+    paddingVertical: 12,
   },
   inputGroup: {
     gap: 4,

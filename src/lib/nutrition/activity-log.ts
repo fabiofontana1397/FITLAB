@@ -5,7 +5,22 @@
  * planned or not, so the estimated-expenditure model (targets.ts, spec §5
  * bis) isn't limited to "did you finish today's plan workout".
  */
-export type ActivityType = 'gym' | 'running' | 'cycling' | 'swimming' | 'walking' | 'functional' | 'tennis' | 'other';
+export type ActivityType =
+  | 'gym'
+  | 'running'
+  | 'cycling'
+  | 'swimming'
+  | 'walking'
+  | 'functional'
+  | 'tennis'
+  | 'soccer'
+  | 'basketball'
+  | 'volleyball'
+  | 'boxing'
+  | 'yoga'
+  | 'skiing'
+  | 'hiking'
+  | 'other';
 export type ActivityIntensity = 'low' | 'moderate' | 'high';
 
 export const ACTIVITY_TYPE_OPTIONS: { value: ActivityType; label: string }[] = [
@@ -16,6 +31,13 @@ export const ACTIVITY_TYPE_OPTIONS: { value: ActivityType; label: string }[] = [
   { value: 'walking', label: 'Camminata' },
   { value: 'functional', label: 'Functional/CrossFit' },
   { value: 'tennis', label: 'Tennis/Padel' },
+  { value: 'soccer', label: 'Calcio' },
+  { value: 'basketball', label: 'Basket' },
+  { value: 'volleyball', label: 'Pallavolo' },
+  { value: 'boxing', label: 'Boxe/Arti marziali' },
+  { value: 'yoga', label: 'Yoga/Pilates' },
+  { value: 'skiing', label: 'Sci/Snowboard' },
+  { value: 'hiking', label: 'Escursionismo' },
   { value: 'other', label: 'Altro' },
 ];
 
@@ -37,6 +59,13 @@ const MET_TABLE: Record<ActivityType, Record<ActivityIntensity, number>> = {
   walking: { low: 2.8, moderate: 3.5, high: 4.5 },
   functional: { low: 5, moderate: 8, high: 10 },
   tennis: { low: 5, moderate: 7, high: 8 },
+  soccer: { low: 5, moderate: 7, high: 10 },
+  basketball: { low: 4.5, moderate: 6.5, high: 8 },
+  volleyball: { low: 3, moderate: 4, high: 6 },
+  boxing: { low: 6, moderate: 9, high: 12.8 },
+  yoga: { low: 2.5, moderate: 3, high: 4 },
+  skiing: { low: 5, moderate: 7, high: 9 },
+  hiking: { low: 4, moderate: 6, high: 8 },
   other: { low: 3, moderate: 5, high: 7 },
 };
 
