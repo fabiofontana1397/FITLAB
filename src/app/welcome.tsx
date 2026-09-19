@@ -1,30 +1,18 @@
 import { router } from 'expo-router';
-import { StyleSheet, View } from 'react-native';
+import { Image, StyleSheet, View } from 'react-native';
 
-import { GlassSurface } from '@/components/glass/glass-surface';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
-import { Icon } from '@/components/ui/icon';
 import { PrimaryButton } from '@/components/ui/primary-button';
-import { Radius, Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import { Spacing } from '@/constants/theme';
 
 export default function WelcomeScreen() {
-  const theme = useTheme();
-
   return (
     <ScreenScroll contentContainerStyle={{ justifyContent: 'space-between', flex: 1 }}>
       <View style={{ flex: 1 }} />
 
       <View style={styles.hero}>
-        <GlassSurface level="raised" radius={Radius.pill} style={styles.logoBadge}>
-          <View style={styles.logoInner}>
-            <Icon name="bolt" size={32} color={theme.accent} />
-          </View>
-        </GlassSurface>
-        <ThemedText type="hero" style={{ textAlign: 'center' }}>
-          FITLAB
-        </ThemedText>
+        <Image source={require('@/assets/images/logo-wordmark.png')} style={styles.logo} resizeMode="contain" />
         <ThemedText type="default" themeColor="textSecondary" style={{ textAlign: 'center' }}>
           Il tuo personal operating system per corpo, allenamento e alimentazione.
         </ThemedText>
@@ -43,13 +31,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.three,
   },
-  logoBadge: {
-    width: 72,
-    height: 72,
-  },
-  logoInner: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+  logo: {
+    width: 260,
+    height: 71,
   },
 });
