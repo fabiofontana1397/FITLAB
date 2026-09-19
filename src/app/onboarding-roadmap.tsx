@@ -120,7 +120,13 @@ const DIET_STEPS: Record<GoalCategory, RoadmapStep[]> = {
   ],
 };
 
-const TRAINING_STEPS: RoadmapStep[] = [
+// Two variants instead of one static list — spec request: a beginner
+// genuinely needs a technique/adattamento month, but telling an
+// intermediate/expert lifter their plan "starts from the basics" is both
+// wrong and demotivating. Mirrors what training-planner.ts itself now does
+// (skipExperiencedAdattamento): the roadmap text and the actual generated
+// plan agree on whether month 1 is a ramp-up or already real progression.
+const TRAINING_STEPS_BEGINNER: RoadmapStep[] = [
   {
     icon: 'calendar',
     period: 'Mese 1',
@@ -147,7 +153,39 @@ const TRAINING_STEPS: RoadmapStep[] = [
   },
 ];
 
-function buildPages(mode: OnboardingMode, goal?: string): RoadmapPage[] {
+const TRAINING_STEPS_EXPERIENCED: RoadmapStep[] = [
+  {
+    icon: 'calendar',
+    period: 'Mese 1',
+    title: 'Si parte già in progressione',
+    description: 'Vista la tua esperienza, saltiamo il mese di sola tecnica: il carico di partenza è già tarato sul tuo livello.',
+  },
+  {
+    icon: 'trendUp',
+    period: 'Da subito',
+    title: 'Sovraccarico progressivo',
+    description: 'Aumentiamo peso, ripetizioni o volume settimana su settimana, seguendo le performance che ci segnali.',
+  },
+  {
+    icon: 'moon',
+    period: 'Ogni 4-6 settimane',
+    title: 'Settimana di scarico',
+    description: 'Un breve periodo a intensità ridotta per favorire il recupero e continuare a progredire nel tempo.',
+  },
+  {
+    icon: 'target',
+    period: 'Ogni mese',
+    title: 'Piano aggiornato',
+    description: 'Rivediamo il tuo programma ogni mese: nuovi massimali, nuovi esercizi e volume calibrato sui progressi.',
+  },
+];
+
+/** Same "skip the beginner ramp-up" rule training-planner.ts uses. */
+function isExperiencedLifter(gymSkillLevel?: string): boolean {
+  return gymSkillLevel === 'intermediate' || gymSkillLevel === 'expert';
+}
+
+function buildPages(mode: OnboardingMode, goal?: string, gymSkillLevel?: string): RoadmapPage[] {
   const pages: RoadmapPage[] = [];
   if (mode !== 'training') {
     pages.push({
@@ -159,12 +197,15 @@ function buildPages(mode: OnboardingMode, goal?: string): RoadmapPage[] {
     });
   }
   if (mode !== 'diet') {
+    const experienced = isExperiencedLifter(gymSkillLevel);
     pages.push({
       id: 'training',
       kicker: 'Allenamento',
       title: 'Come evolve il tuo allenamento',
-      subtitle: 'Progressione costante, con recupero programmato e aggiornamenti mensili.',
-      steps: TRAINING_STEPS,
+      subtitle: experienced
+        ? 'Un piano già al tuo livello, non una scaletta da principiante: progressione costante con aggiornamenti mensili.'
+        : 'Progressione costante, con recupero programmato e aggiornamenti mensili.',
+      steps: experienced ? TRAINING_STEPS_EXPERIENCED : TRAINING_STEPS_BEGINNER,
     });
   }
   pages.push({
@@ -189,7 +230,10 @@ export default function OnboardingRoadmapScreen() {
   const isGenerating = usePlanStore((s) => s.isGenerating);
 
   const mode = (answers.mode as OnboardingMode) ?? 'both';
-  const pages = useMemo(() => buildPages(mode, answers.goal as string | undefined), [mode, answers.goal]);
+  const pages = useMemo(
+    () => buildPages(mode, answers.goal as string | undefined, answers.gymSkillLevel as string | undefined),
+    [mode, answers.goal, answers.gymSkillLevel]
+  );
   const isLastPage = pageIndex === pages.length - 1;
 
   const goToPage = (index: number) => {
@@ -235,7 +279,7 @@ export default function OnboardingRoadmapScreen() {
         style={{ flex: 1 }}>
         {pages.map((page) => (
           <View key={page.id} style={{ width, height: '100%' }}>
-            <View style={styles.pageInner}>
+            <ScrollView contentContainerStyle={styles.pageInner} showsVerticalScrollIndicator={false}>
               <View style={{ gap: Spacing.one }}>
                 <ThemedText type="label" themeColor="textSecondary">
                   {page.kicker}
@@ -261,7 +305,7 @@ export default function OnboardingRoadmapScreen() {
                   </View>
                 </FadeInView>
               )}
-            </View>
+            </ScrollView>
           </View>
         ))}
       </ScrollView>
@@ -377,12 +421,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.four,
   },
   pageInner: {
-    flex: 1,
     width: '100%',
     maxWidth: MaxContentWidth,
     alignSelf: 'center',
     paddingHorizontal: Spacing.four,
     paddingTop: Spacing.six,
+    // Room to scroll past the last timeline row instead of it landing
+    // flush against (or under) the fixed dots/nav footer below the pager.
+    paddingBottom: Spacing.six,
     gap: Spacing.five,
   },
   readyBadge: {

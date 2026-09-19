@@ -26,6 +26,7 @@ import {
 } from '@/lib/questionnaire/schema';
 import { computeNutritionTargets, deriveWeeklyTrainingDays } from '@/lib/nutrition/targets';
 import { daysAgoISO } from '@/lib/mock/dates';
+import { parseNumericAnswer } from '@/lib/questionnaire/parse-answer';
 import { sportIcon } from '@/lib/mock/training';
 import type { Goal, Sex, Sport } from '@/lib/mock/types';
 import { useBodyStore } from '@/store/body-store';
@@ -109,9 +110,9 @@ export default function OnboardingScreen() {
     if (!isResultsScreen) return null;
     return computeNutritionTargets({
       sex: (answers.sex as Sex) ?? 'unspecified',
-      age: Number(answers.age) || 30,
-      heightCm: Number(answers.heightCm) || 180,
-      currentWeightKg: Number(answers.currentWeightKg) || 80,
+      age: parseNumericAnswer(answers.age) ?? 30,
+      heightCm: parseNumericAnswer(answers.heightCm) ?? 180,
+      currentWeightKg: parseNumericAnswer(answers.currentWeightKg) ?? 80,
       goal: (answers.goal as Goal) ?? 'generalHealth',
       jobActivity: answers.jobActivity as string,
       weeklyTrainingDays: deriveWeeklyTrainingDays(answers),
@@ -145,14 +146,14 @@ export default function OnboardingScreen() {
       goal: (answers.goal as Goal) ?? 'generalHealth',
       sports: sports.length > 0 ? sports : ['gym'],
       sex: (answers.sex as Sex) ?? 'unspecified',
-      age: Number(answers.age) || 30,
-      heightCm: Number(answers.heightCm) || 180,
-      targetWeightKg: Number(answers.targetWeightKg) || 75,
+      age: parseNumericAnswer(answers.age) ?? 30,
+      heightCm: parseNumericAnswer(answers.heightCm) ?? 180,
+      targetWeightKg: parseNumericAnswer(answers.targetWeightKg) ?? 75,
       dailyCalorieTarget: results.dailyCalorieTarget,
       macroTargetsG: results.macroTargetsG,
       hydrationTargetMl: results.hydrationTargetMl,
     });
-    resetStartingWeight(Number(answers.currentWeightKg) || 80, daysAgoISO(0));
+    resetStartingWeight(parseNumericAnswer(answers.currentWeightKg) ?? 80, daysAgoISO(0));
     // Fire-and-forget, same as before this became AI-assisted: the
     // congratulations/roadmap screens don't need the plan immediately, and
     // the AI strategy call (web search + RAG) can take a few seconds —

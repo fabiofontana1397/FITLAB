@@ -1,4 +1,5 @@
 import type { Goal } from '@/lib/mock/types';
+import { parseNumericAnswer } from '@/lib/questionnaire/parse-answer';
 
 // Safe, sustainable rate of body-weight change per week, by goal — sports-
 // nutrition ballpark figures (≈0.5-1%/week for fat loss, much slower for
@@ -37,8 +38,8 @@ const MIN_MEANINGFUL_KG_DELTA = 0.5;
 export function computePlanDurationMonths(answers: Record<string, unknown>): number {
   const goal = answers.goal as Goal | undefined;
   const weeklyRateKg = goal ? KG_PER_WEEK_BY_GOAL[goal] : undefined;
-  const currentWeightKg = Number(answers.currentWeightKg) || 0;
-  const targetWeightKg = Number(answers.targetWeightKg) || 0;
+  const currentWeightKg = parseNumericAnswer(answers.currentWeightKg) ?? 0;
+  const targetWeightKg = parseNumericAnswer(answers.targetWeightKg) ?? 0;
   if (!weeklyRateKg || currentWeightKg <= 0 || targetWeightKg <= 0) return DEFAULT_DURATION_MONTHS;
 
   const kgDelta = goal === 'loseFat' ? currentWeightKg - targetWeightKg : targetWeightKg - currentWeightKg;

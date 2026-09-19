@@ -12,6 +12,7 @@ import {
   type SplitLabel,
 } from './exercise-library';
 import { computePlanDurationMonths } from './plan-duration';
+import { parseNumericAnswer } from '@/lib/questionnaire/parse-answer';
 import type { TrainingStrategy } from './strategy-types';
 import type { PlanPhaseKind, TrainingDayPlan, TrainingExerciseEntry, TrainingMonthPlan, TrainingPlan } from './types';
 
@@ -70,10 +71,22 @@ function availableDaysNum(value: unknown): number {
   return Number.isFinite(n) && n > 0 ? n : 3;
 }
 
-function phaseForMonth(monthIndex: number, totalMonths: number): PlanPhaseKind {
-  if (monthIndex === 1) return 'adattamento';
+/**
+ * `skipAdattamento` (spec request): an intermediate/expert lifter doesn't
+ * need a technique/ramp-up month — starting them there both undersells
+ * their actual capability (lighter load, higher-rep "adattamento" scheme)
+ * and reads as if the app assumed they were a beginner. Only a true
+ * beginner (or a user who didn't answer gymSkillLevel at all) gets month 1
+ * as 'adattamento'; everyone else goes straight to 'progressione'.
+ */
+function phaseForMonth(monthIndex: number, totalMonths: number, skipAdattamento: boolean): PlanPhaseKind {
+  if (monthIndex === 1 && !skipAdattamento) return 'adattamento';
   if (monthIndex === totalMonths) return 'consolidamento';
   return 'progressione';
+}
+
+function isExperiencedLifter(gymSkillLevel: unknown): boolean {
+  return gymSkillLevel === 'intermediate' || gymSkillLevel === 'expert';
 }
 
 function phaseTitle(phase: PlanPhaseKind): string {
@@ -107,7 +120,7 @@ export function generateTrainingPlan(input: TrainingPlanInput): TrainingPlan | n
 
   const durationMonths = computePlanDurationMonths(answers);
   const totalAvailable = availableDaysNum(answers.availableDays);
-  const bodyweightKg = Number(answers.currentWeightKg) || 75;
+  const bodyweightKg = parseNumericAnswer(answers.currentWeightKg) ?? 75;
 
   let gymDays = practicesGym ? freqNum(answers.freq_gym) || 3 : 0;
   let runDays = practicesRunning ? freqNum(answers.freq_running) || 2 : 0;
@@ -147,6 +160,7 @@ export function generateTrainingPlan(input: TrainingPlanInput): TrainingPlan | n
   const gymSlots = dayIndices.slice(0, gymDays);
   const runSlots = dayIndices.slice(gymDays, gymDays + runDays);
 
+  const skipAdattamento = isExperiencedLifter(answers.gymSkillLevel);
   let needsManualReview = existingMonths?.some((m) => m.weeklySplit.some((d) => d.exercises?.some((ex) => ex.needsManualReview))) ?? false;
   const months: TrainingMonthPlan[] = [];
   for (let monthIndex = 1; monthIndex <= durationMonths; monthIndex++) {
@@ -157,7 +171,7 @@ export function generateTrainingPlan(input: TrainingPlanInput): TrainingPlan | n
         continue;
       }
     }
-    const phase = phaseForMonth(monthIndex, durationMonths);
+    const phase = phaseForMonth(monthIndex, durationMonths, skipAdattamento);
     const scheme = phase === 'adattamento' ? gymScheme.adattamento : gymScheme.later;
     const runList = phase === 'adattamento' ? runSessions.adattamento : runSessions.later;
 
