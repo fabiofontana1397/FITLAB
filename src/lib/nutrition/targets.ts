@@ -171,9 +171,11 @@ export type EnergyExpenditureBreakdown = {
   resting: number;
   /** Baseline daily activity/NEAT — what the job-activity multiplier adds over pure resting. */
   baselineActivity: number;
-  /** Estimated contribution of today's workout, scaled by how much of it was completed — see exerciseContributionKcal. */
+  /** Estimated contribution of today's generated-plan workout, scaled by how much of it was completed — see exerciseContributionKcal. */
   exercise: number;
-  /** resting + baselineActivity + exercise — the estimated total for the day. */
+  /** Sum of any manually-logged activities for the day ("Aggiungi allenamento", lib/nutrition/activity-log.ts) — independent of the generated plan, so an extra/unplanned session still counts. */
+  loggedActivities: number;
+  /** resting + baselineActivity + exercise + loggedActivities — the estimated total for the day. */
   total: number;
 };
 
@@ -196,6 +198,9 @@ export function estimateEnergyExpenditureBreakdown(input: {
    * all-or-nothing "trainedThisDay" flag so a half-finished session earns
    * half the estimated exercise contribution instead of zero. */
   completionFraction: number;
+  /** Sum of the day's manually-logged activities' estimated kcal (see
+   * lib/nutrition/activity-log.ts) — 0 if none were logged. */
+  loggedActivitiesKcal?: number;
 }): EnergyExpenditureBreakdown {
   const bmr = bmrMifflinStJeor(input.sex, input.weightKg, input.heightCm, input.age);
   const jobMultiplier = JOB_ACTIVITY_MULTIPLIER[input.jobActivity ?? 'sedentary'] ?? 1.2;
@@ -206,7 +211,8 @@ export function estimateEnergyExpenditureBreakdown(input: {
     sessionDurationBucket: input.sessionDurationBucket,
     completionFraction: input.completionFraction,
   });
-  return { resting, baselineActivity, exercise, total: resting + baselineActivity + exercise };
+  const loggedActivities = input.loggedActivitiesKcal ?? 0;
+  return { resting, baselineActivity, exercise, loggedActivities, total: resting + baselineActivity + exercise + loggedActivities };
 }
 
 /** A single day's estimated total energy expenditure — an ESTIMATE, not a
@@ -220,6 +226,7 @@ export function estimateDailyEnergyExpenditure(input: {
   jobActivity?: string;
   sessionDurationBucket?: string;
   completionFraction: number;
+  loggedActivitiesKcal?: number;
 }): number {
   return estimateEnergyExpenditureBreakdown(input).total;
 }

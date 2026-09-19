@@ -25,6 +25,8 @@ import { estimateDailyEnergyExpenditure, estimateStepsKcal, estimateTrainingCont
 import { WEEKDAY_LABELS } from '@/lib/planning/exercise-library';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
 import type { TrainingExerciseEntry } from '@/lib/planning/types';
+import type { LoggedActivity } from '@/lib/api/activity-log';
+import { useActivityLogStore } from '@/store/activity-log-store';
 import { useBodyStore } from '@/store/body-store';
 import { useNutritionStore, sumMacros } from '@/store/nutrition-store';
 import { useOnboardingStore } from '@/store/onboarding-store';
@@ -37,6 +39,10 @@ function greeting() {
   if (hour < 12) return 'Buongiorno';
   if (hour < 18) return 'Buon pomeriggio';
   return 'Buonasera';
+}
+
+function sumActivityKcalForDate(entries: LoggedActivity[], date: string): number {
+  return entries.filter((e) => e.date === date).reduce((sum, e) => sum + e.estimatedKcal, 0);
 }
 
 /** Most recent body_metrics row marked as a baseline (see body-store.ts's
@@ -62,6 +68,7 @@ export default function HomeScreen() {
   const loggedSets = useTrainingProgressStore((s) => s.sets);
   const nutritionEntries = useNutritionStore((s) => s.entries);
   const bodyEntries = useBodyStore((s) => s.entries);
+  const activityLogEntries = useActivityLogStore((s) => s.entries);
 
   // Same weeklySplit[weekday] lookup training.tsx uses for the selected day
   // — here always pinned to today, so the ring/card below track the exact
@@ -106,7 +113,12 @@ export default function HomeScreen() {
         ? (todayPlanDay.note ?? 'Sessione cardio')
         : 'Recupero attivo';
 
-  const latestBody = latestSnapshot(bodyEntries);
+  // Memoized (not a plain expression) so `latestBody.weightKg` below is a
+  // stable dependency for other useMemo/useCallback hooks — an unmemoized
+  // `latestSnapshot(bodyEntries)` returns a fresh object every render, and
+  // the React Compiler can't prove a member access on that is safe to use
+  // as a dependency (see weekDays below).
+  const latestBody = useMemo(() => latestSnapshot(bodyEntries), [bodyEntries]);
   const startBody = bodyEntries[0] ?? latestBody;
   const doneSoFar = startBody.weightKg - latestBody.weightKg;
 
@@ -116,14 +128,19 @@ export default function HomeScreen() {
   // share of the estimated exercise contribution (§5 bis), not zero.
   const todayCompletionFraction =
     todayPlanDay?.type === 'workout' && workoutExercises.length > 0 ? completedCount / workoutExercises.length : 0;
-  const todayTrainingKcal = estimateTrainingContributionKcal({
-    sex: currentUser.sex,
-    age: currentUser.age,
-    heightCm: currentUser.heightCm,
-    weightKg: latestBody.weightKg,
-    sessionDurationBucket: onboardingAnswers.sessionDuration as string | undefined,
-    completionFraction: todayCompletionFraction,
-  });
+  // Manually-logged sessions ("Aggiungi allenamento" in Training) count
+  // toward the estimate too — an extra/unplanned workout shouldn't be
+  // invisible just because it wasn't part of the generated plan.
+  const todayLoggedActivitiesKcal = sumActivityKcalForDate(activityLogEntries, today);
+  const todayTrainingKcal =
+    estimateTrainingContributionKcal({
+      sex: currentUser.sex,
+      age: currentUser.age,
+      heightCm: currentUser.heightCm,
+      weightKg: latestBody.weightKg,
+      sessionDurationBucket: onboardingAnswers.sessionDuration as string | undefined,
+      completionFraction: todayCompletionFraction,
+    }) + todayLoggedActivitiesKcal;
   const todayStepsKcal = estimateStepsKcal(todaysSteps, latestBody.weightKg);
 
   const [weightRange, setWeightRange] = useState<WeightRange>('settimana');
@@ -200,9 +217,14 @@ export default function HomeScreen() {
     });
   }, [trainingPlan, weekDates, accountStartDate, completedExercises, nutritionEntries, calorieTarget, currentUser, latestBody.weightKg, onboardingAnswers, today]);
 
-  const todayExpenditure = weekDays.find((d) => d.isToday);
-  const weekEstimatedExpenditureSoFar = weekDays.filter((d) => d.hasHappened).reduce((sum, d) => sum + d.estimatedExpenditureKcal, 0);
-  const weeklyProgrammedKcal = calorieTarget * weekDays.length;
+  // Folded in as a plain post-processing pass (not inside the useMemo
+  // above) so this new dependency never touches that hook's existing
+  // compiler-preserved memoization boundary.
+  const weekDaysWithActivity = weekDays.map((d) => ({ ...d, estimatedExpenditureKcal: d.estimatedExpenditureKcal + sumActivityKcalForDate(activityLogEntries, d.date) }));
+
+  const todayExpenditure = weekDaysWithActivity.find((d) => d.isToday);
+  const weekEstimatedExpenditureSoFar = weekDaysWithActivity.filter((d) => d.hasHappened).reduce((sum, d) => sum + d.estimatedExpenditureKcal, 0);
+  const weeklyProgrammedKcal = calorieTarget * weekDaysWithActivity.length;
   const todayEstimatedBalance = todayExpenditure ? todayExpenditure.estimatedExpenditureKcal - todayExpenditure.eatenKcal : 0;
 
   // Every exercise appearing anywhere in the plan (same de-duplication
@@ -334,7 +356,7 @@ export default function HomeScreen() {
             </View>
           </View>
           <WeeklyBurnChart
-            days={weekDays.map((d) => ({
+            days={weekDaysWithActivity.map((d) => ({
               label: d.label,
               date: d.date,
               estimatedExpenditureKcal: d.estimatedExpenditureKcal,

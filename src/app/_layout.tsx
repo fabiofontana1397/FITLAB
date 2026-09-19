@@ -6,6 +6,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useHandleAuthRedirect } from '@/hooks/use-handle-auth-redirect';
 import { useStoreHydrated } from '@/hooks/use-store-hydrated';
 import { initSupabaseAuthLifecycle } from '@/lib/supabase/client';
+import { useActivityLogStore } from '@/store/activity-log-store';
 import { useAppStore } from '@/store/app-store';
 import { initAuthListener, useAuthStore } from '@/store/auth-store';
 import { useBodyStore } from '@/store/body-store';
@@ -50,6 +51,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
       usePlanStore.getState().syncFromServer();
       useOnboardingStore.getState().syncFromServer();
       useMonthlyCheckinStore.getState().syncFromServer();
+      useActivityLogStore.getState().syncFromServer();
     } else if (wasAuthenticated.current) {
       useUserStore.getState().clearLocal();
       useBodyStore.getState().clearLocal();
@@ -59,6 +61,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
       usePlanStore.getState().clearLocal();
       useOnboardingStore.getState().clearLocal();
       useMonthlyCheckinStore.getState().clearLocal();
+      useActivityLogStore.getState().clearLocal();
       useAppStore.getState().setHasOnboarded(false);
     }
     wasAuthenticated.current = isAuthenticated;

@@ -11,14 +11,18 @@ import { MonthProgressBar } from '@/components/ui/month-progress-bar';
 import { PrimaryButton } from '@/components/ui/primary-button';
 import { SectionHeader } from '@/components/ui/section-header';
 import { DayWheel } from '@/components/training/day-wheel';
+import { LogActivityModal } from '@/components/training/log-activity-modal';
 import { PlanExerciseRow } from '@/components/training/plan-exercise-row';
 import { PlanTimeline } from '@/components/training/plan-timeline';
 import { Radius, Spacing } from '@/constants/theme';
 import { useStoreHydrated } from '@/hooks/use-store-hydrated';
 import { useTheme } from '@/hooks/use-theme';
+import { latestSnapshot } from '@/lib/mock/body';
 import { daysAgoISO, mondayIndex } from '@/lib/mock/dates';
 import { currentMonthIndex, currentMonthProgress } from '@/lib/planning/plan-progress';
 import type { TrainingDayPlan } from '@/lib/planning/types';
+import { useActivityLogStore } from '@/store/activity-log-store';
+import { useBodyStore } from '@/store/body-store';
 import { useOnboardingStore } from '@/store/onboarding-store';
 import { isValidTrainingPlan, usePlanStore } from '@/store/plan-store';
 import {
@@ -41,6 +45,9 @@ export default function TrainingScreen() {
   const completedExercises = useTrainingProgressStore((s) => s.completed);
   const logSet = useTrainingProgressStore((s) => s.logSet);
   const toggleCompleted = useTrainingProgressStore((s) => s.toggleCompleted);
+  const bodyEntries = useBodyStore((s) => s.entries);
+  const addActivityEntry = useActivityLogStore((s) => s.addEntry);
+  const [isLogActivityVisible, setLogActivityVisible] = useState(false);
 
   const [selectedDate, setSelectedDate] = useState(daysAgoISO(0));
   // Tracks the day currently centered under the wheel while dragging, so the
@@ -96,6 +103,13 @@ export default function TrainingScreen() {
   return (
     <ScreenScroll>
       <ScreenHeader eyebrow="Il tuo programma" title="Training" />
+
+      <PrimaryButton
+        variant="outline"
+        label="Aggiungi allenamento"
+        icon="addCircle"
+        onPress={() => setLogActivityVisible(true)}
+      />
 
       {!trainingPlan ? (
         <GlassSurface level="card" radius={Radius.large} style={{ padding: Spacing.four, gap: Spacing.two }}>
@@ -207,6 +221,13 @@ export default function TrainingScreen() {
           )}
         </>
       )}
+
+      <LogActivityModal
+        visible={isLogActivityVisible}
+        weightKg={latestSnapshot(bodyEntries).weightKg}
+        onClose={() => setLogActivityVisible(false)}
+        onSave={(activityType, intensity, durationMinutes) => addActivityEntry(activityType, intensity, durationMinutes, latestSnapshot(bodyEntries).weightKg)}
+      />
     </ScreenScroll>
   );
 }
