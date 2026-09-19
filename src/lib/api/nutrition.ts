@@ -52,3 +52,17 @@ export async function insertSeededDate(userId: string, date: string): Promise<vo
   const { error } = await supabase.from('nutrition_seeded_dates').upsert({ user_id: userId, date }, { onConflict: 'user_id,date' });
   if (error) throw error;
 }
+
+/** Removes only the plan-seeded entries for a date (id prefix 'plan-',
+ * see seedDayFromPlan) — never touches entries the user logged by hand,
+ * even on the same date. Used when the user switches the "segui il piano"
+ * flag back off (spec: tracking must be opt-in, never silently populated). */
+export async function deletePlanSeededEntriesForDate(userId: string, date: string): Promise<void> {
+  const { error } = await supabase.from('meal_entries').delete().eq('user_id', userId).eq('date', date).like('id', 'plan-%');
+  if (error) throw error;
+}
+
+export async function deleteSeededDate(userId: string, date: string): Promise<void> {
+  const { error } = await supabase.from('nutrition_seeded_dates').delete().eq('user_id', userId).eq('date', date);
+  if (error) throw error;
+}

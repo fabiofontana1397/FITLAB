@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, Switch, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { GlassSurface } from '@/components/glass/glass-surface';
@@ -43,8 +43,10 @@ export default function NutritionScreen() {
   const theme = useTheme();
   const currentUser = useUserStore();
   const entries = useNutritionStore((s) => s.entries);
+  const seededDates = useNutritionStore((s) => s.seededDates);
   const removeEntry = useNutritionStore((s) => s.removeEntry);
   const seedDayFromPlan = useNutritionStore((s) => s.seedDayFromPlan);
+  const unseedDay = useNutritionStore((s) => s.unseedDay);
   const dietPlan = usePlanStore((s) => s.dietPlan);
   const generatePlans = usePlanStore((s) => s.generatePlans);
   const onboardingAnswers = useOnboardingStore((s) => s.answers);
@@ -76,17 +78,21 @@ export default function NutritionScreen() {
   const currentMonthData = dietPlan?.months.find((m) => m.monthIndex === monthIndex);
   const monthProgress = dietPlan ? currentMonthProgress(dietPlan) : null;
 
-  useEffect(() => {
-    // Pre-fills the day's meal boxes with the plan's own foods/grams the
-    // first time this date is opened, so the user starts from "already
-    // planned" instead of an empty log — still fully editable afterward
-    // (seedDayFromPlan no-ops once a date has been seeded, so deleting
-    // everything back out doesn't bring it right back).
-    if (!currentMonthData) return;
-    const planDay = currentMonthData.weeklySplit[mondayIndex(new Date(selectedDate))];
-    if (!planDay) return;
-    seedDayFromPlan(selectedDate, planDay.meals);
-  }, [selectedDate, currentMonthData, seedDayFromPlan]);
+  // Tracking is opt-in (spec request): a date's calorie/macro totals must
+  // never populate themselves just from opening it — the user explicitly
+  // approves "follow the meal plan for this day" per date via the switch
+  // below, same principle as the training side's completion checkboxes.
+  // Without an explicit approval, a day stays blank and only what the user
+  // logs by hand (or approves here) ever counts toward Home's rings/charts.
+  const planDayForSelectedDate = currentMonthData?.weeklySplit[mondayIndex(new Date(selectedDate))];
+  const isFollowingPlanToday = seededDates.includes(selectedDate);
+  const canFollowPlanToday = !!planDayForSelectedDate;
+
+  const toggleFollowPlan = (value: boolean) => {
+    if (!planDayForSelectedDate) return;
+    if (value) seedDayFromPlan(selectedDate, planDayForSelectedDate.meals);
+    else unseedDay(selectedDate);
+  };
 
   const weekDates = useMemo(() => currentWeekDates(new Date(selectedDate)), [selectedDate]);
   const loggedDates = useMemo(() => new Set(entries.map((e) => e.date)), [entries]);
@@ -162,6 +168,24 @@ export default function NutritionScreen() {
 
       <View>
         <SectionHeader title="Traccia le tue calorie giornaliere" />
+
+        {canFollowPlanToday ? (
+          <GlassSurface level="card" radius={Radius.large} style={styles.followPlanRow}>
+            <View style={{ flex: 1, gap: 2 }}>
+              <ThemedText type="smallBold">Segui il piano alimentare per questo giorno</ThemedText>
+              <ThemedText type="caption" themeColor="textSecondary">
+                Il conteggio calorie resta vuoto finché non lo attivi: nessun pasto viene assunto per te.
+              </ThemedText>
+            </View>
+            <Switch
+              value={isFollowingPlanToday}
+              onValueChange={toggleFollowPlan}
+              trackColor={{ false: theme.backgroundElement, true: theme.accent }}
+              thumbColor={theme.onAccent}
+            />
+          </GlassSurface>
+        ) : null}
+
         <Animated.View style={heroAnimatedStyle}>
           <GlassSurface level="raised" radius={Radius.xlarge} style={styles.overviewCard}>
             <DayNavigator
@@ -317,6 +341,13 @@ function MacroStat({ label, value, suffix = 'g' }: { label: string; value: numbe
 }
 
 const styles = StyleSheet.create({
+  followPlanRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+    padding: Spacing.three,
+    marginBottom: Spacing.three,
+  },
   overviewCard: {
     padding: Spacing.four,
     gap: Spacing.four,

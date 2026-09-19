@@ -1,7 +1,17 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-import { deleteMealEntry, fetchMealEntries, fetchSeededDates, insertMealEntries, insertMealEntry, insertSeededDate, updateMealEntry } from '@/lib/api/nutrition';
+import {
+  deleteMealEntry,
+  deletePlanSeededEntriesForDate,
+  deleteSeededDate,
+  fetchMealEntries,
+  fetchSeededDates,
+  insertMealEntries,
+  insertMealEntry,
+  insertSeededDate,
+  updateMealEntry,
+} from '@/lib/api/nutrition';
 import type { IconName } from '@/components/ui/icon';
 import { addDaysISO, daysAgoISO } from '@/lib/mock/dates';
 import { findFood } from '@/lib/mock/food-database';
@@ -54,6 +64,12 @@ type NutritionState = {
   updateEntry: (id: string, foodId: string, grams: number) => void;
   removeEntry: (id: string) => void;
   seedDayFromPlan: (date: string, dayMeals: { slotId: string; items: { foodId: string; grams: number }[] }[]) => void;
+  /** Reverses seedDayFromPlan for a date — removes only the plan-origin
+   * entries (never anything the user logged by hand) and clears the date
+   * from seededDates so it can be re-seeded later. Calorie/macro tracking
+   * is opt-in: a day starts blank, and the user turns plan-tracking on
+   * (or back off) explicitly per date, it's never assumed automatically. */
+  unseedDay: (date: string) => void;
   syncFromServer: () => Promise<void>;
   /** Local-only reset on logout — see user-store.ts's clearLocal for why. */
   clearLocal: () => void;
@@ -100,6 +116,17 @@ export const useNutritionStore = create<NutritionState>()(
         if (userId) {
           insertMealEntries(userId, newEntries).catch((err) => console.warn('insertMealEntries failed', err));
           insertSeededDate(userId, date).catch((err) => console.warn('insertSeededDate failed', err));
+        }
+      },
+      unseedDay: (date) => {
+        set((state) => ({
+          entries: state.entries.filter((e) => !(e.date === date && e.id.startsWith('plan-'))),
+          seededDates: state.seededDates.filter((d) => d !== date),
+        }));
+        const userId = currentUserId();
+        if (userId) {
+          deletePlanSeededEntriesForDate(userId, date).catch((err) => console.warn('deletePlanSeededEntriesForDate failed', err));
+          deleteSeededDate(userId, date).catch((err) => console.warn('deleteSeededDate failed', err));
         }
       },
       syncFromServer: async () => {
