@@ -5,7 +5,14 @@
 // collected them.
 export const QUESTIONNAIRE_VERSION = 2;
 
-export type QuestionType = 'single' | 'multi' | 'scale' | 'number' | 'text' | 'longtext';
+export type QuestionType = 'single' | 'multi' | 'scale' | 'number' | 'text' | 'longtext' | 'time';
+
+// HH:MM, 00-23 hours — same format meal-slots.ts's parseTime() already
+// expects. Exported so question-field.tsx and onboarding.tsx's isAnswered()
+// validate against exactly one definition (spec §13 point 7: previously the
+// UI accepted any text and the regex only lived in meal-slots.ts, silently
+// discarding an unparseable time downstream instead of flagging it).
+export const TIME_REGEX = /^([01]?\d|2[0-3]):([0-5]\d)$/;
 
 export type QuestionOption = { value: string; label: string };
 
@@ -304,8 +311,8 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
           { value: 'unknown', label: 'Non lo so' },
         ],
       },
-      { id: 'bedTime', type: 'text', label: 'A che ora vai generalmente a dormire?', placeholder: '23:00' },
-      { id: 'wakeTime', type: 'text', label: 'A che ora ti svegli generalmente?', placeholder: '07:00' },
+      { id: 'bedTime', type: 'time', label: 'A che ora vai generalmente a dormire?', placeholder: '23:00' },
+      { id: 'wakeTime', type: 'time', label: 'A che ora ti svegli generalmente?', placeholder: '07:00' },
       {
         id: 'sleepHoursRange',
         type: 'single',
@@ -326,26 +333,26 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     title: 'Alimentazione',
     questions: [
       { id: 'mealsSelected', type: 'multi', label: 'Quali pasti preferisci fare al giorno?', options: MEAL_SLOT_OPTIONS },
-      { id: 'breakfastTime', type: 'text', label: 'A che ora fai normalmente colazione?', placeholder: '07:30' },
+      { id: 'breakfastTime', type: 'time', label: 'A che ora fai normalmente colazione?', placeholder: '07:30' },
       {
         id: 'morningSnackTime',
-        type: 'text',
+        type: 'time',
         label: 'A che ora fai normalmente lo spuntino della mattina?',
         placeholder: '10:30',
         dependsOn: { questionId: 'mealsSelected', equals: 'spuntinoMattina' },
       },
-      { id: 'lunchTime', type: 'text', label: 'A che ora pranzi?', placeholder: '13:00' },
+      { id: 'lunchTime', type: 'time', label: 'A che ora pranzi?', placeholder: '13:00' },
       {
         id: 'afternoonSnackTime',
-        type: 'text',
+        type: 'time',
         label: 'A che ora fai normalmente lo spuntino del pomeriggio?',
         placeholder: '17:30',
         dependsOn: { questionId: 'mealsSelected', equals: 'spuntinoPomeriggio' },
       },
-      { id: 'dinnerTime', type: 'text', label: 'A che ora ceni?', placeholder: '20:00' },
+      { id: 'dinnerTime', type: 'time', label: 'A che ora ceni?', placeholder: '20:00' },
       {
         id: 'preSleepSnackTime',
-        type: 'text',
+        type: 'time',
         label: 'A che ora fai normalmente lo spuntino pre-nanna?',
         placeholder: '22:30',
         dependsOn: { questionId: 'mealsSelected', equals: 'spuntinoSera' },

@@ -148,10 +148,14 @@ export async function uploadBodyPhoto(userId: string, localUri: string, pose: Bo
   return { id: photoId, uri: signed.signedUrl, date, pose };
 }
 
-export async function deleteBodyPhoto(userId: string, photoId: string, storagePath?: string): Promise<void> {
+/** Spec §13 point 10: previously deleted only the `body_photos` row, never
+ * the underlying Storage object, leaking a file on every removed photo.
+ * `storage_path` is always exactly `${userId}/${photoId}.jpg` (see
+ * uploadBodyPhoto) — deriving it here needs no extra column/field threaded
+ * through the client's BodyPhoto type just to delete by id. */
+export async function deleteBodyPhoto(userId: string, photoId: string): Promise<void> {
   const { error } = await supabase.from('body_photos').delete().eq('user_id', userId).eq('id', photoId);
   if (error) throw error;
-  if (storagePath) {
-    await supabase.storage.from(BUCKET).remove([storagePath]);
-  }
+  const { error: storageError } = await supabase.storage.from(BUCKET).remove([`${userId}/${photoId}.jpg`]);
+  if (storageError) console.warn('deleteBodyPhoto: storage cleanup failed', storageError);
 }

@@ -1,4 +1,5 @@
 import { MEAL_WEIGHTS } from '@/lib/nutrition/meal-distribution';
+import { TIME_REGEX } from '@/lib/questionnaire/schema';
 import type { MealSlot } from '@/store/nutrition-store';
 
 export type MealSlotDef = { id: MealSlot; label: string; time: string; sharePct: number };
@@ -41,7 +42,7 @@ const DEFAULT_MEALS: MealSlot[] = ['colazione', 'pranzo', 'cena'];
 
 function parseTime(value: unknown, fallback: string): string {
   if (typeof value !== 'string') return fallback;
-  const match = value.trim().match(/^([01]?\d|2[0-3]):([0-5]\d)$/);
+  const match = value.trim().match(TIME_REGEX);
   if (!match) return fallback;
   return `${match[1].padStart(2, '0')}:${match[2]}`;
 }

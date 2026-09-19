@@ -6,7 +6,17 @@ import { Icon } from '@/components/ui/icon';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { AnswerValue } from '@/store/onboarding-store';
-import type { Question } from '@/lib/questionnaire/schema';
+import { TIME_REGEX, type Question } from '@/lib/questionnaire/schema';
+
+/** Keeps only digits typed so far and re-inserts the ":" at the right
+ * position (e.g. "073" → "07:3", "0730" → "07:30") — lets the user just
+ * type digits instead of the punctuation themselves, and makes an
+ * unparseable value structurally hard to reach. */
+function formatTimeInput(raw: string): string {
+  const digits = raw.replace(/\D/g, '').slice(0, 4);
+  if (digits.length <= 2) return digits;
+  return `${digits.slice(0, 2)}:${digits.slice(2)}`;
+}
 
 export type QuestionFieldProps = {
   question: Question;
@@ -100,6 +110,36 @@ export function QuestionField({ question, value, onChange }: QuestionFieldProps)
         {question.unit ? (
           <ThemedText type="caption" themeColor="textSecondary">
             {question.unit}
+          </ThemedText>
+        ) : null}
+      </View>
+    );
+  }
+
+  if (question.type === 'time') {
+    const text = (value as string) ?? '';
+    const isIncomplete = text.length > 0 && text.length < 5;
+    const isInvalid = text.length === 5 && !TIME_REGEX.test(text);
+    return (
+      <View style={{ gap: Spacing.one }}>
+        <TextInput
+          value={text}
+          onChangeText={(raw) => {
+            const formatted = formatTimeInput(raw);
+            onChange(formatted === '' ? undefined : formatted);
+          }}
+          keyboardType="number-pad"
+          placeholder={question.placeholder}
+          placeholderTextColor={theme.textTertiary}
+          maxLength={5}
+          style={[
+            styles.numberInput,
+            { color: theme.text, backgroundColor: theme.backgroundElement, borderColor: isInvalid ? theme.danger : theme.border },
+          ]}
+        />
+        {isInvalid || isIncomplete ? (
+          <ThemedText type="caption" style={{ color: theme.danger }}>
+            Orario non valido — usa il formato HH:MM (es. {question.placeholder ?? '07:30'})
           </ThemedText>
         ) : null}
       </View>

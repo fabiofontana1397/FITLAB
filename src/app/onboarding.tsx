@@ -19,6 +19,7 @@ import {
   isQuestionVisible,
   labelFor,
   stepsForMode,
+  TIME_REGEX,
   type OnboardingMode,
   type OnboardingStep,
   type Question,
@@ -38,9 +39,15 @@ const MODE_OPTIONS: { value: OnboardingMode; label: string }[] = [
   { value: 'both', label: 'Entrambi' },
 ];
 
-function isAnswered(value: AnswerValue): boolean {
+// Spec §13 point 7: a "time" question isn't just non-empty, it must actually
+// parse as HH:MM — otherwise the free-text answer used to silently fall
+// back to a default further downstream in meal-slots.ts, with no feedback
+// to the user that what they typed was ignored.
+function isAnswered(question: Question, value: AnswerValue): boolean {
   if (Array.isArray(value)) return value.length > 0;
-  return value !== undefined && value !== null && value !== '';
+  if (value === undefined || value === null || value === '') return false;
+  if (question.type === 'time') return TIME_REGEX.test(String(value).trim());
+  return true;
 }
 
 function getStepQuestions(step: OnboardingStep, answers: Record<string, AnswerValue>): Question[] {
@@ -93,9 +100,9 @@ export default function OnboardingScreen() {
     // real gate on the action that actually submits the profile and starts
     // generating plans, not just a chain of per-step gates that happens to
     // add up to the same thing today.
-    if (isResultsScreen) return mode != null && activeSteps.every((s) => getStepQuestions(s, answers).every((q) => q.optional || isAnswered(answers[q.id])));
+    if (isResultsScreen) return mode != null && activeSteps.every((s) => getStepQuestions(s, answers).every((q) => q.optional || isAnswered(q, answers[q.id])));
     if (!step) return true;
-    return stepQuestions.every((q) => q.optional || isAnswered(answers[q.id]));
+    return stepQuestions.every((q) => q.optional || isAnswered(q, answers[q.id]));
   }, [isIntroScreen, isResultsScreen, mode, activeSteps, step, stepQuestions, answers]);
 
   const results = useMemo(() => {
