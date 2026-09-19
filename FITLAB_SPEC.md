@@ -598,7 +598,9 @@ Nessuna schermata UI mostra più il sistema statico — resta vivo solo per alim
 
 **Vincoli questionario → piano finale** (agiscono tutti dentro `generateTrainingPlan()`, **prima** che il piano arrivi alla UI): vedi tabella §4.3.
 
-**Componenti**: `day-wheel.tsx` (selettore data), `plan-exercise-row.tsx` (riga esercizio: nome/GIF/sets×reps/carico/checkbox), `new-load-modal.tsx` (form log carico), `exercise-info-modal.tsx` (GIF+istruzioni da `exercise-media.ts`, copertura parziale ~30 esercizi), `plan-timeline.tsx` (barra mesi).
+**Componenti**: `day-wheel.tsx` (selettore data), `plan-exercise-row.tsx` (riga esercizio: nome/GIF/sets×reps/carico/checkbox), `new-load-modal.tsx` (form log carico), `exercise-info-modal.tsx` (GIF+istruzioni da `exercise-media.ts`), `plan-timeline.tsx` (barra mesi).
+
+> ✅ **Implementato — copertura GIF completa (34/34 esercizi).** Mancavano 6 GIF (`abductor-machine`, `chest-press-machine`, `lat-machine`, `leg-curl-machine`, `polpacci-macchina`, `clamshell-elastico`) — recuperate dalla stessa fonte già in uso (`hasaneyldrm/exercises-dataset` su GitHub, MIT + media © Gym visual, stesso `NOTICE.md`/attribuzione degli esercizi già presenti). Per `clamshell-elastico` non esiste nel dataset una vera clamshell (side-lying, elastico sopra le ginocchia); il nome è stato adeguato a "Abduzione anca con elastico (da seduto)" per corrispondere esattamente al movimento della GIF trovata (stesso muscolo target, stesso elastico) invece di etichettare una GIF con un nome che non descrive il gesto mostrato.
 
 **Comunicazione con Home**: stesso `usePlanStore`/`useTrainingProgressStore` — completare un esercizio in Training aggiorna istantaneamente il ring "Allenamento" in Home, la striscia settimanale, "Ultimi progressi nei carichi", e (indirettamente) la stima kcal bruciate.
 

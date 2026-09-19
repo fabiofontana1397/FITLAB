@@ -430,6 +430,98 @@ export const EXERCISE_MEDIA: Record<string, ExerciseMedia> = {
     ],
     ['Non arrotondare la schiena durante la discesa.', 'Non piegare troppo le ginocchia.', 'Non scendere oltre il proprio range di mobilità.']
   ),
+  'abductor-machine': entry(
+    'videos/0597-CHpahtl.gif',
+    'Abduttori, glutei',
+    "Regola l'altezza del sedile in modo che le ginocchia formino un angolo di 90°. Siediti con la schiena appoggiata allo schienale e i piedi sulle pedane, mani sulle maniglie laterali per stabilità. Coinvolgi gli abduttori e allarga lentamente le gambe verso l'esterno. Fermati un attimo a fine corsa, poi riporta lentamente le gambe alla posizione di partenza.",
+    [
+      'Muovi le gambe con controllo, senza usare slancio.',
+      'Fai una breve pausa a fine corsa contraendo gli abduttori.',
+      'Mantieni la schiena appoggiata allo schienale per tutto il movimento.',
+    ],
+    [
+      'Non usare un carico che ti obbliga a sollevare il bacino dal sedile.',
+      'Non far tornare le gambe di scatto verso il centro.',
+      'Non inarcare la schiena per compensare il carico.',
+    ]
+  ),
+  'chest-press-machine': entry(
+    'videos/0577-T0yTjgW.gif',
+    'Petto, tricipiti',
+    "Regola l'altezza del sedile e posizionati con la schiena appoggiata al cuscino. Afferra le maniglie con presa prona e gomiti a circa 90°. Spingi le maniglie in avanti finché le braccia non sono completamente distese, poi torna lentamente alla posizione di partenza.",
+    [
+      "Regola il sedile in modo che le maniglie siano all'altezza del petto.",
+      'Spingi in linea retta in avanti senza bloccare di scatto i gomiti.',
+      'Controlla il ritorno senza far sbattere i pesi.',
+    ],
+    [
+      'Non inarcare la schiena per aiutarti nella spinta.',
+      'Non far avanzare troppo le spalle in fase di ritorno.',
+      'Non usare un carico che accorcia il range di movimento.',
+    ]
+  ),
+  'lat-machine': entry(
+    'videos/0579-7F1DVzn.gif',
+    'Dorsali, bicipiti',
+    'Regola l’altezza del sedile e siediti con le ginocchia sotto le imbottiture e i piedi a terra. Afferra le maniglie con presa prona, leggermente più larga delle spalle. Siediti eretto con il petto sollevato, coinvolgi i dorsali e tira le maniglie verso il petto stringendo le scapole. Rilascia lentamente verso la posizione iniziale.',
+    [
+      'Tira verso il petto stringendo bene le scapole.',
+      'Mantieni il busto eretto senza inclinarti troppo indietro.',
+      'Controlla la fase di risalita del peso.',
+    ],
+    [
+      'Non usare slancio del busto per tirare il peso.',
+      'Non far risalire il peso di scatto senza controllo.',
+      'Non tirare la barra dietro la nuca.',
+    ]
+  ),
+  'leg-curl-machine': entry(
+    'videos/0599-Zg3XY7P.gif',
+    'Femorali',
+    'Regola la macchina e siediti con la schiena contro lo schienale, posizionando la parte inferiore delle gambe sotto la leva imbottita appena sopra le caviglie. Afferra le maniglie laterali per sostenerti. Mantenendo ferma la parte superiore delle gambe, piega le gambe il più possibile contraendo i femorali, poi abbassa lentamente la leva.',
+    [
+      'Mantieni ferma la parte superiore delle gambe per tutto il movimento.',
+      'Contrai bene i femorali a fine corsa.',
+      'Abbassa il peso con controllo, senza farlo cadere.',
+    ],
+    [
+      'Non sollevare i fianchi dal sedile per aiutarti.',
+      'Non usare scatti per completare la ripetizione.',
+      'Non limitare il range di movimento per gestire più carico.',
+    ]
+  ),
+  'polpacci-macchina': entry(
+    'videos/0594-bOOdeyc.gif',
+    'Polpacci',
+    "Regola l'altezza del sedile in modo che le ginocchia siano leggermente piegate, con le punte dei piedi sulla pedana e i talloni che pendono dal bordo. Afferra le maniglie per stabilità. Spingi attraverso le punte dei piedi per sollevare i talloni il più in alto possibile, fai una pausa in cima, poi abbassa lentamente i talloni.",
+    [
+      'Sali il più possibile sulle punte dei piedi.',
+      'Fai una pausa in cima contraendo bene i polpacci.',
+      'Scendi con controllo fino a sentire un leggero allungamento.',
+    ],
+    ['Non usare rimbalzi per generare slancio.', 'Non ridurre il range di movimento per fare più ripetizioni.', 'Non bloccare le ginocchia in modo rigido.']
+  ),
+  // No exact "clamshell" (side-lying, band above the knees) clip exists in
+  // the source dataset — this is the closest real match (same muscle
+  // group, same band-resistance equipment, same seated-and-open-the-knees
+  // pattern), so the exercise's displayed name was adjusted in
+  // exercise-library.ts to match what the GIF actually shows rather than
+  // mislabeling a different movement as "clamshell".
+  'clamshell-elastico': entry(
+    'videos/3006-0xDpB4L.gif',
+    'Abduttori, glutei',
+    "Siediti su una sedia o panca con la schiena dritta e i piedi a terra. Avvolgi l'elastico attorno alle cosce, appena sopra le ginocchia. Tieni le mani sui lati della sedia per supporto. Coinvolgi gli abduttori e allarga lentamente le ginocchia contro la resistenza dell'elastico, poi riportale lentamente insieme.",
+    [
+      "Muovi le ginocchia con controllo contro la resistenza dell'elastico.",
+      'Mantieni la schiena dritta e i piedi ben appoggiati a terra.',
+      'Fai una breve pausa a fine corsa contraendo i glutei.',
+    ],
+    [
+      'Non usare slancio per aprire le ginocchia.',
+      'Non inclinare il busto per compensare lo sforzo.',
+      "Non lasciare che l'elastico si allenti tra una ripetizione e l'altra.",
+    ]
+  ),
 };
 
 export function getExerciseMedia(exerciseId: string): ExerciseMedia | undefined {

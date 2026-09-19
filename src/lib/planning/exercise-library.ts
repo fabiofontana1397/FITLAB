@@ -165,7 +165,7 @@ export const HOME_EXERCISES: Record<SplitLabel, ExerciseDef[]> = {
     { id: 'hip-thrust', name: 'Hip thrust', bwMultiplier: 0.3, areas: ['hip'], keywords: ['hip thrust'], equipment: [] },
     { id: 'polpacci-piedi', name: 'Polpacci in piedi', bwMultiplier: 0.1, areas: [], keywords: ['polpacci'], equipment: [] },
     { id: 'stacco-rumeno-manubri', name: 'Stacco rumeno con manubri', bwMultiplier: 0.2, areas: ['lowerBack', 'hip'], keywords: ['stacco rumeno'], equipment: ['dumbbells'] },
-    { id: 'clamshell-elastico', name: 'Clamshell con elastico', bwMultiplier: null, areas: ['hip'], keywords: ['clamshell'], equipment: ['bands'] },
+    { id: 'clamshell-elastico', name: 'Abduzione anca con elastico (da seduto)', bwMultiplier: null, areas: ['hip'], keywords: ['clamshell', 'abduzione anca'], equipment: ['bands'] },
   ],
   Push: [
     { id: 'push-up', name: 'Push-up', bwMultiplier: null, areas: ['shoulder', 'wrist'], keywords: ['push-up', 'push up', 'piegamenti'], equipment: [] },
@@ -186,7 +186,7 @@ export const HOME_EXERCISES: Record<SplitLabel, ExerciseDef[]> = {
     { id: 'hip-thrust', name: 'Hip thrust', bwMultiplier: 0.3, areas: ['hip'], keywords: ['hip thrust'], equipment: [] },
     { id: 'stacco-rumeno-manubri', name: 'Stacco rumeno con manubri', bwMultiplier: 0.2, areas: ['lowerBack', 'hip'], keywords: ['stacco rumeno'], equipment: ['dumbbells'] },
     { id: 'polpacci-piedi', name: 'Polpacci in piedi', bwMultiplier: 0.1, areas: [], keywords: ['polpacci'], equipment: [] },
-    { id: 'clamshell-elastico', name: 'Clamshell con elastico', bwMultiplier: null, areas: ['hip'], keywords: ['clamshell'], equipment: ['bands'] },
+    { id: 'clamshell-elastico', name: 'Abduzione anca con elastico (da seduto)', bwMultiplier: null, areas: ['hip'], keywords: ['clamshell', 'abduzione anca'], equipment: ['bands'] },
   ],
 };
 
