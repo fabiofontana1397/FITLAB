@@ -1,6 +1,8 @@
 export type SplitLabel = 'Full Body' | 'Upper' | 'Lower' | 'Push' | 'Pull' | 'Legs';
 
-/** Split pattern (which day types, in order) for a given weekly gym frequency. */
+/** Split pattern (which day types, in order) for a given weekly gym
+ * frequency — the intermediate/expert default: enough per-session volume
+ * per movement pattern to be worth the lower per-muscle frequency. */
 export const SPLIT_BY_FREQUENCY: Record<number, SplitLabel[]> = {
   1: ['Full Body'],
   2: ['Upper', 'Lower'],
@@ -9,6 +11,32 @@ export const SPLIT_BY_FREQUENCY: Record<number, SplitLabel[]> = {
   5: ['Push', 'Pull', 'Legs', 'Upper', 'Lower'],
   6: ['Push', 'Pull', 'Legs', 'Push', 'Pull', 'Legs'],
 };
+
+/** Beginner-appropriate split at the same frequencies — a true novice's
+ * limiting factor is motor-pattern learning and neural adaptation, not
+ * per-session volume tolerance, so more frequent exposure to the same
+ * movement patterns (Upper/Lower or Full Body) beats a PPL-style split
+ * that spreads each pattern across only 1-2 sessions/week (standard
+ * introductory-programming principle, not this app inventing a new one). */
+const SPLIT_BY_FREQUENCY_BEGINNER: Record<number, SplitLabel[]> = {
+  1: ['Full Body'],
+  2: ['Upper', 'Lower'],
+  3: ['Full Body', 'Full Body', 'Full Body'],
+  4: ['Upper', 'Lower', 'Upper', 'Lower'],
+  5: ['Upper', 'Lower', 'Full Body', 'Upper', 'Lower'],
+  6: ['Upper', 'Lower', 'Upper', 'Lower', 'Upper', 'Lower'],
+};
+
+/** Resolves the deterministic split fallback used when the AI strategy
+ * didn't supply valid split labels — spec §4.3's "esperienza + frequenza +
+ * ... → split" proposal: skillLevel now genuinely changes the split
+ * instead of frequency alone deciding it (`gymSkillLevel`/`gymExperience`
+ * were collected by the questionnaire but never read by any planner). */
+export function resolveSplitLabels(gymDays: number, gymSkillLevel: unknown): SplitLabel[] {
+  const isBeginner = gymSkillLevel === 'beginner';
+  const table = isBeginner ? SPLIT_BY_FREQUENCY_BEGINNER : SPLIT_BY_FREQUENCY;
+  return table[gymDays] ?? table[3];
+}
 
 /** Joint/area a lift loads heavily — used to exclude an exercise when the
  * questionnaire flags pain/injury/limitation there. Not a clinical
@@ -220,8 +248,23 @@ export function roundLoad(raw: number): number {
   return Math.round(raw / step) * step;
 }
 
-export function suggestedLoadFor(exercise: ExerciseDef, bodyweightKg: number, isAdattamento: boolean): number | null {
+// Conservative starting-point scaling by declared experience — spec §4.3:
+// "il carico iniziale deve derivare da esperienza dell'utente + esercizio".
+// A flat bodyweight multiplier with no experience adjustment risks starting
+// a true beginner too heavy (their intermediate multiplier calibration
+// assumption doesn't hold) or under-loading someone with years of training.
+// This is still a starting-point heuristic, not a 1RM-based prescription —
+// exercise history (once logged) is the more reliable input, see §7 ter.
+const EXPERIENCE_LOAD_MULTIPLIER: Record<string, number> = {
+  never: 0.55,
+  '3-12months': 0.75,
+  '1-3years': 1,
+  '3plusYears': 1.15,
+};
+
+export function suggestedLoadFor(exercise: ExerciseDef, bodyweightKg: number, isAdattamento: boolean, gymExperience?: unknown): number | null {
   if (exercise.bwMultiplier == null) return null;
-  const raw = bodyweightKg * exercise.bwMultiplier * (isAdattamento ? 0.85 : 1);
+  const experienceMultiplier = typeof gymExperience === 'string' ? (EXPERIENCE_LOAD_MULTIPLIER[gymExperience] ?? 1) : 1;
+  const raw = bodyweightKg * exercise.bwMultiplier * experienceMultiplier * (isAdattamento ? 0.85 : 1);
   return roundLoad(raw);
 }

@@ -396,14 +396,20 @@ Ogni volta che questa logica produce un nuovo target (`adaptation-evaluate`, in 
 |---|---|---|
 | Giorni allenamento | `freq_gym`, `freq_running`, `availableDays` | `gymDays`/`runDays` ribilanciati proporzionalmente se la somma eccede il disponibile |
 | Pool esercizi | `trainingLocation` (`home`→`HOME_EXERCISES`, altro→`GYM_EXERCISES`) | catalogo sorgente per `selectExercises` |
-| Esclusioni | `hasPain`+`painDetails`, `cannotDoExercises`+`cannotDoDetails`, `recentInjuries`+`recentInjuriesDetails` | ⚠️ **comportamento attuale**: `deriveExerciseExclusions()` (`exercise-constraints.ts`) → match keyword aree corpo (`knee,shoulder,lowerBack,wrist,hip`) o testo libero → `selectExercises()` scarta esercizi che matchano, **fallback finale = Plank**. **Proposta**: eliminare il fallback rigido — il matching per keyword è fragile e proporre automaticamente un esercizio generico quando nessun esercizio compatibile viene trovato è un rischio di sicurezza, non solo un limite tecnico. In sostituzione: stato di `manual_review`/`regenerate` esplicito, e a regime un *exercise substitution engine* basato su `movement_pattern`, `muscle_group`, `equipment`, `skill_level`, `joint_constraints` (vedi nota equipment sotto). |
+| Esclusioni | `hasPain`+`painDetails`, `cannotDoExercises`+`cannotDoDetails`, `recentInjuries`+`recentInjuriesDetails` | `deriveExerciseExclusions()` (`exercise-constraints.ts`) → match keyword aree corpo (`knee,shoulder,lowerBack,wrist,hip`) o testo libero → `selectExercises()` scarta esercizi che matchano, cerca prima nel catalogo più ampio, **fallback finale = Plank solo se anche il catalogo intero non ha nulla di compatibile** — vedi ✅ sotto |
 | N. esercizi/sessione | `sessionDuration` | `exerciseCountForDuration()`: `lt30→3, 30-45→4, 45-60→5, 60-90→6, gt90→6` |
-| Split | `strategy.training.splitLabels` (se validi) altrimenti `SPLIT_BY_FREQUENCY[gymDays]` | es. 3gg→Push/Pull/Legs — ⚠️ **proposta**: questo fallback frequenza→split non dovrebbe essere una regola universale; la nuova logica proposta è `esperienza + frequenza + obiettivo + giorni disponibili + vincoli esercizi → split` (dettagli in §7 bis/§7 ter) |
+| Split | `strategy.training.splitLabels` (se validi) altrimenti `resolveSplitLabels(gymDays, gymSkillLevel)` | es. 3gg→Push/Pull/Legs (intermedio/esperto) — vedi ✅ sotto per la logica ora basata anche su esperienza |
 | Scheda serie/rip | `strategy.training.gymScheme` altrimenti `FOCUS_SCHEME[focus_gym]` | sets/reps/restSec/tempo per fase (adattamento/progressione/consolidamento) |
 | Sessioni corsa | `strategy.training.runSessions` altrimenti `RUNNING_SESSIONS[focus_running]` | testo sessione per fase |
-| Carico consigliato | `currentWeightKg` | ⚠️ **comportamento attuale**: `suggestedLoadFor = peso × bwMultiplier × (0.85 se adattamento)` — non è un proxy affidabile per squat/bench/row/curl, che hanno rapporti carico/peso corporeo molto diversi tra loro. **Proposta**: il carico iniziale deve derivare da esperienza dell'utente + esercizio + performance storica + eventuale 1RM stimato + target RIR; il carico nelle sessioni successive deve derivare da performance precedente + reps ottenute + RIR + regola di progressione (§7 ter) |
+| Carico consigliato | `currentWeightKg`, `gymExperience` | `suggestedLoadFor = peso × bwMultiplier × moltiplicatoreEsperienza × (0.85 se adattamento)` — vedi ✅ sotto |
 
-**Correzione richiesta (non solo nota "non usato"): `equipment`.** Oggi è raccolto nel questionario ma non filtra il pool `HOME_EXERCISES` — questo non è solo un miglioramento architetturale, è la correzione di un **bug funzionale**: un utente che dichiara solo manubri a casa non deve mai ricevere un esercizio con bilanciere. Schema metadati esercizio proposto per risolverlo:
+> ✅ **Implementato — split basato anche su esperienza (spec §4.3, non più solo frequenza→split).** `resolveSplitLabels(gymDays, gymSkillLevel)` (`exercise-library.ts`) usa una tabella diversa per `gymSkillLevel==='beginner'`: split Upper/Lower o Full Body a parità di frequenza, invece di Push/Pull/Legs — un principiante beneficia di più esposizioni settimanali allo stesso pattern motorio (apprendimento neurale) più di quanto benefici del volume per sessione che un PPL assume come prerequisito. `gymSkillLevel`/`gymExperience` (raccolti dal questionario v2, mai usati prima) sono ora entrambi collegati a un calcolo reale. Non ancora implementato: la vera gerarchia Mesocycle/Microcycle e un vincolo esplicito sui pattern di movimento (§7 bis) — l'obiettivo (`goal`) e i giorni disponibili non modificano ancora quale split viene scelto, solo l'esperienza.
+>
+> ✅ **Implementato — carico iniziale scalato per esperienza.** `suggestedLoadFor()` applica ora un moltiplicatore per `gymExperience` (`never`→0.55, `3-12months`→0.75, `1-3years`→1, `3plusYears`→1.15) oltre al fattore 0.85 già esistente in fase di adattamento — un principiante non riceve più lo stesso carico-di-partenza-per-kg di un utente con anni di esperienza. Resta un euristica di partenza per kg corporeo, non una vera 1RM/RIR-based prescription: quella richiede lo storico allenamenti dell'utente esercizio per esercizio, non ancora disponibile al primo piano generato (§7 ter, progression engine — usa già RIR una volta che ci sono sessioni loggate, vedi `lib/planning/progression.ts`).
+>
+> ✅ **Implementato — fallback esercizi non più silenzioso.** `selectExercises()` ora ritorna anche `usedSafeFallback: boolean`; quando true (nessun esercizio compatibile nemmeno nel catalogo esteso), ogni esercizio di quel giorno viene marcato `needsManualReview: true` e il piano espone `TrainingPlan.needsManualReview` a livello aggregato — `training-plan.tsx` mostra un banner esplicito ("Revisione consigliata") invece di presentare Plank come una scelta ordinaria. Non ancora implementato: un vero *exercise substitution engine* basato su `movement_pattern`/`muscle_group`/`skill_level` (schema metadati sotto resta proposto, non costruito).
+
+**Correzione applicata: `equipment`.** ✅ **Implementato** — `filterByEquipment()` (`exercise-constraints.ts`) filtra `HOME_EXERCISES` in base all'attrezzatura dichiarata prima di costruire lo split (mai un pool vuoto: fallback al pool non filtrato solo se nessun esercizio sarebbe altrimenti disponibile). Schema metadati esercizio più ricco, ancora proposto per un futuro *substitution engine* (non implementato):
 
 ```json
 {
@@ -690,7 +696,8 @@ Legenda: **[Profilo]** promosso in `profiles`; **[AI]** incluso nel prompt `gene
 | `availableDays` | [Training]+[AI]+[UI] | — |
 | `sessionDuration` | [Training]+[UI] (non passato all'AI) | — |
 | `trainingLocation` | [Training]+[AI]+[UI] | — |
-| `equipment` | **[inutilizzato]** — raccolto ma `HOME_EXERCISES` non è filtrato per attrezzatura | **[Keep+Use]** — §4.3/§13 punto 3: bug funzionale da correggere, non solo miglioramento |
+| `equipment` | ✅ **[Training]** — `filterByEquipment()` filtra `HOME_EXERCISES` | — |
+| `gymExperience`, `gymSkillLevel` | ✅ **[Training]** — split (`resolveSplitLabels`) e carico consigliato (`suggestedLoadFor`) | — |
 | `hasPain`/`painDetails`, `cannotDoExercises`/`cannotDoDetails`, `recentInjuries`/`recentInjuriesDetails` | [Training] (`deriveExerciseExclusions` → `selectExercises`) + [AI] | — |
 
 ---
@@ -750,7 +757,7 @@ Emersi dall'analisi del codice — utili come punto di partenza per un redesign,
 
 1. **`stepsHistory` è sempre vuoto** (`src/lib/mock/activity.ts`) — l'anello "passi" e le kcal-da-passi in Home sono sempre 0: non c'è alcuna feature reale di step-tracking, è un placeholder residuo. → vedi §5 bis (modello di visualizzazione proposto) e §10 (integrazione wearable, P3).
 2. **Due sistemi Training paralleli**: il sistema statico (`training-store.ts`) è morto lato UI ma vivo lato dati/chat AI — genera confusione se non documentato (fatto qui, §7). → raccomandazione di redesign: rimozione definitiva, vedi §7.
-3. **`equipment`** raccolto nel questionario ma mai usato per filtrare gli esercizi "a casa". → promosso da nota a **correzione richiesta** (bug funzionale, non solo miglioramento), vedi §4.3 e §11.
+3. ✅ **Risolto** — `equipment` ora filtra `HOME_EXERCISES` (`filterByEquipment()`). Vedi §4.3 e §11.
 4. **13+ campi del questionario non usati da nessun planner**: misure corporee dettagliate, deadline, step giornalieri, sonno, storico diete, mangiare fuori, gusti "Other" testuali, fame/voglie, caffè/alcol, integratori. Sono raccolti e persistiti ma non influenzano alcun output. → classificazione dettagliata **Keep+Use / Keep-no-algoritmo / Rimuovere candidato** in §3.2 e §11 (sostituisce la precedente indicazione generica "candidati sia per essere rimossi... sia per essere collegati").
 5. ✅ **Risolto** — `includedFoods` è ora anche un vincolo reale di `buildFoodPools()`, non solo testo per il prompt AI. Vedi §4.4.
 6. **Due `sharePct` diversi e non unificati** per i pasti: quello statico in `nutrition-store.ts` (per la UI di logging manuale/target-per-slot) e quello calcolato in `meal-slots.ts` (per il piano generato) — valori di peso diversi per lo stesso concetto. → soluzione proposta (`MealDistributionPolicy` unica), vedi §8.
@@ -770,7 +777,7 @@ Emersi dall'analisi del codice — utili come punto di partenza per un redesign,
 | Peso impossibile | Reject |
 | Altezza impossibile | Reject |
 | Calorie target sotto soglia di sicurezza | Reject / revisione |
-| Nessun esercizio compatibile | Non usare Plank automaticamente (§4.3/§7 bis) |
+| Nessun esercizio compatibile | ✅ Plank resta il fallback finale, ma è marcato `needsManualReview` (banner esplicito in UI) invece di essere presentato come una scelta ordinaria — §4.3 |
 | Generazione piano AI fallisce | Fallback deterministico (già presente, §4.2) |
 | Persistenza piano su DB fallisce | Non impostare `hasOnboarded=true` |
 | Dati di tracking insufficienti | Nessuna adattazione del piano (§4.1 bis) |

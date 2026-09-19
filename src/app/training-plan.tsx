@@ -124,6 +124,20 @@ export default function TrainingPlanScreen() {
         </GlassSurface>
       ) : (
         <>
+          {plan.needsManualReview ? (
+            <GlassSurface level="card" radius={Radius.large} style={{ padding: Spacing.four, gap: Spacing.two, borderColor: theme.danger, borderWidth: 1 }}>
+              <ThemedText type="smallBold" style={{ color: theme.danger }}>
+                Revisione consigliata
+              </ThemedText>
+              <ThemedText type="caption" themeColor="textSecondary">
+                Per alcuni giorni non abbiamo trovato un esercizio compatibile con i vincoli che hai indicato
+                (dolori/infortuni/attrezzatura). Ti abbiamo proposto un esercizio a corpo libero sicuro come
+                placeholder: parlane con un professionista prima di seguirlo, o rifai il questionario indicando
+                l&apos;attrezzatura o i vincoli in modo più preciso.
+              </ThemedText>
+            </GlassSurface>
+          ) : null}
+
           <View style={styles.planMetaRow}>
             <View style={{ gap: 2 }}>
               <ThemedText type="caption" themeColor="textSecondary">

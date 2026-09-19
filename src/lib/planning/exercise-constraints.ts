@@ -64,6 +64,15 @@ export function filterByEquipment(pool: ExerciseDef[], ownedEquipment: unknown):
   return filtered.length > 0 ? filtered : pool;
 }
 
+export type ExerciseSelection = {
+  exercises: ExerciseDef[];
+  /** True when neither this split nor the wider catalog had any compatible
+   * exercise, so the universally-safe bodyweight exercise was substituted
+   * in — spec §4.3's "nessun esercizio compatibile" edge case should never
+   * be silently presented as an ordinary recommendation to the caller. */
+  usedSafeFallback: boolean;
+};
+
 /** Takes up to `count` candidates from `pool` (already in priority order)
  * that don't conflict with the user's stated pain/injury/exercise
  * limitations — later candidates in the same split act as substitutes for
@@ -80,16 +89,16 @@ export function selectExercises(
   count: number,
   exclusions: ExerciseExclusions,
   widerCatalog?: ExerciseDef[]
-): ExerciseDef[] {
+): ExerciseSelection {
   const allowed = pool.filter((e) => !isExcluded(e, exclusions));
-  if (allowed.length > 0) return allowed.slice(0, Math.min(count, allowed.length));
+  if (allowed.length > 0) return { exercises: allowed.slice(0, Math.min(count, allowed.length)), usedSafeFallback: false };
 
   if (widerCatalog) {
     const seen = new Set(pool.map((e) => e.id));
     const fromWiderCatalog = widerCatalog.filter((e) => !seen.has(e.id) && !isExcluded(e, exclusions));
     const deduped = [...new Map(fromWiderCatalog.map((e) => [e.id, e])).values()];
-    if (deduped.length > 0) return deduped.slice(0, Math.min(count, deduped.length));
+    if (deduped.length > 0) return { exercises: deduped.slice(0, Math.min(count, deduped.length)), usedSafeFallback: false };
   }
 
-  return [SAFE_FALLBACK_EXERCISE];
+  return { exercises: [SAFE_FALLBACK_EXERCISE], usedSafeFallback: true };
 }

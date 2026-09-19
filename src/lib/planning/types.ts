@@ -55,6 +55,12 @@ export type TrainingExerciseEntry = {
   suggestedKg: number | null;
   /** Execution cadence in seconds as "eccentric-isometric-concentric", e.g. "3-0-1". */
   tempo: string;
+  /** True when no exercise in this split (or the wider catalog) was
+   * compatible with the user's stated pain/injury/equipment constraints, so
+   * the universally-safe bodyweight fallback was used instead of a real
+   * recommendation — spec §4.3/§13 edge case table: this should never be
+   * silently presented as an ordinary pick. */
+  needsManualReview?: boolean;
 };
 
 export type TrainingDayPlan = {
@@ -77,4 +83,8 @@ export type TrainingPlan = {
   generatedAt: string;
   durationMonths: number;
   months: TrainingMonthPlan[];
+  /** True if any exercise anywhere in the plan needed the safe-fallback
+   * substitution (see TrainingExerciseEntry.needsManualReview) — surfaced
+   * as a plan-level banner rather than requiring the UI to scan every day. */
+  needsManualReview?: boolean;
 };

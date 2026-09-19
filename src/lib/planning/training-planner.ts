@@ -3,8 +3,8 @@ import {
   FOCUS_SCHEME,
   GYM_EXERCISES,
   HOME_EXERCISES,
+  resolveSplitLabels,
   RUNNING_SESSIONS,
-  SPLIT_BY_FREQUENCY,
   suggestedLoadFor,
   WEEKDAY_LABELS,
   WEEKDAY_PATTERN,
@@ -128,11 +128,7 @@ export function generateTrainingPlan(input: TrainingPlanInput): TrainingPlan | n
   const exerciseCount = exerciseCountForDuration(answers.sessionDuration);
   const sanitizedStrategySplits = sanitizeSplitLabels(strategy?.splitLabels);
   const splitLabels: SplitLabel[] =
-    sanitizedStrategySplits.length > 0
-      ? sanitizedStrategySplits
-      : gymDays > 0
-        ? (SPLIT_BY_FREQUENCY[gymDays] ?? SPLIT_BY_FREQUENCY[3])
-        : [];
+    sanitizedStrategySplits.length > 0 ? sanitizedStrategySplits : gymDays > 0 ? resolveSplitLabels(gymDays, answers.gymSkillLevel) : [];
 
   const focusGym = typeof answers.focus_gym === 'string' ? answers.focus_gym : 'hypertrophy';
   const focusRunning = typeof answers.focus_running === 'string' ? answers.focus_running : 'endurance';
@@ -144,6 +140,7 @@ export function generateTrainingPlan(input: TrainingPlanInput): TrainingPlan | n
   const gymSlots = dayIndices.slice(0, gymDays);
   const runSlots = dayIndices.slice(gymDays, gymDays + runDays);
 
+  let needsManualReview = false;
   const months: TrainingMonthPlan[] = [];
   for (let monthIndex = 1; monthIndex <= durationMonths; monthIndex++) {
     const phase = phaseForMonth(monthIndex, durationMonths);
@@ -154,7 +151,8 @@ export function generateTrainingPlan(input: TrainingPlanInput): TrainingPlan | n
 
     gymSlots.forEach((dayIdx, i) => {
       const splitLabel = splitLabels[i % splitLabels.length];
-      const selected = selectExercises(exercisePool[splitLabel], exerciseCount, exclusions, wholeCatalog);
+      const { exercises: selected, usedSafeFallback } = selectExercises(exercisePool[splitLabel], exerciseCount, exclusions, wholeCatalog);
+      if (usedSafeFallback) needsManualReview = true;
       const exercises: TrainingExerciseEntry[] = selected.map((def) => ({
         id: def.id,
         name: def.name,
@@ -162,7 +160,8 @@ export function generateTrainingPlan(input: TrainingPlanInput): TrainingPlan | n
         reps: scheme.reps,
         restSec: scheme.restSec,
         tempo: scheme.tempo,
-        suggestedKg: suggestedLoadFor(def, bodyweightKg, phase === 'adattamento'),
+        suggestedKg: suggestedLoadFor(def, bodyweightKg, phase === 'adattamento', answers.gymExperience),
+        needsManualReview: usedSafeFallback,
       }));
       week[dayIdx] = { weekday: WEEKDAY_LABELS[dayIdx], type: 'workout', title: splitLabel, exercises };
     });
@@ -182,5 +181,5 @@ export function generateTrainingPlan(input: TrainingPlanInput): TrainingPlan | n
     });
   }
 
-  return { generatedAt: new Date().toISOString(), durationMonths, months };
+  return { generatedAt: new Date().toISOString(), durationMonths, months, needsManualReview };
 }
