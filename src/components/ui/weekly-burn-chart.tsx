@@ -11,7 +11,8 @@ export type WeeklyBurnDay = {
   label: string;
   /** ISO date, used only to build the "14-20 settembre" style period caption. */
   date: string;
-  burnedKcal: number;
+  /** Estimated energy expenditure — never a wearable/HR measurement, see spec §5 bis. */
+  estimatedExpenditureKcal: number;
   eatenKcal: number;
   isToday: boolean;
   hasHappened: boolean;
@@ -21,7 +22,7 @@ export type WeeklyBurnDay = {
 export type WeeklyBurnChartProps = {
   days: WeeklyBurnDay[];
   /** Legend swatch only — no bar is drawn in this color anymore. */
-  burnedColor: string;
+  expenditureColor: string;
   /** Legend swatch only — no bar is drawn in this color anymore. */
   eatenColor: string;
   /** Bar color on a surplus day (ate more than burned) — grows upward, above zero. */
@@ -68,9 +69,10 @@ function buildBars(days: WeeklyBurnDay[], plotWidth: number, height: number) {
   const zeroY = PADDING_TOP + halfHeight;
   if (plotWidth <= 0 || days.length === 0) return { bars: [] as Bar[], zeroY, maxLabel: '0' };
 
-  // Surplus (ate more than burned) is positive and grows up from zero;
-  // deficit (burned more than ate) is negative and grows down from zero.
-  const deltas = days.map((d) => (d.hasHappened ? d.eatenKcal - d.burnedKcal : null));
+  // Surplus (ate more than the estimated expenditure) is positive and grows
+  // up from zero; deficit (estimated expenditure more than ate) is negative
+  // and grows down from zero.
+  const deltas = days.map((d) => (d.hasHappened ? d.eatenKcal - d.estimatedExpenditureKcal : null));
   const max = Math.max(...deltas.filter((d): d is number => d != null).map((d) => Math.abs(d)), 1);
 
   const colWidth = plotWidth / days.length;
@@ -103,7 +105,7 @@ function buildBars(days: WeeklyBurnDay[], plotWidth: number, height: number) {
  * training/diet/steps. Days that haven't happened yet show no bar. */
 export function WeeklyBurnChart({
   days,
-  burnedColor,
+  expenditureColor,
   eatenColor,
   surplusColor,
   deficitColor,
@@ -245,7 +247,7 @@ export function WeeklyBurnChart({
 
           {/* Legend, below the period caption */}
           <View style={styles.legendRow}>
-            <LegendItem color={burnedColor} label="Bruciate" />
+            <LegendItem color={expenditureColor} label="Dispendio stimato" />
             <LegendItem color={eatenColor} label="Assunte" />
             <LegendItem color={deficitColor} label="Deficit" />
             <LegendItem color={surplusColor} label="Surplus" />

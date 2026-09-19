@@ -21,7 +21,7 @@ import { latestSnapshot } from '@/lib/mock/body';
 import { currentWeekDates, daysAgoISO, mondayIndex } from '@/lib/mock/dates';
 import type { BodyMetricSnapshot } from '@/lib/mock/types';
 import { useCoachInsights } from '@/hooks/use-coach-insights';
-import { estimateDailyBurnedKcal, estimateStepsKcal, estimateTrainingBonusKcal } from '@/lib/nutrition/targets';
+import { estimateDailyEnergyExpenditure, estimateStepsKcal, estimateTrainingContributionKcal } from '@/lib/nutrition/targets';
 import { WEEKDAY_LABELS } from '@/lib/planning/exercise-library';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
 import type { TrainingExerciseEntry } from '@/lib/planning/types';
@@ -110,18 +110,19 @@ export default function HomeScreen() {
   const startBody = bodyEntries[0] ?? latestBody;
   const doneSoFar = startBody.weightKg - latestBody.weightKg;
 
-  // Rest/cardio days (or no plan at all) have no checkboxes to tick, so a
-  // day only counts as "trained" once every exercise on an actual workout
-  // day was actually completed — matching the same rule weekDays uses below.
-  const todayTrainedThisDay =
-    todayPlanDay?.type === 'workout' && workoutExercises.length > 0 && completedCount === workoutExercises.length;
-  const todayTrainingKcal = estimateTrainingBonusKcal({
+  // Rest/cardio days (or no plan at all) have no checkboxes to tick, so
+  // completion is 0 rather than undefined — matching the same rule weekDays
+  // uses below. A partially-completed workout now earns a proportional
+  // share of the estimated exercise contribution (§5 bis), not zero.
+  const todayCompletionFraction =
+    todayPlanDay?.type === 'workout' && workoutExercises.length > 0 ? completedCount / workoutExercises.length : 0;
+  const todayTrainingKcal = estimateTrainingContributionKcal({
     sex: currentUser.sex,
     age: currentUser.age,
     heightCm: currentUser.heightCm,
     weightKg: latestBody.weightKg,
     sessionDurationBucket: onboardingAnswers.sessionDuration as string | undefined,
-    trainedThisDay: todayTrainedThisDay,
+    completionFraction: todayCompletionFraction,
   });
   const todayStepsKcal = estimateStepsKcal(todaysSteps, latestBody.weightKg);
 
@@ -158,7 +159,7 @@ export default function HomeScreen() {
           trainingProgress: 0,
           dietProgress: 0,
           stepsProgress: 0,
-          burnedKcal: 0,
+          estimatedExpenditureKcal: 0,
           eatenKcal: 0,
         };
       }
@@ -167,7 +168,7 @@ export default function HomeScreen() {
       const exercises = dayPlan?.type === 'workout' ? (dayPlan.exercises ?? []) : [];
       const completed = exercises.filter((ex) => isExerciseCompleted(completedExercises, ex.id, date)).length;
       const dayTrainingProgress = dayPlan?.type === 'workout' ? (exercises.length > 0 ? completed / exercises.length : 1) : 1;
-      const trainedThisDay = dayPlan?.type === 'workout' && exercises.length > 0 && completed === exercises.length;
+      const completionFraction = dayPlan?.type === 'workout' && exercises.length > 0 ? completed / exercises.length : 0;
 
       const dayTotals = sumMacros(nutritionEntries.filter((e) => e.date === date));
       const dayDietProgress = calorieTarget > 0 ? Math.min(dayTotals.kcal / calorieTarget, 1) : 0;
@@ -175,14 +176,14 @@ export default function HomeScreen() {
       const stepsEntry = stepsHistory.find((s) => s.date === date);
       const dayStepsProgress = stepsEntry ? Math.min(stepsEntry.steps / dailyStepsTarget, 1) : 0;
 
-      const burnedKcal = estimateDailyBurnedKcal({
+      const estimatedExpenditureKcal = estimateDailyEnergyExpenditure({
         sex: currentUser.sex,
         age: currentUser.age,
         heightCm: currentUser.heightCm,
         weightKg: latestBody.weightKg,
         jobActivity: onboardingAnswers.jobActivity as string | undefined,
         sessionDurationBucket: onboardingAnswers.sessionDuration as string | undefined,
-        trainedThisDay,
+        completionFraction,
       });
 
       return {
@@ -193,16 +194,16 @@ export default function HomeScreen() {
         trainingProgress: dayTrainingProgress,
         dietProgress: dayDietProgress,
         stepsProgress: dayStepsProgress,
-        burnedKcal,
+        estimatedExpenditureKcal,
         eatenKcal: dayTotals.kcal,
       };
     });
   }, [trainingPlan, weekDates, accountStartDate, completedExercises, nutritionEntries, calorieTarget, currentUser, latestBody.weightKg, onboardingAnswers, today]);
 
-  const todayBurn = weekDays.find((d) => d.isToday);
-  const weekBurnedSoFar = weekDays.filter((d) => d.hasHappened).reduce((sum, d) => sum + d.burnedKcal, 0);
+  const todayExpenditure = weekDays.find((d) => d.isToday);
+  const weekEstimatedExpenditureSoFar = weekDays.filter((d) => d.hasHappened).reduce((sum, d) => sum + d.estimatedExpenditureKcal, 0);
   const weeklyProgrammedKcal = calorieTarget * weekDays.length;
-  const todayDeficit = todayBurn ? todayBurn.burnedKcal - todayBurn.eatenKcal : 0;
+  const todayEstimatedBalance = todayExpenditure ? todayExpenditure.estimatedExpenditureKcal - todayExpenditure.eatenKcal : 0;
 
   // Every exercise appearing anywhere in the plan (same de-duplication
   // training-progress.tsx uses), so "recent" lifts aren't limited to today.
@@ -314,10 +315,10 @@ export default function HomeScreen() {
                   Oggi
                 </ThemedText>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                  <Icon name={todayDeficit >= 0 ? 'trendDown' : 'trendUp'} size={14} color={todayDeficit >= 0 ? theme.success : theme.danger} />
-                  <ThemedText type="subtitle" style={{ color: todayDeficit >= 0 ? theme.success : theme.danger }}>
-                    {todayDeficit >= 0 ? '-' : '+'}
-                    {Math.abs(Math.round(todayDeficit))} kcal
+                  <Icon name={todayEstimatedBalance >= 0 ? 'trendDown' : 'trendUp'} size={14} color={todayEstimatedBalance >= 0 ? theme.success : theme.danger} />
+                  <ThemedText type="subtitle" style={{ color: todayEstimatedBalance >= 0 ? theme.success : theme.danger }}>
+                    {todayEstimatedBalance >= 0 ? '-' : '+'}
+                    {Math.abs(Math.round(todayEstimatedBalance))} kcal
                   </ThemedText>
                 </View>
               </View>
@@ -325,7 +326,7 @@ export default function HomeScreen() {
                 <ThemedText type="caption" themeColor="textSecondary">
                   Settimana
                 </ThemedText>
-                <ThemedText type="smallBold">Dispendio stimato {Math.round(weekBurnedSoFar)} kcal</ThemedText>
+                <ThemedText type="smallBold">Dispendio stimato {Math.round(weekEstimatedExpenditureSoFar)} kcal</ThemedText>
                 <ThemedText type="caption" themeColor="textSecondary">
                   Target settimanale {Math.round(weeklyProgrammedKcal)} kcal
                 </ThemedText>
@@ -336,13 +337,13 @@ export default function HomeScreen() {
             days={weekDays.map((d) => ({
               label: d.label,
               date: d.date,
-              burnedKcal: d.burnedKcal,
+              estimatedExpenditureKcal: d.estimatedExpenditureKcal,
               eatenKcal: d.eatenKcal,
               isToday: d.isToday,
               hasHappened: d.hasHappened,
               rings: { training: d.trainingProgress, diet: d.dietProgress, steps: d.stepsProgress },
             }))}
-            burnedColor={theme.accent}
+            expenditureColor={theme.accent}
             eatenColor={theme.success}
             deficitColor={theme.calorieDeficit}
             surplusColor={theme.calorieSurplus}

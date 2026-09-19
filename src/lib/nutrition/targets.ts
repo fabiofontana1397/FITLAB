@@ -152,15 +152,18 @@ const SESSION_DURATION_MINUTES: Record<string, number> = {
 // doesn't track set-by-set intensity.
 const RESISTANCE_TRAINING_MET = 5;
 
-/** Estimated kcal contribution of a single completed workout — replaces the
- * previous flat "+18% of BMR" bonus (which gave a 35-minute and a 90-minute
- * session the exact same credit) with a duration-aware estimate using the
- * user's own declared typical session length. Still an estimate, not a
- * measurement: there's no wearable/HR data behind it. */
-function exerciseContributionKcal(input: { weightKg: number; sessionDurationBucket?: string; trainedThisDay: boolean }): number {
-  if (!input.trainedThisDay) return 0;
+/** Estimated kcal contribution of today's workout — spec §5 bis replaces the
+ * previous flat "+18% of BMR if the workout is 100% complete" bonus (which
+ * gave a 35-minute and a 90-minute session the exact same credit, and gave
+ * zero credit for a session stopped at 90%) with a duration-and-completion
+ * aware estimate: session length from the user's own declared typical
+ * duration, scaled by how much of today's planned session was actually
+ * completed (the closest proxy this app has to intensity, absent real
+ * wearable/HR data). Still an estimate, not a measurement. */
+function exerciseContributionKcal(input: { weightKg: number; sessionDurationBucket?: string; completionFraction: number }): number {
+  if (input.completionFraction <= 0) return 0;
   const minutes = SESSION_DURATION_MINUTES[input.sessionDurationBucket ?? '45-60'] ?? 45;
-  return Math.round(RESISTANCE_TRAINING_MET * input.weightKg * (minutes / 60));
+  return Math.round(RESISTANCE_TRAINING_MET * input.weightKg * (minutes / 60) * Math.min(input.completionFraction, 1));
 }
 
 export type EnergyExpenditureBreakdown = {
@@ -168,16 +171,19 @@ export type EnergyExpenditureBreakdown = {
   resting: number;
   /** Baseline daily activity/NEAT — what the job-activity multiplier adds over pure resting. */
   baselineActivity: number;
-  /** Estimated contribution of today's completed workout, if any — see exerciseContributionKcal. */
+  /** Estimated contribution of today's workout, scaled by how much of it was completed — see exerciseContributionKcal. */
   exercise: number;
   /** resting + baselineActivity + exercise — the estimated total for the day. */
   total: number;
 };
 
-/** Decomposed version of estimateDailyBurnedKcal (§5 bis, "Modello di
+/** Decomposed estimated-energy-expenditure model (§5 bis, "Modello di
  * visualizzazione energetica proposto"): splits the one number into the
  * three components that produce it, so a UI can show where the estimate
- * comes from instead of a single opaque figure. */
+ * comes from instead of a single opaque figure. Deliberately named
+ * "expenditure", not "burned" — this is a Mifflin-St Jeor-based estimate,
+ * never a wearable/HR measurement, and neither the code nor the UI should
+ * imply otherwise. */
 export function estimateEnergyExpenditureBreakdown(input: {
   sex: Sex;
   age: number;
@@ -185,7 +191,11 @@ export function estimateEnergyExpenditureBreakdown(input: {
   weightKg: number;
   jobActivity?: string;
   sessionDurationBucket?: string;
-  trainedThisDay: boolean;
+  /** Fraction (0-1) of today's planned workout actually completed — 0 on a
+   * rest/cardio day or a day with no plan at all. Replaces the previous
+   * all-or-nothing "trainedThisDay" flag so a half-finished session earns
+   * half the estimated exercise contribution instead of zero. */
+  completionFraction: number;
 }): EnergyExpenditureBreakdown {
   const bmr = bmrMifflinStJeor(input.sex, input.weightKg, input.heightCm, input.age);
   const jobMultiplier = JOB_ACTIVITY_MULTIPLIER[input.jobActivity ?? 'sedentary'] ?? 1.2;
@@ -194,7 +204,7 @@ export function estimateEnergyExpenditureBreakdown(input: {
   const exercise = exerciseContributionKcal({
     weightKg: input.weightKg,
     sessionDurationBucket: input.sessionDurationBucket,
-    trainedThisDay: input.trainedThisDay,
+    completionFraction: input.completionFraction,
   });
   return { resting, baselineActivity, exercise, total: resting + baselineActivity + exercise };
 }
@@ -202,30 +212,30 @@ export function estimateEnergyExpenditureBreakdown(input: {
 /** A single day's estimated total energy expenditure — an ESTIMATE, not a
  * measurement (no wearable/HR data feeds this). Thin wrapper around
  * estimateEnergyExpenditureBreakdown for callers that only need the total. */
-export function estimateDailyBurnedKcal(input: {
+export function estimateDailyEnergyExpenditure(input: {
   sex: Sex;
   age: number;
   heightCm: number;
   weightKg: number;
   jobActivity?: string;
   sessionDurationBucket?: string;
-  trainedThisDay: boolean;
+  completionFraction: number;
 }): number {
   return estimateEnergyExpenditureBreakdown(input).total;
 }
 
 /** Just the estimated exercise contribution — the same figure
- * estimateDailyBurnedKcal folds in, exposed on its own so a UI can show
- * "calories from training" apart from resting/baseline-activity burn. */
-export function estimateTrainingBonusKcal(input: {
+ * estimateDailyEnergyExpenditure folds in, exposed on its own so a UI can
+ * show "calories from training" apart from resting/baseline-activity burn. */
+export function estimateTrainingContributionKcal(input: {
   sex: Sex;
   age: number;
   heightCm: number;
   weightKg: number;
   sessionDurationBucket?: string;
-  trainedThisDay: boolean;
+  completionFraction: number;
 }): number {
-  return exerciseContributionKcal({ weightKg: input.weightKg, sessionDurationBucket: input.sessionDurationBucket, trainedThisDay: input.trainedThisDay });
+  return exerciseContributionKcal({ weightKg: input.weightKg, sessionDurationBucket: input.sessionDurationBucket, completionFraction: input.completionFraction });
 }
 
 // A commonly used ballpark for walking: roughly 0.04 kcal per step for a
