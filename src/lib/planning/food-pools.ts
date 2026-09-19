@@ -119,17 +119,26 @@ function idsToMealTypeMap(sourceMap: Record<string, string[]>, mealTypeBySourceK
 const PROTEIN_ID_MEAL_TYPE = idsToMealTypeMap(PROTEIN_SOURCES, PROTEIN_MEAL_TYPE);
 const CARB_ID_MEAL_TYPE = idsToMealTypeMap(CARB_SOURCES, CARB_MEAL_TYPE);
 
-/** Narrows a pool to foods realistic for this slot (breakfast/main/snack) —
- * falls back to the unfiltered pool if that would leave nothing, since a
- * user's own stated preference should never be silently dropped to zero
- * options, only steered toward the better fit when one exists. */
-function restrictToMealType(ids: string[], mealTypeMap: Record<string, MealType>, slotType: MealType): string[] {
+/** Narrows a pool to foods realistic for this slot (breakfast/main/snack).
+ * Falls back to the curated default pool (also meal-type-filtered), never to
+ * the unfiltered user pool — the previous fallback-to-unfiltered behavior
+ * was the actual bug behind "colazione con ceci o pesce" (spec §0.4): a
+ * user whose *only* selected protein preferences were main-meal-only foods
+ * (e.g. legumi + pesce, no uova/yogurt/latticini) got that exact
+ * meal-inappropriate pool back for breakfast too, since filtering it to
+ * zero used to fall back to the very pool that had just been filtered out. */
+function restrictToMealType(ids: string[], mealTypeMap: Record<string, MealType>, slotType: MealType, defaultPool: string[]): string[] {
   if (slotType === 'any') return ids;
   const fitting = ids.filter((id) => {
     const t = mealTypeMap[id] ?? 'any';
     return t === 'any' || t === slotType;
   });
-  return fitting.length > 0 ? fitting : ids;
+  if (fitting.length > 0) return fitting;
+  const defaultFitting = defaultPool.filter((id) => {
+    const t = mealTypeMap[id] ?? 'any';
+    return t === 'any' || t === slotType;
+  });
+  return defaultFitting.length > 0 ? defaultFitting : ids;
 }
 
 function normalize(text: string): string {
@@ -240,10 +249,71 @@ function deriveIncludedFoodIdsByPool(answers: Record<string, unknown>, excluded:
   return result;
 }
 
+// Which of the questionnaire's free-text "what do you usually eat" answers
+// (schema.ts) feed which slot kind — the same 3-way granularity the rest of
+// this module already uses for meal-type restriction. The 3 snack slots
+// share one bucket rather than each getting its own: the planner has no
+// finer-grained "snack" pool to steer differently per snack slot anyway.
+const USUAL_MEAL_ANSWER_IDS: Record<MealType, string[]> = {
+  breakfast: ['usualBreakfast'],
+  main: ['usualLunch', 'usualDinner'],
+  snack: ['usualMorningSnack', 'usualAfternoonSnack', 'usualPreSleepSnack'],
+  any: [],
+};
+
+/**
+ * Matches the user's free-text "cosa mangi di solito a X" answers (spec
+ * §0.4) against FOOD_DATABASE the same way deriveIncludedFoodIdsByPool
+ * matches `includedFoods` — a name that appears in the curated catalog is a
+ * real, healthy-enough food to weight toward that slot; a name that doesn't
+ * match anything (e.g. "cornetti", not in FOOD_DATABASE) simply produces no
+ * match, which is exactly the desired "don't accommodate it, but don't
+ * crash either" behavior without needing a separate junk-food blocklist.
+ * Bucketed by meal type (breakfast/main/snack) rather than one flat list,
+ * so "avena e yogurt" mentioned for colazione doesn't also bias what shows
+ * up at cena.
+ */
+function deriveUsualFoodIdsByMealType(answers: Record<string, unknown>, excluded: Set<string>, pattern: unknown): Record<MealType, Set<string>> {
+  const result: Record<MealType, Set<string>> = { breakfast: new Set(), main: new Set(), snack: new Set(), any: new Set() };
+  for (const mealType of ['breakfast', 'main', 'snack'] as const) {
+    const blob = normalize(
+      USUAL_MEAL_ANSWER_IDS[mealType]
+        .map((id) => answers[id])
+        .filter((v): v is string => typeof v === 'string')
+        .join(' . ')
+    );
+    if (blob.trim().length === 0 || NO_ANSWER_TEXT.has(blob.trim())) continue;
+    const matched = filterByDietaryPattern(
+      FOOD_DATABASE.filter((food) => blob.includes(normalize(food.name))).map((food) => food.id),
+      pattern
+    );
+    for (const id of matched) {
+      if (!excluded.has(id)) result[mealType].add(id);
+    }
+  }
+  return result;
+}
+
+/** Biases `pick()`'s deterministic rotation toward foods the user says they
+ * already eat at this slot, by giving each match extra entries in the pool
+ * instead of just one — `pick` cycles through the pool by index, so a food
+ * appearing 3x in a 6-item pool comes up roughly 3x as often as one
+ * appearing once, without changing the picking algorithm itself. Foods
+ * outside the usual-match set stay in the pool (at their normal weight) so
+ * the plan keeps variety instead of only ever repeating what the user
+ * already eats. */
+function withUsualBoost(pool: string[], usualIds: Set<string>): string[] {
+  if (usualIds.size === 0) return pool;
+  const matched = pool.filter((id) => usualIds.has(id));
+  if (matched.length === 0) return pool;
+  return [...matched, ...matched, ...pool];
+}
+
 export function buildFoodPools(answers: Record<string, unknown>) {
   const pattern = answers.dietaryPattern;
   const excluded = deriveExcludedFoodIds(answers);
   const included = deriveIncludedFoodIdsByPool(answers, excluded, pattern);
+  const usualByMealType = deriveUsualFoodIdsByMealType(answers, excluded, pattern);
 
   const protein = [
     ...new Set([
@@ -271,17 +341,27 @@ export function buildFoodPools(answers: Record<string, unknown>) {
   const vegetables = [...new Set([...applyExclusions(VEGETABLE_POOL, excluded, VEGETABLE_POOL), ...included.vegetables])];
   const fruit = [...new Set([...applyExclusions(FRUIT_POOL, excluded, FRUIT_POOL), ...included.fruit])];
 
+  const defaultProteinPool = filterByDietaryPattern(DEFAULT_PROTEIN_POOL, pattern);
+  const defaultCarbPool = DEFAULT_CARB_POOL;
+
   return {
     protein,
     carbs,
     fats,
     vegetables,
     fruit,
-    /** Narrows `protein`/`carbs` to what's realistic for a given slot —
-     * see restrictToMealType's fallback behavior for why this never
-     * returns an empty pool. */
-    proteinFor: (slotType: MealType) => restrictToMealType(protein, PROTEIN_ID_MEAL_TYPE, slotType),
-    carbsFor: (slotType: MealType) => restrictToMealType(carbs, CARB_ID_MEAL_TYPE, slotType),
+    /** Narrows `protein`/`carbs` to what's realistic for a given slot (see
+     * restrictToMealType's fallback behavior for why this never returns an
+     * empty pool), then biases the result toward foods the user says they
+     * usually eat at that slot (spec §0.4, withUsualBoost). */
+    proteinFor: (slotType: MealType) => withUsualBoost(restrictToMealType(protein, PROTEIN_ID_MEAL_TYPE, slotType, defaultProteinPool), usualByMealType[slotType]),
+    carbsFor: (slotType: MealType) => withUsualBoost(restrictToMealType(carbs, CARB_ID_MEAL_TYPE, slotType, defaultCarbPool), usualByMealType[slotType]),
+    /** Fats/vegetables/fruit have no meal-type restriction (olive oil,
+     * avocado, mixed salad etc. are all reasonable at any meal) — only the
+     * usual-food bias applies here. */
+    fatsFor: (slotType: MealType) => withUsualBoost(fats, usualByMealType[slotType]),
+    vegetablesFor: (slotType: MealType) => withUsualBoost(vegetables, usualByMealType[slotType]),
+    fruitFor: (slotType: MealType) => withUsualBoost(fruit, usualByMealType[slotType]),
   };
 }
 

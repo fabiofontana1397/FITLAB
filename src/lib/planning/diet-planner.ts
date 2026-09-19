@@ -135,12 +135,15 @@ function buildDayMeals(
     ];
 
     if (isMain) {
-      items.push(buildItem(pools.fats, slotSeed, slotKcal * 0.25));
-      items.push(buildItem(pools.vegetables, slotSeed, 0, 150));
+      const fatsPool = pools.fatsFor(mealType);
+      const vegetablesPool = pools.vegetablesFor(mealType);
+      items.push(buildItem(fatsPool, slotSeed, slotKcal * 0.25));
+      items.push(buildItem(vegetablesPool, slotSeed, 0, 150));
     } else {
-      const fruitId = pick(pools.fruit, slotSeed);
+      const fruitPool = pools.fruitFor(mealType);
+      const fruitId = pick(fruitPool, slotSeed);
       const fruit = findFood(fruitId)!;
-      items.push(buildItem(pools.fruit, slotSeed, 0, fruit.defaultPortionG));
+      items.push(buildItem(fruitPool, slotSeed, 0, fruit.defaultPortionG));
     }
 
     const totalKcal = items.reduce((sum, item) => sum + item.kcal, 0);
