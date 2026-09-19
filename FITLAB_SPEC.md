@@ -606,19 +606,19 @@ Training Plan → Mesocycle → Microcycle → Workout → Exercise → Set
 
 Un *mesociclo* corrisponde a una fase (adattamento/progressione/consolidamento, già presente concettualmente in `training-planner.ts` come `phase`); un *microciclo* è la singola settimana. Questa estensione è il prerequisito strutturale per il progression engine di §7 ter (serve un livello "settimana" su cui applicare le decisioni di progressione).
 
-### 7 ter — Progression engine (proposto)
+### 7 ter — Progression engine
 
-> Sezione proposta, non ancora implementata. Il piano deve osservare `load`, `reps`, `sets`, `RIR`/`RPE`, `completion` e il trend di performance nel tempo, e decidere tra: **aumentare il carico**, **aumentare le ripetizioni**, **mantenere**, **deload**, **sostituire l'esercizio**, **ridurre il volume**.
+> **Parzialmente implementato** (`lib/planning/progression.ts::suggestNextLoad`). Il piano deve osservare `load`, `reps`, `sets`, `RIR`/`RPE`, `completion` e il trend di performance nel tempo, e decidere tra: **aumentare il carico** ✅, **aumentare le ripetizioni** ✅ (implicito: "mantieni il carico e punta a più ripetizioni"), **mantenere** ✅, **deload** ✅, **sostituire l'esercizio** ❌, **ridurre il volume** ❌.
 
-Pipeline completa proposta:
+**Logica implementata**: basata sull'ultimo set loggato con RIR per quell'esercizio (non un trend multi-sessione completo) — reps sotto il target minimo → mantieni (o **deload -10%** se è la 2ª sessione di fila con reps sotto target allo stesso carico, segnale di plateau/fatica accumulata); RIR alto (≥4) e reps al massimo del target → +7.5%; RIR basso (≤1) e reps al massimo → +2.5%; altrimenti mantieni. Sostituisce il calcolo statico `suggestedLoadFor = peso × bwMultiplier` (§4.3) come input iniziale, una volta che esistono sessioni loggate per quell'esercizio.
+
+**Non implementato**: "sostituire l'esercizio" e "ridurre il volume" richiedono che il progression engine possa modificare **quale** esercizio o **quante** serie il piano prescrive — una modifica a livello di `training-planner.ts` (che genera il piano), non alla sola funzione di suggerimento carico; nessuna azione a breve termine. Resta anche non implementata la gerarchia Mesocycle/Microcycle sotto — la pipeline completa proposta:
 
 ```
 Profile → Goal → Training constraints → Frequency → Split → Movement patterns
   → Exercise selection → Volume allocation → Intensity/RIR → Workout
   → Actual performance → Progression engine → Next workout
 ```
-
-Questo sostituisce il calcolo statico odierno (`suggestedLoadFor = peso × bwMultiplier`, vedi §4.3) con un carico realmente basato sulla storia di allenamento dell'utente esercizio per esercizio.
 
 ---
 

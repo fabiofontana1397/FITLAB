@@ -3,8 +3,13 @@
  * based on the user's own logged performance (reps achieved + RIR — reps
  * in reserve, how many more reps they could have done) instead of the flat
  * `suggestedKg = bodyweight × multiplier` estimate training-planner.ts uses
- * for a brand-new exercise. Deliberately scoped to load progression only —
- * the fuller mesocycle/microcycle restructuring documented in the spec as
+ * for a brand-new exercise. Covers increase load (two tiers by RIR),
+ * maintain, and deload (two consecutive missed-target sessions) from §7
+ * ter's proposed decision set — "sostituire l'esercizio" and "ridurre il
+ * volume" are NOT covered: both require changing which exercise/how many
+ * sets the plan itself prescribes, a training-planner.ts-level change, not
+ * a load-suggestion one, and are left as the documented next step. The
+ * fuller mesocycle/microcycle restructuring documented in the spec as
  * "§7 bis" is a larger, separate UI project not attempted here.
  *
  * RIR is optional (see NewLoadModal) — a user who never logs it keeps
@@ -54,8 +59,18 @@ export function suggestNextLoad(history: ProgressionSetPoint[], targetReps: stri
   const metTarget = reps >= repMax;
   const missedTarget = reps < repMin;
 
-  // Missed the rep target outright (regardless of RIR) — hold, don't add load.
+  // Missed the rep target outright (regardless of RIR) — hold, unless this
+  // is already the 2nd consecutive miss at the same load, which reads as a
+  // plateau/fatigue signal rather than a one-off bad day: standard practice
+  // deloads (spec §7 ter's decision set includes "deload", not just
+  // "increase/maintain") instead of holding indefinitely at a weight the
+  // user isn't yet recovering well enough to hit.
   if (missedTarget) {
+    const previous = withRir[withRir.length - 2];
+    const previousAlsoMissed = previous != null && previous.weightKg === last.weightKg && (previous.reps ?? repMin) < repMin;
+    if (previousAlsoMissed) {
+      return { suggestedKg: roundLoad(last.weightKg * 0.9), note: 'Ripetizioni sotto il target per 2 sessioni di fila: deload consigliato (-10%).' };
+    }
     return { suggestedKg: last.weightKg, note: 'Ripetizioni sotto il target: mantieni lo stesso carico.' };
   }
 
