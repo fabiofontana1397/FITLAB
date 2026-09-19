@@ -57,7 +57,7 @@ export async function deleteTrainingPlan(userId: string): Promise<void> {
   if (error) throw error;
 }
 
-export type PlanVersionTrigger = 'onboarding' | 'regenerate' | 'adaptation';
+export type PlanVersionTrigger = 'onboarding' | 'regenerate' | 'adaptation' | 'monthly_checkin';
 
 /**
  * Records one row in `plan_versions` per generation/regeneration/adaptation

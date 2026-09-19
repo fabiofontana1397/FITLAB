@@ -34,7 +34,14 @@ function exerciseCountForDuration(value: unknown): number {
   }
 }
 
-export type TrainingPlanInput = { answers: Record<string, unknown>; strategy?: TrainingStrategy | null };
+export type TrainingPlanInput = {
+  answers: Record<string, unknown>;
+  strategy?: TrainingStrategy | null;
+  /** See DietPlanInput's field of the same name (diet-planner.ts) — same
+   * monthly check-in regeneration mechanism, spec §0.4 punto 2. */
+  preserveMonthsBefore?: number;
+  existingMonths?: TrainingMonthPlan[];
+};
 
 // SplitLabel is a closed set that indexes GYM_EXERCISES/HOME_EXERCISES
 // directly (exercisePool[splitLabel]) — an AI-produced strategy is
@@ -92,7 +99,7 @@ function phaseNote(phase: PlanPhaseKind): string {
  * neither was selected, since there's nothing to build a program for.
  */
 export function generateTrainingPlan(input: TrainingPlanInput): TrainingPlan | null {
-  const { answers, strategy } = input;
+  const { answers, strategy, preserveMonthsBefore, existingMonths } = input;
   const activities = Array.isArray(answers.activitiesPracticed) ? (answers.activitiesPracticed as string[]) : [];
   const practicesGym = activities.includes('gym');
   const practicesRunning = activities.includes('running');
@@ -140,9 +147,16 @@ export function generateTrainingPlan(input: TrainingPlanInput): TrainingPlan | n
   const gymSlots = dayIndices.slice(0, gymDays);
   const runSlots = dayIndices.slice(gymDays, gymDays + runDays);
 
-  let needsManualReview = false;
+  let needsManualReview = existingMonths?.some((m) => m.weeklySplit.some((d) => d.exercises?.some((ex) => ex.needsManualReview))) ?? false;
   const months: TrainingMonthPlan[] = [];
   for (let monthIndex = 1; monthIndex <= durationMonths; monthIndex++) {
+    if (preserveMonthsBefore != null && monthIndex < preserveMonthsBefore) {
+      const existing = existingMonths?.find((m) => m.monthIndex === monthIndex);
+      if (existing) {
+        months.push(existing);
+        continue;
+      }
+    }
     const phase = phaseForMonth(monthIndex, durationMonths);
     const scheme = phase === 'adattamento' ? gymScheme.adattamento : gymScheme.later;
     const runList = phase === 'adattamento' ? runSessions.adattamento : runSessions.later;

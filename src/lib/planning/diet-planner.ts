@@ -26,6 +26,12 @@ export type DietPlanInput = {
   dailyCalorieTarget: number;
   macroTargetsG: { protein: number; carbs: number; fats: number };
   strategy?: DietStrategy | null;
+  /** Monthly check-in regeneration (spec §0.4, punto 2): months before this
+   * index are copied verbatim from `existingMonths` instead of regenerated
+   * — a month the user already lived through never changes retroactively,
+   * only the upcoming one(s) reflect the adjusted target. */
+  preserveMonthsBefore?: number;
+  existingMonths?: DietMonthPlan[];
 };
 
 function phaseForMonth(monthIndex: number, totalMonths: number): PlanPhaseKind {
@@ -167,7 +173,7 @@ function buildWeeklySplit(
 }
 
 export function generateDietPlan(input: DietPlanInput): DietPlan {
-  const { answers, dailyCalorieTarget, macroTargetsG, strategy } = input;
+  const { answers, dailyCalorieTarget, macroTargetsG, strategy, preserveMonthsBefore, existingMonths } = input;
   const goal = (answers.goal as Goal) ?? 'generalHealth';
   const durationMonths = computePlanDurationMonths(answers);
   const pools = buildFoodPools(answers);
@@ -175,6 +181,13 @@ export function generateDietPlan(input: DietPlanInput): DietPlan {
 
   const months: DietMonthPlan[] = [];
   for (let monthIndex = 1; monthIndex <= durationMonths; monthIndex++) {
+    if (preserveMonthsBefore != null && monthIndex < preserveMonthsBefore) {
+      const existing = existingMonths?.find((m) => m.monthIndex === monthIndex);
+      if (existing) {
+        months.push(existing);
+        continue;
+      }
+    }
     const phase = phaseForMonth(monthIndex, durationMonths);
     const strategyTarget = strategy?.monthlyTargets?.find((m) => m.monthIndex === monthIndex);
     const calorieTarget = strategyTarget?.calorieTarget ?? monthCalorieTarget(phase, dailyCalorieTarget, goal);

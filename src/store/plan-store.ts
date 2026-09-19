@@ -26,6 +26,18 @@ type PlanState = {
     targets: { dailyCalorieTarget: number; macroTargetsG: { protein: number; carbs: number; fats: number } },
     trigger?: PlanVersionTrigger
   ) => Promise<void>;
+  /**
+   * Monthly check-in regeneration (spec §0.4, punto 2): rebuilds only the
+   * months from `fromMonthIndex` onward, using the ADJUSTED calorie/macro
+   * target but the SAME original questionnaire answers — months already
+   * lived through are copied verbatim (see DietPlanInput.preserveMonthsBefore),
+   * so this is never a from-scratch plan.
+   */
+  regenerateFromMonth: (
+    fromMonthIndex: number,
+    answers: Record<string, unknown>,
+    adjustedTargets: { dailyCalorieTarget: number; macroTargetsG: { protein: number; carbs: number; fats: number } }
+  ) => Promise<void>;
   syncFromServer: () => Promise<void>;
   /** Local-only reset on logout — see user-store.ts's clearLocal for why. */
   clearLocal: () => void;
@@ -81,6 +93,48 @@ export const usePlanStore = create<PlanState>()(
           } else {
             deleteTrainingPlan(userId).catch((err) => console.warn('persist trainingPlan failed', err));
           }
+        }
+      },
+      regenerateFromMonth: async (fromMonthIndex, answers, adjustedTargets) => {
+        const { dietPlan, trainingPlan } = get();
+        const mode = answers.mode as string | undefined;
+
+        const nextDietPlan =
+          mode === 'training' || !dietPlan
+            ? dietPlan
+            : {
+                ...generateDietPlan({
+                  answers,
+                  ...adjustedTargets,
+                  strategy: null,
+                  preserveMonthsBefore: fromMonthIndex,
+                  existingMonths: dietPlan.months,
+                }),
+                // Regenerating must never reset the plan's own start date —
+                // currentMonthIndex()/monthProgress() (plan-progress.ts) anchor
+                // month-unlock timing on it, and this is a mid-plan update,
+                // not a new plan.
+                generatedAt: dietPlan.generatedAt,
+              };
+        const nextTrainingPlan =
+          mode === 'diet' || !trainingPlan
+            ? trainingPlan
+            : {
+                ...generateTrainingPlan({ answers, strategy: null, preserveMonthsBefore: fromMonthIndex, existingMonths: trainingPlan.months })!,
+                generatedAt: trainingPlan.generatedAt,
+              };
+
+        set({ dietPlan: nextDietPlan, trainingPlan: nextTrainingPlan });
+
+        const userId = currentUserId();
+        if (!userId) return;
+        if (nextDietPlan) {
+          upsertDietPlan(userId, nextDietPlan).catch((err) => console.warn('persist dietPlan (monthly regen) failed', err));
+          insertPlanVersion(userId, 'diet', 'monthly_checkin', ALGORITHM_VERSION).catch((err) => console.warn('insertPlanVersion (diet) failed', err));
+        }
+        if (nextTrainingPlan) {
+          upsertTrainingPlan(userId, nextTrainingPlan).catch((err) => console.warn('persist trainingPlan (monthly regen) failed', err));
+          insertPlanVersion(userId, 'training', 'monthly_checkin', ALGORITHM_VERSION).catch((err) => console.warn('insertPlanVersion (training) failed', err));
         }
       },
       syncFromServer: async () => {

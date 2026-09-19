@@ -58,7 +58,7 @@ const SLEEP_HOURS_BUMP: Record<string, number> = {
 // Never recommend below this — a floor of last resort, independent of
 // whatever combination of inputs produced the goal-driven target (spec §13
 // edge case table, "calorie target sotto soglia di sicurezza").
-const MIN_SAFE_CALORIE_TARGET = 1200;
+export const MIN_SAFE_CALORIE_TARGET = 1200;
 
 export type NutritionTargetsInput = {
   sex: Sex;

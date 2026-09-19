@@ -9,6 +9,7 @@ import { initSupabaseAuthLifecycle } from '@/lib/supabase/client';
 import { useAppStore } from '@/store/app-store';
 import { initAuthListener, useAuthStore } from '@/store/auth-store';
 import { useBodyStore } from '@/store/body-store';
+import { useMonthlyCheckinStore } from '@/store/monthly-checkin-store';
 import { useNutritionStore } from '@/store/nutrition-store';
 import { useOnboardingStore } from '@/store/onboarding-store';
 import { usePlanStore } from '@/store/plan-store';
@@ -48,6 +49,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
       useTrainingProgressStore.getState().syncFromServer();
       usePlanStore.getState().syncFromServer();
       useOnboardingStore.getState().syncFromServer();
+      useMonthlyCheckinStore.getState().syncFromServer();
     } else if (wasAuthenticated.current) {
       useUserStore.getState().clearLocal();
       useBodyStore.getState().clearLocal();
@@ -56,6 +58,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
       useTrainingProgressStore.getState().clearLocal();
       usePlanStore.getState().clearLocal();
       useOnboardingStore.getState().clearLocal();
+      useMonthlyCheckinStore.getState().clearLocal();
       useAppStore.getState().setHasOnboarded(false);
     }
     wasAuthenticated.current = isAuthenticated;
@@ -115,6 +118,7 @@ export default function RootLayout() {
           <Stack.Screen name="chat" options={{ presentation: 'transparentModal', animation: 'none' }} />
           <Stack.Screen name="diet-plan" options={{ presentation: 'modal' }} />
           <Stack.Screen name="training-plan" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="monthly-checkin" options={{ presentation: 'modal' }} />
           <Stack.Screen name="training-progress" options={{ presentation: 'modal' }} />
         </Stack>
       </AuthGate>

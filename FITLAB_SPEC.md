@@ -449,10 +449,43 @@ Ogni volta che questa logica produce un nuovo target (`adaptation-evaluate`, in 
 1. strategy = fetchPlanStrategy(...)               // può essere null
 2. dietPlan = mode==='training' ? null : generateDietPlan({...strategy.diet})
 3. trainingPlan = mode==='diet' ? null : generateTrainingPlan({...strategy.training})
-4. persist best-effort: upsertDietPlan / upsertTrainingPlan (jsonb intero, tabelle diet_plans/training_plans)
+4. persist: upsertDietPlan / upsertTrainingPlan (jsonb intero, tabelle diet_plans/training_plans)
+   + insertPlanVersion(trigger) per ciascun piano generato
 ```
 
-> ⚠️ **Proposta di redesign — versioning invece di persistenza best-effort.** Il passo 4 va sostituito: la generazione del piano dovrebbe creare una **nuova riga in `plan_versions`** (stato iniziale `draft`, poi `active` al completamento) invece di sovrascrivere in place lo stesso blob JSON. L'operazione diventerebbe un job atomico e tracciato, non più puramente fire-and-forget. Nuovo modello dati proposto in **§12 bis**.
+> ✅ **Implementato — registro versioni.** Ogni generazione/rigenerazione/adattamento inserisce una riga in `plan_versions` (`trigger: 'onboarding'|'regenerate'|'adaptation'|'monthly_checkin'`, `algorithm_version`) — un audit trail leggero sopra allo storage esistente (jsonb intero in `diet_plans`/`training_plans`, ancora un solo record per utente, non versionato riga per riga). **Non implementato**: la normalizzazione completa in `plan_versions`/`nutrition_targets`/`training_plan_days`/`training_exercises`/`training_sets` proposta in **§12 bis** — resta un blob jsonb, `plan_versions` è solo un registro sopra di esso, non lo sostituisce. Il passo 4 resta persistenza best-effort (fire-and-forget), non un job atomico con stato `draft`/`active`.
+
+### 4.6 Check-in mensile e rigenerazione del piano (spec §0.4, punto 2 — prima proposta)
+
+> Implementato come **prima proposta esplicitamente da rifinire** (indicazione dell'utente): la durata del piano non è più fissa, ma il piano di 2+ mesi resta comunque generato **tutto in anticipo** al momento dell'onboarding (§0.4 punto 2 del flusso narrativo) — i mesi successivi al primo **non nascono già corretti in base ai progressi**, restano quelli generati inizialmente finché non arriva un check-in.
+
+**Meccanismo**: `src/app/monthly-checkin.tsx` — un questionario breve (6 domande, `lib/questionnaire/monthly-checkin-schema.ts`: aderenza 1-5, energia, fame, difficoltà incontrate, cosa cambiare, note libere) raggiungibile dalla card "Fai il check-in per sbloccare" in `training-plan.tsx`/`diet-plan.tsx` quando il mese corrente (per tempo trascorso) non è ancora sbloccato dal check-in del mese precedente. Al submit:
+
+```
+1. trend = computeMonthlyWeightTrend(bodyEntries, oggi)          // ultimi 30gg, null se <2 pesate
+2. submitCheckin(monthIndex, risposte, trend.weightDeltaKg)      // tabella monthly_checkins
+3. nextTarget = adjustMonthlyCalorieTarget(target attuale, goal, trend, risposte)
+     // ±100kcal se il ritmo settimanale di variazione peso esce dal corridoio
+     // atteso per l'obiettivo; ±50kcal aggiuntivi se il check-in segnala
+     // fame persistente o assente; nessuna modifica se trend=null (dati
+     // insufficienti) — stessa filosofia "a piccoli passi" dell'Adaptive
+     // Nutrition Engine (§4.1 bis), non condivide però lo stesso codice
+     // (trigger e cadenza sono diversi: qui è mensile e gated dal
+     // questionario, non on-demand e solo-calorie)
+4. regenerateFromMonth(monthIndex+1, answers, {nextTarget, nextMacros})
+     // generateDietPlan/generateTrainingPlan con preserveMonthsBefore:
+     // i mesi già vissuti restano IDENTICI (mai un piano ex novo), solo i
+     // mesi da monthIndex+1 in poi vengono ricalcolati con lo stesso
+     // planner deterministico e le STESSE risposte del questionario
+     // originale, solo con il target calorico aggiornato
+5. plan_versions: nuova riga trigger='monthly_checkin' per ciascun piano rigenerato
+```
+
+**Sblocco mensile**: `checkinUnlockedThroughMonth()` (`monthly-checkin-store.ts`) — il mese N (N>1) è visibile solo se **sia** il tempo è trascorso (`currentMonthIndex()`, esistente) **sia** esiste un check-in per il mese N-1; il mese 1 non richiede alcun check-in.
+
+**Cosa NON fa ancora questa prima versione** (limiti noti, da perfezionare): non usa l'aderenza effettiva tracciata (`exercise_completions`/`meal_entries`) come input all'aggiustamento, solo il trend peso + le risposte soggettive del check-in; non tocca l'intensità/volume dell'allenamento in base al check-in (solo la dieta si aggiorna); il piano resta comunque generato per intero fin dall'inizio, quindi "rigenerare da monthIndex+1" sostituisce mesi già presenti nel blob piuttosto che generare quel mese per la prima volta on-demand — architetturalmente equivalente nel risultato finale, ma non lo stesso modello concettuale di "genera solo quando serve" che una rigenerazione mensile vera potrebbe suggerire.
+
+**Nuova tabella**: `monthly_checkins` (`user_id, month_index` PK, `answers jsonb`, `weight_trend_kg`, `created_at`) — vedi §12.
 
 ---
 
@@ -713,6 +746,7 @@ chat.tsx → chat-store.send() → buildClientContext() (locale) →
 | `chat_messages` | `id` PK | user_id, role (`user`\|`assistant`), content, created_at | per-utente |
 | `knowledge_chunks` | `id` PK | source, source_file, chunk_index, page_number, content, embedding vector(1024) | **nessuna policy** — accesso solo via RPC `match_knowledge_chunks` |
 | `coach_insights` | `id` PK | user_id, tone, headline, body, generated_at, dismissed | per-utente (scrittura solo edge function) |
+| `monthly_checkins` | `(user_id, month_index)` PK | answers jsonb, weight_trend_kg, created_at | per-utente — vedi §4.6 |
 
 ### 12 bis — Nuovo modello dati proposto: versioning dei piani
 
@@ -792,7 +826,7 @@ Emersi dall'analisi del codice — utili come punto di partenza per un redesign,
 - Modifica retroattiva di un peso già registrato
 - Gestione timezone
 - Cambio giorno a mezzanotte durante una sessione
-- Piano scaduto (oltre i 6 mesi)
+- Piano scaduto (oltre la durata calcolata) — non gestito: nessuna proposta di rinnovo/nuovo ciclo dopo l'ultimo mese
 - Utilizzo dell'app offline
 - Retry di chiamate API fallite
 - Doppio tap sul bottone "genera piano"

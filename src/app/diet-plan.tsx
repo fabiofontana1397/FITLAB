@@ -9,6 +9,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
 import { InsightCard } from '@/components/ui/insight-card';
 import { MonthProgressBar } from '@/components/ui/month-progress-bar';
+import { PrimaryButton } from '@/components/ui/primary-button';
 import { SectionHeader } from '@/components/ui/section-header';
 import { SegmentedControl } from '@/components/ui/segmented-control';
 import { Radius, Spacing } from '@/constants/theme';
@@ -18,6 +19,7 @@ import { exportDietPlanPdf } from '@/lib/planning/pdf-export';
 import { currentMonthIndex, monthProgress } from '@/lib/planning/plan-progress';
 import type { PlanMeal, PlanPhaseKind } from '@/lib/planning/types';
 import { findQuestion, labelFor } from '@/lib/questionnaire/schema';
+import { checkinUnlockedThroughMonth, useMonthlyCheckinStore } from '@/store/monthly-checkin-store';
 import { isValidDietPlan, usePlanStore } from '@/store/plan-store';
 import { useUserStore } from '@/store/user-store';
 
@@ -39,10 +41,16 @@ export default function DietPlanScreen() {
   const currentUser = useUserStore();
   const [exporting, setExporting] = useState(false);
 
+  const completedCheckinMonths = useMonthlyCheckinStore((s) => s.completedMonths);
   const currentMonthIdx = plan ? currentMonthIndex(plan) : 1;
+  const checkinUnlockedThrough = checkinUnlockedThroughMonth(completedCheckinMonths);
   const [selectedMonth, setSelectedMonth] = useState(currentMonthIdx);
   const selectedMonthData = plan?.months.find((m) => m.monthIndex === selectedMonth);
-  const isUnlocked = selectedMonth <= currentMonthIdx;
+  // A month needs BOTH real time to have passed AND a completed check-in
+  // for the month before it (spec §0.4 punto 2).
+  const isTimeElapsed = selectedMonth <= currentMonthIdx;
+  const isUnlocked = isTimeElapsed && selectedMonth <= checkinUnlockedThrough;
+  const needsCheckin = isTimeElapsed && !isUnlocked;
   const progress = plan ? monthProgress(plan, selectedMonth) : null;
 
   const [selectedWeekday, setSelectedWeekday] = useState(WEEKDAY_LABELS[0]);
@@ -147,11 +155,15 @@ export default function DietPlanScreen() {
               <View style={[styles.lockedIcon, { backgroundColor: theme.backgroundElement }]}>
                 <Icon name="lock" size={22} color={theme.textTertiary} />
               </View>
-              <ThemedText type="smallBold">Scheda ancora da sbloccare</ThemedText>
+              <ThemedText type="smallBold">{needsCheckin ? 'Fai il check-in per sbloccare' : 'Scheda ancora da sbloccare'}</ThemedText>
               <ThemedText type="caption" themeColor="textSecondary" style={{ textAlign: 'center' }}>
-                Si sblocca al termine del Mese {selectedMonth - 1}. I target si adatteranno ai tuoi progressi fino a
-                quel momento.
+                {needsCheckin
+                  ? `Il Mese ${selectedMonth - 1} è terminato: rispondi al check-in mensile per sbloccare e adattare il Mese ${selectedMonth}.`
+                  : `Si sblocca al termine del Mese ${selectedMonth - 1}. I target si adatteranno ai tuoi progressi fino a quel momento.`}
               </ThemedText>
+              {needsCheckin ? (
+                <PrimaryButton label="Fai il check-in mensile" onPress={() => router.push('/monthly-checkin')} style={{ marginTop: Spacing.two }} />
+              ) : null}
             </GlassSurface>
           ) : selectedMonthData ? (
             <>
