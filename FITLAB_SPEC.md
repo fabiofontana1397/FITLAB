@@ -4,7 +4,7 @@
 >
 > **Convenzione**: i blocchi marcati con ⚠️ e le sotto-sezioni "bis"/"ter" (§4.1 bis, §5 bis, §7 bis, §7 ter, §12 bis) e il capitolo §14 documentano le **proposte di redesign** emerse da una revisione critica del documento (simulando i ruoli Backend/Software Architect, Frontend, Personal Trainer, Nutrizionista). Il cambio di paradigma centrale: da un flusso lineare a stima singola (TDEE stimato al giorno 0 → target → piano → tracking, mai più ricalcolato) a un **ciclo adattivo** (stima iniziale → comportamento reale osservato → trend → eventuale nuovo target → nuova versione del piano), con relativo versioning dei piani invece di un blob JSON singolo per utente.
 >
-> **Stato implementazione (2026-09-19)** — tutti i P0 e la maggior parte dei P1/P2 della guida sono stati applicati al codice reale (non solo documentati): equipment filtering, fallback esercizi allargato, `includedFoods` come vincolo reale, `MealDistributionPolicy` unificata, baseline peso non distruttiva, dispendio energetico Home basato su durata sessione, `dailySteps`/`sleepHoursRange`/`hasDeadline`/`hungerLevel`/`cravings` collegati al calcolo, `plan_versions`/`nutrition_target_history`, **Adaptive Nutrition Engine** (ora come Edge Function `adaptation-evaluate`, non più lato client — vedi §14), validazione rule/constraint dell'output AI in `generate-plan-strategy`, progressione carichi basata su RIR (`lib/planning/progression.ts`), `questionnaire_version`. Restano **proposte non implementate**: normalizzazione completa dello schema piani (`training_plan_days`/`training_exercises`/`training_sets` — oggi solo `plan_versions` come registro sopra al blob jsonb esistente), livello API di dominio completo per il resto della business logic, gerarchia Mesocycle/Microcycle (§7 bis) e progression engine esteso oltre al solo carico, rimozione di campi dal questionario (decisione di prodotto, non presa unilateralmente).
+> **Stato implementazione (2026-09-19)** — tutti i P0 e la maggior parte dei P1/P2/P3 della guida sono stati applicati al codice reale (non solo documentati): questionario riscritto in v2 (età precisa, pasti/orari per slot, "cosa mangi di solito", `gymExperience`/`gymSkillLevel`, rimozione dei campi senza alcuna funzione prevista), equipment filtering, fallback esercizi allargato e non più silenzioso (`needsManualReview`), split e carico consigliato basati su esperienza, selezione alimenti meal-appropriate + segnale "cosa mangi di solito", durata piano dinamica basata sull'obiettivo, `includedFoods` come vincolo reale, `MealDistributionPolicy` unificata, baseline peso non distruttiva, modello di dispendio energetico a 3 componenti (durata+completamento, non più un bonus binario), `dailySteps`/`sleepHoursRange` collegati al TDEE, `plan_versions`/`nutrition_target_history`, `initial_estimate` vs `current_target`, **Adaptive Nutrition Engine** (ora come Edge Function `adaptation-evaluate`, non più lato client — vedi §14), validazione rule/constraint dell'output AI in `generate-plan-strategy`, progressione carichi basata su RIR (`lib/planning/progression.ts`), `questionnaire_version`, gating rigoroso di compilazione obbligatoria. Restano **proposte non implementate**: normalizzazione completa dello schema piani (`training_plan_days`/`training_exercises`/`training_sets` — oggi solo `plan_versions` come registro sopra al blob jsonb esistente), livello API di dominio completo per il resto della business logic (§1/§14 — cambio architetturale di grande portata, deliberatamente non avviato senza una fase dedicata), gerarchia Mesocycle/Microcycle (§7 bis) e progression engine esteso oltre al solo carico, il sistema di check-in mensile + rigenerazione piano (§0.4 punto 2, proposta iniziale in corso).
 
 ## Indice
 
@@ -199,70 +199,64 @@ Supabase Cloud
 
 > ✏️ **Modifica qui** per cambiare/aggiungere/rimuovere una domanda. Ricorda di aggiornare anche la sezione [11 — Mappa questionario → utilizzo] se cambi cosa consuma il campo.
 >
-> ⚠️ **Classificazione proposta**: molti campi elencati qui sotto sono oggi "raccolti ma non usati" (marcati `[inutilizzato]` in §11). La revisione propone di classificarli in tre categorie invece di lasciarli genericamente inutilizzati — **Keep+Use** (da collegare a un calcolo reale), **Keep-no-algoritmo** (utili solo a profilo/coach, mai a un calcolo), **Rimuovere candidato** (nessuna funzione prevista, aumentano solo il friction cost del questionario). Classificazione campo per campo in §11.
+> ✅ **Aggiornato alla v2 (`QUESTIONNAIRE_VERSION = 2`)**: le tabelle sotto rispecchiano `schema.ts` alla data odierna. Rispetto alla v1 (quella che il resto di questo capitolo descriveva finché non è stata riscritta): `ageRange` → `age` (anni precisi, §0.3/§4.1), le 6 misure corporee opzionali (`neckCm`/`chestCm`/`waistCm`/`hipsCm`/`armCm`/`thighCm`) sono state **rimosse** (nessuna funzione le consumava — "Rimuovere candidato" applicato, non solo proposto), `hasDeadline`/`deadlineDate`/`successWeightKg` **rimossi** (non più applicabili al calcolo, vedi §4.1 punto 3) e sostituiti da `targetWeightKg` (spostato nello step Obiettivo, opzionale — ora usato anche da `computePlanDurationMonths`, §4.3), `mealsPerDay`+`snacks` **sostituiti** da `mealsSelected` (multi-select diretto sui 6 slot pasto) + un orario per slot, `allergies`+`intolerances` **unificati** in `allergiesIntolerances`, `hungerLevel`/`cravings`/`supplements`/`dietHistory` **rimossi**, e sono state aggiunte `generalActivityLevel`, `bedTime`/`wakeTime`, `eatingOut` (ora con granularità 0-6+/settimana), le 6 domande "cosa mangi di solito" (`usualBreakfast` ecc., §0.4), `gymExperience`/`gymSkillLevel` (§4.3). La classificazione **Keep+Use / Keep-no-algoritmo / Rimuovere candidato** proposta per gli "inutilizzati" è quindi in gran parte già stata applicata per rimozione o collegamento reale — stato campo per campo in §11.
 
 **Step `physical` — "Profilo fisico"** (sempre mostrato)
 | id | tipo | opzioni/vincoli | obbligatoria |
 |---|---|---|---|
-| `ageRange` | single | `lt18,18-24,25-34,35-44,45-54,55+` | sì |
-| `sex` | single | `male,female,unspecified` | sì |
+| `age` | number (anni) | — | sì |
+| `sex` | single | `male,female` | sì |
 | `heightCm` | number (cm) | — | sì |
 | `currentWeightKg` | number (kg) | — | sì |
-| `targetWeightKg` | number (kg) | — | sì |
-| `neckCm`,`chestCm`,`waistCm`,`hipsCm`,`armCm`,`thighCm` | number (cm) | — | no |
 
 **Step `goal` — "Obiettivo"** (sempre)
 | id | tipo | opzioni | obbligatoria |
 |---|---|---|---|
 | `goal` | single | `loseFat,gainMuscle,maintainImprove,gainStrength,improveEndurance,generalHealth` | sì |
-| `hasDeadline` | single | `no,yes` | sì |
-| `deadlineDate` | text | `gg/mm/aaaa` | no |
-| `successWeightKg` | number (kg) | — | no |
+| `targetWeightKg` | number (kg) | — | no |
 
 **Step `daily` — "Attività quotidiana"** (sempre)
 | id | tipo | opzioni | obbligatoria |
 |---|---|---|---|
 | `jobActivity` | single | `sedentary,seatedMobile,standing,active,veryHeavy` | sì |
+| `generalActivityLevel` | single | `mostlySeated,occasional,moderate,active,veryActive` | sì |
 | `dailySteps` | single | `lt3000,3000-5000,5000-8000,8000-12000,gt12000,unknown` | sì |
+| `bedTime`, `wakeTime` | time | placeholder `23:00`/`07:00` | sì |
 | `sleepHoursRange` | single | `lt5,5-6,6-7,7-8,gt8` | sì |
 | `sleepQuality` | scale 1-5 | — | sì |
 
 **Step `eatingHabits` — "Alimentazione"** (se `mode ≠ training`)
 | id | tipo | opzioni | obbligatoria |
 |---|---|---|---|
-| `dietHistory` | single | `never,occasionally,months,years` | sì |
-| `mealsPerDay` | single | `2,3,4,5,6+` | sì |
-| `breakfastTime` | text | placeholder `07:30` | sì |
-| `lunchTime` | text | placeholder `13:00` | sì |
-| `dinnerTime` | text | placeholder `20:00` | sì |
-| `snacks` | single | `no,morning,afternoon,evening,multiple` | sì |
-| `eatingOut` | single | `rarely,1-2week,3-5week,daily` | sì |
+| `mealsSelected` | multi | 6 slot: `colazione,spuntinoMattina,pranzo,spuntinoPomeriggio,cena,spuntinoSera` | sì |
+| `breakfastTime`, `lunchTime`, `dinnerTime` | time | placeholder `07:30`/`13:00`/`20:00` | sì |
+| `morningSnackTime`, `afternoonSnackTime`, `preSleepSnackTime` | time | mostrata solo se il relativo slot è in `mealsSelected` | sì (se mostrata) |
+| `eatingOut` | single | `rarely,1..6,gt6` volte/settimana | sì |
 
 **Step `preferences` — "Preferenze alimentari"** (se `mode ≠ training`)
 | id | tipo | opzioni | dipende da | obbligatoria |
 |---|---|---|---|---|
 | `dietaryPattern` | single | `none,vegetarian,vegan,pescetarian,mediterranean,lowCarb,other` | — | sì |
 | `dietaryPatternOther` | text | — | `dietaryPattern=other` | no |
-| `allergies` | text | — | — | no |
-| `intolerances` | text | — | — | no |
+| `allergiesIntolerances` | text | — | — | no |
 | `excludedFoods` | longtext | — | — | no |
 | `includedFoods` | longtext | — | — | no |
+| `usualBreakfast`, `usualLunch`, `usualDinner` | text | — | — | no |
+| `usualMorningSnack`, `usualAfternoonSnack`, `usualPreSleepSnack` | text | — | mostrata solo se il relativo slot è in `mealsSelected` | no |
 | `preferredProteins`(+`Other`) | multi | `chicken,turkey,beef,eggs,fish,legumes,dairy,yogurt,proteinPowder,tofu,other` | — | sì |
 | `preferredCarbs`(+`Other`) | multi | `rice,pasta,potatoes,bread,oats,cereals,legumes,fruit,other` | — | sì |
 | `preferredFats`(+`Other`) | multi | `oliveOil,nuts,avocado,eggs,fattyFish,butter,other` | — | sì |
-| `hungerLevel` | single | `rarely,little,moderate,much,constant` | — | sì |
-| `cravings` | scale 1-5 | — | — | sì |
 | `coffeeIntake` | single | `0,1,2,3,4+` | — | sì |
 | `alcoholIntake` | single | `never,occasionally,1-2week,3+week` | — | sì |
-| `supplements`(+`Other`) | multi | `protein,creatine,omega3,vitaminD,multivitamin,magnesium,electrolytes,preworkout,none,other` | — | sì |
 
 **Step `training` — "Allenamento"** (se `mode ≠ diet`)
 | id | tipo | opzioni | obbligatoria |
 |---|---|---|---|
-| `activitiesPracticed` | multi | `gym,running,cycling,swimming,tennis,functional,calcio,artiMarziali,camminata,escursionismo,altro` | sì |
+| `activitiesPracticed` | multi | `gym,functional,running,cycling,swimming,tennis,altro` | sì |
 
 Per **ogni** attività selezionata, generate a runtime (`buildActivityQuestions`, non nello schema statico):
-- `freq_<activity>` (single: `1,2,3,4,5,6+`)
+- `freq_<activity>` (single: `1,2,3,4,5,6+`, più `biweekly`/`monthly` — sotto una sessione/settimana, raccolti solo per TDEE/contesto, mai per il planner)
+- solo per `gym`: `gymExperience` (`never,3-12months,1-3years,3plusYears`), `gymSkillLevel` (`beginner,intermediate,expert`) — vedi §4.3
 - solo per `gym`/`running`: `focus_gym` (`strength,hypertrophy,fatLoss,muscularEndurance,technique`), `focus_running` (`endurance,speed,raceTime,fatLoss,raceReady`)
 
 **Step `availability` — "Disponibilità"** (se `mode ≠ diet`)
@@ -297,7 +291,7 @@ Calcola `computeNutritionTargets(...)` (§4.1) e mostra: Obiettivo, Peso attuale
 
 ### 3.4 Solo alcuni campi vengono "promossi" al profilo strutturato
 
-Dei 45+ campi del questionario, solo questi finiscono nella tabella `profiles`/`user-store` (il resto resta **esclusivamente** nel blob `onboarding_answers.answers`, letto poi direttamente dai planner): `goal, sex, ageRange, heightCm, targetWeightKg, dailyCalorieTarget, macroTargetsG(protein/carbs/fats), hydrationTargetMl, sports`.
+Dei campi del questionario, solo questi finiscono nella tabella `profiles`/`user-store` (il resto resta **esclusivamente** nel blob `onboarding_answers.answers`, letto poi direttamente dai planner): `goal, sex, age, heightCm, targetWeightKg, dailyCalorieTarget, macroTargetsG(protein/carbs/fats), hydrationTargetMl, sports`.
 
 ---
 
@@ -373,8 +367,8 @@ Ogni volta che questa logica produce un nuovo target (`adaptation-evaluate`, in 
 **Edge Function** (`supabase/functions/generate-plan-strategy/index.ts`):
 1. RAG: query `"${goal} ${activitiesPracticed} ${focus_gym} ${dietaryPattern}"` → `training_guide` + `nutrition_guide` in parallelo.
 2. Claude Sonnet con `web_search` (allowlist: examine.com, pubmed.ncbi.nlm.nih.gov, ncbi.nlm.nih.gov, nih.gov, who.int, acsm.org, nsca.com, issn.net, eatright.org, strongerbyscience.com) + `output_config` JSON-schema garantito.
-3. **Campi del questionario effettivamente inclusi nel prompt** (`buildProfileSummary`): `goal, activitiesPracticed, focus_gym, focus_running, availableDays, sessionDuration, freq_gym, freq_running, trainingLocation`, **limitazioni fisiche** (`hasPain/painDetails, cannotDoExercises/cannotDoDetails, recentInjuries/recentInjuriesDetails`, solo se il flag è "sì" — sezione "vincolante"), `dietaryPattern, mealsPerDay, breakfastTime, lunchTime, dinnerTime, snacks`, **vincoli alimentari** (`allergies, intolerances, excludedFoods, includedFoods`, sezione "vincolante"), `dailyCalorieTarget, macroTargetsG, durationMonths`.
-4. **Campi NON inclusi** nel prompt (raccolti ma ignorati da questo step): `ageRange, sex, heightCm, currentWeightKg`, misure corporee, `hasDeadline/deadlineDate/successWeightKg, jobActivity, dailySteps, sleepHoursRange, sleepQuality, dietHistory, eatingOut, dietaryPatternOther, preferredProteins/Carbs/Fats(+Other), hungerLevel, cravings, coffeeIntake, alcoholIntake, supplements, equipment, freq_<altre attività>, focus_<altre attività>`.
+3. **Campi del questionario effettivamente inclusi nel prompt** (`buildProfileSummary`, aggiornato alla v2): `goal, activitiesPracticed, focus_gym, focus_running, availableDays, sessionDuration, freq_gym, freq_running, trainingLocation`, **esperienza palestra** (`gymExperience, gymSkillLevel`, solo se presenti), **limitazioni fisiche** (`hasPain/painDetails, cannotDoExercises/cannotDoDetails, recentInjuries/recentInjuriesDetails`, solo se il flag è "sì" — sezione "vincolante"), `dietaryPattern, mealsSelected` (array), `breakfastTime, lunchTime, dinnerTime`, **vincoli alimentari** (`allergiesIntolerances, excludedFoods, includedFoods`, sezione "vincolante"), **pasti abituali** (`usualBreakfast/Lunch/Dinner/MorningSnack/AfternoonSnack/PreSleepSnack`, solo se presenti — sezione "contesto, non vincolante"), `dailyCalorieTarget, macroTargetsG, durationMonths`.
+4. **Campi NON inclusi** nel prompt (raccolti ma ignorati da questo step): `age, sex, heightCm, currentWeightKg, targetWeightKg, jobActivity, generalActivityLevel, dailySteps, bedTime, wakeTime, sleepHoursRange, sleepQuality, eatingOut, dietaryPatternOther, preferredProteins/Carbs/Fats(+Other), coffeeIntake, alcoholIntake, equipment, freq_<altre attività>, focus_<altre attività>`.
 
 **Output** (`STRATEGY_SCHEMA`): `{ training: {splitLabels[], gymScheme, runSessions, monthlyFocus[], rationale} | null, diet: {monthlyTargets[], monthlyFocus[], rationale} | null }`. **Non contiene mai** esercizi o alimenti concreti — solo decisioni di metodologia.
 
@@ -664,41 +658,40 @@ chat.tsx → chat-store.send() → buildClientContext() (locale) →
 
 ## 11. Mappa questionario → utilizzo (tabella master)
 
-Legenda: **[Profilo]** promosso in `profiles`; **[AI]** incluso nel prompt `generate-plan-strategy`; **[Training]** planner allenamento; **[Dieta]** planner alimentare; **[TDEE]** calcolo calorico onboarding; **[UI]** solo riepilogo onboarding; **[inutilizzato]** raccolto ma non consumato da nessun planner (stato attuale). Tre nuove destinazioni **proposte** per classificare gli `[inutilizzato]` (vedi §3.2, §13 punto 4): **[Keep+Use]** — da collegare a un calcolo reale; **[Keep-no-algoritmo]** — utile solo a profilo/coach, mai a un calcolo; **[Rimuovere candidato]** — nessuna funzione prevista.
+> ✅ **Aggiornata alla v2.** Legenda: **[Profilo]** promosso in `profiles`; **[AI]** incluso nel prompt `generate-plan-strategy`; **[Training]** planner allenamento; **[Dieta]** planner alimentare; **[TDEE]** calcolo calorico onboarding; **[UI]** solo riepilogo onboarding; **[Keep-no-algoritmo]** raccolto, mostrato solo nel riepilogo onboarding/profilo, non collegato ad alcun calcolo per scelta (non un gap da correggere). I campi v1 classificati "inutilizzato"/candidati alla rimozione (`ageRange` fascia, misure corporee opzionali, `hasDeadline`/`deadlineDate`/`successWeightKg`, `dietHistory`, `hungerLevel`/`cravings`, `supplements`, i campi `Other` testuali) **non esistono più** nel questionario v2 — rimozione applicata, non solo proposta.
 
-| Campo | Destinazione oggi | Destinazione proposta |
-|---|---|---|
-| `mode` | instradamento step onboarding + quale piano generare | — |
-| `ageRange`, `sex`, `heightCm` | [TDEE] + [Profilo] | — |
-| `currentWeightKg` | [TDEE] + [Training] (carico consigliato) + peso iniziale Body | — |
-| `targetWeightKg` | [Profilo] + [UI] | — |
-| `neckCm,chestCm,waistCm,hipsCm,armCm,thighCm` | **[inutilizzato]** (persistiti in `onboarding_answers`, mai letti da alcun planner/UI) | **[Rimuovere candidato]** oppure **[Keep-no-algoritmo]** se usati per profilo/coach — decisione da rendere esplicita |
-| `goal` | [TDEE]+[Profilo]+[AI]+[Dieta]+[UI] | — |
-| `hasDeadline`, `deadlineDate`, `successWeightKg` | **[inutilizzato]** | **[Keep+Use]** — collegabile al target calorico (§4.1, punto 3) |
-| `jobActivity` | [TDEE] | — |
-| `dailySteps` | **[inutilizzato]** | **[Keep+Use]** — collegabile al TDEE (§4.1, punto 2) |
-| `sleepHoursRange`, `sleepQuality` | **[inutilizzato]** | **[Keep+Use]** (P2 — integrazione sonno) |
-| `dietHistory` | **[inutilizzato]** | **[Rimuovere candidato]** oppure **[Keep-no-algoritmo]** |
-| `eatingOut` | **[inutilizzato]** | **[Keep+Use]** (P2) |
-| `mealsPerDay`, `breakfastTime`, `lunchTime`, `dinnerTime`, `snacks` | [Dieta] (`meal-slots.ts`) + [AI] | — |
-| `dietaryPattern` | [Dieta] (`food-pools.ts`) + [AI] + [UI] | — |
-| `dietaryPatternOther` | **[inutilizzato]** | **[Rimuovere candidato]** oppure **[Keep-no-algoritmo]** |
-| `allergies`, `intolerances`, `excludedFoods` | [Dieta] + [AI] + [UI] | — |
-| `includedFoods` | ✅ **[Dieta] + [AI]** — vincolo reale su `buildFoodPools()`, non solo testo prompt | — |
-| `usualBreakfast`/`usualMorningSnack`/`usualLunch`/`usualAfternoonSnack`/`usualDinner`/`usualPreSleepSnack` | ✅ **[Dieta]** — segnale di peso per `buildFoodPools()` (§0.4) | — |
-| `preferredProteins/Carbs/Fats`(+`Other`) | [Dieta]; i campi `Other` (testo libero) **[inutilizzato]** | i campi `Other`: **[Rimuovere candidato]** oppure **[Keep-no-algoritmo]** |
-| `hungerLevel`, `cravings` | **[inutilizzato]** | **[Keep+Use]** (P2) |
-| `coffeeIntake`, `alcoholIntake`, `supplements` | **[inutilizzato]** | **[Keep-no-algoritmo]** — utili solo a profilo/coach |
-| `activitiesPracticed` | [Profilo]+[Training]+[AI]+[UI] | — |
-| `freq_gym`, `freq_running` | [Training]+[TDEE]+[AI] | — |
-| `freq_<altre attività>` | solo [TDEE] (bump calorico), non influenza il piano training | invariato per design, non un problema da correggere |
-| `focus_gym`, `focus_running` | [Training]+[AI] | — |
-| `availableDays` | [Training]+[AI]+[UI] | — |
-| `sessionDuration` | [Training]+[UI] (non passato all'AI) | — |
-| `trainingLocation` | [Training]+[AI]+[UI] | — |
-| `equipment` | ✅ **[Training]** — `filterByEquipment()` filtra `HOME_EXERCISES` | — |
-| `gymExperience`, `gymSkillLevel` | ✅ **[Training]** — split (`resolveSplitLabels`) e carico consigliato (`suggestedLoadFor`) | — |
-| `hasPain`/`painDetails`, `cannotDoExercises`/`cannotDoDetails`, `recentInjuries`/`recentInjuriesDetails` | [Training] (`deriveExerciseExclusions` → `selectExercises`) + [AI] | — |
+| Campo | Destinazione |
+|---|---|
+| `mode` | instradamento step onboarding + quale piano generare |
+| `age`, `sex`, `heightCm` | [TDEE] + [Profilo] |
+| `currentWeightKg` | [TDEE] + [Training] (carico consigliato) + peso iniziale Body |
+| `targetWeightKg` | [Profilo] + [UI] + [Training]/[Dieta] (`computePlanDurationMonths`, §4.3) |
+| `goal` | [TDEE]+[Profilo]+[AI]+[Dieta]+[Training] (durata piano) +[UI] |
+| `jobActivity` | [TDEE] + [AI] |
+| `generalActivityLevel` | **[Keep-no-algoritmo]** — mostrato solo in UI, non ancora collegato al TDEE (si sovrappone concettualmente a `jobActivity`/`dailySteps`) |
+| `dailySteps` | [TDEE] (`DAILY_STEPS_BUMP`) |
+| `bedTime`, `wakeTime` | **[Keep-no-algoritmo]** — raccolti per contesto, non ancora usati da alcun calcolo |
+| `sleepHoursRange` | [TDEE] (`SLEEP_HOURS_BUMP`) |
+| `sleepQuality` | **[Keep-no-algoritmo]** |
+| `mealsSelected`, `breakfastTime`/`lunchTime`/`dinnerTime`/`morningSnackTime`/`afternoonSnackTime`/`preSleepSnackTime` | [Dieta] (`meal-slots.ts`) + [AI] (solo i 3 orari pasto principali) |
+| `eatingOut` | **[Keep-no-algoritmo]** — raccolto, non ancora collegato a un calcolo |
+| `dietaryPattern` | [Dieta] (`food-pools.ts`) + [AI] + [UI] |
+| `dietaryPatternOther` | **[Keep-no-algoritmo]** |
+| `allergiesIntolerances`, `excludedFoods` | [Dieta] + [AI] + [UI] |
+| `includedFoods` | [Dieta] (`buildFoodPools()`, vincolo reale) + [AI] |
+| `usualBreakfast`/`usualMorningSnack`/`usualLunch`/`usualAfternoonSnack`/`usualDinner`/`usualPreSleepSnack` | [Dieta] (segnale di peso in `buildFoodPools()`, §0.4) + [AI] (contesto) |
+| `preferredProteins/Carbs/Fats` | [Dieta] |
+| `coffeeIntake`, `alcoholIntake` | **[Keep-no-algoritmo]** |
+| `activitiesPracticed` | [Profilo]+[Training]+[AI]+[UI] |
+| `freq_gym`, `freq_running` | [Training]+[TDEE]+[AI] |
+| `freq_<altre attività>` | solo [TDEE] (bump calorico), non influenza il piano training — per design, non un problema da correggere |
+| `gymExperience`, `gymSkillLevel` | [Training] — split (`resolveSplitLabels`) e carico consigliato (`suggestedLoadFor`), §4.3 + [AI] |
+| `focus_gym`, `focus_running` | [Training]+[AI] |
+| `availableDays` | [Training]+[AI]+[UI] |
+| `sessionDuration` | [Training]+[UI] (non passato all'AI) |
+| `trainingLocation` | [Training]+[AI]+[UI] |
+| `equipment` | [Training] — `filterByEquipment()` filtra `HOME_EXERCISES` |
+| `hasPain`/`painDetails`, `cannotDoExercises`/`cannotDoDetails`, `recentInjuries`/`recentInjuriesDetails` | [Training] (`deriveExerciseExclusions` → `selectExercises`) + [AI] |
 
 ---
 
@@ -758,7 +751,7 @@ Emersi dall'analisi del codice — utili come punto di partenza per un redesign,
 1. **`stepsHistory` è sempre vuoto** (`src/lib/mock/activity.ts`) — l'anello "passi" e le kcal-da-passi in Home sono sempre 0: non c'è alcuna feature reale di step-tracking, è un placeholder residuo. → vedi §5 bis (modello di visualizzazione proposto) e §10 (integrazione wearable, P3).
 2. **Due sistemi Training paralleli**: il sistema statico (`training-store.ts`) è morto lato UI ma vivo lato dati/chat AI — genera confusione se non documentato (fatto qui, §7). → raccomandazione di redesign: rimozione definitiva, vedi §7.
 3. ✅ **Risolto** — `equipment` ora filtra `HOME_EXERCISES` (`filterByEquipment()`). Vedi §4.3 e §11.
-4. **13+ campi del questionario non usati da nessun planner**: misure corporee dettagliate, deadline, step giornalieri, sonno, storico diete, mangiare fuori, gusti "Other" testuali, fame/voglie, caffè/alcol, integratori. Sono raccolti e persistiti ma non influenzano alcun output. → classificazione dettagliata **Keep+Use / Keep-no-algoritmo / Rimuovere candidato** in §3.2 e §11 (sostituisce la precedente indicazione generica "candidati sia per essere rimossi... sia per essere collegati").
+4. ✅ **In gran parte risolto** — la maggior parte dei campi "raccolti ma non usati" segnalati in revisione sono stati o **rimossi** dal questionario v2 (misure corporee dettagliate, deadline, storico diete, fame/voglie, integratori, campi "Other" testuali — nessuna funzione prevista) o **collegati a un calcolo reale** (step giornalieri e sonno → TDEE, equipment/gymExperience/gymSkillLevel → planner training, includedFoods/usual* → planner dieta). Restano `bedTime`/`wakeTime`/`sleepQuality`/`generalActivityLevel`/`eatingOut`/`coffeeIntake`/`alcoholIntake`/`dietaryPatternOther` come **[Keep-no-algoritmo]** deliberato (utili solo a profilo/coach) — classificazione campo per campo in §3.2 e §11.
 5. ✅ **Risolto** — `includedFoods` è ora anche un vincolo reale di `buildFoodPools()`, non solo testo per il prompt AI. Vedi §4.4.
 6. **Due `sharePct` diversi e non unificati** per i pasti: quello statico in `nutrition-store.ts` (per la UI di logging manuale/target-per-slot) e quello calcolato in `meal-slots.ts` (per il piano generato) — valori di peso diversi per lo stesso concetto. → soluzione proposta (`MealDistributionPolicy` unica), vedi §8.
 7. ✅ **Risolto** — nuovo tipo di domanda `'time'` (`schema.ts`, usato da `bedTime`/`wakeTime`/`breakfastTime`/`morningSnackTime`/`lunchTime`/`afternoonSnackTime`/`dinnerTime`/`preSleepSnackTime`): l'input formatta automaticamente le cifre digitate in `HH:MM` e mostra un errore inline se il formato non è valido; `isAnswered()` (`onboarding.tsx`) ora richiede un orario valido per considerare la domanda risposta, condividendo la stessa `TIME_REGEX` con `meal-slots.ts` invece di duplicarla — un utente che scrive un orario incompleto non può più avanzare pensando di aver risposto.
