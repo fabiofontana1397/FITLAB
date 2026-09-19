@@ -32,7 +32,9 @@
 
 ### 0.1 Ingresso in app
 
-Tutto comincia da **Welcome** (`src/app/welcome.tsx`), un semplice bivio: "Accedi" porta a `/login`, "Crea un account" porta a `/register`. Chi si registra fornisce solo `name`, `email`, `password` — Supabase Auth crea l'utente e, tramite un trigger Postgres (`handle_new_user`), crea automaticamente una riga vuota in `profiles` (valori di default: obiettivo "salute generale", 180cm, 78kg target, 2650 kcal — placeholder in attesa del questionario). Se manca ancora una sessione attiva (email da confermare), l'utente vede la schermata "Conferma la tua email" e resta bloccato lì finché non clicca il link ricevuto via Resend. Una volta autenticato, se `hasOnboarded` è ancora `false`, l'app forza il passaggio al questionario — non esiste una Home "vuota" per un utente che non ha ancora risposto.
+Tutto comincia da **Welcome** (`src/app/welcome.tsx`), un semplice bivio: "Accedi" porta a `/login`, "Crea un account" porta a `/register`. Chi si registra fornisce solo `name`, `email`, `password` — Supabase Auth crea l'utente e, tramite un trigger Postgres (`handle_new_user`), crea automaticamente una riga in `profiles` con **valori a zero/vuoti** (`height_cm`, `target_weight_kg`, `daily_calorie_target`, `protein_g`, `carbs_g`, `fats_g`, `hydration_target_ml` tutti `0`, `sports` array vuoto — corretto nella migrazione `0015_zero_profile_defaults.sql`, vedi §12 — prima erano placeholder "plausibili" come 180cm/78kg/2650kcal che non riflettevano dati reali), coerenti col `DEFAULT_PROFILE` client-side (`src/store/user-store.ts`), anch'esso a zero. Se manca ancora una sessione attiva (email da confermare), l'utente vede la schermata "Conferma la tua email" e resta bloccato lì finché non clicca il link ricevuto via Resend. Una volta autenticato, se `hasOnboarded` è ancora `false`, l'app forza il passaggio al questionario (`AuthGate` in `_layout.tsx` reindirizza **ogni** rotta, non solo la Home, a `/onboarding`) — non esiste una schermata dell'app "vuota ma raggiungibile" per un utente che non ha ancora risposto, e nessun numero placeholder è mai visibile in UI prima che risponda davvero.
+
+> ⚠️ **Vincolo di compilazione obbligatoria**: ogni step del questionario ha il proprio bottone "Continua" disabilitato (`canContinue` in `onboarding.tsx`) finché tutte le domande non facoltative di quello step non sono risposte; il bottone finale "Conferma" nella schermata di riepilogo ri-verifica **tutte** le domande obbligatorie di **tutti** gli step del mode scelto (non si fida della sola progressione step-by-step) prima di abilitarsi, con un controllo gemello anche dentro `confirmProfile()`. Risultato: è strutturalmente impossibile finalizzare un profilo incompleto.
 
 ### 0.2 Il questionario: dalle risposte ai numeri grezzi
 
@@ -53,7 +55,7 @@ BMR = 10 × peso(kg) + 6.25 × altezza(cm) − 5 × età + s
       s = +5 se sex=male, −161 se sex=female, −78 se non specificato
 ```
 
-L'età non è quella esatta dichiarata dall'utente (il questionario non la chiede in anni, ma per fascia — es. "25-34"): si usa il punto medio della fascia (`AGE_RANGE_MIDPOINT`, "25-34"→29 anni). Il BMR è quindi già un'approssimazione a partire da questo primo passaggio.
+**Questionario v2**: l'età è ora chiesta come valore preciso in anni (campo `age`, numerico) invece che per fascia — risolve quello che era il primo punto di approssimazione della formula. (Storico: fino alla v1 del questionario si chiedeva una fascia, es. "25-34", e si usava il punto medio come proxy; il codice non ha più questo passaggio.)
 
 **Passo 2 — Dispendio energetico totale (TDEE).** Il BMR viene moltiplicato per un fattore di attività composto da due parti: il moltiplicatore del lavoro quotidiano (`jobActivity` → da 1.2 per lavoro sedentario a 1.8 per lavoro molto pesante) più un "bump" legato allo sport pari a `min(weeklyTrainingDays, 6) × 0.03`:
 
@@ -301,16 +303,16 @@ Dei 45+ campi del questionario, solo questi finiscono nella tabella `profiles`/`
 
 ### 4.1 Calcolo target nutrizionali — `src/lib/nutrition/targets.ts` → `computeNutritionTargets()`
 
-Input: `sex, ageRange, heightCm, currentWeightKg, goal, jobActivity, weeklyTrainingDays` (= somma di tutti i `freq_*`).
+Input: `sex, age, heightCm, currentWeightKg, goal, jobActivity, weeklyTrainingDays` (= somma di tutti i `freq_*`), `dailyStepsBucket`, `sleepHoursBucket`.
 
 > ⚠️ **Stima iniziale, non valore definitivo.** L'output di questa funzione (`dailyCalorieTarget`, `macroTargetsG`) va considerato una **stima iniziale** (`initial_estimate`), non un valore "vero": ogni equazione predittiva del metabolismo (Mifflin-St Jeor incluso) ha un errore individuale intrinseco. Il valore operativo effettivo (`current_target`) può discostarsene dopo la fase di adattamento — vedi **§4.1 bis**.
 
 1. `bmr` = Mifflin-St Jeor (`10·peso + 6.25·altezza − 5·età` ±5/−161/−78 in base a `sex`)
-   > **Limite noto**: `età` non è quella reale ma il punto medio della fascia scelta nel questionario (`AGE_RANGE_MIDPOINT`, es. "25-34"→29 anni). Due opzioni alternative da valutare: (a) chiedere l'età esatta (`age` o `birthYear`/`birthDate`) invece della fascia; (b) mantenere la fascia ma etichettare esplicitamente il valore come stima (`ageEstimateMethod = "midpoint"`).
-2. `tdee = bmr × (JOB_ACTIVITY_MULTIPLIER[jobActivity] + min(weeklyTrainingDays,6)×0.03)`
-   > **Limite noto**: il coefficiente euristico `jobActivityMultiplier + trainingDays×0.03` non usa `dailySteps` (raccolto nel questionario ma oggi non collegato a nulla — vedi §11/§13 punto 4) né una vera scomposizione cardio/NEAT. Direzione di miglioramento: scomporre il TDEE in `RMR + NEAT + TEF + exercise expenditure` quando possibile; per l'MVP, `TDEE_initial = RMR × activity_factor` resta il punto di partenza, affiancato da un `TDEE_estimated` calcolato progressivamente (§4.1 bis).
-3. `dailyCalorieTarget = round(tdee × GOAL_CALORIE_FACTOR[goal])` — `loseFat 0.8, gainMuscle 1.12, maintainImprove/improveEndurance/generalHealth 1.0, gainStrength 1.05`
-   > **Limite noto**: il fattore fisso per obiettivo non considera peso attuale, peso target, scadenza (`hasDeadline`/`deadlineDate`), esperienza o aderenza storica. I campi `hasDeadline`, `deadlineDate`, `successWeightKg` sono già raccolti (§3.2, §11) ma non influenzano il piano — collegarli è oggetto di §11 punto "Passo 8".
+   > **Risolto (questionario v2)**: `età` è ora un valore preciso in anni chiesto direttamente (campo `age`) — non più una fascia con punto medio approssimato (`AGE_RANGE_MIDPOINT`, rimosso dal codice). Questo era il primo punto di approssimazione della formula, ora eliminato.
+2. `tdee = bmr × (JOB_ACTIVITY_MULTIPLIER[jobActivity] + min(weeklyTrainingDays,6)×0.03 + stepsBump + sleepBump)`
+   > **Parzialmente risolto**: `dailySteps` e `sleepHoursRange` ora contribuiscono al TDEE con piccoli bump additivi (`DAILY_STEPS_BUMP`, `SLEEP_HOURS_BUMP` in `targets.ts`) — prima erano raccolti ma ignorati. Resta un limite noto: nessuna vera scomposizione cardio/NEAT. Direzione di miglioramento non ancora fatta: scomporre il TDEE in `RMR + NEAT + TEF + exercise expenditure` quando possibile; per l'MVP, `TDEE_initial = RMR × activity_factor (+ bump)` resta il punto di partenza, affiancato da un `TDEE_estimated` calcolato progressivamente (§4.1 bis).
+3. `dailyCalorieTarget = max(round(tdee × GOAL_CALORIE_FACTOR[goal]), 1200)` — `loseFat 0.8, gainMuscle 1.12, maintainImprove/improveEndurance/generalHealth 1.0, gainStrength 1.05`
+   > **Aggiornamento (questionario v2)**: `hasDeadline`/`deadlineDate`/`successWeightKg` sono stati **rimossi dal questionario** (non solo "non collegati") — l'idea di un aggiustamento calorico basato su una scadenza dichiarata non è più applicabile con i dati oggi raccolti. Il fattore per obiettivo resta un moltiplicatore fisso che non considera peso attuale/target, esperienza o aderenza storica; un floor di sicurezza (1200 kcal) è comunque applicato.
 4. Macronutrienti — **da valore esatto a range** (vedi tabella sotto)
 5. `hydrationTargetMl = round(pesoKg×35 + (giorniAllenamento≥4 ? 350 : 0))`
 
@@ -695,7 +697,7 @@ Legenda: **[Profilo]** promosso in `profiles`; **[AI]** incluso nel prompt `gene
 
 | Tabella | Chiave | Colonne principali | RLS |
 |---|---|---|---|
-| `profiles` | `user_id` PK | name, sex, age_range, goal, sports[], height_cm, target_weight_kg, daily_calorie_target, protein/carbs/fats_g, hydration_target_ml | per-utente |
+| `profiles` | `user_id` PK | name, sex, `age` (nuovo, int — sostituisce `age_range` questionario v2), age_range (legacy, non più scritto), goal, sports[], height_cm, target_weight_kg, daily_calorie_target, protein/carbs/fats_g, hydration_target_ml — **default = `0`/array vuoto per tutti i campi numerici** (`0015_zero_profile_defaults.sql`), non più placeholder plausibili | per-utente |
 | `onboarding_answers` | `user_id` PK | `answers jsonb` (blob unico) | per-utente |
 | `body_metrics` | `(user_id, date)` PK | weight_kg, body_fat_pct, muscle_mass_kg, shoulders/chest/biceps/waist/hips/thigh_cm, resting_heart_rate, sleep_hours, **`source`** (nuovo: `onboarding`\|`manual`\|`import`), **`is_baseline`** (nuovo: boolean) — colonne aggiunte per supportare baseline multiple senza perdita di storico, §6/§0.3 Passo 3 | per-utente |
 | `body_photos` | `id` PK | user_id, date, pose, storage_path | per-utente + Storage `progress-photos` (privato) |
