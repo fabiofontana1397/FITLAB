@@ -11,12 +11,13 @@ function escapeHtml(value: string): string {
   return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-/** "Petto di pollo (150g)" plus, when the plan offers same-role swaps,
- * " — in alternativa: Tonno (150g), Uova (180g)" appended after it. */
+/** "Petto di pollo (150g)" — or "Uova (2 uova)" for count-based foods, see
+ * food-quantity.ts — plus, when the plan offers same-role swaps,
+ * " — in alternativa: Tonno (150g), Uova (2 uova)" appended after it. */
 function formatItem(item: PlanMealItem): string {
-  const base = `${item.name} (${item.grams}g)`;
+  const base = `${item.name} (${item.quantityLabel})`;
   if (!item.substitutes?.length) return base;
-  const subs = item.substitutes.map((s) => `${s.name} (${s.grams}g)`).join(', ');
+  const subs = item.substitutes.map((s) => `${s.name} (${s.quantityLabel})`).join(', ');
   return `${base} — in alternativa: ${subs}`;
 }
 

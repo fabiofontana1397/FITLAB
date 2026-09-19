@@ -3,6 +3,7 @@ import type { Goal } from '@/lib/mock/types';
 import type { MealSlot } from '@/store/nutrition-store';
 
 import { WEEKDAY_LABELS } from './exercise-library';
+import { formatFoodQuantity } from './food-quantity';
 import { buildFoodPools, pick } from './food-pools';
 import { buildMealSlotsFromAnswers, type MealSlotDef } from './meal-slots';
 import { computePlanDurationMonths } from './plan-duration';
@@ -99,7 +100,7 @@ function buildSubstitutes(pool: string[], seed: number, primaryId: string, targe
     const food = findFood(id);
     if (!food) continue;
     const grams = round5((targetKcal / food.kcal100) * 100);
-    substitutes.push({ name: food.name, grams, foodId: food.id });
+    substitutes.push({ name: food.name, grams, foodId: food.id, quantityLabel: formatFoodQuantity(food.id, grams) });
   }
   return substitutes.length > 0 ? substitutes : undefined;
 }
@@ -114,11 +115,28 @@ function buildItem(pool: string[], seed: number, targetKcal: number, portionOver
     grams,
     kcal,
     foodId: primaryId,
+    quantityLabel: formatFoodQuantity(primaryId, grams),
     // Substitutes match the *actual* kcal this item ended up at (not the
     // raw target), so a fixed-portion item (veg/fruit) still gets swaps
     // sized to roughly the same calories rather than a near-zero portion.
     substitutes: buildSubstitutes(pool, seed, primaryId, kcal),
   };
+}
+
+// Standard Mediterranean-diet condiment: a fixed olive oil serving at every
+// main meal, not one more rotating option in the fats pool — diet
+// restructure request: "pranzo e cena non viene messo l'olio d'oliva"
+// (today it only shows up when the fats-pool rotation happens to land on
+// it). Still respects hard exclusions: only forced in when 'olive-oil'
+// actually survived the user's allergy/exclusion filtering.
+const OLIVE_OIL_ID = 'olive-oil';
+
+function buildOliveOilItem(): PlanMealItem | null {
+  const food = findFood(OLIVE_OIL_ID);
+  if (!food) return null;
+  const grams = food.defaultPortionG;
+  const kcal = Math.round((food.kcal100 * grams) / 100);
+  return { name: food.name, grams, kcal, foodId: OLIVE_OIL_ID, quantityLabel: formatFoodQuantity(OLIVE_OIL_ID, grams) };
 }
 
 function buildDayMeals(
@@ -143,7 +161,23 @@ function buildDayMeals(
     if (isMain) {
       const fatsPool = pools.fatsFor(mealType);
       const vegetablesPool = pools.vegetablesFor(mealType);
-      items.push(buildItem(fatsPool, slotSeed, slotKcal * 0.25));
+      const fatsTargetKcal = slotKcal * 0.25;
+      // 'olive-oil' surviving in the unrestricted pool means it wasn't
+      // excluded (allergy/exclusion text) — only then is it safe to force.
+      const oliveOilItem = pools.fats.includes(OLIVE_OIL_ID) ? buildOliveOilItem() : null;
+      if (oliveOilItem) {
+        items.push(oliveOilItem);
+        const remainingFatsKcal = Math.max(fatsTargetKcal - oliveOilItem.kcal, 0);
+        const otherFatsPool = fatsPool.filter((id) => id !== OLIVE_OIL_ID);
+        // Below this, a second fats item would round down to a near-zero,
+        // not-worth-listing portion — the olive oil alone already covers
+        // the slot's fats target closely enough.
+        if (remainingFatsKcal > 20 && otherFatsPool.length > 0) {
+          items.push(buildItem(otherFatsPool, slotSeed, remainingFatsKcal));
+        }
+      } else {
+        items.push(buildItem(fatsPool, slotSeed, fatsTargetKcal));
+      }
       items.push(buildItem(vegetablesPool, slotSeed, 0, 150));
     } else {
       const fruitPool = pools.fruitFor(mealType);

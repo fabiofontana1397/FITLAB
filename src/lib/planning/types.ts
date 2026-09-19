@@ -2,7 +2,13 @@ import type { Goal } from '@/lib/mock/types';
 
 export type PlanPhaseKind = 'adattamento' | 'progressione' | 'consolidamento';
 
-export type PlanMealItemSubstitute = { name: string; grams: number; foodId: string };
+export type PlanMealItemSubstitute = {
+  name: string;
+  grams: number;
+  foodId: string;
+  /** Human-friendly quantity — "2 uova" for count-based foods, "120g" otherwise. See food-quantity.ts. */
+  quantityLabel: string;
+};
 
 export type PlanMealItem = {
   name: string;
@@ -11,6 +17,8 @@ export type PlanMealItem = {
   /** lib/mock/food-database id — lets a logged day be pre-filled with the
    * plan's actual foods instead of just displaying their names. */
   foodId: string;
+  /** Human-friendly quantity — "2 uova" for count-based foods, "120g" otherwise. See food-quantity.ts. */
+  quantityLabel: string;
   /** Same nutritional role (protein/carb/fat/veg/fruit), swappable 1-for-1. */
   substitutes?: PlanMealItemSubstitute[];
 };

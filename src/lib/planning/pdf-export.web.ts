@@ -43,13 +43,14 @@ function drawLetterhead(doc: jsPDF, pageWidth: number): number {
   return y + 26;
 }
 
-/** "Petto di pollo (150g)" plus, when the plan offers same-role swaps,
- * a second line "in alternativa: Tonno (150g), Uova (180g)" — autoTable
- * renders \n as separate lines within a cell. */
+/** "Petto di pollo (150g)" — or "Uova (2 uova)" for count-based foods, see
+ * food-quantity.ts — plus, when the plan offers same-role swaps, a second
+ * line "in alternativa: Tonno (150g), Uova (2 uova)" — autoTable renders
+ * \n as separate lines within a cell. */
 function formatItem(item: PlanMealItem): string {
-  const base = `${item.name} (${item.grams}g)`;
+  const base = `${item.name} (${item.quantityLabel})`;
   if (!item.substitutes?.length) return base;
-  const subs = item.substitutes.map((s) => `${s.name} (${s.grams}g)`).join(', ');
+  const subs = item.substitutes.map((s) => `${s.name} (${s.quantityLabel})`).join(', ');
   return `${base}\nin alternativa: ${subs}`;
 }
 

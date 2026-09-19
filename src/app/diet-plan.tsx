@@ -237,16 +237,7 @@ function MealCard({ meal }: { meal: PlanMeal }) {
 
       <View style={{ gap: 6 }}>
         {meal.items.map((item, index) => (
-          <View key={index} style={{ gap: 1 }}>
-            <ThemedText type="small">
-              {item.name} <ThemedText type="caption" themeColor="textSecondary">· {item.grams}g</ThemedText>
-            </ThemedText>
-            {item.substitutes?.length ? (
-              <ThemedText type="caption" themeColor="textTertiary">
-                In alternativa: {item.substitutes.map((s) => `${s.name} (${s.grams}g)`).join(', ')}
-              </ThemedText>
-            ) : null}
-          </View>
+          <MealItemRow key={index} item={item} />
         ))}
       </View>
 
@@ -256,6 +247,43 @@ function MealCard({ meal }: { meal: PlanMeal }) {
         </ThemedText>
       </View>
     </GlassSurface>
+  );
+}
+
+/** Substitutions are collapsed behind a tap by default (spec request: "un
+ * tasto per le sostituzioni") — a long list of alternatives for every item
+ * used to always be visible as a caption line, cluttering the meal even
+ * when the user never asked to see them. */
+function MealItemRow({ item }: { item: PlanMeal['items'][number] }) {
+  const theme = useTheme();
+  const [showSubstitutes, setShowSubstitutes] = useState(false);
+  const hasSubstitutes = (item.substitutes?.length ?? 0) > 0;
+
+  return (
+    <View style={{ gap: 4 }}>
+      <View style={styles.mealItemRow}>
+        <ThemedText type="small" style={{ flex: 1 }}>
+          {item.name} <ThemedText type="caption" themeColor="textSecondary">· {item.quantityLabel}</ThemedText>
+        </ThemedText>
+        {hasSubstitutes ? (
+          <Pressable onPress={() => setShowSubstitutes((v) => !v)} hitSlop={8} style={styles.substituteToggle}>
+            <ThemedText type="caption" style={{ color: theme.accent, fontWeight: '600' }}>
+              Sostituzioni
+            </ThemedText>
+            <Icon name={showSubstitutes ? 'chevronUp' : 'chevronDown'} size={14} color={theme.accent} />
+          </Pressable>
+        ) : null}
+      </View>
+      {showSubstitutes && item.substitutes ? (
+        <View style={[styles.substituteList, { borderLeftColor: theme.border }]}>
+          {item.substitutes.map((s, i) => (
+            <ThemedText key={i} type="caption" themeColor="textSecondary">
+              {s.name} · {s.quantityLabel}
+            </ThemedText>
+          ))}
+        </View>
+      ) : null}
+    </View>
   );
 }
 
@@ -338,5 +366,21 @@ const styles = StyleSheet.create({
   mealFooterDivider: {
     paddingTop: Spacing.two,
     borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  mealItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  substituteToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  substituteList: {
+    gap: 2,
+    marginLeft: Spacing.two,
+    paddingLeft: Spacing.two,
+    borderLeftWidth: 2,
   },
 });

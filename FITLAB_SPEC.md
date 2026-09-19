@@ -445,6 +445,12 @@ Ogni volta che questa logica produce un nuovo target (`adaptation-evaluate`, in 
 
 **`src/lib/planning/diet-planner.ts::generateDietPlan({answers, dailyCalorieTarget, macroTargetsG, strategy})`**: per ogni mese, `calorieTarget` = da `strategy.diet.monthlyTargets` se presente, altrimenti nudge deterministico ±150kcal in fase adattamento; `buildWeeklySplit` genera pasti con seed deterministico (riproducibile, non random) pescando dai pool filtrati per slot.
 
+> ✅ **Implementata — ristrutturazione pasti (quantità realistiche + sostituzioni interattive).** Due correzioni:
+> 1. **Unità di misura per alimento** (`lib/planning/food-quantity.ts`, `formatFoodQuantity()`): uova/banana/mela/arancia/kiwi vengono mostrati come conteggio ("2 uova") invece che in grammi — pesare un uovo o una banana in cucina è impraticabile, il grammo resta comunque la verità interna per il calcolo calorico/macro (`PlanMealItem.grams`), `quantityLabel` è solo l'etichetta mostrata in UI/PDF. Estendibile aggiungendo voci alla mappa `COUNT_UNIT`.
+> 2. **Olio EVO garantito a pranzo/cena** (`buildOliveOilItem()`): prima l'olio era solo una delle opzioni nella rotazione del pool grassi (poteva non comparire per molti giorni di fila); ora ogni pasto principale include sempre una porzione fissa di olio EVO (10g, salvo esclusione esplicita per allergia/testo libero), con l'eventuale altra fonte di grassi (mandorle, avocado...) che copre solo il budget calorico residuo — non più un aut-aut tra i due.
+>
+> Le **sostituzioni** (`buildSubstitutes()`, fino a 2 alternative isocaloriche dallo stesso pool — es. riso→pasta/patate) esistevano già nel modello dati ma erano mostrate come testo statico sempre visibile; ora sono dietro un tasto "Sostituzioni" (`diet-plan.tsx::MealItemRow`), a comparsa on-demand.
+
 ### 4.5 Orchestrazione — `src/store/plan-store.ts::generatePlans(answers, targets)`
 
 ```
