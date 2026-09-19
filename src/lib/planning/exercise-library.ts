@@ -27,12 +27,30 @@ const SPLIT_BY_FREQUENCY_BEGINNER: Record<number, SplitLabel[]> = {
   6: ['Upper', 'Lower', 'Upper', 'Lower', 'Upper', 'Lower'],
 };
 
+const SPLIT_PATTERN_BY_PREFERENCE: Record<string, SplitLabel[]> = {
+  fullBody: ['Full Body'],
+  upperLower: ['Upper', 'Lower'],
+  pushPullLegs: ['Push', 'Pull', 'Legs'],
+};
+
+/** Cycles a short pattern (e.g. ['Push','Pull','Legs']) out to exactly
+ * `days` entries — a user training 5 days on a 3-day PPL pattern gets
+ * Push/Pull/Legs/Push/Pull, not just the first 3 days filled. */
+function repeatPattern(pattern: SplitLabel[], days: number): SplitLabel[] {
+  return Array.from({ length: days }, (_, i) => pattern[i % pattern.length]);
+}
+
 /** Resolves the deterministic split fallback used when the AI strategy
  * didn't supply valid split labels — spec §4.3's "esperienza + frequenza +
  * ... → split" proposal: skillLevel now genuinely changes the split
  * instead of frequency alone deciding it (`gymSkillLevel`/`gymExperience`
- * were collected by the questionnaire but never read by any planner). */
-export function resolveSplitLabels(gymDays: number, gymSkillLevel: unknown): SplitLabel[] {
+ * were collected by the questionnaire but never read by any planner). An
+ * explicit `gymSplitPreference` (real sala-pesi question, not a generic
+ * one) wins over the experience-based default when the user has one. */
+export function resolveSplitLabels(gymDays: number, gymSkillLevel: unknown, gymSplitPreference?: unknown): SplitLabel[] {
+  const preferredPattern = typeof gymSplitPreference === 'string' ? SPLIT_PATTERN_BY_PREFERENCE[gymSplitPreference] : undefined;
+  if (preferredPattern) return repeatPattern(preferredPattern, gymDays);
+
   const isBeginner = gymSkillLevel === 'beginner';
   const table = isBeginner ? SPLIT_BY_FREQUENCY_BEGINNER : SPLIT_BY_FREQUENCY;
   return table[gymDays] ?? table[3];

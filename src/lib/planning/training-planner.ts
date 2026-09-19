@@ -146,9 +146,19 @@ export function generateTrainingPlan(input: TrainingPlanInput): TrainingPlan | n
   const wholeCatalog = Object.values(exercisePool).flat();
   const exclusions = deriveExerciseExclusions(answers);
   const exerciseCount = exerciseCountForDuration(answers.sessionDuration);
+  // An explicit user split preference wins over both the AI-suggested split
+  // and the experience-based default — resolveSplitLabels itself only
+  // falls through to the AI/experience logic when there's no preference.
+  const hasExplicitSplitPreference = typeof answers.gymSplitPreference === 'string' && answers.gymSplitPreference !== 'noPreference';
   const sanitizedStrategySplits = sanitizeSplitLabels(strategy?.splitLabels);
   const splitLabels: SplitLabel[] =
-    sanitizedStrategySplits.length > 0 ? sanitizedStrategySplits : gymDays > 0 ? resolveSplitLabels(gymDays, answers.gymSkillLevel) : [];
+    gymDays === 0
+      ? []
+      : hasExplicitSplitPreference
+        ? resolveSplitLabels(gymDays, answers.gymSkillLevel, answers.gymSplitPreference)
+        : sanitizedStrategySplits.length > 0
+          ? sanitizedStrategySplits
+          : resolveSplitLabels(gymDays, answers.gymSkillLevel);
 
   const focusGym = typeof answers.focus_gym === 'string' ? answers.focus_gym : 'hypertrophy';
   const focusRunning = typeof answers.focus_running === 'string' ? answers.focus_running : 'endurance';

@@ -253,6 +253,9 @@ function buildProfileSummary(body: RequestBody): string {
   const gymBackground: string[] = [];
   if (answers.gymExperience) gymBackground.push(`da quanto tempo: ${answers.gymExperience}`);
   if (answers.gymSkillLevel) gymBackground.push(`livello: ${answers.gymSkillLevel}`);
+  if (answers.gymSplitPreference && answers.gymSplitPreference !== 'noPreference') {
+    gymBackground.push(`preferenza di split (vincolante, non proporre uno split diverso): ${answers.gymSplitPreference}`);
+  }
 
   return `Profilo utente:
 - Obiettivo: ${answers.goal ?? 'sconosciuto'}

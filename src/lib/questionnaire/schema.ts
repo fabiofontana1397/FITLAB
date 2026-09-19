@@ -65,19 +65,19 @@ export function isQuestionVisible(question: Question, answers: Record<string, un
 }
 
 /**
- * Options for question `activitiesPracticed`. Values are distinct (so
- * multi-select toggling works), but several map onto the app's core
- * `Sport` enum via ACTIVITY_TO_SPORT (see lib/mock/training.ts) so this
- * answer can double as the user's `sports` profile field.
+ * Options for question `activitiesPracticed`. Restricted to the two
+ * activities the app can actually build a program for (TRAINABLE_ACTIVITIES
+ * below) — every other sport (ciclismo, nuoto, tennis, functional, ecc.)
+ * used to be selectable here too, but only ever produced a single
+ * frequency question that fed nothing but a minor TDEE bump. Per explicit
+ * product decision: for a questionnaire whose goal is building a sala pesi
+ * program, that info is superfluous — collecting it added friction without
+ * ever being used for anything the user could see. Values still map onto
+ * the app's core `Sport` enum via ACTIVITY_TO_SPORT (lib/mock/training.ts).
  */
 const ACTIVITY_OPTIONS: QuestionOption[] = [
   { value: 'gym', label: 'Palestra' },
-  { value: 'functional', label: 'CrossFit-Functional' },
   { value: 'running', label: 'Corsa' },
-  { value: 'cycling', label: 'Ciclismo' },
-  { value: 'swimming', label: 'Nuoto' },
-  { value: 'tennis', label: 'Tennis/padel' },
-  { value: 'altro', label: 'Altro' },
 ];
 
 /** Maps `activitiesPracticed` answer values onto the app's Sport enum. */
@@ -92,10 +92,10 @@ export const ACTIVITY_TO_SPORT: Record<string, 'gym' | 'functional' | 'running' 
 };
 
 /**
- * Activities the app can actually build a training program for. Every other
- * selected activity is informational only — tracked for the calendar/weekly
- * schedule, not turned into a generated program — so only these get a
- * "what do you want to improve" follow-up (see buildActivityQuestions).
+ * Activities the app can actually build a training program for — now the
+ * same set as ACTIVITY_OPTIONS above (see its comment for why the broader
+ * multi-sport list was removed). Kept as its own export since other code
+ * (training-planner.ts) checks membership rather than hardcoding these two.
  */
 export const TRAINABLE_ACTIVITIES = new Set(['gym', 'running']);
 
@@ -128,6 +128,16 @@ const GYM_SKILL_LEVEL_OPTIONS: QuestionOption[] = [
   { value: 'expert', label: 'Esperto' },
 ];
 
+// Real weight-room-specific question (not a generic multi-sport one) — an
+// explicit split preference overrides the experience-based default in
+// resolveSplitLabels() (exercise-library.ts) when the user has one.
+const GYM_SPLIT_PREFERENCE_OPTIONS: QuestionOption[] = [
+  { value: 'noPreference', label: 'Nessuna preferenza, decidete voi' },
+  { value: 'fullBody', label: 'Full body' },
+  { value: 'upperLower', label: 'Upper/Lower' },
+  { value: 'pushPullLegs', label: 'Push/Pull/Legs' },
+];
+
 const FOCUS_OPTIONS_BY_ACTIVITY: Record<string, QuestionOption[]> = {
   gym: [
     { value: 'strength', label: 'Forza' },
@@ -147,12 +157,10 @@ const FOCUS_OPTIONS_BY_ACTIVITY: Record<string, QuestionOption[]> = {
 
 /**
  * Builds the dynamic per-activity questions for the Training step: a
- * frequency question for every selected activity, gym-specific experience/
- * skill-level questions only for "gym", plus (for gym/running only — the
- * two the app can generate a real program for) a "what do you want to
- * improve" question with sport-specific options. Everything else (tennis,
- * nuoto, ecc.) only gets the frequency question, purely so it can be placed
- * on the weekly calendar.
+ * frequency question for every selected activity (now only "gym"/"running",
+ * see ACTIVITY_OPTIONS), gym-specific questions (experience, skill level,
+ * split preference) only for "gym", plus a "what do you want to improve"
+ * question with sport-specific options for both.
  */
 export function buildActivityQuestions(activities: string[]): Question[] {
   const questions: Question[] = [];
@@ -176,6 +184,12 @@ export function buildActivityQuestions(activities: string[]): Question[] {
         type: 'single',
         label: 'Come valuteresti la tua esperienza con i pesi?',
         options: GYM_SKILL_LEVEL_OPTIONS,
+      });
+      questions.push({
+        id: 'gymSplitPreference',
+        type: 'single',
+        label: 'Hai una preferenza sulla struttura della scheda?',
+        options: GYM_SPLIT_PREFERENCE_OPTIONS,
       });
     }
     const focusOptions = FOCUS_OPTIONS_BY_ACTIVITY[activity];
@@ -485,7 +499,7 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
   {
     id: 'training',
     title: 'Allenamento',
-    subtitle: 'Programmi veri e propri li costruiamo solo per sala pesi e corsa: tutto il resto lo teniamo comunque in agenda.',
+    subtitle: 'Costruiamo un programma vero e proprio per sala pesi e/o corsa.',
     questions: [{ id: 'activitiesPracticed', type: 'multi', label: 'Quali attività pratichi?', options: ACTIVITY_OPTIONS }],
   },
   {

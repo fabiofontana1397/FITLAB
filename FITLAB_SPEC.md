@@ -252,11 +252,13 @@ Supabase Cloud
 **Step `training` — "Allenamento"** (se `mode ≠ diet`)
 | id | tipo | opzioni | obbligatoria |
 |---|---|---|---|
-| `activitiesPracticed` | multi | `gym,functional,running,cycling,swimming,tennis,altro` | sì |
+| `activitiesPracticed` | multi | `gym,running` | sì |
+
+> ✅ **Risolto — questionario ristrutturato per la sala pesi (decisione di prodotto esplicita).** `activitiesPracticed` includeva anche `functional,cycling,swimming,tennis,altro`: sport che non generano mai un piano reale (solo `gym`/`running` sono in `TRAINABLE_ACTIVITIES`) e producevano solo una domanda di frequenza usata per un piccolo bump TDEE. Rimossi — l'obiettivo del questionario è costruire un piano per la sala pesi, quel dato era superfluo. Contestualmente aggiunta una vera domanda sala-pesi, non generica: `gymSplitPreference` (`noPreference,fullBody,upperLower,pushPullLegs`) — se impostata, sovrascrive sia lo split scelto dall'AI sia il default basato su esperienza (`resolveSplitLabels()`, §4.3) ed è passata come vincolo al prompt `generate-plan-strategy`.
 
 Per **ogni** attività selezionata, generate a runtime (`buildActivityQuestions`, non nello schema statico):
 - `freq_<activity>` (single: `1,2,3,4,5,6+`, più `biweekly`/`monthly` — sotto una sessione/settimana, raccolti solo per TDEE/contesto, mai per il planner)
-- solo per `gym`: `gymExperience` (`never,3-12months,1-3years,3plusYears`), `gymSkillLevel` (`beginner,intermediate,expert`) — vedi §4.3
+- solo per `gym`: `gymExperience` (`never,3-12months,1-3years,3plusYears`), `gymSkillLevel` (`beginner,intermediate,expert`), `gymSplitPreference` (`noPreference,fullBody,upperLower,pushPullLegs`) — vedi §4.3
 - solo per `gym`/`running`: `focus_gym` (`strength,hypertrophy,fatLoss,muscularEndurance,technique`), `focus_running` (`endurance,speed,raceTime,fatLoss,raceReady`)
 
 **Step `availability` — "Disponibilità"** (se `mode ≠ diet`)
@@ -718,7 +720,7 @@ chat.tsx → chat-store.send() → buildClientContext() (locale) →
 | `activitiesPracticed` | [Profilo]+[Training]+[AI]+[UI] |
 | `freq_gym`, `freq_running` | [Training]+[TDEE]+[AI] |
 | `freq_<altre attività>` | solo [TDEE] (bump calorico), non influenza il piano training — per design, non un problema da correggere |
-| `gymExperience`, `gymSkillLevel` | [Training] — split (`resolveSplitLabels`) e carico consigliato (`suggestedLoadFor`), §4.3 + [AI] |
+| `gymExperience`, `gymSkillLevel`, `gymSplitPreference` | [Training] — split (`resolveSplitLabels`) e carico consigliato (`suggestedLoadFor`), §4.3 + [AI] |
 | `focus_gym`, `focus_running` | [Training]+[AI] |
 | `availableDays` | [Training]+[AI]+[UI] |
 | `sessionDuration` | [Training]+[UI] (non passato all'AI) |
