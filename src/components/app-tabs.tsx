@@ -26,15 +26,18 @@ const FADE_HEIGHT = BottomTabInset + Spacing.six;
 
 // A single BlurView turns on at full strength the instant content crosses
 // its top edge — a visible seam, since there's nothing to ramp through.
-// Stacking several bands, each starting lower and a little stronger, and
-// each covering only the zone below its own start, approximates a blur
-// that gradually deepens instead of cutting on: near the top only the
-// first (weakest) band applies, and by the bottom all of them are
-// compositing on top of each other. Seven bands starting from a barely-
-// there first step (rather than four starting stronger) so even that
-// very first step is too small to read as a seam. web/native use
-// different absolute scales for `intensity`, so each is its own
-// progression.
+// Slicing the fade zone into several non-overlapping horizontal stripes,
+// each a little stronger than the one above it, approximates a blur that
+// gradually deepens instead of cutting on. Each stripe is drawn ONLY across
+// its own slice (never down to the bottom of the mask) — stacking them
+// cumulatively was the previous approach, but compositing multiple
+// translucent tinted BlurViews on top of each other visibly brightened
+// scrolled content ("i colori si accendono") instead of just blurring it,
+// worst right above the bar where every band overlapped at once. Seven
+// stripes starting from a barely-there first step (rather than four
+// starting stronger) so even that very first step is too small to read as
+// a seam. web/native use different absolute scales for `intensity`, so
+// each is its own progression.
 const BLUR_BANDS = {
   web: [1, 2, 3, 5, 8, 12, 17],
   default: [2, 3, 5, 8, 12, 17, 23],
@@ -75,6 +78,7 @@ function ScrollFadeMask() {
   const theme = useTheme();
   const isDark = useColorScheme() === 'dark';
   const bands = Platform.OS === 'web' ? BLUR_BANDS.web : BLUR_BANDS.default;
+  const stripeHeight = FADE_HEIGHT / bands.length;
   return (
     <View pointerEvents="none" style={[styles.fadeMask, { height: FADE_HEIGHT }]}>
       {bands.map((intensity, i) => (
@@ -83,10 +87,14 @@ function ScrollFadeMask() {
           intensity={intensity}
           tint={isDark ? 'dark' : 'light'}
           blurMethod="dimezisBlurViewSdk31Plus"
-          style={{ position: 'absolute', top: (FADE_HEIGHT / bands.length) * i, left: 0, right: 0, bottom: 0 }}
+          style={{ position: 'absolute', top: stripeHeight * i, left: 0, right: 0, height: stripeHeight }}
         />
       ))}
-      <LinearGradient colors={['transparent', theme.background]} locations={[0, 0.6]} style={StyleSheet.absoluteFill} />
+      {/* Spans the full mask height (not just its lower portion) so the
+          color ramp itself has no flat, fully-opaque stretch right above
+          the bar — that flat zone next to the bar's own translucent glass
+          was the other half of the reported hard edge. */}
+      <LinearGradient colors={['transparent', theme.background]} locations={[0, 1]} style={StyleSheet.absoluteFill} />
     </View>
   );
 }
