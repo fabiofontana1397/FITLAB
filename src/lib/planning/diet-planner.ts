@@ -7,6 +7,7 @@ import { formatFoodQuantity } from './food-quantity';
 import { buildFoodPools, pick } from './food-pools';
 import { buildMealSlotsFromAnswers, type MealSlotDef } from './meal-slots';
 import { computePlanDurationMonths } from './plan-duration';
+import { resolveTrainingSchedule } from './training-days';
 import type { DietStrategy } from './strategy-types';
 import type { DietDayPlan, DietMonthPlan, DietPlan, PlanMeal, PlanMealItem, PlanPhaseKind } from './types';
 
@@ -34,6 +35,58 @@ export type DietPlanInput = {
   preserveMonthsBefore?: number;
   existingMonths?: DietMonthPlan[];
 };
+
+// Real per-day-type nutrition plans (spec §0.4 examples: separate "giorni
+// di allenamento"/"giorni di riposo" protocols) give rest days modestly
+// fewer calories than training days — the body burns less with no session
+// that day. Kept small and compensated (see dayCalorieMultipliers) so the
+// week's average still lands exactly on the month's own calorieTarget;
+// this only redistributes it across the week; nothing to compensate for
+// when every day (or no day) is a training day.
+const REST_DAY_CALORIE_MULTIPLIER = 0.93;
+
+/** Per-weekday calorie multiplier (training days get a bit more, rest days
+ * a bit less), averaging to exactly 1 across the 7 days so the month's
+ * calorieTarget/macroTargetsG (used for progress rings, PDF export, etc.)
+ * stay meaningful as "the average day" even though no single day matches
+ * it exactly — same principle real coaches use ("more on training days,
+ * less on rest days") without changing the weekly total. */
+function dayCalorieMultipliers(isTrainingDay: boolean[]): number[] {
+  const trainCount = isTrainingDay.filter(Boolean).length;
+  const restCount = isTrainingDay.length - trainCount;
+  if (trainCount === 0 || restCount === 0) return isTrainingDay.map(() => 1);
+  const trainMultiplier = (isTrainingDay.length - restCount * REST_DAY_CALORIE_MULTIPLIER) / trainCount;
+  return isTrainingDay.map((isTrain) => (isTrain ? trainMultiplier : REST_DAY_CALORIE_MULTIPLIER));
+}
+
+/** Main-meal (pranzo/cena) macro split — spec §0.4 examples consistently
+ * give dinner a lighter carb portion than lunch ("CENA: limitato a verdure
+ * fibrose l'apporto di carboidrati") and give rest days overall lighter
+ * carbs than training days; both nudges stack (cena on a rest day is the
+ * lightest-carb meal of the week), floored so a meal never goes near-zero
+ * carb. Freed-up share always goes to fat, never protein — protein stays
+ * flat since muscle-repair needs don't really track training/rest days the
+ * way carb (glycogen) needs do. Breakfast/snacks are intentionally left
+ * out of this — they have no separate fats line item to absorb the shift
+ * (see buildDayMeals), so cycling them would just quietly under-deliver
+ * their calorie target instead of redistributing it. */
+function mainMealRatios(slotId: MealSlot, isTrainingDayToday: boolean): { protein: number; carb: number; fat: number } {
+  const protein = 0.4;
+  let carb = 0.35;
+  if (slotId === 'cena') carb -= 0.08;
+  if (!isTrainingDayToday) carb -= 0.05;
+  carb = Math.max(carb, 0.18);
+  const fat = Math.max(1 - protein - carb, 0.15);
+  return { protein, carb, fat };
+}
+
+// One evening a week left unprescribed — spec §0.4 examples all include a
+// weekly "pasto libero"/"cena libera", explicitly meant to be the user's
+// own choice within reason, not a planner-assigned food. Saturday dinner:
+// the most common real-world default among the examples, and the natural
+// end of "a week starting Monday" (WEEKDAY_LABELS[5] = 'Sab').
+const FREE_MEAL_WEEKDAY_INDEX = 5;
+const FREE_MEAL_SLOT: MealSlot = 'cena';
 
 function phaseForMonth(monthIndex: number, totalMonths: number): PlanPhaseKind {
   if (monthIndex === 1) return 'adattamento';
@@ -88,13 +141,18 @@ function round5(n: number): number {
   return Math.max(5, Math.round(n / 5) * 5);
 }
 
-/** Up to 2 same-role swaps for an item (e.g. another protein source at an
+// Real isocaloric-exchange nutrition plans (spec §0.4 diet examples) list
+// 3-5 alternatives per food, not 2 — a substitution list this short reads
+// as an afterthought rather than a real "swap it for any of these" tool.
+const MAX_SUBSTITUTES = 4;
+
+/** Same-role swaps for an item (e.g. another protein source at an
  * equivalent portion), so the plan reads as flexible rather than fixed —
  * "eventuali sostituzioni complementari" from the same food pool, never
  * repeating the item actually chosen. */
 function buildSubstitutes(pool: string[], seed: number, primaryId: string, targetKcal: number) {
   const substitutes: PlanMealItem['substitutes'] = [];
-  for (let offset = 1; offset < pool.length && substitutes.length < 2; offset++) {
+  for (let offset = 1; offset < pool.length && substitutes.length < MAX_SUBSTITUTES; offset++) {
     const id = pick(pool, seed + offset);
     if (id === primaryId || substitutes.some((s) => s.name === findFood(id)?.name)) continue;
     const food = findFood(id);
@@ -143,25 +201,33 @@ function buildDayMeals(
   seed: number,
   calorieTarget: number,
   pools: ReturnType<typeof buildFoodPools>,
-  slots: MealSlotDef[]
+  slots: MealSlotDef[],
+  isTrainingDayToday: boolean,
+  isFreeMealDay: boolean
 ): PlanMeal[] {
   return slots.map((slot, slotIdx) => {
     const slotKcal = calorieTarget * slot.sharePct;
     const mealType = SLOT_MEAL_TYPE[slot.id];
     const isMain = mealType === 'main';
     const slotSeed = seed + slotIdx;
+
+    if (isFreeMealDay && slot.id === FREE_MEAL_SLOT) {
+      return { slotId: slot.id, label: slot.label, time: slot.time, items: [], totalKcal: Math.round(slotKcal), isFreeMeal: true };
+    }
+
     const proteinPool = pools.proteinFor(mealType);
     const carbPool = pools.carbsFor(mealType);
+    const ratios = isMain ? mainMealRatios(slot.id, isTrainingDayToday) : { protein: 0.4, carb: 0.35, fat: 0.25 };
 
     const items: PlanMealItem[] = [
-      buildItem(proteinPool, slotSeed, slotKcal * 0.4),
-      buildItem(carbPool, slotSeed + 1, slotKcal * 0.35),
+      buildItem(proteinPool, slotSeed, slotKcal * ratios.protein),
+      buildItem(carbPool, slotSeed + 1, slotKcal * ratios.carb),
     ];
 
     if (isMain) {
       const fatsPool = pools.fatsFor(mealType);
       const vegetablesPool = pools.vegetablesFor(mealType);
-      const fatsTargetKcal = slotKcal * 0.25;
+      const fatsTargetKcal = slotKcal * ratios.fat;
       // 'olive-oil' surviving in the unrestricted pool means it wasn't
       // excluded (allergy/exclusion text) — only then is it safe to force.
       const oliveOilItem = pools.fats.includes(OLIVE_OIL_ID) ? buildOliveOilItem() : null;
@@ -193,16 +259,27 @@ function buildDayMeals(
 
 /** One full week of day-by-day meals for the month — each weekday gets its
  * own rotation through the food pools (rather than one "example day"
- * repeated), so the plan reads as an actual schedule to follow. */
+ * repeated), so the plan reads as an actual schedule to follow. `isTrainingDay`
+ * (Monday-first, matching WEEKDAY_LABELS) drives the training/rest-day
+ * calorie and carb cycling — see dayCalorieMultipliers/mainMealRatios. */
 function buildWeeklySplit(
   monthIndex: number,
   calorieTarget: number,
   pools: ReturnType<typeof buildFoodPools>,
-  slots: MealSlotDef[]
+  slots: MealSlotDef[],
+  isTrainingDay: boolean[]
 ): DietDayPlan[] {
+  const calorieMultipliers = dayCalorieMultipliers(isTrainingDay);
   return WEEKDAY_LABELS.map((weekday, dayIdx) => ({
     weekday,
-    meals: buildDayMeals((monthIndex - 1) * 7 + dayIdx, calorieTarget, pools, slots),
+    meals: buildDayMeals(
+      (monthIndex - 1) * 7 + dayIdx,
+      calorieTarget * calorieMultipliers[dayIdx],
+      pools,
+      slots,
+      isTrainingDay[dayIdx],
+      dayIdx === FREE_MEAL_WEEKDAY_INDEX
+    ),
   }));
 }
 
@@ -212,6 +289,7 @@ export function generateDietPlan(input: DietPlanInput): DietPlan {
   const durationMonths = computePlanDurationMonths(answers);
   const pools = buildFoodPools(answers);
   const slots = buildMealSlotsFromAnswers(answers);
+  const { isTrainingDay } = resolveTrainingSchedule(answers);
 
   const months: DietMonthPlan[] = [];
   for (let monthIndex = 1; monthIndex <= durationMonths; monthIndex++) {
@@ -235,7 +313,7 @@ export function generateDietPlan(input: DietPlanInput): DietPlan {
       focusNote: monthlyFocus?.focusNote ?? phaseNote(phase, goal),
       calorieTarget,
       macroTargetsG: macros,
-      weeklySplit: buildWeeklySplit(monthIndex, calorieTarget, pools, slots),
+      weeklySplit: buildWeeklySplit(monthIndex, calorieTarget, pools, slots, isTrainingDay),
     });
   }
 

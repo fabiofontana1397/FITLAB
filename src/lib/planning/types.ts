@@ -29,6 +29,9 @@ export type PlanMeal = {
   time: string;
   items: PlanMealItem[];
   totalKcal: number;
+  /** True for the one weekly unprescribed meal ("pasto libero") — items is
+   * empty and totalKcal is only the reference budget, not a real total. */
+  isFreeMeal?: boolean;
 };
 
 export type DietDayPlan = {

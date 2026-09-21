@@ -235,17 +235,31 @@ function MealCard({ meal }: { meal: PlanMeal }) {
         </ThemedText>
       </View>
 
-      <View style={{ gap: 6 }}>
-        {meal.items.map((item, index) => (
-          <MealItemRow key={index} item={item} />
-        ))}
-      </View>
+      {meal.isFreeMeal ? (
+        <View style={{ gap: 2 }}>
+          <ThemedText type="small" style={{ color: theme.accent, fontWeight: '600' }}>
+            Pasto libero
+          </ThemedText>
+          <ThemedText type="caption" themeColor="textSecondary">
+            Scegli tu cosa mangiare, restando indicativamente entro ~{meal.totalKcal} kcal e senza eccessi — vedi le
+            note del piano per qualche indicazione.
+          </ThemedText>
+        </View>
+      ) : (
+        <>
+          <View style={{ gap: 6 }}>
+            {meal.items.map((item, index) => (
+              <MealItemRow key={index} item={item} />
+            ))}
+          </View>
 
-      <View style={[styles.mealFooterDivider, { borderTopColor: theme.border }]}>
-        <ThemedText type="caption" themeColor="textSecondary">
-          Totale {meal.totalKcal} kcal
-        </ThemedText>
-      </View>
+          <View style={[styles.mealFooterDivider, { borderTopColor: theme.border }]}>
+            <ThemedText type="caption" themeColor="textSecondary">
+              Totale {meal.totalKcal} kcal
+            </ThemedText>
+          </View>
+        </>
+      )}
     </GlassSurface>
   );
 }

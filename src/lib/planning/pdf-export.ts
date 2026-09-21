@@ -77,7 +77,7 @@ export async function exportDietPlanPdf(input: DietPlanPdfInput) {
           (meal) => `
         <tr>
           <td>${escapeHtml(meal.time)} · ${escapeHtml(meal.label)}</td>
-          <td>${meal.items.map((i) => escapeHtml(formatItem(i))).join('<br/>')}</td>
+          <td>${meal.isFreeMeal ? 'Pasto libero — scegli tu, senza eccessi' : meal.items.map((i) => escapeHtml(formatItem(i))).join('<br/>')}</td>
           <td>${meal.totalKcal} kcal</td>
         </tr>`
         )

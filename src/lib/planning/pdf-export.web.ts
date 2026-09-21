@@ -128,7 +128,7 @@ export async function exportDietPlanPdf(input: DietPlanPdfInput) {
       [{ content: day.weekday, colSpan: 3, styles: { fontStyle: 'bold', fillColor: [255, 248, 245], textColor: INK } }],
       ...day.meals.map((meal) => [
         `${meal.time}\n${meal.label}`,
-        meal.items.map((i) => formatItem(i)).join('\n'),
+        meal.isFreeMeal ? 'Pasto libero — scegli tu, senza eccessi' : meal.items.map((i) => formatItem(i)).join('\n'),
         `${meal.totalKcal} kcal`,
       ]),
     ]),

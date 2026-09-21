@@ -7,11 +7,11 @@ import {
   RUNNING_SESSIONS,
   suggestedLoadFor,
   WEEKDAY_LABELS,
-  WEEKDAY_PATTERN,
   type ExerciseDef,
   type SplitLabel,
 } from './exercise-library';
 import { computePlanDurationMonths } from './plan-duration';
+import { resolveTrainingSchedule } from './training-days';
 import { parseNumericAnswer } from '@/lib/questionnaire/parse-answer';
 import type { TrainingStrategy } from './strategy-types';
 import type { PlanPhaseKind, TrainingDayPlan, TrainingExerciseEntry, TrainingMonthPlan, TrainingPlan } from './types';
@@ -56,19 +56,6 @@ const VALID_SPLIT_LABELS = new Set<SplitLabel>(['Full Body', 'Upper', 'Lower', '
 function sanitizeSplitLabels(labels: string[] | undefined): SplitLabel[] {
   if (!labels) return [];
   return labels.filter((l): l is SplitLabel => VALID_SPLIT_LABELS.has(l as SplitLabel));
-}
-
-function freqNum(value: unknown): number {
-  if (value === '6+') return 6;
-  const n = Number(value);
-  return Number.isFinite(n) && n > 0 ? n : 0;
-}
-
-function availableDaysNum(value: unknown): number {
-  if (value === '6+') return 6;
-  if (value === 'variable') return 4;
-  const n = Number(value);
-  return Number.isFinite(n) && n > 0 ? n : 3;
 }
 
 /**
@@ -119,18 +106,9 @@ export function generateTrainingPlan(input: TrainingPlanInput): TrainingPlan | n
   if (!practicesGym && !practicesRunning) return null;
 
   const durationMonths = computePlanDurationMonths(answers);
-  const totalAvailable = availableDaysNum(answers.availableDays);
   const bodyweightKg = parseNumericAnswer(answers.currentWeightKg) ?? 75;
-
-  let gymDays = practicesGym ? freqNum(answers.freq_gym) || 3 : 0;
-  let runDays = practicesRunning ? freqNum(answers.freq_running) || 2 : 0;
-  const totalWanted = gymDays + runDays;
-  if (totalWanted > totalAvailable && totalWanted > 0) {
-    gymDays = Math.max(practicesGym ? 1 : 0, Math.round((gymDays / totalWanted) * totalAvailable));
-    runDays = Math.max(practicesRunning ? 1 : 0, totalAvailable - gymDays);
-  }
-  gymDays = Math.min(gymDays, 6);
-  runDays = Math.min(runDays, 6 - gymDays);
+  const { gymSlots, runSlots } = resolveTrainingSchedule(answers);
+  const gymDays = gymSlots.length;
 
   // Equipment filtering only applies at home — a gym is assumed to have
   // full equipment access (the questionnaire doesn't even ask the
@@ -164,11 +142,6 @@ export function generateTrainingPlan(input: TrainingPlanInput): TrainingPlan | n
   const focusRunning = typeof answers.focus_running === 'string' ? answers.focus_running : 'endurance';
   const gymScheme = strategy?.gymScheme ?? FOCUS_SCHEME[focusGym] ?? FOCUS_SCHEME.hypertrophy;
   const runSessions = strategy?.runSessions ?? RUNNING_SESSIONS[focusRunning] ?? RUNNING_SESSIONS.endurance;
-
-  const combinedDays = Math.max(gymDays + runDays, 1);
-  const dayIndices = WEEKDAY_PATTERN[combinedDays] ?? WEEKDAY_PATTERN[3];
-  const gymSlots = dayIndices.slice(0, gymDays);
-  const runSlots = dayIndices.slice(gymDays, gymDays + runDays);
 
   const skipAdattamento = isExperiencedLifter(answers.gymSkillLevel);
   let needsManualReview = existingMonths?.some((m) => m.weeklySplit.some((d) => d.exercises?.some((ex) => ex.needsManualReview))) ?? false;
