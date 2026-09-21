@@ -1,28 +1,26 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Image, Modal, Platform, Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Image, Modal, Platform, Pressable, ScrollView, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { GlassSurface } from '@/components/glass/glass-surface';
 import { InsightCard } from '@/components/ui/insight-card';
 import { ProgressRing } from '@/components/ui/progress-ring';
-import { SectionHeader } from '@/components/ui/section-header';
 import { TrendChart } from '@/components/ui/trend-chart';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
-import { PrimaryButton } from '@/components/ui/primary-button';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { sumActivityKcalForDate, useWeeklyEnergy } from '@/hooks/use-weekly-energy';
+import { useWeeklyEnergy } from '@/hooks/use-weekly-energy';
 import { dailyStepsTarget, stepsHistory } from '@/lib/mock/activity';
 import { latestSnapshot } from '@/lib/mock/body';
 import { addDaysISO, currentWeekDates, daysAgoISO, formatFullDay, mondayIndex } from '@/lib/mock/dates';
 import { useCoachInsights } from '@/hooks/use-coach-insights';
-import { estimateDailyEnergyExpenditure, estimateStepsKcal, estimateTrainingContributionKcal } from '@/lib/nutrition/targets';
+import { estimateDailyEnergyExpenditure } from '@/lib/nutrition/targets';
 import { WEEKDAY_LABELS } from '@/lib/planning/exercise-library';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
 import type { TrainingExerciseEntry } from '@/lib/planning/types';
-import { useActivityLogStore } from '@/store/activity-log-store';
 import { useBodyStore } from '@/store/body-store';
 import { useNutritionStore, sumMacros } from '@/store/nutrition-store';
 import { useOnboardingStore } from '@/store/onboarding-store';
@@ -39,10 +37,6 @@ function greeting() {
 
 function clamp01(n: number): number {
   return Math.min(Math.max(n, 0), 1);
-}
-
-function capitalize(s: string): string {
-  return s.length > 0 ? s.charAt(0).toUpperCase() + s.slice(1) : s;
 }
 
 /** Italian thousands-separated magnitude, e.g. 2450 -> "2.450". Hand-rolled
@@ -71,11 +65,8 @@ function formatTodayHeading(iso: string): string {
   return `${weekday} ${d.getDate()} ${month}`;
 }
 
-function upcomingMealLabel(hour: number): string {
-  if (hour < 11) return 'colazione';
-  if (hour < 15) return 'pranzo';
-  if (hour < 18) return 'spuntino';
-  return 'cena';
+function capitalize(s: string): string {
+  return s.length > 0 ? s.charAt(0).toUpperCase() + s.slice(1) : s;
 }
 
 /** ±100 kcal — how close a day's net balance (intake minus expenditure)
@@ -86,12 +77,26 @@ function isDayWithinTolerance(dayBalanceKcal: number, dailyGoalKcal: number, tol
   return Math.abs(dayBalanceKcal - dailyGoalKcal) <= toleranceKcal;
 }
 
+/** A generated split label ("Push", "Legs"...) to a loosely-matching icon
+ * for the Allenamento card's small badge — cosmetic only, falls back to
+ * the generic dumbbell for anything not in the map (custom AI-suggested
+ * titles included). */
+const SPLIT_ICON: Record<string, IconName> = {
+  Push: 'armFlex',
+  Pull: 'armFlex',
+  Upper: 'armFlex',
+  Legs: 'running',
+  Lower: 'running',
+};
+function splitIconFor(title: string): IconName {
+  return SPLIT_ICON[title] ?? 'training';
+}
+
 /** Flat, opaque, drop-shadowed card — the Home hero section's own card
  * language (matching the reference mockup: solid white/tinted cards, no
  * blur), deliberately distinct from GlassSurface's translucent Liquid
- * Glass used everywhere else in the app (kept as-is further down this same
- * screen, and on every other tab). `tint` overrides the default neutral
- * fill for the category-colored cards (diet/training/result). */
+ * Glass used everywhere else in the app. `tint` overrides the default
+ * neutral fill for the category-colored cards (diet/training/result). */
 function FlatCard({ tint, radius = Radius.large, style, children }: { tint?: string; radius?: number; style?: StyleProp<ViewStyle>; children?: React.ReactNode }) {
   const theme = useTheme();
   return <View style={[styles.flatCard, { backgroundColor: tint ?? theme.backgroundElevated, borderRadius: radius, borderColor: theme.border }, style]}>{children}</View>;
@@ -109,7 +114,6 @@ export default function HomeScreen() {
   const loggedSets = useTrainingProgressStore((s) => s.sets);
   const nutritionEntries = useNutritionStore((s) => s.entries);
   const bodyEntries = useBodyStore((s) => s.entries);
-  const activityLogEntries = useActivityLogStore((s) => s.entries);
 
   // Same weeklySplit[weekday] lookup training.tsx uses for the selected day
   // — here always pinned to today, so the ring/card below track the exact
@@ -129,15 +133,15 @@ export default function HomeScreen() {
   // value.
   const trainingProgress =
     todayPlanDay?.type === 'workout' ? (workoutExercises.length > 0 ? completedCount / workoutExercises.length : 1) : 1;
+  const workoutSplitTitle = todayPlanDay?.type === 'workout' ? todayPlanDay.title : undefined;
 
-  // The generated diet plan's OWN calorie/macro targets for the active
-  // month (they can differ month to month) take priority over the static
-  // profile defaults, since those are what the plan actually asks for today.
+  // The generated diet plan's OWN calorie target for the active month (it
+  // can differ month to month) takes priority over the static profile
+  // default, since that's what the plan actually asks for today.
   const dietMonth = dietPlan?.months.find((m) => m.monthIndex === currentMonthIndex(dietPlan));
   const calorieTarget = dietMonth?.calorieTarget ?? currentUser.dailyCalorieTarget;
-  const macroTargets = dietMonth?.macroTargetsG ?? currentUser.macroTargetsG;
 
-  // "Settimana X/Y" in the header — the plan itself is month-based (each
+  // "Settimana X/Y" in the goal card — the plan itself is month-based (each
   // month reuses one weeklySplit template), so a week number isn't a field
   // anywhere; approximated as 4 weeks/month against how many days have
   // elapsed since the plan was generated.
@@ -154,46 +158,15 @@ export default function HomeScreen() {
   const todaysSteps = stepsHistory[stepsHistory.length - 1]?.steps ?? 0;
   const stepsProgress = Math.min(todaysSteps / dailyStepsTarget, 1);
 
-  const planIcon: IconName =
-    !todayPlanDay || todayPlanDay.type === 'workout' ? 'training' : todayPlanDay.type === 'cardio' ? 'running' : 'moon';
-  const planTitle = !todayPlanDay ? 'Nessun programma' : todayPlanDay.type === 'rest' ? 'Giorno di riposo' : todayPlanDay.title;
-  const planSubtitle = !todayPlanDay
-    ? 'Genera un programma dalla scheda Training.'
-    : todayPlanDay.type === 'workout'
-      ? `${workoutExercises.length} esercizi · ${completedCount}/${workoutExercises.length} completati`
-      : todayPlanDay.type === 'cardio'
-        ? (todayPlanDay.note ?? 'Sessione cardio')
-        : 'Recupero attivo';
-
   // Memoized (not a plain expression) so `latestBody.weightKg` below is a
   // stable dependency for other useMemo/useCallback hooks — an unmemoized
   // `latestSnapshot(bodyEntries)` returns a fresh object every render, and
   // the React Compiler can't prove a member access on that is safe to use
-  // as a dependency (see weekDays below).
+  // as a dependency.
   const latestBody = useMemo(() => latestSnapshot(bodyEntries), [bodyEntries]);
 
-  // Rest/cardio days (or no plan at all) have no checkboxes to tick, so
-  // completion is 0 rather than undefined — matching the same rule weekDays
-  // uses below. A partially-completed workout now earns a proportional
-  // share of the estimated exercise contribution (§5 bis), not zero.
-  const todayCompletionFraction =
-    todayPlanDay?.type === 'workout' && workoutExercises.length > 0 ? completedCount / workoutExercises.length : 0;
-  // Manually-logged sessions ("Aggiungi allenamento" in Training) count
-  // toward the estimate too — an extra/unplanned workout shouldn't be
-  // invisible just because it wasn't part of the generated plan.
-  const todayLoggedActivitiesKcal = sumActivityKcalForDate(activityLogEntries, today);
-  const todayTrainingKcal =
-    estimateTrainingContributionKcal({
-      sex: currentUser.sex,
-      age: currentUser.age,
-      heightCm: currentUser.heightCm,
-      weightKg: latestBody.weightKg,
-      sessionDurationBucket: onboardingAnswers.sessionDuration as string | undefined,
-      completionFraction: todayCompletionFraction,
-    }) + todayLoggedActivitiesKcal;
-  const todayStepsKcal = estimateStepsKcal(todaysSteps, latestBody.weightKg);
-
   const { insights, isLoading: insightsLoading, refresh: refreshInsights } = useCoachInsights();
+  const [insightsModalOpen, setInsightsModalOpen] = useState(false);
 
   // Which week the goal card is showing — 0 is the current calendar week,
   // negative pages back into history. Clamped by the prev/next handlers
@@ -207,9 +180,9 @@ export default function HomeScreen() {
   // use-weekly-energy.ts for the day-by-day pipeline this reduces to.
   // Two separate calls on purpose: `currentWeek` always anchors to the
   // real calendar week and feeds today-specific numbers (daily result
-  // card, next action) that must stay put while browsing history;
-  // `viewedWeek` follows weekOffset and feeds the weekly goal card's own
-  // display, the part the user can page back through.
+  // card) that must stay put while browsing history; `viewedWeek` follows
+  // weekOffset and feeds the weekly goal card's own display, the part the
+  // user can page back through.
   const currentWeek = useWeeklyEnergy();
   const viewedWeek = useWeeklyEnergy(viewedWeekReferenceDate);
   const { todayEstimatedBalance } = currentWeek;
@@ -264,12 +237,6 @@ export default function HomeScreen() {
     if (isDayWithinTolerance(d.eatenKcal - d.estimatedExpenditureKcal, dailyGoalPerDayKcal)) weeklyStreakCount++;
     else weeklyStreakCount = 0;
   }
-  // Plain tally (not a streak — a miss doesn't reset it) of how many days
-  // this week landed within tolerance, for the card's own "X/7 giorni
-  // obiettivo raggiunto" celebration banner.
-  const daysMetThisWeekCount = weekDaysWithActivity.filter(
-    (d) => d.hasHappened && isDayWithinTolerance(d.eatenKcal - d.estimatedExpenditureKcal, dailyGoalPerDayKcal)
-  ).length;
 
   const dailyBalanceKcal = -todayEstimatedBalance; // intake - expenditure, same convention as weeklyBalanceGoalKcal
   const dailyGoalMet = isDayWithinTolerance(dailyBalanceKcal, dailyGoalPerDayKcal);
@@ -279,36 +246,6 @@ export default function HomeScreen() {
   const resultBody = dailyGoalMet
     ? `Hai mantenuto ${balanceGoalNoun} di oggi. Continua così!`
     : `Ti mancano circa ${formatKcal(Math.max(Math.abs(dailyGoalPerDayKcal) - Math.abs(dailyBalanceKcal), 0))} kcal per raggiungere l'obiettivo di oggi.`;
-
-  // "Prossima azione": an incomplete workout wins over diet tracking (the
-  // more time-sensitive of the two), which in turn wins over a generic
-  // fallback once both are effectively done for today.
-  const remainingCalorieBudget = calorieTarget - todaysTotals.kcal;
-  const isWorkoutDayIncomplete = todayPlanDay?.type === 'workout' && workoutExercises.length > 0 && trainingProgress < 1;
-  const upcomingMeal = upcomingMealLabel(new Date().getHours());
-  const nextAction: { icon: IconName; title: string; subtitle: string; cta: string; route: '/training' | '/nutrition' | '/body' } = isWorkoutDayIncomplete
-    ? {
-        icon: 'training',
-        title: 'Allenamento',
-        subtitle: `${workoutExercises.length - completedCount} esercizi da completare`,
-        cta: 'Vai all’allenamento',
-        route: '/training',
-      }
-    : remainingCalorieBudget > 100
-      ? {
-          icon: 'nutrition',
-          title: capitalize(upcomingMeal),
-          subtitle: `${formatKcal(remainingCalorieBudget)} kcal rimasti`,
-          cta: `Vai a ${upcomingMeal}`,
-          route: '/nutrition',
-        }
-      : {
-          icon: 'checkCircle',
-          title: 'Giornata completata',
-          subtitle: 'Hai raggiunto i tuoi obiettivi di oggi',
-          cta: 'Vedi il corpo',
-          route: '/body',
-        };
 
   // Every exercise appearing anywhere in the plan (same de-duplication
   // training-progress.tsx uses), so "recent" lifts aren't limited to today.
@@ -375,8 +312,6 @@ export default function HomeScreen() {
         progress={weeklyGoalProgress}
         onTrack={onTrackThisWeek}
         dailyGoalKcal={dailyGoalPerDayKcal}
-        daysMetCount={daysMetThisWeekCount}
-        daysElapsed={daysElapsedThisWeek}
         days={weekDaysWithActivity.map((d, i) => ({
           date: d.date,
           label: WEEKDAY_LABELS[i],
@@ -394,7 +329,7 @@ export default function HomeScreen() {
 
       <View style={{ gap: Spacing.three }}>
         <Pressable style={styles.todayHeaderRow} onPress={() => router.push('/nutrition')}>
-          <ThemedText type="subtitle">Oggi</ThemedText>
+          <ThemedText style={styles.todayHeaderTitle}>Oggi</ThemedText>
           <View style={styles.todayHeaderRight}>
             <ThemedText type="caption" themeColor="textSecondary">
               {formatTodayHeading(today)}
@@ -411,6 +346,7 @@ export default function HomeScreen() {
             statusOk={todaysTotals.kcal <= calorieTarget * 1.05}
             statusLabel={todaysTotals.kcal > calorieTarget * 1.05 ? 'Oltre il target' : 'In linea'}
             tint={theme.accentSoft}
+            onPress={() => router.push('/nutrition')}
           />
           <TodayStatCard
             icon="training"
@@ -426,6 +362,8 @@ export default function HomeScreen() {
             statusOk={trainingProgress >= 1}
             statusLabel={trainingProgress >= 1 ? 'Fatto' : workoutExercises.length > 0 ? 'Da completare' : 'Riposo'}
             tint={theme.successSoft}
+            onPress={() => router.push('/training')}
+            subBadge={workoutSplitTitle ? { icon: splitIconFor(workoutSplitTitle), label: workoutSplitTitle } : undefined}
           />
           <TodayStatCard
             icon="footsteps"
@@ -439,11 +377,7 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      <PrimaryButton label="Continua la giornata →" onPress={() => router.push(nextAction.route)} />
-
       <DailyResultCard met={dailyGoalMet} progress={dailyGoalProgress} streakCount={weeklyStreakCount} headline={resultHeadline} body={resultBody} onPress={() => router.push('/body')} />
-
-      <NextActionCard icon={nextAction.icon} title={nextAction.title} subtitle={nextAction.subtitle} ctaLabel={nextAction.cta} onPress={() => router.push(nextAction.route)} />
 
       <View style={styles.miniCardsRow}>
         <MiniStatCard
@@ -454,6 +388,7 @@ export default function HomeScreen() {
           trend={weightTrendPct}
           trendGoodDirection={currentUser.goal === 'gainMuscle' || currentUser.goal === 'gainStrength' ? 'up' : 'down'}
           sparkline={weightSparkline}
+          onPress={() => router.push('/progress')}
         />
         <MiniStatCard
           label={topLift ? topLift.exercise.name : 'Forza'}
@@ -462,137 +397,22 @@ export default function HomeScreen() {
           icon="training"
           trend={topLiftDeltaPct}
           sparkline={topLift ? topLift.history.slice(-10).map((h) => h.weightKg) : undefined}
+          onPress={() => router.push('/training-progress')}
         />
         <AICoachMiniCard
           headline={topInsight?.headline ?? 'Nessun consiglio ancora'}
-          body={topInsight?.body ?? 'Aggiorna per ricevere un consiglio personalizzato dal coach AI.'}
-          onPress={() => (topInsight ? router.push('/chat') : refreshInsights())}
+          body={topInsight?.body ?? 'Apri per generare un consiglio personalizzato dal coach AI.'}
+          onPress={() => setInsightsModalOpen(true)}
         />
       </View>
 
-      <View>
-        <SectionHeader title="Riepilogo di oggi" action="Vedi progressi" onActionPress={() => router.push('/progress')} />
-        <GlassSurface level="card" radius={Radius.large} style={styles.overviewCard}>
-          <View style={styles.ringsStack}>
-            <ProgressRing size={128} strokeWidth={12} progress={trainingProgress} color={theme.accent} trackColor={theme.backgroundElement}>
-              <ProgressRing size={92} strokeWidth={10} progress={dietProgress} color={theme.success} trackColor={theme.backgroundElement}>
-                <ProgressRing size={58} strokeWidth={8} progress={stepsProgress} color={theme.warning} trackColor={theme.backgroundElement} />
-              </ProgressRing>
-            </ProgressRing>
-          </View>
-          <View style={styles.legendColumn}>
-            <OverviewLegendRow icon="training" color={theme.accent} label="Allenamento" value={`-${Math.round(todayTrainingKcal)} kcal`} />
-            <OverviewLegendRow icon="nutrition" color={theme.success} label="Dieta" value={`+${Math.round(todaysTotals.kcal)} kcal`} />
-            <OverviewLegendRow icon="footsteps" color={theme.warning} label="Passi" value={`-${Math.round(todayStepsKcal)} kcal`} />
-          </View>
-        </GlassSurface>
-      </View>
-
-      <View>
-        <SectionHeader title="Allenamento di oggi" action="Vedi training" onActionPress={() => router.push('/training')} />
-        <GlassSurface level="card" radius={Radius.large}>
-          <Pressable style={styles.planRow} onPress={() => router.push('/training')}>
-            <View style={[styles.sportBadge, { backgroundColor: theme.accentSoft }]}>
-              <Icon name={planIcon} size={22} color={theme.accent} />
-            </View>
-            <View style={{ flex: 1, gap: 2 }}>
-              <ThemedText type="smallBold">{planTitle}</ThemedText>
-              <ThemedText type="caption" themeColor="textSecondary">
-                {planSubtitle}
-              </ThemedText>
-            </View>
-            <Icon name="chevronRight" size={18} color={theme.textTertiary} />
-          </Pressable>
-          {workoutExercises.length > 0 ? (
-            <View style={styles.exerciseListRow}>
-              <ThemedText type="caption" themeColor="textSecondary">
-                {workoutExercises.map((ex) => ex.name).join(' · ')}
-              </ThemedText>
-            </View>
-          ) : null}
-        </GlassSurface>
-      </View>
-
-      <View>
-        <SectionHeader title="Piano alimentare di oggi" action="Dettagli" onActionPress={() => router.push('/nutrition')} />
-        <GlassSurface level="card" radius={Radius.large} style={styles.nutritionCard}>
-          <View style={styles.calorieRow}>
-            <ThemedText type="title">{Math.round(todaysTotals.kcal)}</ThemedText>
-            <ThemedText type="caption" themeColor="textSecondary">
-              {' '}
-              / {Math.round(calorieTarget)} kcal
-            </ThemedText>
-          </View>
-          <View style={styles.macroRingsRow}>
-            <MacroRingStat
-              icon="protein"
-              label="Proteine"
-              color={theme.accent}
-              value={`${Math.round(todaysTotals.protein)}g`}
-              progress={macroTargets.protein > 0 ? todaysTotals.protein / macroTargets.protein : 0}
-            />
-            <MacroRingStat
-              icon="carbs"
-              label="Carboidrati"
-              color={theme.success}
-              value={`${Math.round(todaysTotals.carbs)}g`}
-              progress={macroTargets.carbs > 0 ? todaysTotals.carbs / macroTargets.carbs : 0}
-            />
-            <MacroRingStat
-              icon="fats"
-              label="Grassi"
-              color={theme.warning}
-              value={`${Math.round(todaysTotals.fats)}g`}
-              progress={macroTargets.fats > 0 ? todaysTotals.fats / macroTargets.fats : 0}
-            />
-          </View>
-        </GlassSurface>
-      </View>
-
-      {recentLifts.length > 0 ? (
-        <View>
-          <SectionHeader title="Ultimi progressi nei carichi" action="Vedi tutti" onActionPress={() => router.push('/training-progress')} />
-          <View style={{ gap: Spacing.three }}>
-            {recentLifts.map(({ exercise, history }) => {
-              const firstKg = history[0].weightKg;
-              const lastKg = history[history.length - 1].weightKg;
-              const deltaPct = firstKg > 0 ? ((lastKg - firstKg) / firstKg) * 100 : 0;
-              return (
-                <GlassSurface key={exercise.id} level="card" radius={Radius.large}>
-                  <View style={styles.liftRow}>
-                    <View style={[styles.liftIcon, { backgroundColor: theme.accentSoft }]}>
-                      <Icon name="training" size={18} color={theme.accent} />
-                    </View>
-                    <View style={{ flex: 1, gap: 2 }}>
-                      <ThemedText type="smallBold">{exercise.name}</ThemedText>
-                      <ThemedText type="caption" themeColor="textSecondary">
-                        {firstKg}kg → {lastKg}kg
-                      </ThemedText>
-                    </View>
-                    <ThemedText type="smallBold" style={{ color: deltaPct >= 0 ? theme.success : theme.danger }}>
-                      {deltaPct >= 0 ? '+' : ''}
-                      {deltaPct.toFixed(1)}%
-                    </ThemedText>
-                  </View>
-                </GlassSurface>
-              );
-            })}
-          </View>
-        </View>
-      ) : null}
-
-      <View>
-        <SectionHeader
-          title="Consigli del coach AI"
-          action={insightsLoading ? 'Aggiornamento…' : 'Aggiorna'}
-          onActionPress={insightsLoading ? undefined : refreshInsights}
-        />
-        <View style={{ gap: Spacing.three }}>
-          {insights.map((insight) => (
-            <InsightCard key={insight.id} tone={insight.tone} headline={insight.headline} body={insight.body} />
-          ))}
-        </View>
-      </View>
+      <InsightsModal
+        visible={insightsModalOpen}
+        insights={insights}
+        isLoading={insightsLoading}
+        onRefresh={refreshInsights}
+        onClose={() => setInsightsModalOpen(false)}
+      />
     </ScreenScroll>
   );
 }
@@ -611,8 +431,6 @@ function WeeklyGoalCard({
   progress,
   onTrack,
   dailyGoalKcal,
-  daysMetCount,
-  daysElapsed,
   days,
   onSelectDay,
   weekIndex,
@@ -625,8 +443,6 @@ function WeeklyGoalCard({
   progress: number;
   onTrack: boolean;
   dailyGoalKcal: number;
-  daysMetCount: number;
-  daysElapsed: number;
   days: WeeklyGoalDay[];
   onSelectDay: (day: WeeklyGoalDay) => void;
   weekIndex: number;
@@ -669,8 +485,9 @@ function WeeklyGoalCard({
         </ThemedText>
       </View>
 
-      <ThemedText style={[styles.goalHeroValue, { color: theme.accent }]}>
-        {formatSignedKcal(soFarKcal)} / {formatSignedKcal(goalKcal)} kcal
+      <ThemedText style={[styles.goalHeroValue, { color: theme.accent }]}>{formatSignedKcal(goalKcal)} kcal</ThemedText>
+      <ThemedText style={styles.goalHeroSubValue}>
+        {formatSignedKcal(soFarKcal)} / {formatSignedKcal(goalKcal)}
       </ThemedText>
 
       <View style={[styles.goalProgressTrack, { backgroundColor: theme.backgroundElement }]}>
@@ -695,20 +512,6 @@ function WeeklyGoalCard({
             </Pressable>
           );
         })}
-      </View>
-
-      <View style={[styles.goalStreakBanner, { backgroundColor: theme.successSoft }]}>
-        <View style={[styles.goalStreakIcon, { backgroundColor: theme.backgroundElevated }]}>
-          <Icon name="trophy" size={20} color={theme.success} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <ThemedText style={[styles.goalStreakCount, { color: theme.success }]}>
-            {daysMetCount}/{daysElapsed || 7} giorni obiettivo raggiunto
-          </ThemedText>
-          <ThemedText type="caption" themeColor="textSecondary">
-            {daysMetCount >= daysElapsed && daysElapsed > 0 ? 'Settimana perfetta finora — continua così!' : 'Ogni giorno in linea conta, avanti così!'}
-          </ThemedText>
-        </View>
       </View>
     </FlatCard>
   );
@@ -771,6 +574,8 @@ function TodayStatCard({
   statusOk,
   statusLabel,
   tint,
+  onPress,
+  subBadge,
 }: {
   icon: IconName;
   label: string;
@@ -779,16 +584,29 @@ function TodayStatCard({
   statusOk: boolean;
   statusLabel: string;
   tint: string;
+  onPress?: () => void;
+  subBadge?: { icon: IconName; label: string };
 }) {
   const theme = useTheme();
-  return (
+  const content = (
     <FlatCard tint={tint} radius={Radius.medium} style={styles.todayStatCard}>
-      <View style={[styles.todayStatIcon, { backgroundColor: theme.backgroundElevated }]}>
-        <Icon name={icon} size={16} color={theme.accent} />
+      <View style={styles.todayStatTopRow}>
+        <View style={[styles.todayStatIcon, { backgroundColor: theme.backgroundElevated }]}>
+          <Icon name={icon} size={16} color={theme.accent} />
+        </View>
+        {onPress ? <Icon name="chevronRight" size={13} color={theme.textTertiary} /> : null}
       </View>
-      <ThemedText type="caption" themeColor="textSecondary" numberOfLines={1} style={styles.todayStatLabel}>
+      <ThemedText numberOfLines={1} style={styles.todayStatLabel}>
         {label}
       </ThemedText>
+      {subBadge ? (
+        <View style={styles.todaySplitBadge}>
+          <Icon name={subBadge.icon} size={11} color={theme.accent} />
+          <ThemedText numberOfLines={1} style={styles.todaySplitBadgeLabel}>
+            {subBadge.label}
+          </ThemedText>
+        </View>
+      ) : null}
       <ThemedText numberOfLines={2} style={styles.todayStatValue}>
         {valueLine}
       </ThemedText>
@@ -802,6 +620,13 @@ function TodayStatCard({
         </ThemedText>
       </View>
     </FlatCard>
+  );
+  return onPress ? (
+    <Pressable onPress={onPress} style={styles.todayStatPressable}>
+      {content}
+    </Pressable>
+  ) : (
+    content
   );
 }
 
@@ -824,15 +649,29 @@ function DailyResultCard({
   return (
     <Pressable onPress={onPress}>
       <FlatCard tint={met ? theme.successSoft : undefined} style={styles.resultCard}>
-        <ProgressRing size={56} strokeWidth={6} progress={progress} color={met ? theme.success : theme.accent} trackColor={theme.backgroundElevated}>
-          <Icon name="trophy" size={20} color={met ? theme.success : theme.textTertiary} />
-        </ProgressRing>
+        {met ? (
+          <View style={styles.resultIconRing}>
+            <LinearGradient
+              colors={[theme.warning, theme.success, theme.accent]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+            <View style={styles.resultIconInner}>
+              <Icon name="trophy" size={20} color={theme.warning} />
+            </View>
+          </View>
+        ) : (
+          <ProgressRing size={56} strokeWidth={6} progress={progress} color={theme.accent} trackColor={theme.backgroundElevated}>
+            <Icon name="trophy" size={20} color={theme.textTertiary} />
+          </ProgressRing>
+        )}
         <View style={{ flex: 1, gap: 2 }}>
-          <ThemedText type="caption" themeColor="textSecondary">
+          <ThemedText type="label" themeColor="textSecondary">
             Risultato giornaliero
           </ThemedText>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <ThemedText type="smallBold">{headline}</ThemedText>
+            <ThemedText style={styles.resultHeadline}>{headline}</ThemedText>
             {met && streakCount > 0 ? (
               <ThemedText type="caption" style={{ color: theme.success, fontWeight: '700' }}>
                 +{streakCount} giorno{streakCount === 1 ? '' : 'i'}
@@ -849,48 +688,17 @@ function DailyResultCard({
   );
 }
 
-function NextActionCard({
-  icon,
-  title,
-  subtitle,
-  ctaLabel,
-  onPress,
-}: {
-  icon: IconName;
-  title: string;
-  subtitle: string;
-  ctaLabel: string;
-  onPress: () => void;
-}) {
-  const theme = useTheme();
-  return (
-    <FlatCard style={styles.nextActionCard}>
-      <View style={styles.nextActionInfoRow}>
-        <View style={[styles.sportBadge, { backgroundColor: theme.accentSoft }]}>
-          <Icon name={icon} size={20} color={theme.accent} />
-        </View>
-        <View style={{ flex: 1, gap: 2 }}>
-          <ThemedText type="caption" themeColor="textSecondary">
-            Prossima azione
-          </ThemedText>
-          <ThemedText type="smallBold">{title}</ThemedText>
-          <ThemedText type="caption" themeColor="textSecondary">
-            {subtitle}
-          </ThemedText>
-        </View>
-      </View>
-      <PrimaryButton label={ctaLabel} onPress={onPress} style={{ alignSelf: 'stretch' }} />
-    </FlatCard>
-  );
-}
-
 function AICoachMiniCard({ headline, body, onPress }: { headline: string; body: string; onPress: () => void }) {
   const theme = useTheme();
   return (
     <Pressable onPress={onPress} style={styles.miniCard}>
       <FlatCard style={styles.coachMiniCard}>
-        <View style={[styles.coachMiniIcon, { backgroundColor: theme.accentSoft }]}>
-          <Icon name="bulb" size={16} color={theme.accent} />
+        <View style={styles.miniStatHeaderRow}>
+          <View style={[styles.coachMiniIcon, { backgroundColor: theme.accentSoft }]}>
+            <Icon name="bulb" size={16} color={theme.accent} />
+          </View>
+          <View style={{ flex: 1 }} />
+          <Icon name="chevronRight" size={13} color={theme.textTertiary} />
         </View>
         <ThemedText type="label" themeColor="textSecondary">
           AI Coach
@@ -906,6 +714,58 @@ function AICoachMiniCard({ headline, body, onPress }: { headline: string; body: 
   );
 }
 
+/** Popup listing every active coach insight — opened from the AI Coach
+ * mini card instead of navigating away, since there's no dedicated
+ * insights screen. */
+function InsightsModal({
+  visible,
+  insights,
+  isLoading,
+  onRefresh,
+  onClose,
+}: {
+  visible: boolean;
+  insights: { id: string; tone: 'positive' | 'warning' | 'neutral'; headline: string; body: string }[];
+  isLoading: boolean;
+  onRefresh: () => void;
+  onClose: () => void;
+}) {
+  const theme = useTheme();
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={styles.modalBackdrop} onPress={onClose}>
+        <Pressable onPress={(e) => e.stopPropagation()} style={styles.insightsModalWrap}>
+          <FlatCard style={styles.insightsModalCard}>
+            <View style={styles.modalHeaderRow}>
+              <ThemedText type="smallBold">Consigli del coach AI</ThemedText>
+              <Pressable onPress={onClose} hitSlop={8}>
+                <Icon name="close" size={20} color={theme.textTertiary} />
+              </Pressable>
+            </View>
+            <ScrollView style={styles.insightsModalScroll} showsVerticalScrollIndicator={false}>
+              <View style={{ gap: Spacing.three }}>
+                {insights.length === 0 ? (
+                  <ThemedText type="caption" themeColor="textSecondary">
+                    Nessun consiglio disponibile al momento.
+                  </ThemedText>
+                ) : null}
+                {insights.map((insight) => (
+                  <InsightCard key={insight.id} tone={insight.tone} headline={insight.headline} body={insight.body} />
+                ))}
+              </View>
+            </ScrollView>
+            <Pressable onPress={isLoading ? undefined : onRefresh} hitSlop={8}>
+              <ThemedText type="caption" style={{ color: theme.accent, textAlign: 'center', fontWeight: '700' }}>
+                {isLoading ? 'Aggiornamento…' : 'Aggiorna consigli'}
+              </ThemedText>
+            </Pressable>
+          </FlatCard>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
 /** Flat counterpart to StatTile for the Home hero mini-row — same data
  * shape (value/trend/sparkline), but a solid card and a sparkline colored
  * by whether the trend is good news, matching the reference mockup's green
@@ -918,6 +778,7 @@ function MiniStatCard({
   trend,
   trendGoodDirection = 'up',
   sparkline,
+  onPress,
 }: {
   label: string;
   value: string;
@@ -926,6 +787,7 @@ function MiniStatCard({
   trend?: number;
   trendGoodDirection?: 'up' | 'down';
   sparkline?: number[];
+  onPress?: () => void;
 }) {
   const theme = useTheme();
   const trendPositive = (trend ?? 0) >= 0;
@@ -934,83 +796,38 @@ function MiniStatCard({
   const sparklineColor = trend == null ? theme.accent : trendColor;
 
   return (
-    <FlatCard style={[styles.miniCard, styles.miniStatCard]}>
-      <View style={styles.miniStatHeaderRow}>
-        <ThemedText type="label" themeColor="textSecondary" numberOfLines={1} style={{ flex: 1 }}>
-          {label}
-        </ThemedText>
-        <Icon name={icon} size={14} color={theme.textTertiary} />
-      </View>
-      <View style={styles.miniStatValueRow}>
-        <ThemedText type="title">{value}</ThemedText>
-        {unit ? (
-          <ThemedText type="caption" themeColor="textSecondary" style={{ marginBottom: 2 }}>
-            {unit}
+    <Pressable onPress={onPress} style={styles.miniCard}>
+      <FlatCard style={styles.miniStatCard}>
+        <View style={styles.miniStatHeaderRow}>
+          <ThemedText type="label" themeColor="textSecondary" numberOfLines={1} style={{ flex: 1 }}>
+            {label}
           </ThemedText>
+          <Icon name={onPress ? 'chevronRight' : icon} size={onPress ? 13 : 14} color={theme.textTertiary} />
+        </View>
+        <View style={styles.miniStatValueRow}>
+          <ThemedText type="title">{value}</ThemedText>
+          {unit ? (
+            <ThemedText type="caption" themeColor="textSecondary" style={{ marginBottom: 2 }}>
+              {unit}
+            </ThemedText>
+          ) : null}
+        </View>
+        {trend != null ? (
+          <View style={styles.miniStatTrendRow}>
+            <Icon name={trendPositive ? 'trendUp' : 'trendDown'} size={12} color={trendColor} />
+            <ThemedText type="caption" style={{ color: trendColor }}>
+              {trendPositive ? '+' : ''}
+              {trend.toFixed(1)}%
+            </ThemedText>
+          </View>
         ) : null}
-      </View>
-      {trend != null ? (
-        <View style={styles.miniStatTrendRow}>
-          <Icon name={trendPositive ? 'trendUp' : 'trendDown'} size={12} color={trendColor} />
-          <ThemedText type="caption" style={{ color: trendColor }}>
-            {trendPositive ? '+' : ''}
-            {trend.toFixed(1)}%
-          </ThemedText>
-        </View>
-      ) : null}
-      {sparkline && sparkline.length >= 2 ? (
-        <View style={styles.miniStatChart}>
-          <TrendChart data={sparkline} width={110} height={32} color={sparklineColor} />
-        </View>
-      ) : null}
-    </FlatCard>
-  );
-}
-
-function OverviewLegendRow({ icon, color, label, value }: { icon: IconName; color: string; label: string; value: string }) {
-  const theme = useTheme();
-  return (
-    <View style={styles.legendRow}>
-      <View style={[styles.legendDot, { backgroundColor: color }]} />
-      <Icon name={icon} size={14} color={theme.textSecondary} />
-      <View style={{ flex: 1 }}>
-        <ThemedText type="caption" themeColor="textSecondary">
-          {label}
-        </ThemedText>
-        <ThemedText type="smallBold" style={{ color }}>
-          {value}
-        </ThemedText>
-      </View>
-    </View>
-  );
-}
-
-function MacroRingStat({
-  icon,
-  label,
-  color,
-  value,
-  progress,
-}: {
-  icon: IconName;
-  label: string;
-  color: string;
-  value: string;
-  progress: number;
-}) {
-  const theme = useTheme();
-  return (
-    <View style={styles.macroRingCol}>
-      <ProgressRing size={60} strokeWidth={6} progress={progress} color={color} trackColor={theme.backgroundElement}>
-        <Icon name={icon} size={16} color={color} />
-      </ProgressRing>
-      <ThemedText type="caption" style={{ marginTop: Spacing.one, fontWeight: '700' }}>
-        {value}
-      </ThemedText>
-      <ThemedText type="caption" themeColor="textSecondary">
-        {label}
-      </ThemedText>
-    </View>
+        {sparkline && sparkline.length >= 2 ? (
+          <View style={styles.miniStatChart}>
+            <TrendChart data={sparkline} width={110} height={32} color={sparklineColor} />
+          </View>
+        ) : null}
+      </FlatCard>
+    </Pressable>
   );
 }
 
@@ -1048,77 +865,6 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     fontWeight: '400',
   },
-  planRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.three,
-    padding: Spacing.three,
-  },
-  exerciseListRow: {
-    paddingHorizontal: Spacing.three,
-    paddingBottom: Spacing.three,
-  },
-  sportBadge: {
-    width: 44,
-    height: 44,
-    borderRadius: Radius.medium,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  overviewCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.four,
-    padding: Spacing.four,
-  },
-  ringsStack: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  legendColumn: {
-    flex: 1,
-    gap: Spacing.three,
-  },
-  legendRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: Spacing.two,
-    paddingTop: 2,
-  },
-  legendDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  nutritionCard: {
-    padding: Spacing.four,
-    gap: Spacing.three,
-  },
-  calorieRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-  },
-  macroRingsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  macroRingCol: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  liftRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.three,
-    padding: Spacing.three,
-  },
-  liftIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: Radius.medium,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   goalHeroCard: {
     gap: Spacing.two,
     padding: Spacing.three,
@@ -1141,6 +887,11 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: -0.3,
     marginTop: Spacing.one,
+  },
+  goalHeroSubValue: {
+    fontSize: 13,
+    lineHeight: 17,
+    fontWeight: '600',
   },
   goalWeekNavRow: {
     flexDirection: 'row',
@@ -1192,27 +943,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0.2,
   },
-  goalStreakBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.three,
-    marginTop: Spacing.three,
-    padding: Spacing.three,
-    borderRadius: Radius.medium,
-  },
-  goalStreakIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: Radius.medium,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  goalStreakCount: {
-    fontSize: 15,
-    lineHeight: 19,
-    fontWeight: '800',
-    letterSpacing: -0.1,
-  },
   modalBackdrop: {
     flex: 1,
     alignItems: 'center',
@@ -1244,10 +974,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  insightsModalWrap: {
+    width: '100%',
+    maxWidth: 380,
+  },
+  insightsModalCard: {
+    padding: Spacing.four,
+    gap: Spacing.three,
+  },
+  insightsModalScroll: {
+    maxHeight: 420,
+  },
   todayHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  todayHeaderTitle: {
+    fontSize: 17,
+    lineHeight: 22,
+    fontWeight: '800',
+    letterSpacing: -0.2,
   },
   todayHeaderRight: {
     flexDirection: 'row',
@@ -1258,11 +1005,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: Spacing.two,
   },
+  todayStatPressable: {
+    flex: 1,
+  },
   todayStatCard: {
     flex: 1,
     minWidth: 0,
     padding: Spacing.two,
     gap: 5,
+  },
+  todayStatTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   todayStatIcon: {
     width: 28,
@@ -1272,8 +1027,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   todayStatLabel: {
-    fontSize: 11,
-    lineHeight: 14,
+    fontSize: 12,
+    lineHeight: 15,
+    fontWeight: '800',
+  },
+  todaySplitBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  todaySplitBadgeLabel: {
+    fontSize: 10,
+    lineHeight: 13,
+    fontWeight: '700',
   },
   todayStatValue: {
     fontSize: 12,
@@ -1305,14 +1071,27 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
     padding: Spacing.four,
   },
-  nextActionCard: {
-    gap: Spacing.three,
-    padding: Spacing.three,
-  },
-  nextActionInfoRow: {
-    flexDirection: 'row',
+  resultIconRing: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    overflow: 'hidden',
     alignItems: 'center',
-    gap: Spacing.three,
+    justifyContent: 'center',
+  },
+  resultIconInner: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  resultHeadline: {
+    fontSize: 15,
+    lineHeight: 19,
+    fontWeight: '800',
+    letterSpacing: -0.1,
   },
   miniCardsRow: {
     flexDirection: 'row',

@@ -72,6 +72,7 @@ const ICONS = {
   lock: { set: 'ion', name: 'lock-closed-outline' },
   trophy: { set: 'ion', name: 'trophy' },
   bulb: { set: 'ion', name: 'bulb' },
+  armFlex: { set: 'mci', name: 'arm-flex' },
 } as const satisfies Record<string, { set: 'mci' | 'ion'; name: MCIName | IonName }>;
 
 export type IconName = keyof typeof ICONS;
