@@ -353,10 +353,10 @@ export default function HomeScreen() {
           <TodayStatCard
             icon="nutrition"
             label="Dieta"
-            valueLine={`${formatKcal(todaysTotals.kcal)} / ${formatKcal(calorieTarget)} kcal`}
+            valueLine={`${formatKcal(todaysTotals.kcal)}/${formatKcal(calorieTarget)} kcal`}
             progress={dietProgress}
             statusOk={todaysTotals.kcal <= calorieTarget * 1.05}
-            statusLabel={todaysTotals.kcal > calorieTarget * 1.05 ? 'Oltre il target' : 'In linea'}
+            statusLabel={todaysTotals.kcal > calorieTarget * 1.05 ? 'Oltre target' : 'In linea'}
             tint={theme.accentSoft}
             onPress={() => router.push('/nutrition')}
           />
@@ -365,14 +365,14 @@ export default function HomeScreen() {
             label="Allenamento"
             valueLine={
               workoutExercises.length > 0
-                ? `${completedCount}/${workoutExercises.length} completat${workoutExercises.length === 1 ? 'a' : 'e'}`
+                ? `${completedCount}/${workoutExercises.length} esercizi`
                 : todayPlanDay?.type === 'cardio'
                   ? (todayPlanDay.note ?? 'Sessione cardio')
                   : 'Riposo'
             }
             progress={trainingProgress}
             statusOk={trainingProgress >= 1}
-            statusLabel={trainingProgress >= 1 ? 'Fatto' : workoutExercises.length > 0 ? 'Da completare' : 'Riposo'}
+            statusLabel={trainingProgress >= 1 ? 'Fatto' : workoutExercises.length > 0 ? 'Da fare' : 'Riposo'}
             tint={theme.successSoft}
             onPress={() => router.push('/training')}
             subBadge={workoutSplitTitle ? { icon: splitIconFor(workoutSplitTitle), label: workoutSplitTitle } : undefined}
@@ -380,10 +380,10 @@ export default function HomeScreen() {
           <TodayStatCard
             icon="footsteps"
             label="Passi"
-            valueLine={`${formatKcal(todaysSteps)} / ${formatKcal(dailyStepsTarget)}`}
+            valueLine={`${formatKcal(todaysSteps)}/${formatKcal(dailyStepsTarget)}`}
             progress={stepsProgress}
             statusOk={stepsProgress >= 0.6}
-            statusLabel={stepsProgress >= 1 ? 'Obiettivo raggiunto' : stepsProgress >= 0.6 ? 'In linea' : 'Sotto al target'}
+            statusLabel={stepsProgress >= 1 ? 'Raggiunto' : stepsProgress >= 0.6 ? 'In linea' : 'Sotto target'}
             tint={theme.successSoft}
           />
         </View>
@@ -685,24 +685,27 @@ function TodayStatCard({
     <FlatCard radius={Radius.medium} style={styles.todayStatCard}>
       <View style={styles.todayStatTopRow}>
         <View style={[styles.todayStatIcon, { backgroundColor: tint }]}>
-          <Icon name={icon} size={18} color={theme.accent} />
+          <Icon name={icon} size={15} color={theme.accent} />
         </View>
         {onPress ? <Icon name="chevronRight" size={14} color={theme.textTertiary} /> : null}
       </View>
-      <ThemedText numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={styles.todayStatLabel}>
+      <ThemedText style={styles.todayStatLabel}>
         {label}
       </ThemedText>
-      {subBadge ? (
-        <View style={styles.todaySplitBadge}>
-          <Icon name={subBadge.icon} size={11} color={theme.accent} />
-          <ThemedText numberOfLines={1} style={styles.todaySplitBadgeLabel}>
-            {subBadge.label}
-          </ThemedText>
-        </View>
-      ) : null}
+      <View style={styles.todaySplitBadge}>
+        {subBadge ? (
+          <>
+            <Icon name={subBadge.icon} size={11} color={theme.accent} />
+            <ThemedText numberOfLines={1} style={styles.todaySplitBadgeLabel}>
+              {subBadge.label}
+            </ThemedText>
+          </>
+        ) : null}
+      </View>
       <ThemedText numberOfLines={2} style={styles.todayStatValue}>
         {valueLine}
       </ThemedText>
+      <View style={styles.todayStatSpacer} />
       <View style={[styles.todayStatTrack, { backgroundColor: theme.backgroundElement }]}>
         <View style={[styles.todayStatFill, { width: `${Math.round(clamp01(progress) * 100)}%`, backgroundColor: statusOk ? theme.success : theme.accent }]} />
       </View>
@@ -714,12 +717,17 @@ function TodayStatCard({
       </View>
     </FlatCard>
   );
+  // Always wrapped in the same flex:1 container, whether or not it's
+  // pressable — letting Passi skip this wrapper (nothing to press) used to
+  // leave its aspectRatio card as the row's direct flex item instead of
+  // nested one level down like its siblings, which resolved to a
+  // different flex-basis and made it visibly wider than the other two.
   return onPress ? (
     <Pressable onPress={onPress} style={styles.todayStatPressable}>
       {content}
     </Pressable>
   ) : (
-    content
+    <View style={styles.todayStatPressable}>{content}</View>
   );
 }
 
@@ -1042,12 +1050,14 @@ const styles = StyleSheet.create({
   },
   todayStatPressable: {
     flex: 1,
+    minWidth: 0,
   },
   todayStatCard: {
     flex: 1,
     minWidth: 0,
-    padding: 12,
-    gap: 7,
+    aspectRatio: 1,
+    padding: 8,
+    gap: 4,
   },
   todayStatTopRow: {
     flexDirection: 'row',
@@ -1055,31 +1065,36 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   todayStatIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: Radius.medium,
+    width: 26,
+    height: 26,
+    borderRadius: Radius.small,
     alignItems: 'center',
     justifyContent: 'center',
   },
   todayStatLabel: {
     fontSize: 11,
-    lineHeight: 14,
+    lineHeight: 13,
+    height: 13,
     fontWeight: '800',
   },
   todaySplitBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
+    height: 12,
   },
   todaySplitBadgeLabel: {
-    fontSize: 10,
-    lineHeight: 13,
+    fontSize: 9,
+    lineHeight: 12,
     fontWeight: '700',
   },
   todayStatValue: {
-    fontSize: 12,
-    lineHeight: 15,
+    fontSize: 11,
+    lineHeight: 13,
     fontWeight: '700',
+  },
+  todayStatSpacer: {
+    flex: 1,
   },
   todayStatTrack: {
     height: 5,
