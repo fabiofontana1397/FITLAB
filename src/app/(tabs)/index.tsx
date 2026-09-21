@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
-import { useMemo } from 'react';
-import { Platform, Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { useMemo, useState } from 'react';
+import { Modal, Platform, Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { GlassSurface } from '@/components/glass/glass-surface';
 import { InsightCard } from '@/components/ui/insight-card';
@@ -17,7 +17,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { sumActivityKcalForDate, useWeeklyEnergy } from '@/hooks/use-weekly-energy';
 import { dailyStepsTarget, stepsHistory } from '@/lib/mock/activity';
 import { latestSnapshot } from '@/lib/mock/body';
-import { currentWeekDates, daysAgoISO, mondayIndex } from '@/lib/mock/dates';
+import { currentWeekDates, daysAgoISO, formatFullDay, mondayIndex } from '@/lib/mock/dates';
 import { useCoachInsights } from '@/hooks/use-coach-insights';
 import { estimateDailyEnergyExpenditure, estimateStepsKcal, estimateTrainingContributionKcal } from '@/lib/nutrition/targets';
 import { WEEKDAY_LABELS } from '@/lib/planning/exercise-library';
@@ -79,14 +79,12 @@ function upcomingMealLabel(hour: number): string {
   return 'cena';
 }
 
-/** Whether a day's net calorie balance (intake minus expenditure) landed on
- * the side the weekly goal calls for — negative goal wants a deficit day
- * (balance <= 0), positive wants a surplus day (balance >= 0), ~0
- * (maintenance) wants the day to stay within a small band either way. */
-function dayMetWeeklyGoal(dayBalanceKcal: number, weeklyGoalKcal: number): boolean {
-  if (weeklyGoalKcal < 0) return dayBalanceKcal <= 0;
-  if (weeklyGoalKcal > 0) return dayBalanceKcal >= 0;
-  return Math.abs(dayBalanceKcal) <= 150;
+/** ±100 kcal — how close a day's net balance (intake minus expenditure)
+ * has to land to that day's share of the weekly goal to count as "met". */
+const DAILY_TOLERANCE_KCAL = 100;
+
+function isDayWithinTolerance(dayBalanceKcal: number, dailyGoalKcal: number, toleranceKcal = DAILY_TOLERANCE_KCAL): boolean {
+  return Math.abs(dayBalanceKcal - dailyGoalKcal) <= toleranceKcal;
 }
 
 /** Flat, opaque, drop-shadowed card — the Home hero section's own card
@@ -223,26 +221,32 @@ export default function HomeScreen() {
     );
   }, 0);
   const weeklyBalanceGoalKcal = weeklyProgrammedKcal - weeklyExpenditureFullAdherence;
+  const dailyGoalPerDayKcal = weeklyBalanceGoalKcal / 7;
   const eatenSoFarThisWeek = weekDaysWithActivity.filter((d) => d.hasHappened).reduce((sum, d) => sum + d.eatenKcal, 0);
   const weeklyBalanceSoFarKcal = eatenSoFarThisWeek - weekEstimatedExpenditureSoFar;
   const weeklyGoalProgress = weeklyBalanceGoalKcal !== 0 ? clamp01(weeklyBalanceSoFarKcal / weeklyBalanceGoalKcal) : 0;
   const daysElapsedThisWeek = weekDaysWithActivity.filter((d) => d.hasHappened).length;
   const onTrackThisWeek = weeklyBalanceGoalKcal === 0 || weeklyGoalProgress >= (daysElapsedThisWeek / 7) * 0.85;
 
-  // Current streak of days (this week, up to and including today) that
-  // landed on the right side of the weekly goal — resets on a missed day.
-  // A genuine cross-week streak would need its own persisted counter, out
-  // of scope here.
+  // Current streak of days (this week, up to and including today) within
+  // ±100 kcal of that day's share of the weekly goal — resets on a missed
+  // day. A genuine cross-week streak would need its own persisted counter,
+  // out of scope here.
   let weeklyStreakCount = 0;
   for (const d of weekDaysWithActivity) {
     if (!d.hasHappened) break;
-    if (dayMetWeeklyGoal(d.eatenKcal - d.estimatedExpenditureKcal, weeklyBalanceGoalKcal)) weeklyStreakCount++;
+    if (isDayWithinTolerance(d.eatenKcal - d.estimatedExpenditureKcal, dailyGoalPerDayKcal)) weeklyStreakCount++;
     else weeklyStreakCount = 0;
   }
+  // Plain tally (not a streak — a miss doesn't reset it) of how many days
+  // this week landed within tolerance, for the card's own "X/7 giorni
+  // obiettivo raggiunto" celebration banner.
+  const daysMetThisWeekCount = weekDaysWithActivity.filter(
+    (d) => d.hasHappened && isDayWithinTolerance(d.eatenKcal - d.estimatedExpenditureKcal, dailyGoalPerDayKcal)
+  ).length;
 
   const dailyBalanceKcal = -todayEstimatedBalance; // intake - expenditure, same convention as weeklyBalanceGoalKcal
-  const dailyGoalPerDayKcal = weeklyBalanceGoalKcal / 7;
-  const dailyGoalMet = dayMetWeeklyGoal(dailyBalanceKcal, weeklyBalanceGoalKcal);
+  const dailyGoalMet = isDayWithinTolerance(dailyBalanceKcal, dailyGoalPerDayKcal);
   const dailyGoalProgress = dailyGoalMet ? 1 : dailyGoalPerDayKcal !== 0 ? clamp01(dailyBalanceKcal / dailyGoalPerDayKcal) : 0.5;
   const balanceGoalNoun = weeklyBalanceGoalKcal < 0 ? 'il deficit calorico' : weeklyBalanceGoalKcal > 0 ? 'il surplus calorico' : 'il bilancio calorico';
   const resultHeadline = dailyGoalMet ? 'Obiettivo raggiunto!' : 'Ci sei quasi';
@@ -316,6 +320,8 @@ export default function HomeScreen() {
   const weightSparkline = [...bodyEntries].sort((a, b) => a.date.localeCompare(b.date)).slice(-10).map((e) => e.weightKg);
   const topInsight = insights[0];
 
+  const [selectedDay, setSelectedDay] = useState<WeeklyGoalDay | null>(null);
+
   return (
     <ScreenScroll>
       <ScreenHeader eyebrow={`${greeting()}`} title={currentUser.name} />
@@ -325,13 +331,19 @@ export default function HomeScreen() {
         soFarKcal={weeklyBalanceSoFarKcal}
         progress={weeklyGoalProgress}
         onTrack={onTrackThisWeek}
+        dailyGoalKcal={dailyGoalPerDayKcal}
+        daysMetCount={daysMetThisWeekCount}
+        daysElapsed={daysElapsedThisWeek}
         days={weekDaysWithActivity.map((d, i) => ({
+          date: d.date,
           label: WEEKDAY_LABELS[i],
           isToday: d.isToday,
           hasHappened: d.hasHappened,
-          met: dayMetWeeklyGoal(d.eatenKcal - d.estimatedExpenditureKcal, weeklyBalanceGoalKcal),
+          balanceKcal: d.eatenKcal - d.estimatedExpenditureKcal,
         }))}
+        onSelectDay={setSelectedDay}
       />
+      <DayDetailModal day={selectedDay} dailyGoalKcal={dailyGoalPerDayKcal} onClose={() => setSelectedDay(null)} />
 
       <View style={{ gap: Spacing.three }}>
         <Pressable style={styles.todayHeaderRow} onPress={() => router.push('/nutrition')}>
@@ -538,18 +550,34 @@ export default function HomeScreen() {
   );
 }
 
+export type WeeklyGoalDay = {
+  date: string;
+  label: string;
+  isToday: boolean;
+  hasHappened: boolean;
+  balanceKcal: number;
+};
+
 function WeeklyGoalCard({
   goalKcal,
   soFarKcal,
   progress,
   onTrack,
+  dailyGoalKcal,
+  daysMetCount,
+  daysElapsed,
   days,
+  onSelectDay,
 }: {
   goalKcal: number;
   soFarKcal: number;
   progress: number;
   onTrack: boolean;
-  days: { label: string; isToday: boolean; hasHappened: boolean; met: boolean }[];
+  dailyGoalKcal: number;
+  daysMetCount: number;
+  daysElapsed: number;
+  days: WeeklyGoalDay[];
+  onSelectDay: (day: WeeklyGoalDay) => void;
 }) {
   const theme = useTheme();
   return (
@@ -561,10 +589,6 @@ function WeeklyGoalCard({
         <ThemedText type="caption" themeColor="textSecondary" style={{ flex: 1 }}>
           Obiettivo di questa settimana
         </ThemedText>
-      </View>
-
-      <View style={styles.goalHeroValueRow}>
-        <ThemedText type="display">{formatSignedKcal(goalKcal)} kcal</ThemedText>
         <View style={[styles.goalStatusPill, { backgroundColor: onTrack ? theme.successSoft : theme.backgroundElement }]}>
           <Icon name={onTrack ? 'checkCircle' : 'alert'} size={12} color={onTrack ? theme.success : theme.warning} />
           <ThemedText type="caption" style={{ color: onTrack ? theme.success : theme.warning, fontWeight: '700' }}>
@@ -572,8 +596,9 @@ function WeeklyGoalCard({
           </ThemedText>
         </View>
       </View>
-      <ThemedText type="caption" themeColor="textSecondary">
-        {formatSignedKcal(soFarKcal)} / {formatSignedKcal(goalKcal)}
+
+      <ThemedText type="display" style={{ color: theme.accent, fontWeight: '800' }}>
+        {formatSignedKcal(soFarKcal)} / {formatSignedKcal(goalKcal)} kcal
       </ThemedText>
 
       <View style={[styles.goalProgressTrack, { backgroundColor: theme.backgroundElement }]}>
@@ -581,27 +606,88 @@ function WeeklyGoalCard({
       </View>
 
       <View style={styles.streakRow}>
-        {days.map((d) => (
-          <View key={d.label} style={styles.streakDayCol}>
-            <View
-              style={[
-                styles.streakCircle,
-                { backgroundColor: d.hasHappened && !d.isToday && d.met ? theme.success : theme.backgroundElement },
-                d.isToday ? { borderWidth: 2, borderColor: theme.accent } : null,
-              ]}>
-              {d.isToday ? (
-                <ThemedText style={[styles.streakTodayLabel, { color: theme.accent }]}>OGGI</ThemedText>
-              ) : d.hasHappened && d.met ? (
-                <Icon name="check" size={14} color={theme.onAccent} />
-              ) : null}
-            </View>
-            <ThemedText type="caption" themeColor="textSecondary">
-              {d.label}
-            </ThemedText>
-          </View>
-        ))}
+        {days.map((d) => {
+          const met = d.hasHappened && !d.isToday ? isDayWithinTolerance(d.balanceKcal, dailyGoalKcal) : false;
+          const ringProgress = d.hasHappened ? (dailyGoalKcal !== 0 ? clamp01(d.balanceKcal / dailyGoalKcal) : met ? 1 : 0) : 0;
+          const ringColor = d.isToday ? theme.accent : !d.hasHappened ? theme.backgroundElement : met ? theme.success : theme.danger;
+          const clickable = d.hasHappened && !d.isToday;
+          return (
+            <Pressable key={d.date} style={styles.streakDayCol} disabled={!clickable} onPress={() => onSelectDay(d)} hitSlop={4}>
+              <ProgressRing size={32} strokeWidth={4} progress={d.hasHappened ? Math.max(ringProgress, 0.06) : 0} color={ringColor} trackColor={theme.backgroundElement}>
+                {clickable ? <Icon name={met ? 'check' : 'close'} size={13} color={met ? theme.success : theme.danger} /> : null}
+              </ProgressRing>
+              <ThemedText type="caption" themeColor="textSecondary">
+                {d.label}
+              </ThemedText>
+              {d.isToday ? <ThemedText style={[styles.streakTodayLabel, { color: theme.accent }]}>OGGI</ThemedText> : null}
+            </Pressable>
+          );
+        })}
+      </View>
+
+      <View style={[styles.goalStreakBanner, { backgroundColor: theme.successSoft }]}>
+        <View style={[styles.goalStreakIcon, { backgroundColor: theme.backgroundElevated }]}>
+          <Icon name="trophy" size={20} color={theme.success} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <ThemedText style={[styles.goalStreakCount, { color: theme.success }]}>
+            {daysMetCount}/{daysElapsed || 7} giorni obiettivo raggiunto
+          </ThemedText>
+          <ThemedText type="caption" themeColor="textSecondary">
+            {daysMetCount >= daysElapsed && daysElapsed > 0 ? 'Settimana perfetta finora — continua così!' : 'Ogni giorno in linea conta, avanti così!'}
+          </ThemedText>
+        </View>
       </View>
     </FlatCard>
+  );
+}
+
+function DayDetailModal({ day, dailyGoalKcal, onClose }: { day: WeeklyGoalDay | null; dailyGoalKcal: number; onClose: () => void }) {
+  const theme = useTheme();
+  if (!day) return null;
+  const met = isDayWithinTolerance(day.balanceKcal, dailyGoalKcal);
+  const deltaKcal = day.balanceKcal - dailyGoalKcal;
+  return (
+    <Modal visible={day != null} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={styles.modalBackdrop} onPress={onClose}>
+        <Pressable onPress={(e) => e.stopPropagation()}>
+          <FlatCard style={styles.modalCard}>
+            <View style={styles.modalHeaderRow}>
+              <ThemedText type="smallBold">{formatFullDay(day.date)}</ThemedText>
+              <Pressable onPress={onClose} hitSlop={8}>
+                <Icon name="close" size={20} color={theme.textTertiary} />
+              </Pressable>
+            </View>
+            <View style={[styles.modalStatusRow, { backgroundColor: met ? theme.successSoft : theme.accentSoft }]}>
+              <Icon name={met ? 'check' : 'close'} size={14} color={met ? theme.success : theme.danger} />
+              <ThemedText type="caption" style={{ color: met ? theme.success : theme.danger, fontWeight: '700' }}>
+                {met ? 'Obiettivo raggiunto' : 'Fuori target'}
+              </ThemedText>
+            </View>
+            <View style={styles.modalRow}>
+              <ThemedText type="caption" themeColor="textSecondary">
+                Bilancio del giorno
+              </ThemedText>
+              <ThemedText type="smallBold">{formatSignedKcal(day.balanceKcal)} kcal</ThemedText>
+            </View>
+            <View style={styles.modalRow}>
+              <ThemedText type="caption" themeColor="textSecondary">
+                Obiettivo giornaliero
+              </ThemedText>
+              <ThemedText type="smallBold">{formatSignedKcal(dailyGoalKcal)} kcal</ThemedText>
+            </View>
+            <View style={styles.modalRow}>
+              <ThemedText type="caption" themeColor="textSecondary">
+                Differenza dall&apos;obiettivo
+              </ThemedText>
+              <ThemedText type="smallBold" style={{ color: met ? theme.success : theme.danger }}>
+                {formatSignedKcal(deltaKcal)} kcal
+              </ThemedText>
+            </View>
+          </FlatCard>
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 }
 
@@ -977,17 +1063,61 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.one,
   },
-  streakCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: Radius.pill,
+  streakTodayLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+  },
+  goalStreakBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+    marginTop: Spacing.three,
+    padding: Spacing.three,
+    borderRadius: Radius.medium,
+  },
+  goalStreakIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: Radius.medium,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  streakTodayLabel: {
-    fontSize: 8,
+  goalStreakCount: {
+    fontSize: 17,
     fontWeight: '800',
-    letterSpacing: 0.2,
+    letterSpacing: -0.2,
+  },
+  modalBackdrop: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    padding: Spacing.four,
+  },
+  modalCard: {
+    width: 300,
+    padding: Spacing.four,
+    gap: Spacing.three,
+  },
+  modalHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  modalStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 4,
+    paddingVertical: 6,
+    paddingHorizontal: Spacing.two,
+    borderRadius: Radius.pill,
+  },
+  modalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   todayHeaderRow: {
     flexDirection: 'row',
