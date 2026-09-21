@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Modal, Platform, Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Image, Modal, Platform, Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { GlassSurface } from '@/components/glass/glass-surface';
 import { InsightCard } from '@/components/ui/insight-card';
@@ -8,7 +8,6 @@ import { ProgressRing } from '@/components/ui/progress-ring';
 import { SectionHeader } from '@/components/ui/section-header';
 import { TrendChart } from '@/components/ui/trend-chart';
 import { Icon, type IconName } from '@/components/ui/icon';
-import { ScreenHeader } from '@/components/screen-header';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { PrimaryButton } from '@/components/ui/primary-button';
@@ -137,6 +136,17 @@ export default function HomeScreen() {
   const dietMonth = dietPlan?.months.find((m) => m.monthIndex === currentMonthIndex(dietPlan));
   const calorieTarget = dietMonth?.calorieTarget ?? currentUser.dailyCalorieTarget;
   const macroTargets = dietMonth?.macroTargetsG ?? currentUser.macroTargetsG;
+
+  // "Settimana X/Y" in the header — the plan itself is month-based (each
+  // month reuses one weeklySplit template), so a week number isn't a field
+  // anywhere; approximated as 4 weeks/month against how many days have
+  // elapsed since the plan was generated.
+  const activePlan = dietPlan ?? trainingPlan;
+  const planTotalWeeks = activePlan ? Math.max(1, activePlan.durationMonths * 4) : 0;
+  const daysSincePlanStart = activePlan
+    ? Math.max(0, Math.floor((new Date(today).getTime() - new Date(activePlan.generatedAt.slice(0, 10)).getTime()) / 86400000))
+    : 0;
+  const currentPlanWeek = activePlan ? Math.min(Math.floor(daysSincePlanStart / 7) + 1, planTotalWeeks) : 0;
 
   const todaysTotals = sumMacros(nutritionEntries.filter((e) => e.date === today));
   const dietProgress = calorieTarget > 0 ? Math.min(todaysTotals.kcal / calorieTarget, 1) : 0;
@@ -324,7 +334,31 @@ export default function HomeScreen() {
 
   return (
     <ScreenScroll>
-      <ScreenHeader eyebrow={`${greeting()}`} title={currentUser.name} />
+      <View style={styles.homeHeader}>
+        <View style={styles.homeHeaderRow}>
+          <Image source={require('@/assets/images/logo-wordmark.png')} style={styles.homeLogo} resizeMode="contain" />
+          <Pressable onPress={() => router.push('/profile')} hitSlop={8}>
+            <GlassSurface level="card" radius={Radius.pill} style={styles.homeAvatarWrap}>
+              <View style={styles.homeAvatarInner}>
+                <Icon name="profile" size={20} color={theme.text} />
+              </View>
+            </GlassSurface>
+          </Pressable>
+        </View>
+        <View style={styles.homeHeaderRow}>
+          <ThemedText style={styles.homeGreeting}>
+            {greeting()} {currentUser.name}!
+          </ThemedText>
+          {activePlan ? (
+            <ThemedText type="caption" themeColor="textSecondary" style={{ fontWeight: '700' }}>
+              Settimana {currentPlanWeek}/{planTotalWeeks}
+            </ThemedText>
+          ) : null}
+        </View>
+        <ThemedText type="caption" themeColor="textSecondary" style={styles.homeSubtitle}>
+          Ecco come sta andando la settimana
+        </ThemedText>
+      </View>
 
       <WeeklyGoalCard
         goalKcal={weeklyBalanceGoalKcal}
@@ -584,20 +618,21 @@ function WeeklyGoalCard({
     <FlatCard style={styles.goalHeroCard}>
       <View style={styles.goalHeroHeader}>
         <View style={[styles.goalHeroIcon, { backgroundColor: theme.accentSoft }]}>
-          <Icon name="flame" size={18} color={theme.accent} />
+          <Icon name="flame" size={16} color={theme.accent} />
         </View>
-        <ThemedText type="caption" themeColor="textSecondary" style={{ flex: 1 }}>
+        <ThemedText type="caption" themeColor="textSecondary" style={{ flex: 1 }} numberOfLines={1}>
           Obiettivo di questa settimana
         </ThemedText>
-        <View style={[styles.goalStatusPill, { backgroundColor: onTrack ? theme.successSoft : theme.backgroundElement }]}>
-          <Icon name={onTrack ? 'checkCircle' : 'alert'} size={12} color={onTrack ? theme.success : theme.warning} />
-          <ThemedText type="caption" style={{ color: onTrack ? theme.success : theme.warning, fontWeight: '700' }}>
-            {onTrack ? 'Sei sulla buona strada' : 'Puoi recuperare'}
-          </ThemedText>
-        </View>
       </View>
 
-      <ThemedText type="display" style={{ color: theme.accent, fontWeight: '800' }}>
+      <View style={[styles.goalStatusPill, { backgroundColor: onTrack ? theme.successSoft : theme.backgroundElement }]}>
+        <Icon name={onTrack ? 'checkCircle' : 'alert'} size={12} color={onTrack ? theme.success : theme.warning} />
+        <ThemedText type="caption" style={{ color: onTrack ? theme.success : theme.warning, fontWeight: '700' }}>
+          {onTrack ? 'Sei sulla buona strada' : 'Puoi recuperare'}
+        </ThemedText>
+      </View>
+
+      <ThemedText style={[styles.goalHeroValue, { color: theme.accent }]}>
         {formatSignedKcal(soFarKcal)} / {formatSignedKcal(goalKcal)} kcal
       </ThemedText>
 
@@ -712,20 +747,20 @@ function TodayStatCard({
   return (
     <FlatCard tint={tint} radius={Radius.medium} style={styles.todayStatCard}>
       <View style={[styles.todayStatIcon, { backgroundColor: theme.backgroundElevated }]}>
-        <Icon name={icon} size={18} color={theme.accent} />
+        <Icon name={icon} size={16} color={theme.accent} />
       </View>
-      <ThemedText type="caption" themeColor="textSecondary">
+      <ThemedText type="caption" themeColor="textSecondary" numberOfLines={1} style={styles.todayStatLabel}>
         {label}
       </ThemedText>
-      <ThemedText type="smallBold" numberOfLines={2}>
+      <ThemedText numberOfLines={2} style={styles.todayStatValue}>
         {valueLine}
       </ThemedText>
       <View style={[styles.todayStatTrack, { backgroundColor: theme.backgroundElement }]}>
         <View style={[styles.todayStatFill, { width: `${Math.round(clamp01(progress) * 100)}%`, backgroundColor: statusOk ? theme.success : theme.accent }]} />
       </View>
       <View style={styles.todayStatStatusRow}>
-        <Icon name="checkCircle" size={12} color={statusOk ? theme.success : theme.textTertiary} />
-        <ThemedText type="caption" style={{ color: statusOk ? theme.success : theme.textTertiary, flexShrink: 1 }} numberOfLines={2}>
+        <Icon name="checkCircle" size={11} color={statusOk ? theme.success : theme.textTertiary} />
+        <ThemedText style={[styles.todayStatStatusLabel, { color: statusOk ? theme.success : theme.textTertiary, flexShrink: 1 }]} numberOfLines={2}>
           {statusLabel}
         </ThemedText>
       </View>
@@ -793,19 +828,21 @@ function NextActionCard({
   const theme = useTheme();
   return (
     <FlatCard style={styles.nextActionCard}>
-      <View style={[styles.sportBadge, { backgroundColor: theme.accentSoft }]}>
-        <Icon name={icon} size={20} color={theme.accent} />
+      <View style={styles.nextActionInfoRow}>
+        <View style={[styles.sportBadge, { backgroundColor: theme.accentSoft }]}>
+          <Icon name={icon} size={20} color={theme.accent} />
+        </View>
+        <View style={{ flex: 1, gap: 2 }}>
+          <ThemedText type="caption" themeColor="textSecondary">
+            Prossima azione
+          </ThemedText>
+          <ThemedText type="smallBold">{title}</ThemedText>
+          <ThemedText type="caption" themeColor="textSecondary">
+            {subtitle}
+          </ThemedText>
+        </View>
       </View>
-      <View style={{ flex: 1, gap: 2 }}>
-        <ThemedText type="caption" themeColor="textSecondary">
-          Prossima azione
-        </ThemedText>
-        <ThemedText type="smallBold">{title}</ThemedText>
-        <ThemedText type="caption" themeColor="textSecondary">
-          {subtitle}
-        </ThemedText>
-      </View>
-      <PrimaryButton label={ctaLabel} onPress={onPress} />
+      <PrimaryButton label={ctaLabel} onPress={onPress} style={{ alignSelf: 'stretch' }} />
     </FlatCard>
   );
 }
@@ -941,6 +978,36 @@ function MacroRingStat({
 }
 
 const styles = StyleSheet.create({
+  homeHeader: {
+    gap: 4,
+  },
+  homeHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  homeLogo: {
+    width: 92,
+    height: 25,
+  },
+  homeAvatarWrap: {
+    width: 40,
+    height: 40,
+  },
+  homeAvatarInner: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  homeGreeting: {
+    fontSize: 22,
+    lineHeight: 27,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+  },
+  homeSubtitle: {
+    fontWeight: '400',
+  },
   planRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1014,7 +1081,7 @@ const styles = StyleSheet.create({
   },
   goalHeroCard: {
     gap: Spacing.two,
-    padding: Spacing.four,
+    padding: Spacing.three,
   },
   goalHeroHeader: {
     flexDirection: 'row',
@@ -1022,23 +1089,23 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   goalHeroIcon: {
-    width: 32,
-    height: 32,
+    width: 28,
+    height: 28,
     borderRadius: Radius.small,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  goalHeroValueRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    flexWrap: 'wrap',
-    gap: Spacing.two,
+  goalHeroValue: {
+    fontSize: 24,
+    lineHeight: 29,
+    fontWeight: '800',
+    letterSpacing: -0.3,
     marginTop: Spacing.one,
   },
   goalStatusPill: {
     flexDirection: 'row',
     alignItems: 'center',
+    alignSelf: 'flex-start',
     gap: 4,
     paddingVertical: 6,
     paddingHorizontal: Spacing.two,
@@ -1084,9 +1151,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   goalStreakCount: {
-    fontSize: 17,
+    fontSize: 15,
+    lineHeight: 19,
     fontWeight: '800',
-    letterSpacing: -0.2,
+    letterSpacing: -0.1,
   },
   modalBackdrop: {
     flex: 1,
@@ -1136,15 +1204,24 @@ const styles = StyleSheet.create({
   todayStatCard: {
     flex: 1,
     minWidth: 0,
-    padding: Spacing.three,
-    gap: 6,
+    padding: Spacing.two,
+    gap: 5,
   },
   todayStatIcon: {
-    width: 32,
-    height: 32,
+    width: 28,
+    height: 28,
     borderRadius: Radius.small,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  todayStatLabel: {
+    fontSize: 11,
+    lineHeight: 14,
+  },
+  todayStatValue: {
+    fontSize: 12,
+    lineHeight: 15,
+    fontWeight: '700',
   },
   todayStatTrack: {
     height: 5,
@@ -1160,6 +1237,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
   },
+  todayStatStatusLabel: {
+    fontSize: 10,
+    lineHeight: 13,
+    fontWeight: '600',
+  },
   resultCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1167,10 +1249,13 @@ const styles = StyleSheet.create({
     padding: Spacing.four,
   },
   nextActionCard: {
+    gap: Spacing.three,
+    padding: Spacing.three,
+  },
+  nextActionInfoRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.three,
-    padding: Spacing.three,
   },
   miniCardsRow: {
     flexDirection: 'row',
