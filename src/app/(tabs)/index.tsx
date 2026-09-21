@@ -589,14 +589,14 @@ function TodayStatCard({
 }) {
   const theme = useTheme();
   const content = (
-    <FlatCard tint={tint} radius={Radius.medium} style={styles.todayStatCard}>
+    <FlatCard radius={Radius.medium} style={styles.todayStatCard}>
       <View style={styles.todayStatTopRow}>
-        <View style={[styles.todayStatIcon, { backgroundColor: theme.backgroundElevated }]}>
-          <Icon name={icon} size={16} color={theme.accent} />
+        <View style={[styles.todayStatIcon, { backgroundColor: tint }]}>
+          <Icon name={icon} size={18} color={theme.accent} />
         </View>
-        {onPress ? <Icon name="chevronRight" size={13} color={theme.textTertiary} /> : null}
+        {onPress ? <Icon name="chevronRight" size={14} color={theme.textTertiary} /> : null}
       </View>
-      <ThemedText numberOfLines={1} style={styles.todayStatLabel}>
+      <ThemedText numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={styles.todayStatLabel}>
         {label}
       </ThemedText>
       {subBadge ? (
@@ -648,7 +648,7 @@ function DailyResultCard({
   const theme = useTheme();
   return (
     <Pressable onPress={onPress}>
-      <FlatCard tint={met ? theme.successSoft : undefined} style={styles.resultCard}>
+      <FlatCard style={styles.resultCard}>
         {met ? (
           <View style={styles.resultIconRing}>
             <LinearGradient
@@ -1011,8 +1011,8 @@ const styles = StyleSheet.create({
   todayStatCard: {
     flex: 1,
     minWidth: 0,
-    padding: Spacing.two,
-    gap: 5,
+    padding: 12,
+    gap: 7,
   },
   todayStatTopRow: {
     flexDirection: 'row',
@@ -1020,15 +1020,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   todayStatIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: Radius.small,
+    width: 34,
+    height: 34,
+    borderRadius: Radius.medium,
     alignItems: 'center',
     justifyContent: 'center',
   },
   todayStatLabel: {
-    fontSize: 12,
-    lineHeight: 15,
+    fontSize: 11,
+    lineHeight: 14,
     fontWeight: '800',
   },
   todaySplitBadge: {
