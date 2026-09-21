@@ -16,7 +16,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { sumActivityKcalForDate, useWeeklyEnergy } from '@/hooks/use-weekly-energy';
 import { dailyStepsTarget, stepsHistory } from '@/lib/mock/activity';
 import { latestSnapshot } from '@/lib/mock/body';
-import { currentWeekDates, daysAgoISO, formatFullDay, mondayIndex } from '@/lib/mock/dates';
+import { addDaysISO, currentWeekDates, daysAgoISO, formatFullDay, mondayIndex } from '@/lib/mock/dates';
 import { useCoachInsights } from '@/hooks/use-coach-insights';
 import { estimateDailyEnergyExpenditure, estimateStepsKcal, estimateTrainingContributionKcal } from '@/lib/nutrition/targets';
 import { WEEKDAY_LABELS } from '@/lib/planning/exercise-library';
@@ -195,9 +195,25 @@ export default function HomeScreen() {
 
   const { insights, isLoading: insightsLoading, refresh: refreshInsights } = useCoachInsights();
 
+  // Which week the goal card is showing — 0 is the current calendar week,
+  // negative pages back into history. Clamped by the prev/next handlers
+  // below to [1, currentPlanWeek], so this can't run past today or before
+  // the plan started.
+  const [weekOffset, setWeekOffset] = useState(0);
+  const viewedWeekIndex = currentPlanWeek > 0 ? Math.max(1, currentPlanWeek + weekOffset) : 0;
+  const viewedWeekReferenceDate = weekOffset === 0 ? undefined : addDaysISO(today, weekOffset * 7);
+
   // Shared with the Progressi tab's own weekly burn chart — see
   // use-weekly-energy.ts for the day-by-day pipeline this reduces to.
-  const { weekDaysWithActivity, todayEstimatedBalance, weekEstimatedExpenditureSoFar, weeklyProgrammedKcal } = useWeeklyEnergy();
+  // Two separate calls on purpose: `currentWeek` always anchors to the
+  // real calendar week and feeds today-specific numbers (daily result
+  // card, next action) that must stay put while browsing history;
+  // `viewedWeek` follows weekOffset and feeds the weekly goal card's own
+  // display, the part the user can page back through.
+  const currentWeek = useWeeklyEnergy();
+  const viewedWeek = useWeeklyEnergy(viewedWeekReferenceDate);
+  const { todayEstimatedBalance } = currentWeek;
+  const { weekDaysWithActivity, weekEstimatedExpenditureSoFar, weeklyProgrammedKcal } = viewedWeek;
 
   // weeklyExpenditureFullAdherence below is Home-hero-specific (it assumes
   // full plan adherence, unlike useWeeklyEnergy's actual-completion figures
@@ -243,7 +259,7 @@ export default function HomeScreen() {
   // day. A genuine cross-week streak would need its own persisted counter,
   // out of scope here.
   let weeklyStreakCount = 0;
-  for (const d of weekDaysWithActivity) {
+  for (const d of currentWeek.weekDaysWithActivity) {
     if (!d.hasHappened) break;
     if (isDayWithinTolerance(d.eatenKcal - d.estimatedExpenditureKcal, dailyGoalPerDayKcal)) weeklyStreakCount++;
     else weeklyStreakCount = 0;
@@ -345,17 +361,10 @@ export default function HomeScreen() {
             </GlassSurface>
           </Pressable>
         </View>
-        <View style={styles.homeHeaderRow}>
-          <ThemedText style={styles.homeGreeting}>
-            {greeting()} {currentUser.name}!
-          </ThemedText>
-          {activePlan ? (
-            <ThemedText type="caption" themeColor="textSecondary" style={{ fontWeight: '700' }}>
-              Settimana {currentPlanWeek}/{planTotalWeeks}
-            </ThemedText>
-          ) : null}
-        </View>
-        <ThemedText type="caption" themeColor="textSecondary" style={styles.homeSubtitle}>
+        <ThemedText style={styles.homeGreeting}>
+          {greeting()} {currentUser.name}!
+        </ThemedText>
+        <ThemedText themeColor="textSecondary" style={styles.homeSubtitle}>
           Ecco come sta andando la settimana
         </ThemedText>
       </View>
@@ -376,6 +385,10 @@ export default function HomeScreen() {
           balanceKcal: d.eatenKcal - d.estimatedExpenditureKcal,
         }))}
         onSelectDay={setSelectedDay}
+        weekIndex={viewedWeekIndex}
+        weekTotal={planTotalWeeks}
+        onPrevWeek={viewedWeekIndex > 1 ? () => setWeekOffset((o) => o - 1) : undefined}
+        onNextWeek={viewedWeekIndex > 0 && viewedWeekIndex < currentPlanWeek ? () => setWeekOffset((o) => o + 1) : undefined}
       />
       <DayDetailModal day={selectedDay} dailyGoalKcal={dailyGoalPerDayKcal} onClose={() => setSelectedDay(null)} />
 
@@ -602,6 +615,10 @@ function WeeklyGoalCard({
   daysElapsed,
   days,
   onSelectDay,
+  weekIndex,
+  weekTotal,
+  onPrevWeek,
+  onNextWeek,
 }: {
   goalKcal: number;
   soFarKcal: number;
@@ -612,8 +629,13 @@ function WeeklyGoalCard({
   daysElapsed: number;
   days: WeeklyGoalDay[];
   onSelectDay: (day: WeeklyGoalDay) => void;
+  weekIndex: number;
+  weekTotal: number;
+  onPrevWeek?: () => void;
+  onNextWeek?: () => void;
 }) {
   const theme = useTheme();
+  const isCurrentWeek = onNextWeek == null;
   return (
     <FlatCard style={styles.goalHeroCard}>
       <View style={styles.goalHeroHeader}>
@@ -621,9 +643,24 @@ function WeeklyGoalCard({
           <Icon name="flame" size={16} color={theme.accent} />
         </View>
         <ThemedText type="caption" themeColor="textSecondary" style={{ flex: 1 }} numberOfLines={1}>
-          Obiettivo di questa settimana
+          {isCurrentWeek ? 'Obiettivo di questa settimana' : 'Obiettivo settimanale'}
         </ThemedText>
       </View>
+
+      {weekTotal > 0 ? (
+        <View style={styles.goalWeekNavRow}>
+          <Pressable onPress={onPrevWeek} disabled={!onPrevWeek} hitSlop={8} style={styles.goalWeekNavBtn}>
+            <Icon name="arrowBack" size={14} color={onPrevWeek ? theme.text : theme.textTertiary} />
+          </Pressable>
+          <ThemedText style={styles.goalWeekNavLabel}>
+            Settimana {weekIndex}/{weekTotal}
+            {isCurrentWeek ? '' : ' · storico'}
+          </ThemedText>
+          <Pressable onPress={onNextWeek} disabled={!onNextWeek} hitSlop={8} style={styles.goalWeekNavBtn}>
+            <Icon name="chevronRight" size={14} color={onNextWeek ? theme.text : theme.textTertiary} />
+          </Pressable>
+        </View>
+      ) : null}
 
       <View style={[styles.goalStatusPill, { backgroundColor: onTrack ? theme.successSoft : theme.backgroundElement }]}>
         <Icon name={onTrack ? 'checkCircle' : 'alert'} size={12} color={onTrack ? theme.success : theme.warning} />
@@ -987,8 +1024,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   homeLogo: {
-    width: 92,
-    height: 25,
+    width: 132,
+    height: 36,
   },
   homeAvatarWrap: {
     width: 40,
@@ -1000,12 +1037,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   homeGreeting: {
-    fontSize: 22,
-    lineHeight: 27,
+    fontSize: 17,
+    lineHeight: 21,
     fontWeight: '800',
-    letterSpacing: -0.3,
+    letterSpacing: -0.2,
+    marginTop: Spacing.two,
   },
   homeSubtitle: {
+    fontSize: 12,
+    lineHeight: 16,
     fontWeight: '400',
   },
   planRow: {
@@ -1101,6 +1141,23 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: -0.3,
     marginTop: Spacing.one,
+  },
+  goalWeekNavRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: Spacing.two,
+  },
+  goalWeekNavBtn: {
+    width: 22,
+    height: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  goalWeekNavLabel: {
+    fontSize: 11,
+    lineHeight: 14,
+    fontWeight: '700',
   },
   goalStatusPill: {
     flexDirection: 'row',

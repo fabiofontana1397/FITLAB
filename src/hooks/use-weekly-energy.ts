@@ -44,14 +44,17 @@ function mostRecentBaselineDate(entries: BodyMetricSnapshot[]): string | undefin
 }
 
 /**
- * The current calendar week's per-day estimated-expenditure-vs-eaten
- * pipeline — shared by Home's weekly goal hero card and the Progressi
- * tab's "Dispendio stimato e calorie assunte" chart, so the two screens
+ * The per-day estimated-expenditure-vs-eaten pipeline for the calendar
+ * week containing `referenceDate` (defaults to today) — shared by Home's
+ * weekly goal hero card (which also uses it to browse past weeks) and the
+ * Progressi tab's "Dispendio stimato e calorie assunte" chart, so callers
  * can never silently drift apart on the same numbers. Self-contained
- * (reads its own stores) so either caller can use it with no prop
- * drilling.
+ * (reads its own stores) so any caller can use it with no prop drilling.
+ * `today`/`isToday` inside the result always mean the real calendar
+ * today, regardless of which week's window is being read — only ever
+ * true for a week that actually contains today.
  */
-export function useWeeklyEnergy(): {
+export function useWeeklyEnergy(referenceDate?: string): {
   weekDaysWithActivity: WeekEnergyDay[];
   todayEstimatedBalance: number;
   weekEstimatedExpenditureSoFar: number;
@@ -83,7 +86,7 @@ export function useWeeklyEnergy(): {
   // existed (resetStartingWeight creates the account's first body_metrics
   // entry on signup day), so a day before that predates the account
   // entirely rather than getting a fabricated BMR-based estimate.
-  const weekDates = useMemo(() => currentWeekDates(new Date()), []);
+  const weekDates = useMemo(() => currentWeekDates(referenceDate ? new Date(referenceDate) : new Date()), [referenceDate]);
   const accountStartDate = mostRecentBaselineDate(bodyEntries) ?? bodyEntries[0]?.date ?? today;
   const weekDays = useMemo(() => {
     const monthIdx = trainingPlan ? currentMonthIndex(trainingPlan) : null;
