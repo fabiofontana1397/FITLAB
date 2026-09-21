@@ -177,9 +177,10 @@ export default function HomeScreen() {
   const [insightsModalOpen, setInsightsModalOpen] = useState(false);
 
   // Which week the goal card is showing — 0 is the current calendar week,
-  // negative pages back into history. Clamped by the prev/next handlers
-  // below to [1, currentPlanWeek], so this can't run past today or before
-  // the plan started.
+  // negative pages back into history, positive previews the rest of the
+  // plan (those days just render empty, same as future days within the
+  // current week already do). Clamped by the prev/next handlers below to
+  // [1, planTotalWeeks].
   const [weekOffset, setWeekOffset] = useState(0);
   const viewedWeekIndex = currentPlanWeek > 0 ? Math.max(1, currentPlanWeek + weekOffset) : 0;
   const viewedWeekReferenceDate = weekOffset === 0 ? undefined : addDaysISO(today, weekOffset * 7);
@@ -328,7 +329,7 @@ export default function HomeScreen() {
         weekIndex={viewedWeekIndex}
         weekTotal={planTotalWeeks}
         onPrevWeek={viewedWeekIndex > 1 ? () => setWeekOffset((o) => o - 1) : undefined}
-        onNextWeek={viewedWeekIndex > 0 && viewedWeekIndex < currentPlanWeek ? () => setWeekOffset((o) => o + 1) : undefined}
+        onNextWeek={viewedWeekIndex > 0 && viewedWeekIndex < planTotalWeeks ? () => setWeekOffset((o) => o + 1) : undefined}
         resultMet={dailyGoalMet}
         resultProgress={dailyGoalProgress}
         resultStreakCount={weeklyStreakCount}
@@ -482,14 +483,14 @@ function WeeklyGoalCard({
         </ThemedText>
         {weekTotal > 0 ? (
           <View style={styles.goalWeekNavRow}>
-            <Pressable onPress={onPrevWeek} disabled={!onPrevWeek} hitSlop={8} style={styles.goalWeekNavBtn}>
-              <Icon name="arrowBack" size={14} color={onPrevWeek ? theme.text : theme.textTertiary} />
+            <Pressable onPress={onPrevWeek} disabled={!onPrevWeek} hitSlop={6} style={styles.goalWeekNavBtn}>
+              <Icon name="arrowBack" size={15} color={onPrevWeek ? theme.text : theme.textTertiary} />
             </Pressable>
             <ThemedText style={styles.goalWeekNavLabel} numberOfLines={1}>
               Settimana {weekIndex}/{weekTotal}
             </ThemedText>
-            <Pressable onPress={onNextWeek} disabled={!onNextWeek} hitSlop={8} style={styles.goalWeekNavBtn}>
-              <Icon name="chevronRight" size={14} color={onNextWeek ? theme.text : theme.textTertiary} />
+            <Pressable onPress={onNextWeek} disabled={!onNextWeek} hitSlop={6} style={styles.goalWeekNavBtn}>
+              <Icon name="chevronRight" size={15} color={onNextWeek ? theme.text : theme.textTertiary} />
             </Pressable>
           </View>
         ) : null}
@@ -934,8 +935,8 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   goalWeekNavBtn: {
-    width: 20,
-    height: 20,
+    width: 28,
+    height: 28,
     alignItems: 'center',
     justifyContent: 'center',
   },
