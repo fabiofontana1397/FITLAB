@@ -11,6 +11,7 @@ import { SegmentedControl } from '@/components/ui/segmented-control';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { seedOneMonthOfTestData } from '@/lib/dev/seed-test-data';
+import { goBackOr } from '@/lib/navigation/go-back';
 import { sportIcon, sportMeta } from '@/lib/mock';
 import { findQuestion, labelFor } from '@/lib/questionnaire/schema';
 import { useAppStore, type AppearanceMode } from '@/store/app-store';
@@ -104,7 +105,7 @@ export default function ProfileScreen() {
     <ScreenScroll>
       <View style={styles.header}>
         <ThemedText type="title">Profilo</ThemedText>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
+        <Pressable onPress={() => goBackOr('/')} hitSlop={8}>
           <GlassSurface level="card" radius={Radius.pill} style={styles.closeButton}>
             <View style={styles.closeInner}>
               <Icon name="close" size={18} color={theme.text} />

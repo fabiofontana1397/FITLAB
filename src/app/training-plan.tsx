@@ -14,6 +14,7 @@ import { SegmentedControl } from '@/components/ui/segmented-control';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { getExerciseMedia } from '@/lib/exercise-media/exercise-media';
+import { goBackOr } from '@/lib/navigation/go-back';
 import { WEEKDAY_LABELS } from '@/lib/planning/exercise-library';
 import { exportTrainingPlanPdf, type TrainingPlanPdfRow } from '@/lib/planning/pdf-export';
 import { currentMonthIndex, monthProgress } from '@/lib/planning/plan-progress';
@@ -114,7 +115,7 @@ export default function TrainingPlanScreen() {
         <View style={{ flex: 1 }}>
           <ThemedText type="title">Piano di allenamento</ThemedText>
         </View>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
+        <Pressable onPress={() => goBackOr('/')} hitSlop={8}>
           <GlassSurface level="card" radius={Radius.pill} style={styles.closeButton}>
             <View style={styles.closeInner}>
               <Icon name="close" size={18} color={theme.text} />

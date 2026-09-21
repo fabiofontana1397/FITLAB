@@ -14,6 +14,7 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { SegmentedControl } from '@/components/ui/segmented-control';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { goBackOr } from '@/lib/navigation/go-back';
 import { WEEKDAY_LABELS } from '@/lib/planning/exercise-library';
 import { exportDietPlanPdf } from '@/lib/planning/pdf-export';
 import { currentMonthIndex, monthProgress } from '@/lib/planning/plan-progress';
@@ -84,7 +85,7 @@ export default function DietPlanScreen() {
         <View style={{ flex: 1 }}>
           <ThemedText type="title">Piano alimentare</ThemedText>
         </View>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
+        <Pressable onPress={() => goBackOr('/')} hitSlop={8}>
           <GlassSurface level="card" radius={Radius.pill} style={styles.closeButton}>
             <View style={styles.closeInner}>
               <Icon name="close" size={18} color={theme.text} />

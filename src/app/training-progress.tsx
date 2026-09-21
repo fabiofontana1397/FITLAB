@@ -1,4 +1,3 @@
-import { router } from 'expo-router';
 import { useMemo } from 'react';
 import { Image, Pressable, StyleSheet, View } from 'react-native';
 
@@ -10,6 +9,7 @@ import { TrendChart } from '@/components/ui/trend-chart';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { getExerciseMedia } from '@/lib/exercise-media/exercise-media';
+import { goBackOr } from '@/lib/navigation/go-back';
 import type { TrainingExerciseEntry } from '@/lib/planning/types';
 import { usePlanStore } from '@/store/plan-store';
 import {
@@ -47,7 +47,7 @@ export default function TrainingProgressScreen() {
             La progressione di ogni esercizio, dal primo all&apos;ultimo carico registrato.
           </ThemedText>
         </View>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
+        <Pressable onPress={() => goBackOr('/')} hitSlop={8}>
           <GlassSurface level="card" radius={Radius.pill} style={styles.closeButton}>
             <View style={styles.closeInner}>
               <Icon name="close" size={18} color={theme.text} />

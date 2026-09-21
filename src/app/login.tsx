@@ -8,6 +8,7 @@ import { Icon } from '@/components/ui/icon';
 import { PrimaryButton } from '@/components/ui/primary-button';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { goBackOr } from '@/lib/navigation/go-back';
 import { useAppStore } from '@/store/app-store';
 import { useAuthStore } from '@/store/auth-store';
 
@@ -34,7 +35,7 @@ export default function LoginScreen() {
   return (
     <ScreenScroll>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
+        <Pressable onPress={() => goBackOr('/welcome')} hitSlop={8}>
           <Icon name="arrowBack" size={22} color={theme.text} />
         </Pressable>
       </View>

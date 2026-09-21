@@ -1,4 +1,3 @@
-import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   FlatList,
@@ -28,6 +27,7 @@ import { Icon } from '@/components/ui/icon';
 import { BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { SUGGESTED_PROMPTS } from '@/lib/assistant/mock-assistant';
+import { goBackOr } from '@/lib/navigation/go-back';
 import { useChatStore, type ChatMessage } from '@/store/chat-store';
 
 // The chat FAB sits bottom-right, docked beside the tab bar (see
@@ -61,7 +61,7 @@ export default function ChatScreen() {
     // is guarding against.
     // eslint-disable-next-line react-hooks/immutability
     progress.value = withTiming(0, { duration: 260, easing: Easing.in(Easing.cubic) }, (finished) => {
-      if (finished) runOnJS(router.back)();
+      if (finished) runOnJS(goBackOr)('/');
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

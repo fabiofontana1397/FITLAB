@@ -1,4 +1,3 @@
-import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
@@ -12,6 +11,7 @@ import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { Goal } from '@/lib/mock/types';
 import { daysAgoISO } from '@/lib/mock/dates';
+import { goBackOr } from '@/lib/navigation/go-back';
 import { adjustMonthlyCalorieTarget, computeMonthlyWeightTrend, scaleMacrosForTarget } from '@/lib/planning/monthly-adjustment';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
 import { MONTHLY_CHECKIN_QUESTIONS } from '@/lib/questionnaire/monthly-checkin-schema';
@@ -73,7 +73,7 @@ export default function MonthlyCheckinScreen() {
           macroTargetsG: currentUser.macroTargetsG,
         });
       }
-      router.back();
+      goBackOr('/');
     } finally {
       setSubmitting(false);
     }
@@ -88,7 +88,7 @@ export default function MonthlyCheckinScreen() {
             Mese {monthIndex} — le tue risposte sbloccano il mese successivo e aiutano ad adattarlo
           </ThemedText>
         </View>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
+        <Pressable onPress={() => goBackOr('/')} hitSlop={8}>
           <GlassSurface level="card" radius={Radius.pill} style={styles.closeButton}>
             <View style={styles.closeInner}>
               <Icon name="close" size={18} color={theme.text} />
