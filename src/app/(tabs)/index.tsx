@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { GlassSurface } from '@/components/glass/glass-surface';
 import { GoalTrendChart } from '@/components/ui/goal-trend-chart';
@@ -8,7 +8,7 @@ import { InsightCard } from '@/components/ui/insight-card';
 import { ProgressRing } from '@/components/ui/progress-ring';
 import { SectionHeader } from '@/components/ui/section-header';
 import { SegmentedControl } from '@/components/ui/segmented-control';
-import { StatTile } from '@/components/ui/stat-tile';
+import { TrendChart } from '@/components/ui/trend-chart';
 import { WeeklyBurnChart } from '@/components/ui/weekly-burn-chart';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { ScreenHeader } from '@/components/screen-header';
@@ -107,6 +107,17 @@ function dayMetWeeklyGoal(dayBalanceKcal: number, weeklyGoalKcal: number): boole
   if (weeklyGoalKcal < 0) return dayBalanceKcal <= 0;
   if (weeklyGoalKcal > 0) return dayBalanceKcal >= 0;
   return Math.abs(dayBalanceKcal) <= 150;
+}
+
+/** Flat, opaque, drop-shadowed card — the Home hero section's own card
+ * language (matching the reference mockup: solid white/tinted cards, no
+ * blur), deliberately distinct from GlassSurface's translucent Liquid
+ * Glass used everywhere else in the app (kept as-is further down this same
+ * screen, and on every other tab). `tint` overrides the default neutral
+ * fill for the category-colored cards (diet/training/result). */
+function FlatCard({ tint, radius = Radius.large, style, children }: { tint?: string; radius?: number; style?: StyleProp<ViewStyle>; children?: React.ReactNode }) {
+  const theme = useTheme();
+  return <View style={[styles.flatCard, { backgroundColor: tint ?? theme.backgroundElevated, borderRadius: radius, borderColor: theme.border }, style]}>{children}</View>;
 }
 
 export default function HomeScreen() {
@@ -435,6 +446,7 @@ export default function HomeScreen() {
             progress={dietProgress}
             statusOk={todaysTotals.kcal <= calorieTarget * 1.05}
             statusLabel={todaysTotals.kcal > calorieTarget * 1.05 ? 'Oltre il target' : 'In linea'}
+            tint={theme.accentSoft}
           />
           <TodayStatCard
             icon="training"
@@ -449,6 +461,7 @@ export default function HomeScreen() {
             progress={trainingProgress}
             statusOk={trainingProgress >= 1}
             statusLabel={trainingProgress >= 1 ? 'Fatto' : workoutExercises.length > 0 ? 'Da completare' : 'Riposo'}
+            tint={theme.successSoft}
           />
           <TodayStatCard
             icon="footsteps"
@@ -457,6 +470,7 @@ export default function HomeScreen() {
             progress={stepsProgress}
             statusOk={stepsProgress >= 0.6}
             statusLabel={stepsProgress >= 1 ? 'Obiettivo raggiunto' : stepsProgress >= 0.6 ? 'In linea' : 'Sotto al target'}
+            tint={theme.successSoft}
           />
         </View>
       </View>
@@ -468,24 +482,22 @@ export default function HomeScreen() {
       <NextActionCard icon={nextAction.icon} title={nextAction.title} subtitle={nextAction.subtitle} ctaLabel={nextAction.cta} onPress={() => router.push(nextAction.route)} />
 
       <View style={styles.miniCardsRow}>
-        <StatTile
+        <MiniStatCard
           label="Andamento peso"
           value={latestBody.weightKg.toFixed(1)}
           unit="kg"
           icon="scale"
           trend={weightTrendPct}
           trendGoodDirection={currentUser.goal === 'gainMuscle' || currentUser.goal === 'gainStrength' ? 'up' : 'down'}
-          sparkline={weightSparkline.length >= 2 ? weightSparkline : undefined}
-          style={styles.miniCard}
+          sparkline={weightSparkline}
         />
-        <StatTile
+        <MiniStatCard
           label={topLift ? topLift.exercise.name : 'Forza'}
           value={topLift ? String(topLift.history[topLift.history.length - 1].weightKg) : '—'}
           unit={topLift ? 'kg' : undefined}
           icon="training"
           trend={topLiftDeltaPct}
           sparkline={topLift ? topLift.history.slice(-10).map((h) => h.weightKg) : undefined}
-          style={styles.miniCard}
         />
         <AICoachMiniCard
           headline={topInsight?.headline ?? 'Nessun consiglio ancora'}
@@ -742,7 +754,7 @@ function WeeklyGoalCard({
 }) {
   const theme = useTheme();
   return (
-    <GlassSurface level="card" radius={Radius.large} style={styles.goalHeroCard}>
+    <FlatCard style={styles.goalHeroCard}>
       <View style={styles.goalHeroHeader}>
         <View style={[styles.goalHeroIcon, { backgroundColor: theme.accentSoft }]}>
           <Icon name="flame" size={18} color={theme.accent} />
@@ -754,7 +766,7 @@ function WeeklyGoalCard({
 
       <View style={styles.goalHeroValueRow}>
         <ThemedText type="display">{formatSignedKcal(goalKcal)} kcal</ThemedText>
-        <View style={[styles.goalStatusPill, { backgroundColor: theme.backgroundElement }]}>
+        <View style={[styles.goalStatusPill, { backgroundColor: onTrack ? theme.successSoft : theme.backgroundElement }]}>
           <Icon name={onTrack ? 'checkCircle' : 'alert'} size={12} color={onTrack ? theme.success : theme.warning} />
           <ThemedText type="caption" style={{ color: onTrack ? theme.success : theme.warning, fontWeight: '700' }}>
             {onTrack ? 'Sei sulla buona strada' : 'Puoi recuperare'}
@@ -790,7 +802,7 @@ function WeeklyGoalCard({
           </View>
         ))}
       </View>
-    </GlassSurface>
+    </FlatCard>
   );
 }
 
@@ -801,6 +813,7 @@ function TodayStatCard({
   progress,
   statusOk,
   statusLabel,
+  tint,
 }: {
   icon: IconName;
   label: string;
@@ -808,11 +821,12 @@ function TodayStatCard({
   progress: number;
   statusOk: boolean;
   statusLabel: string;
+  tint: string;
 }) {
   const theme = useTheme();
   return (
-    <GlassSurface level="card" radius={Radius.medium} style={styles.todayStatCard}>
-      <View style={[styles.todayStatIcon, { backgroundColor: theme.accentSoft }]}>
+    <FlatCard tint={tint} radius={Radius.medium} style={styles.todayStatCard}>
+      <View style={[styles.todayStatIcon, { backgroundColor: theme.backgroundElevated }]}>
         <Icon name={icon} size={18} color={theme.accent} />
       </View>
       <ThemedText type="caption" themeColor="textSecondary">
@@ -830,7 +844,7 @@ function TodayStatCard({
           {statusLabel}
         </ThemedText>
       </View>
-    </GlassSurface>
+    </FlatCard>
   );
 }
 
@@ -852,8 +866,8 @@ function DailyResultCard({
   const theme = useTheme();
   return (
     <Pressable onPress={onPress}>
-      <GlassSurface level="card" radius={Radius.large} style={styles.resultCard}>
-        <ProgressRing size={56} strokeWidth={6} progress={progress} color={met ? theme.success : theme.accent} trackColor={theme.backgroundElement}>
+      <FlatCard tint={met ? theme.successSoft : undefined} style={styles.resultCard}>
+        <ProgressRing size={56} strokeWidth={6} progress={progress} color={met ? theme.success : theme.accent} trackColor={theme.backgroundElevated}>
           <Icon name="trophy" size={20} color={met ? theme.success : theme.textTertiary} />
         </ProgressRing>
         <View style={{ flex: 1, gap: 2 }}>
@@ -873,7 +887,7 @@ function DailyResultCard({
           </ThemedText>
         </View>
         <Icon name="chevronRight" size={18} color={theme.textTertiary} />
-      </GlassSurface>
+      </FlatCard>
     </Pressable>
   );
 }
@@ -893,7 +907,7 @@ function NextActionCard({
 }) {
   const theme = useTheme();
   return (
-    <GlassSurface level="card" radius={Radius.large} style={styles.nextActionCard}>
+    <FlatCard style={styles.nextActionCard}>
       <View style={[styles.sportBadge, { backgroundColor: theme.accentSoft }]}>
         <Icon name={icon} size={20} color={theme.accent} />
       </View>
@@ -907,7 +921,7 @@ function NextActionCard({
         </ThemedText>
       </View>
       <PrimaryButton label={ctaLabel} onPress={onPress} />
-    </GlassSurface>
+    </FlatCard>
   );
 }
 
@@ -915,7 +929,7 @@ function AICoachMiniCard({ headline, body, onPress }: { headline: string; body: 
   const theme = useTheme();
   return (
     <Pressable onPress={onPress} style={styles.miniCard}>
-      <GlassSurface level="card" radius={Radius.large} style={styles.coachMiniCard}>
+      <FlatCard style={styles.coachMiniCard}>
         <View style={[styles.coachMiniIcon, { backgroundColor: theme.accentSoft }]}>
           <Icon name="bulb" size={16} color={theme.accent} />
         </View>
@@ -928,8 +942,69 @@ function AICoachMiniCard({ headline, body, onPress }: { headline: string; body: 
         <ThemedText type="caption" themeColor="textSecondary" numberOfLines={2}>
           {body}
         </ThemedText>
-      </GlassSurface>
+      </FlatCard>
     </Pressable>
+  );
+}
+
+/** Flat counterpart to StatTile for the Home hero mini-row — same data
+ * shape (value/trend/sparkline), but a solid card and a sparkline colored
+ * by whether the trend is good news, matching the reference mockup's green
+ * "trending the right way" charts instead of a neutral accent line. */
+function MiniStatCard({
+  label,
+  value,
+  unit,
+  icon,
+  trend,
+  trendGoodDirection = 'up',
+  sparkline,
+}: {
+  label: string;
+  value: string;
+  unit?: string;
+  icon: IconName;
+  trend?: number;
+  trendGoodDirection?: 'up' | 'down';
+  sparkline?: number[];
+}) {
+  const theme = useTheme();
+  const trendPositive = (trend ?? 0) >= 0;
+  const trendIsGood = trend != null && trendPositive === (trendGoodDirection === 'up');
+  const trendColor = trend == null ? theme.textTertiary : trendIsGood ? theme.success : theme.danger;
+  const sparklineColor = trend == null ? theme.accent : trendColor;
+
+  return (
+    <FlatCard style={[styles.miniCard, styles.miniStatCard]}>
+      <View style={styles.miniStatHeaderRow}>
+        <ThemedText type="label" themeColor="textSecondary" numberOfLines={1} style={{ flex: 1 }}>
+          {label}
+        </ThemedText>
+        <Icon name={icon} size={14} color={theme.textTertiary} />
+      </View>
+      <View style={styles.miniStatValueRow}>
+        <ThemedText type="title">{value}</ThemedText>
+        {unit ? (
+          <ThemedText type="caption" themeColor="textSecondary" style={{ marginBottom: 2 }}>
+            {unit}
+          </ThemedText>
+        ) : null}
+      </View>
+      {trend != null ? (
+        <View style={styles.miniStatTrendRow}>
+          <Icon name={trendPositive ? 'trendUp' : 'trendDown'} size={12} color={trendColor} />
+          <ThemedText type="caption" style={{ color: trendColor }}>
+            {trendPositive ? '+' : ''}
+            {trend.toFixed(1)}%
+          </ThemedText>
+        </View>
+      ) : null}
+      {sparkline && sparkline.length >= 2 ? (
+        <View style={styles.miniStatChart}>
+          <TrendChart data={sparkline} width={110} height={32} color={sparklineColor} />
+        </View>
+      ) : null}
+    </FlatCard>
   );
 }
 
@@ -1206,5 +1281,42 @@ const styles = StyleSheet.create({
     borderRadius: Radius.small,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  flatCard: {
+    overflow: 'hidden',
+    borderWidth: StyleSheet.hairlineWidth,
+    ...Platform.select({
+      web: { boxShadow: '0px 8px 20px rgba(20,20,25,0.08)' },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 10,
+        elevation: 3,
+      },
+    }),
+  },
+  miniStatCard: {
+    padding: Spacing.three,
+    gap: 6,
+  },
+  miniStatHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  miniStatValueRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 4,
+  },
+  miniStatTrendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  miniStatChart: {
+    marginTop: 2,
+    alignSelf: 'stretch',
   },
 });

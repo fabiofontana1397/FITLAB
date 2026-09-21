@@ -62,6 +62,10 @@ export const Colors = {
     // neon green/yellow below, but held back a notch so they still read as
     // text on a white background instead of washing out.
     success: '#00A651',
+    // Soft mint tint for "this card is a success/positive-status card" fills
+    // (Home's today/result cards) — the flat-card counterpart to accentSoft,
+    // same role but for the success color instead of the accent.
+    successSoft: '#E3F7EC',
     warning: '#D9A600',
     danger: '#D6402C',
     // Used only for the calorie-delta bars (surplus/deficit) on the weekly
@@ -93,6 +97,7 @@ export const Colors = {
     // as genuinely bright against near-black the way a highlighter does
     // under UV rather than the previous muted amber/jade.
     success: '#39FF14',
+    successSoft: 'rgba(57,255,20,0.14)',
     warning: '#FFE600',
     danger: '#FF6B57',
     // Used only for the calorie-delta bars (surplus/deficit) on the weekly
