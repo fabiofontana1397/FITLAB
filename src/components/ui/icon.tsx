@@ -70,6 +70,8 @@ const ICONS = {
   download: { set: 'ion', name: 'download-outline' },
   refresh: { set: 'ion', name: 'refresh-outline' },
   lock: { set: 'ion', name: 'lock-closed-outline' },
+  trophy: { set: 'ion', name: 'trophy' },
+  bulb: { set: 'ion', name: 'bulb' },
 } as const satisfies Record<string, { set: 'mci' | 'ion'; name: MCIName | IonName }>;
 
 export type IconName = keyof typeof ICONS;
