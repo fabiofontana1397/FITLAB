@@ -15,7 +15,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useWeeklyEnergy } from '@/hooks/use-weekly-energy';
 import { dailyStepsTarget, stepsHistory } from '@/lib/mock/activity';
 import { latestSnapshot } from '@/lib/mock/body';
-import { addDaysISO, currentWeekDates, daysAgoISO, formatFullDay, mondayIndex } from '@/lib/mock/dates';
+import { addDaysISO, currentWeekDates, dayOfMonth, daysAgoISO, formatFullDay, mondayIndex } from '@/lib/mock/dates';
 import { useCoachInsights } from '@/hooks/use-coach-insights';
 import { estimateDailyEnergyExpenditure } from '@/lib/nutrition/targets';
 import { WEEKDAY_LABELS } from '@/lib/planning/exercise-library';
@@ -67,6 +67,14 @@ function formatTodayHeading(iso: string): string {
 
 function capitalize(s: string): string {
   return s.length > 0 ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+}
+
+/** Which month a week "belongs to" for the calendar's caption, when the
+ * viewed week straddles a month boundary — the Thursday (index 3) is the
+ * same ISO-week convention used to decide a week's year/month. */
+function monthCaptionFor(weekDates: string[]): string {
+  const anchor = new Date(weekDates[3] ?? weekDates[0]);
+  return capitalize(anchor.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' }));
 }
 
 /** ±100 kcal — how close a day's net balance (intake minus expenditure)
@@ -224,8 +232,6 @@ export default function HomeScreen() {
   const eatenSoFarThisWeek = weekDaysWithActivity.filter((d) => d.hasHappened).reduce((sum, d) => sum + d.eatenKcal, 0);
   const weeklyBalanceSoFarKcal = eatenSoFarThisWeek - weekEstimatedExpenditureSoFar;
   const weeklyGoalProgress = weeklyBalanceGoalKcal !== 0 ? clamp01(weeklyBalanceSoFarKcal / weeklyBalanceGoalKcal) : 0;
-  const daysElapsedThisWeek = weekDaysWithActivity.filter((d) => d.hasHappened).length;
-  const onTrackThisWeek = weeklyBalanceGoalKcal === 0 || weeklyGoalProgress >= (daysElapsedThisWeek / 7) * 0.85;
 
   // Current streak of days (this week, up to and including today) within
   // ±100 kcal of that day's share of the weekly goal — resets on a missed
@@ -310,7 +316,6 @@ export default function HomeScreen() {
         goalKcal={weeklyBalanceGoalKcal}
         soFarKcal={weeklyBalanceSoFarKcal}
         progress={weeklyGoalProgress}
-        onTrack={onTrackThisWeek}
         dailyGoalKcal={dailyGoalPerDayKcal}
         days={weekDaysWithActivity.map((d, i) => ({
           date: d.date,
@@ -324,6 +329,12 @@ export default function HomeScreen() {
         weekTotal={planTotalWeeks}
         onPrevWeek={viewedWeekIndex > 1 ? () => setWeekOffset((o) => o - 1) : undefined}
         onNextWeek={viewedWeekIndex > 0 && viewedWeekIndex < currentPlanWeek ? () => setWeekOffset((o) => o + 1) : undefined}
+        resultMet={dailyGoalMet}
+        resultProgress={dailyGoalProgress}
+        resultStreakCount={weeklyStreakCount}
+        resultHeadline={resultHeadline}
+        resultBody={resultBody}
+        onResultPress={() => router.push('/body')}
       />
       <DayDetailModal day={selectedDay} dailyGoalKcal={dailyGoalPerDayKcal} onClose={() => setSelectedDay(null)} />
 
@@ -377,8 +388,6 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      <DailyResultCard met={dailyGoalMet} progress={dailyGoalProgress} streakCount={weeklyStreakCount} headline={resultHeadline} body={resultBody} onPress={() => router.push('/body')} />
-
       <View style={styles.miniCardsRow}>
         <MiniStatCard
           label="Andamento peso"
@@ -429,7 +438,6 @@ function WeeklyGoalCard({
   goalKcal,
   soFarKcal,
   progress,
-  onTrack,
   dailyGoalKcal,
   days,
   onSelectDay,
@@ -437,11 +445,16 @@ function WeeklyGoalCard({
   weekTotal,
   onPrevWeek,
   onNextWeek,
+  resultMet,
+  resultProgress,
+  resultStreakCount,
+  resultHeadline,
+  resultBody,
+  onResultPress,
 }: {
   goalKcal: number;
   soFarKcal: number;
   progress: number;
-  onTrack: boolean;
   dailyGoalKcal: number;
   days: WeeklyGoalDay[];
   onSelectDay: (day: WeeklyGoalDay) => void;
@@ -449,9 +462,15 @@ function WeeklyGoalCard({
   weekTotal: number;
   onPrevWeek?: () => void;
   onNextWeek?: () => void;
+  resultMet: boolean;
+  resultProgress: number;
+  resultStreakCount: number;
+  resultHeadline: string;
+  resultBody: string;
+  onResultPress: () => void;
 }) {
   const theme = useTheme();
-  const isCurrentWeek = onNextWeek == null;
+  const monthCaption = monthCaptionFor(days.map((d) => d.date));
   return (
     <FlatCard style={styles.goalHeroCard}>
       <View style={styles.goalHeroHeader}>
@@ -459,30 +478,21 @@ function WeeklyGoalCard({
           <Icon name="flame" size={16} color={theme.accent} />
         </View>
         <ThemedText type="caption" themeColor="textSecondary" style={{ flex: 1 }} numberOfLines={1}>
-          {isCurrentWeek ? 'Obiettivo di questa settimana' : 'Obiettivo settimanale'}
+          Obiettivo settimanale
         </ThemedText>
-      </View>
-
-      {weekTotal > 0 ? (
-        <View style={styles.goalWeekNavRow}>
-          <Pressable onPress={onPrevWeek} disabled={!onPrevWeek} hitSlop={8} style={styles.goalWeekNavBtn}>
-            <Icon name="arrowBack" size={14} color={onPrevWeek ? theme.text : theme.textTertiary} />
-          </Pressable>
-          <ThemedText style={styles.goalWeekNavLabel}>
-            Settimana {weekIndex}/{weekTotal}
-            {isCurrentWeek ? '' : ' · storico'}
-          </ThemedText>
-          <Pressable onPress={onNextWeek} disabled={!onNextWeek} hitSlop={8} style={styles.goalWeekNavBtn}>
-            <Icon name="chevronRight" size={14} color={onNextWeek ? theme.text : theme.textTertiary} />
-          </Pressable>
-        </View>
-      ) : null}
-
-      <View style={[styles.goalStatusPill, { backgroundColor: onTrack ? theme.successSoft : theme.backgroundElement }]}>
-        <Icon name={onTrack ? 'checkCircle' : 'alert'} size={12} color={onTrack ? theme.success : theme.warning} />
-        <ThemedText type="caption" style={{ color: onTrack ? theme.success : theme.warning, fontWeight: '700' }}>
-          {onTrack ? 'Sei sulla buona strada' : 'Puoi recuperare'}
-        </ThemedText>
+        {weekTotal > 0 ? (
+          <View style={styles.goalWeekNavRow}>
+            <Pressable onPress={onPrevWeek} disabled={!onPrevWeek} hitSlop={8} style={styles.goalWeekNavBtn}>
+              <Icon name="arrowBack" size={14} color={onPrevWeek ? theme.text : theme.textTertiary} />
+            </Pressable>
+            <ThemedText style={styles.goalWeekNavLabel} numberOfLines={1}>
+              Settimana {weekIndex}/{weekTotal}
+            </ThemedText>
+            <Pressable onPress={onNextWeek} disabled={!onNextWeek} hitSlop={8} style={styles.goalWeekNavBtn}>
+              <Icon name="chevronRight" size={14} color={onNextWeek ? theme.text : theme.textTertiary} />
+            </Pressable>
+          </View>
+        ) : null}
       </View>
 
       <ThemedText style={[styles.goalHeroValue, { color: theme.accent }]}>{formatSignedKcal(goalKcal)} kcal</ThemedText>
@@ -505,6 +515,7 @@ function WeeklyGoalCard({
               <ProgressRing size={32} strokeWidth={4} progress={d.hasHappened ? Math.max(ringProgress, 0.06) : 0} color={ringColor} trackColor={theme.backgroundElement}>
                 {clickable ? <Icon name={met ? 'check' : 'close'} size={13} color={met ? theme.success : theme.danger} /> : null}
               </ProgressRing>
+              <ThemedText style={styles.streakDayNumber}>{dayOfMonth(d.date)}</ThemedText>
               <ThemedText type="caption" themeColor="textSecondary">
                 {d.label}
               </ThemedText>
@@ -513,7 +524,88 @@ function WeeklyGoalCard({
           );
         })}
       </View>
+      <ThemedText type="caption" themeColor="textSecondary" style={styles.goalMonthCaption}>
+        {monthCaption}
+      </ThemedText>
+
+      <DailyResultBox
+        met={resultMet}
+        progress={resultProgress}
+        streakCount={resultStreakCount}
+        headline={resultHeadline}
+        body={resultBody}
+        onPress={onResultPress}
+      />
     </FlatCard>
+  );
+}
+
+/** The achievements/motivational box, nested inside the weekly goal card —
+ * kept as its own component since it has real internal structure (the
+ * ring, confetti dots), not because it's reused elsewhere. Only the "met"
+ * state gets the celebratory tint/confetti/gradient ring — an unmet day
+ * stays plain so the celebration reads as earned, not default chrome. */
+function DailyResultBox({
+  met,
+  progress,
+  streakCount,
+  headline,
+  body,
+  onPress,
+}: {
+  met: boolean;
+  progress: number;
+  streakCount: number;
+  headline: string;
+  body: string;
+  onPress: () => void;
+}) {
+  const theme = useTheme();
+  return (
+    <Pressable onPress={onPress} style={[styles.resultBox, { backgroundColor: met ? theme.successSoft : theme.backgroundElement }]}>
+      {met ? (
+        <>
+          <View style={[styles.resultConfettiDot, { top: 6, left: 10, backgroundColor: theme.accent }]} />
+          <View style={[styles.resultConfettiDot, { top: 18, left: 2, backgroundColor: theme.warning, width: 5, height: 5 }]} />
+          <View style={[styles.resultConfettiDot, { bottom: 10, right: 46, backgroundColor: theme.success, width: 5, height: 5 }]} />
+          <View style={[styles.resultConfettiDot, { bottom: 4, right: 60, backgroundColor: theme.accent }]} />
+        </>
+      ) : null}
+      {met ? (
+        <View style={styles.resultIconRing}>
+          <LinearGradient
+            colors={[theme.warning, theme.success, theme.accent]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+          <View style={styles.resultIconInner}>
+            <Icon name="trophy" size={20} color={theme.warning} />
+          </View>
+        </View>
+      ) : (
+        <ProgressRing size={56} strokeWidth={6} progress={progress} color={theme.accent} trackColor={theme.backgroundElevated}>
+          <Icon name="trophy" size={20} color={theme.textTertiary} />
+        </ProgressRing>
+      )}
+      <View style={{ flex: 1, gap: 2 }}>
+        <ThemedText type="label" themeColor="textSecondary">
+          Risultato giornaliero
+        </ThemedText>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <ThemedText style={styles.resultHeadline}>{headline}</ThemedText>
+          {met && streakCount > 0 ? (
+            <ThemedText type="caption" style={{ color: theme.success, fontWeight: '700' }}>
+              +{streakCount} giorno{streakCount === 1 ? '' : 'i'}
+            </ThemedText>
+          ) : null}
+        </View>
+        <ThemedText type="caption" themeColor="textSecondary">
+          {body}
+        </ThemedText>
+      </View>
+      <Icon name="chevronRight" size={18} color={theme.textTertiary} />
+    </Pressable>
   );
 }
 
@@ -627,64 +719,6 @@ function TodayStatCard({
     </Pressable>
   ) : (
     content
-  );
-}
-
-function DailyResultCard({
-  met,
-  progress,
-  streakCount,
-  headline,
-  body,
-  onPress,
-}: {
-  met: boolean;
-  progress: number;
-  streakCount: number;
-  headline: string;
-  body: string;
-  onPress: () => void;
-}) {
-  const theme = useTheme();
-  return (
-    <Pressable onPress={onPress}>
-      <FlatCard style={styles.resultCard}>
-        {met ? (
-          <View style={styles.resultIconRing}>
-            <LinearGradient
-              colors={[theme.warning, theme.success, theme.accent]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={StyleSheet.absoluteFill}
-            />
-            <View style={styles.resultIconInner}>
-              <Icon name="trophy" size={20} color={theme.warning} />
-            </View>
-          </View>
-        ) : (
-          <ProgressRing size={56} strokeWidth={6} progress={progress} color={theme.accent} trackColor={theme.backgroundElevated}>
-            <Icon name="trophy" size={20} color={theme.textTertiary} />
-          </ProgressRing>
-        )}
-        <View style={{ flex: 1, gap: 2 }}>
-          <ThemedText type="label" themeColor="textSecondary">
-            Risultato giornaliero
-          </ThemedText>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <ThemedText style={styles.resultHeadline}>{headline}</ThemedText>
-            {met && streakCount > 0 ? (
-              <ThemedText type="caption" style={{ color: theme.success, fontWeight: '700' }}>
-                +{streakCount} giorno{streakCount === 1 ? '' : 'i'}
-              </ThemedText>
-            ) : null}
-          </View>
-          <ThemedText type="caption" themeColor="textSecondary">
-            {body}
-          </ThemedText>
-        </View>
-        <Icon name="chevronRight" size={18} color={theme.textTertiary} />
-      </FlatCard>
-    </Pressable>
   );
 }
 
@@ -896,12 +930,12 @@ const styles = StyleSheet.create({
   goalWeekNavRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'flex-start',
-    gap: Spacing.two,
+    gap: 2,
+    flexShrink: 0,
   },
   goalWeekNavBtn: {
-    width: 22,
-    height: 22,
+    width: 20,
+    height: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -909,15 +943,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     lineHeight: 14,
     fontWeight: '700',
-  },
-  goalStatusPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    gap: 4,
-    paddingVertical: 6,
-    paddingHorizontal: Spacing.two,
-    borderRadius: Radius.pill,
   },
   goalProgressTrack: {
     height: 8,
@@ -938,10 +963,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.one,
   },
+  streakDayNumber: {
+    fontSize: 12,
+    lineHeight: 15,
+    fontWeight: '700',
+  },
   streakTodayLabel: {
     fontSize: 9,
     fontWeight: '800',
     letterSpacing: 0.2,
+  },
+  goalMonthCaption: {
+    textAlign: 'center',
+    marginTop: Spacing.two,
   },
   modalBackdrop: {
     flex: 1,
@@ -1065,11 +1099,20 @@ const styles = StyleSheet.create({
     lineHeight: 13,
     fontWeight: '600',
   },
-  resultCard: {
+  resultBox: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.three,
-    padding: Spacing.four,
+    padding: Spacing.three,
+    marginTop: Spacing.three,
+    borderRadius: Radius.large,
+    overflow: 'hidden',
+  },
+  resultConfettiDot: {
+    position: 'absolute',
+    width: 7,
+    height: 7,
+    borderRadius: 4,
   },
   resultIconRing: {
     width: 56,
