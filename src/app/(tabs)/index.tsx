@@ -738,38 +738,40 @@ function DietTodayCard({
   const theme = useTheme();
   return (
     <FlatCard radius={Radius.medium} style={styles.todayCard}>
-      <TodayCardHeader
-        icon="nutrition"
-        tint={theme.accentSoft}
-        title="Dieta"
-        valueLine={`${formatKcal(totals.kcal)}/${formatKcal(calorieTarget)} kcal`}
-        onOpen={onOpen}
-      />
-      <View style={[styles.todayStatTrack, { backgroundColor: theme.backgroundElement }]}>
-        <View style={[styles.todayStatFill, { width: `${Math.round(clamp01(progress) * 100)}%`, backgroundColor: theme.success }]} />
-      </View>
-      <View style={styles.macroRowsGroup}>
-        <MacroRow
-          icon="protein"
-          color="#C026D3"
-          label="Proteine"
-          value={`${Math.round(totals.protein)}/${Math.round(macroTargets.protein)} g`}
-          progress={macroTargets.protein > 0 ? totals.protein / macroTargets.protein : 0}
+      <View style={styles.todayCardBody}>
+        <TodayCardHeader
+          icon="nutrition"
+          tint={theme.accentSoft}
+          title="Dieta"
+          valueLine={`${formatKcal(totals.kcal)}/${formatKcal(calorieTarget)} kcal`}
+          onOpen={onOpen}
         />
-        <MacroRow
-          icon="carbs"
-          color={theme.success}
-          label="Carbo"
-          value={`${Math.round(totals.carbs)}/${Math.round(macroTargets.carbs)} g`}
-          progress={macroTargets.carbs > 0 ? totals.carbs / macroTargets.carbs : 0}
-        />
-        <MacroRow
-          icon="oilDrop"
-          color={theme.calorieSurplus}
-          label="Grassi"
-          value={`${Math.round(totals.fats)}/${Math.round(macroTargets.fats)} g`}
-          progress={macroTargets.fats > 0 ? totals.fats / macroTargets.fats : 0}
-        />
+        <View style={[styles.todayStatTrack, { backgroundColor: theme.backgroundElement }]}>
+          <View style={[styles.todayStatFill, { width: `${Math.round(clamp01(progress) * 100)}%`, backgroundColor: theme.success }]} />
+        </View>
+        <View style={styles.macroRowsGroup}>
+          <MacroRow
+            icon="foodTurkey"
+            color={theme.accent}
+            label="Proteine"
+            value={`${Math.round(totals.protein)}/${Math.round(macroTargets.protein)} g`}
+            progress={macroTargets.protein > 0 ? totals.protein / macroTargets.protein : 0}
+          />
+          <MacroRow
+            icon="carbs"
+            color={theme.accent}
+            label="Carbo"
+            value={`${Math.round(totals.carbs)}/${Math.round(macroTargets.carbs)} g`}
+            progress={macroTargets.carbs > 0 ? totals.carbs / macroTargets.carbs : 0}
+          />
+          <MacroRow
+            icon="fats"
+            color={theme.accent}
+            label="Grassi"
+            value={`${Math.round(totals.fats)}/${Math.round(macroTargets.fats)} g`}
+            progress={macroTargets.fats > 0 ? totals.fats / macroTargets.fats : 0}
+          />
+        </View>
       </View>
       <PrimaryButton label="Pasto" icon="addCircle" onPress={onAddMeal} dense style={styles.todayCardButton} />
     </FlatCard>
@@ -820,23 +822,25 @@ function WorkoutTodayCard({
       : 'Riposo';
   return (
     <FlatCard radius={Radius.medium} style={styles.todayCard}>
-      <TodayCardHeader icon={splitTitle ? splitIconFor(splitTitle) : 'training'} tint={theme.successSoft} title="Allenamento" valueLine={valueLine} onOpen={onOpen} />
-      {hasExercises ? (
-        <>
-          <View style={[styles.todayStatTrack, { backgroundColor: theme.backgroundElement }]}>
-            <View style={[styles.todayStatFill, { width: `${Math.round(clamp01(progress) * 100)}%`, backgroundColor: theme.success }]} />
-          </View>
-          <View style={styles.exerciseCheckList}>
-            {exercises.map((ex) => (
-              <ExerciseCheckRow key={ex.id} name={ex.name} done={isExerciseCompleted(completedExercises, ex.id, today)} />
-            ))}
-          </View>
-        </>
-      ) : (
-        <ThemedText type="caption" themeColor="textSecondary" style={styles.todayCardEmptyNote}>
-          Nessun allenamento pianificato per oggi — registra comunque una sessione se ne hai fatta una.
-        </ThemedText>
-      )}
+      <View style={styles.todayCardBody}>
+        <TodayCardHeader icon={splitTitle ? splitIconFor(splitTitle) : 'training'} tint={theme.successSoft} title="Allenamento" valueLine={valueLine} onOpen={onOpen} />
+        {hasExercises ? (
+          <>
+            <View style={[styles.todayStatTrack, { backgroundColor: theme.backgroundElement }]}>
+              <View style={[styles.todayStatFill, { width: `${Math.round(clamp01(progress) * 100)}%`, backgroundColor: theme.success }]} />
+            </View>
+            <View style={styles.exerciseCheckList}>
+              {exercises.map((ex) => (
+                <ExerciseCheckRow key={ex.id} name={ex.name} done={isExerciseCompleted(completedExercises, ex.id, today)} />
+              ))}
+            </View>
+          </>
+        ) : (
+          <ThemedText type="caption" themeColor="textSecondary" style={styles.todayCardEmptyNote}>
+            Nessun allenamento pianificato per oggi — registra comunque una sessione se ne hai fatta una.
+          </ThemedText>
+        )}
+      </View>
       <PrimaryButton label="Allenamento" icon="addCircle" onPress={onAddWorkout} dense style={styles.todayCardButton} />
     </FlatCard>
   );
@@ -978,9 +982,11 @@ function MiniStatCard({
             <View style={[styles.miniStatIcon, { backgroundColor: theme.accentSoft }]}>
               <Icon name={icon} size={13} color={theme.accent} />
             </View>
-            <ThemedText themeColor="textSecondary" numberOfLines={2} style={styles.miniStatLabel}>
-              {label}
-            </ThemedText>
+            <View style={styles.miniStatLabelBox}>
+              <ThemedText themeColor="textSecondary" numberOfLines={2} style={styles.miniStatLabel}>
+                {label}
+              </ThemedText>
+            </View>
           </View>
           {onPress ? <Icon name="chevronRight" size={13} color={theme.textTertiary} /> : null}
         </View>
@@ -1005,7 +1011,7 @@ function MiniStatCard({
           </View>
         ) : null}
         {caption && deltaKg != null ? (
-          <ThemedText type="caption" themeColor="textSecondary" numberOfLines={2}>
+          <ThemedText type="caption" themeColor="textSecondary" numberOfLines={2} style={styles.miniStatCaption}>
             {caption}
           </ThemedText>
         ) : null}
@@ -1215,6 +1221,10 @@ const styles = StyleSheet.create({
     padding: Spacing.three,
     gap: Spacing.two,
   },
+  todayCardBody: {
+    flex: 1,
+    gap: Spacing.two,
+  },
   todayCardHeaderCol: {
     gap: Spacing.one,
   },
@@ -1411,15 +1421,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  miniStatLabel: {
+  miniStatLabelBox: {
     flex: 1,
     height: 28,
+    justifyContent: 'center',
+  },
+  miniStatLabel: {
     fontSize: 11,
     lineHeight: 14,
     fontWeight: '600',
   },
   miniStatSubLabel: {
     height: 15,
+  },
+  miniStatCaption: {
+    height: 30,
   },
   miniStatValueRow: {
     flexDirection: 'row',
