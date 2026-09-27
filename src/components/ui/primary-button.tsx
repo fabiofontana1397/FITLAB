@@ -55,7 +55,7 @@ export function PrimaryButton({
           },
         ]}>
         {icon ? <Icon name={icon} size={18} color={textColor} /> : null}
-        <ThemedText type="smallBold" numberOfLines={1} style={[dense && styles.labelDense, { color: textColor }]}>
+        <ThemedText type="smallBold" numberOfLines={1} style={{ color: textColor }}>
           {label}
         </ThemedText>
       </Pressable>
@@ -74,11 +74,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.pill,
   },
   baseDense: {
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.one,
-  },
-  labelDense: {
-    fontSize: 9,
-    lineHeight: 12,
+    paddingVertical: 10,
+    paddingHorizontal: Spacing.two,
   },
 });

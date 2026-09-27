@@ -396,6 +396,7 @@ export default function HomeScreen() {
             value={topLift ? String(topLift.history[topLift.history.length - 1].weightKg) : '—'}
             unit={topLift ? 'kg' : undefined}
             deltaKg={topLiftDeltaKg}
+            caption="ultime 4 settimane"
             sparkline={topLift ? topLift.history.slice(-10).map((h) => h.weightKg) : undefined}
             onPress={() => router.push('/training-progress')}
           />
@@ -756,7 +757,7 @@ function DietTodayCard({
           progress={macroTargets.protein > 0 ? totals.protein / macroTargets.protein : 0}
         />
         <MacroRow
-          icon="carbsBread"
+          icon="carbs"
           color={theme.success}
           label="Carbo"
           value={`${Math.round(totals.carbs)}/${Math.round(macroTargets.carbs)} g`}
@@ -770,7 +771,7 @@ function DietTodayCard({
           progress={macroTargets.fats > 0 ? totals.fats / macroTargets.fats : 0}
         />
       </View>
-      <PrimaryButton label="Aggiungi pasto +" onPress={onAddMeal} dense style={styles.todayCardButton} />
+      <PrimaryButton label="Pasto" icon="addCircle" onPress={onAddMeal} dense style={styles.todayCardButton} />
     </FlatCard>
   );
 }
@@ -836,7 +837,7 @@ function WorkoutTodayCard({
           Nessun allenamento pianificato per oggi — registra comunque una sessione se ne hai fatta una.
         </ThemedText>
       )}
-      <PrimaryButton label="Aggiungi allenamento +" onPress={onAddWorkout} dense style={styles.todayCardButton} />
+      <PrimaryButton label="Allenamento" icon="addCircle" onPress={onAddWorkout} dense style={styles.todayCardButton} />
     </FlatCard>
   );
 }
@@ -934,9 +935,13 @@ function InsightsModal({
 
 /** Flat counterpart to StatTile for the Home hero mini-row — same data
  * shape, but a solid card matching the reference mockup: a tinted icon
- * badge + label + chevron header, an optional sub-label (e.g. an exercise
+ * badge + label + chevron header, a sub-label line (e.g. an exercise
  * name), a big value, a colored kg-delta trend row, a real history
- * sparkline, and an optional trailing caption (weight card only). */
+ * sparkline, and a trailing caption. The header label and sub-label rows
+ * always reserve the same height whether or not they have content, so
+ * this card and its sibling in the Progressi row (Andamento peso / Forza)
+ * stay the same size with every row aligned, regardless of which fields
+ * either one happens to have. */
 function MiniStatCard({
   icon,
   label,
@@ -979,11 +984,9 @@ function MiniStatCard({
           </View>
           {onPress ? <Icon name="chevronRight" size={13} color={theme.textTertiary} /> : null}
         </View>
-        {subLabel ? (
-          <ThemedText type="caption" themeColor="textSecondary" numberOfLines={1}>
-            {subLabel}
-          </ThemedText>
-        ) : null}
+        <ThemedText type="caption" themeColor="textSecondary" numberOfLines={1} style={styles.miniStatSubLabel}>
+          {subLabel ?? ' '}
+        </ThemedText>
         <View style={styles.miniStatValueRow}>
           <ThemedText type="title">{value}</ThemedText>
           {unit ? <ThemedText type="title">{` ${unit}`}</ThemedText> : null}
@@ -1001,7 +1004,7 @@ function MiniStatCard({
             <TrendChart data={sparkline} width={110} height={32} color={deltaColor} />
           </View>
         ) : null}
-        {caption ? (
+        {caption && deltaKg != null ? (
           <ThemedText type="caption" themeColor="textSecondary" numberOfLines={2}>
             {caption}
           </ThemedText>
@@ -1410,9 +1413,13 @@ const styles = StyleSheet.create({
   },
   miniStatLabel: {
     flex: 1,
+    height: 28,
     fontSize: 11,
     lineHeight: 14,
     fontWeight: '600',
+  },
+  miniStatSubLabel: {
+    height: 15,
   },
   miniStatValueRow: {
     flexDirection: 'row',

@@ -78,7 +78,6 @@ const ICONS = {
   weightKg: { set: 'mci', name: 'weight-kilogram' },
   repsHash: { set: 'mci', name: 'pound' },
   crossedArrows: { set: 'mci', name: 'arrow-decision-outline' },
-  carbsBread: { set: 'mci', name: 'bread-slice-outline' },
   oilDrop: { set: 'mci', name: 'oil' },
 } as const satisfies Record<string, { set: 'mci' | 'ion'; name: MCIName | IonName }>;
 
