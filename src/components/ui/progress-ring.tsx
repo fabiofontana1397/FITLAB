@@ -11,14 +11,27 @@ import { TimingSlow } from '@/constants/motion';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
+/** Darkens a "#rrggbb" color by `amount` (0..1) — used to shade the
+ * completed-lap base ring once a second lap overlaps it. Returns the
+ * input unchanged for any other format (e.g. an rgba() string) rather
+ * than risk producing a wrong color. */
+function darken(hex: string, amount: number): string {
+  const match = /^#([0-9a-f]{6})$/i.exec(hex);
+  if (!match) return hex;
+  const num = parseInt(match[1], 16);
+  const channel = (shift: number) => Math.round(((num >> shift) & 0xff) * (1 - amount));
+  const toHex = (n: number) => n.toString(16).padStart(2, '0');
+  return `#${toHex(channel(16))}${toHex(channel(8))}${toHex(channel(0))}`;
+}
+
 export type ProgressRingProps = {
   size?: number;
   strokeWidth?: number;
-  /** 0..1 for a single lap. Values beyond 1 (goal exceeded) wrap: the ring
-   * shows as a complete lap plus a second arc layered on top of it, drawn
-   * from the same 12 o'clock start with a soft drop shadow underneath it —
-   * the same "starting another lap on itself" read as the Activity rings,
-   * instead of just clipping at a full ring. */
+  /** 0..1 for a single lap. Values beyond 1 (goal exceeded) wrap: the base
+   * ring shades to a darker tone of `color` (a completed lap) and a second
+   * arc in the full-brightness `color` is drawn on top of it from the same
+   * 12 o'clock start, with a soft concentric halo behind it — the same
+   * "starting another lap on itself" read as the Activity rings. */
   progress: number;
   color: string;
   trackColor: string;
@@ -35,6 +48,8 @@ export function ProgressRing({
 }: ProgressRingProps) {
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
+  const cx = size / 2;
+  const cy = size / 2;
   const base = useSharedValue(0);
   const overlap = useSharedValue(0);
 
@@ -52,49 +67,45 @@ export function ProgressRing({
   }));
 
   const showOverlap = progress > 1;
+  const baseColor = showOverlap ? darken(color, 0.35) : color;
 
   return (
     <View style={[styles.container, { width: size, height: size }]}>
       <Svg width={size} height={size}>
-        <Circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          stroke={trackColor}
-          strokeWidth={strokeWidth}
-          fill="none"
-        />
+        <Circle cx={cx} cy={cy} r={radius} stroke={trackColor} strokeWidth={strokeWidth} fill="none" />
         <AnimatedCircle
-          cx={size / 2}
-          cy={size / 2}
+          cx={cx}
+          cy={cy}
           r={radius}
-          stroke={color}
+          stroke={baseColor}
           strokeWidth={strokeWidth}
           strokeLinecap="round"
           fill="none"
           strokeDasharray={`${circumference} ${circumference}`}
           animatedProps={baseProps}
-          transform={`rotate(-90 ${size / 2} ${size / 2})`}
+          transform={`rotate(-90 ${cx} ${cy})`}
         />
         {showOverlap ? (
           <>
-            {/* Soft drop shadow, offset slightly, so the wrapped arc reads as
-                sitting above the completed base ring rather than merged flat into it. */}
+            {/* Soft concentric halo — same center/radius as the overlap arc
+                (never offset, so it can't drift out of angular alignment
+                with it) — reads as the arc sitting slightly above the base
+                ring instead of flush with it. */}
             <AnimatedCircle
-              cx={size / 2 + 1.5}
-              cy={size / 2 + 1.5}
+              cx={cx}
+              cy={cy}
               r={radius}
-              stroke="rgba(0,0,0,0.28)"
-              strokeWidth={strokeWidth}
+              stroke="rgba(0,0,0,0.18)"
+              strokeWidth={strokeWidth + 4}
               strokeLinecap="round"
               fill="none"
               strokeDasharray={`${circumference} ${circumference}`}
               animatedProps={overlapProps}
-              transform={`rotate(-90 ${size / 2 + 1.5} ${size / 2 + 1.5})`}
+              transform={`rotate(-90 ${cx} ${cy})`}
             />
             <AnimatedCircle
-              cx={size / 2}
-              cy={size / 2}
+              cx={cx}
+              cy={cy}
               r={radius}
               stroke={color}
               strokeWidth={strokeWidth}
@@ -102,7 +113,7 @@ export function ProgressRing({
               fill="none"
               strokeDasharray={`${circumference} ${circumference}`}
               animatedProps={overlapProps}
-              transform={`rotate(-90 ${size / 2} ${size / 2})`}
+              transform={`rotate(-90 ${cx} ${cy})`}
             />
           </>
         ) : null}
