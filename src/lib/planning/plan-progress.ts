@@ -27,6 +27,36 @@ export function currentMonthProgress(plan: { generatedAt: string; durationMonths
   };
 }
 
+/** Splits the current 30-day month into 4 nominal 7-day weeks (the last one
+ * running a couple of days long) so the training/plan cards can show a
+ * "Settimana 1..4" timeline with real calendar date ranges, alongside the
+ * existing day-granularity progress above. */
+export function currentMonthWeeks(plan: {
+  generatedAt: string;
+  durationMonths: number;
+}): { weekNumber: number; startISO: string; endISO: string; isCurrent: boolean }[] {
+  const monthIndex = currentMonthIndex(plan);
+  const monthStart = new Date(plan.generatedAt);
+  monthStart.setHours(12, 0, 0, 0);
+  monthStart.setDate(monthStart.getDate() + (monthIndex - 1) * 30);
+  const { dayInMonth } = currentMonthProgress(plan);
+  const currentWeekNumber = Math.min(4, Math.floor((dayInMonth - 1) / 7) + 1);
+
+  return Array.from({ length: 4 }, (_, i) => {
+    const weekNumber = i + 1;
+    const start = new Date(monthStart);
+    start.setDate(start.getDate() + i * 7);
+    const end = new Date(start);
+    end.setDate(end.getDate() + (weekNumber === 4 ? 8 : 6));
+    return {
+      weekNumber,
+      startISO: start.toISOString().slice(0, 10),
+      endISO: end.toISOString().slice(0, 10),
+      isCurrent: weekNumber === currentWeekNumber,
+    };
+  });
+}
+
 /** Same "day X of 30" progress, but for whichever month the user is
  * currently browsing in the plan detail screens (training-plan.tsx /
  * diet-plan.tsx) rather than always the live current one — already-

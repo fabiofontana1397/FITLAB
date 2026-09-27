@@ -1,19 +1,19 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Image, Modal, Platform, Pressable, ScrollView, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Image, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { GlassSurface } from '@/components/glass/glass-surface';
+import { FlatCard } from '@/components/ui/flat-card';
 import { InsightCard } from '@/components/ui/insight-card';
+import { PrimaryButton } from '@/components/ui/primary-button';
 import { ProgressRing } from '@/components/ui/progress-ring';
-import { TrendChart } from '@/components/ui/trend-chart';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useWeeklyEnergy } from '@/hooks/use-weekly-energy';
-import { dailyStepsTarget, stepsHistory } from '@/lib/mock/activity';
 import { latestSnapshot } from '@/lib/mock/body';
 import { addDaysISO, currentWeekDates, dayOfMonth, daysAgoISO, formatFullDay, mondayIndex } from '@/lib/mock/dates';
 import { useCoachInsights } from '@/hooks/use-coach-insights';
@@ -58,6 +58,21 @@ function formatSignedKcal(n: number): string {
   return `${rounded < 0 ? '-' : '+'}${formatKcal(rounded)}`;
 }
 
+/** Italian comma-decimal weight, e.g. 78.7 -> "78,7". */
+function formatWeightKg(n: number): string {
+  return n.toFixed(1).replace('.', ',');
+}
+
+/** "-0,3" / "+5" — signed kg delta with an Italian decimal comma, dropping
+ * the decimal for whole-kg deltas (how lift progressions are usually
+ * logged) while keeping it for fractional body-weight deltas. */
+function formatSignedKg(n: number): string {
+  const abs = Math.abs(n);
+  const sign = n > 0 ? '+' : n < 0 ? '-' : '';
+  const isWhole = Math.abs(abs - Math.round(abs)) < 0.05;
+  return `${sign}${isWhole ? Math.round(abs) : formatWeightKg(abs)}`;
+}
+
 function formatTodayHeading(iso: string): string {
   const d = new Date(iso);
   const weekday = capitalize(d.toLocaleDateString('it-IT', { weekday: 'short' }).replace('.', ''));
@@ -100,16 +115,6 @@ function splitIconFor(title: string): IconName {
   return SPLIT_ICON[title] ?? 'training';
 }
 
-/** Flat, opaque, drop-shadowed card — the Home hero section's own card
- * language (matching the reference mockup: solid white/tinted cards, no
- * blur), deliberately distinct from GlassSurface's translucent Liquid
- * Glass used everywhere else in the app. `tint` overrides the default
- * neutral fill for the category-colored cards (diet/training/result). */
-function FlatCard({ tint, radius = Radius.large, style, children }: { tint?: string; radius?: number; style?: StyleProp<ViewStyle>; children?: React.ReactNode }) {
-  const theme = useTheme();
-  return <View style={[styles.flatCard, { backgroundColor: tint ?? theme.backgroundElevated, borderRadius: radius, borderColor: theme.border }, style]}>{children}</View>;
-}
-
 export default function HomeScreen() {
   const theme = useTheme();
   const currentUser = useUserStore();
@@ -142,12 +147,14 @@ export default function HomeScreen() {
   const trainingProgress =
     todayPlanDay?.type === 'workout' ? (workoutExercises.length > 0 ? completedCount / workoutExercises.length : 1) : 1;
   const workoutSplitTitle = todayPlanDay?.type === 'workout' ? todayPlanDay.title : undefined;
+  const isWorkoutDayIncomplete = todayPlanDay?.type === 'workout' && workoutExercises.length > 0 && trainingProgress < 1;
 
   // The generated diet plan's OWN calorie target for the active month (it
   // can differ month to month) takes priority over the static profile
   // default, since that's what the plan actually asks for today.
   const dietMonth = dietPlan?.months.find((m) => m.monthIndex === currentMonthIndex(dietPlan));
   const calorieTarget = dietMonth?.calorieTarget ?? currentUser.dailyCalorieTarget;
+  const macroTargets = dietMonth?.macroTargetsG ?? currentUser.macroTargetsG;
 
   // "Settimana X/Y" in the goal card — the plan itself is month-based (each
   // month reuses one weeklySplit template), so a week number isn't a field
@@ -162,9 +169,6 @@ export default function HomeScreen() {
 
   const todaysTotals = sumMacros(nutritionEntries.filter((e) => e.date === today));
   const dietProgress = calorieTarget > 0 ? Math.min(todaysTotals.kcal / calorieTarget, 1) : 0;
-
-  const todaysSteps = stepsHistory[stepsHistory.length - 1]?.steps ?? 0;
-  const stepsProgress = Math.min(todaysSteps / dailyStepsTarget, 1);
 
   // Memoized (not a plain expression) so `latestBody.weightKg` below is a
   // stable dependency for other useMemo/useCallback hooks — an unmemoized
@@ -280,14 +284,11 @@ export default function HomeScreen() {
   }, [exercisesInPlan, loggedSets]);
 
   const topLift = recentLifts[0];
-  const topLiftDeltaPct = topLift && topLift.history[0].weightKg > 0
-    ? ((topLift.history[topLift.history.length - 1].weightKg - topLift.history[0].weightKg) / topLift.history[0].weightKg) * 100
-    : undefined;
+  const topLiftDeltaKg = topLift ? topLift.history[topLift.history.length - 1].weightKg - topLift.history[0].weightKg : undefined;
 
   const weekAgoDate = daysAgoISO(7);
   const weekAgoWeight = [...bodyEntries].filter((e) => e.date <= weekAgoDate).sort((a, b) => b.date.localeCompare(a.date))[0];
-  const weightTrendPct = weekAgoWeight && weekAgoWeight.weightKg > 0 ? ((latestBody.weightKg - weekAgoWeight.weightKg) / weekAgoWeight.weightKg) * 100 : undefined;
-  const weightSparkline = [...bodyEntries].sort((a, b) => a.date.localeCompare(b.date)).slice(-10).map((e) => e.weightKg);
+  const weightTrendKg = weekAgoWeight ? latestBody.weightKg - weekAgoWeight.weightKg : undefined;
   const topInsight = insights[0];
 
   const [selectedDay, setSelectedDay] = useState<WeeklyGoalDay | null>(null);
@@ -349,72 +350,62 @@ export default function HomeScreen() {
             <Icon name="chevronRight" size={16} color={theme.textTertiary} />
           </View>
         </Pressable>
-        <View style={styles.todayStatsRow}>
-          <TodayStatCard
-            icon="nutrition"
-            label="Dieta"
-            valueLine={`${formatKcal(todaysTotals.kcal)}/${formatKcal(calorieTarget)} kcal`}
+        <View style={styles.todayCardsRow}>
+          <DietTodayCard
+            totals={todaysTotals}
+            calorieTarget={calorieTarget}
+            macroTargets={macroTargets}
             progress={dietProgress}
-            statusOk={todaysTotals.kcal <= calorieTarget * 1.05}
-            statusLabel={todaysTotals.kcal > calorieTarget * 1.05 ? 'Oltre target' : 'In linea'}
-            tint={theme.accentSoft}
-            onPress={() => router.push('/nutrition')}
+            onOpen={() => router.push('/nutrition')}
+            onAddMeal={() => router.push('/nutrition')}
           />
-          <TodayStatCard
-            icon="training"
-            label="Allenamento"
-            valueLine={
-              workoutExercises.length > 0
-                ? `${completedCount}/${workoutExercises.length} esercizi`
-                : todayPlanDay?.type === 'cardio'
-                  ? (todayPlanDay.note ?? 'Sessione cardio')
-                  : 'Riposo'
-            }
+          <WorkoutTodayCard
+            planDay={todayPlanDay}
+            exercises={workoutExercises}
+            completedExercises={completedExercises}
+            today={today}
+            completedCount={completedCount}
             progress={trainingProgress}
-            statusOk={trainingProgress >= 1}
-            statusLabel={trainingProgress >= 1 ? 'Fatto' : workoutExercises.length > 0 ? 'Da fare' : 'Riposo'}
-            tint={theme.successSoft}
-            onPress={() => router.push('/training')}
-            subBadge={workoutSplitTitle ? { icon: splitIconFor(workoutSplitTitle), label: workoutSplitTitle } : undefined}
-          />
-          <TodayStatCard
-            icon="footsteps"
-            label="Passi"
-            valueLine={`${formatKcal(todaysSteps)}/${formatKcal(dailyStepsTarget)}`}
-            progress={stepsProgress}
-            statusOk={stepsProgress >= 0.6}
-            statusLabel={stepsProgress >= 1 ? 'Raggiunto' : stepsProgress >= 0.6 ? 'In linea' : 'Sotto target'}
-            tint={theme.successSoft}
+            splitTitle={workoutSplitTitle}
+            onOpen={() => router.push('/training')}
+            onAddWorkout={() => router.push('/training')}
           />
         </View>
       </View>
 
-      <View style={styles.miniCardsRow}>
-        <MiniStatCard
-          label="Andamento peso"
-          value={latestBody.weightKg.toFixed(1)}
-          unit="kg"
-          icon="scale"
-          trend={weightTrendPct}
-          trendGoodDirection={currentUser.goal === 'gainMuscle' || currentUser.goal === 'gainStrength' ? 'up' : 'down'}
-          sparkline={weightSparkline}
-          onPress={() => router.push('/progress')}
-        />
-        <MiniStatCard
-          label={topLift ? topLift.exercise.name : 'Forza'}
-          value={topLift ? String(topLift.history[topLift.history.length - 1].weightKg) : '—'}
-          unit={topLift ? 'kg' : undefined}
-          icon="training"
-          trend={topLiftDeltaPct}
-          sparkline={topLift ? topLift.history.slice(-10).map((h) => h.weightKg) : undefined}
-          onPress={() => router.push('/training-progress')}
-        />
-        <AICoachMiniCard
-          headline={topInsight?.headline ?? 'Nessun consiglio ancora'}
-          body={topInsight?.body ?? 'Apri per generare un consiglio personalizzato dal coach AI.'}
-          onPress={() => setInsightsModalOpen(true)}
-        />
+      <View style={{ gap: Spacing.three }}>
+        <ThemedText style={styles.todayHeaderTitle}>Progressi</ThemedText>
+        <View style={styles.miniCardsRow}>
+          <MiniStatCard
+            icon="scale"
+            label="Andamento peso"
+            value={formatWeightKg(latestBody.weightKg)}
+            unit="kg"
+            deltaKg={weightTrendKg}
+            deltaGoodDirection={currentUser.goal === 'gainMuscle' || currentUser.goal === 'gainStrength' ? 'up' : 'down'}
+            caption="rispetto a settimana scorsa"
+            onPress={() => router.push('/progress')}
+          />
+          <MiniStatCard
+            icon="training"
+            label="Forza"
+            subLabel={topLift ? topLift.exercise.name : undefined}
+            value={topLift ? String(topLift.history[topLift.history.length - 1].weightKg) : '—'}
+            unit={topLift ? 'kg' : undefined}
+            deltaKg={topLiftDeltaKg}
+            showBarGlyph={!!topLift}
+            onPress={() => router.push('/training-progress')}
+          />
+        </View>
       </View>
+
+      <AICoachDarkCard
+        headline={topInsight?.headline ?? 'Nessun consiglio ancora'}
+        body={topInsight?.body ?? 'Apri per generare un consiglio personalizzato dal coach AI.'}
+        ctaLabel={isWorkoutDayIncomplete ? "Recupera l'allenamento" : 'Vedi il consiglio'}
+        onPress={() => (isWorkoutDayIncomplete ? router.push('/training') : setInsightsModalOpen(true))}
+        onOpenAll={() => setInsightsModalOpen(true)}
+      />
 
       <InsightsModal
         visible={insightsModalOpen}
@@ -508,19 +499,33 @@ function WeeklyGoalCard({
       <View style={styles.streakRow}>
         {days.map((d) => {
           const met = d.hasHappened && !d.isToday ? isDayWithinTolerance(d.balanceKcal, dailyGoalKcal) : false;
-          const ringProgress = d.hasHappened ? (dailyGoalKcal !== 0 ? clamp01(d.balanceKcal / dailyGoalKcal) : met ? 1 : 0) : 0;
-          const ringColor = d.isToday ? theme.accent : !d.hasHappened ? theme.backgroundElement : met ? theme.success : theme.danger;
+          const ringProgress = dailyGoalKcal !== 0 ? clamp01(d.balanceKcal / dailyGoalKcal) : 0.5;
           const clickable = d.hasHappened && !d.isToday;
           return (
             <Pressable key={d.date} style={styles.streakDayCol} disabled={!clickable} onPress={() => onSelectDay(d)} hitSlop={4}>
-              <ProgressRing size={32} strokeWidth={4} progress={d.hasHappened ? Math.max(ringProgress, 0.06) : 0} color={ringColor} trackColor={theme.backgroundElement}>
-                {clickable ? <Icon name={met ? 'check' : 'close'} size={13} color={met ? theme.success : theme.danger} /> : null}
-              </ProgressRing>
+              {d.isToday ? (
+                <ProgressRing size={32} strokeWidth={4} progress={Math.max(ringProgress, 0.06)} color={theme.accent} trackColor={theme.backgroundElement} />
+              ) : clickable && met ? (
+                <View style={[styles.streakSolidCircle, { backgroundColor: theme.success }]}>
+                  <Icon name="check" size={15} color={theme.onAccent} />
+                </View>
+              ) : clickable ? (
+                <View style={[styles.streakOutlineCircle, { borderColor: theme.danger, backgroundColor: theme.backgroundElevated }]}>
+                  <Icon name="close" size={14} color={theme.danger} />
+                </View>
+              ) : (
+                <View style={[styles.streakOutlineCircle, { borderColor: theme.backgroundElement }]} />
+              )}
               <ThemedText style={styles.streakDayNumber}>{dayOfMonth(d.date)}</ThemedText>
-              <ThemedText type="caption" themeColor="textSecondary">
-                {d.label}
-              </ThemedText>
-              {d.isToday ? <ThemedText style={[styles.streakTodayLabel, { color: theme.accent }]}>OGGI</ThemedText> : null}
+              {d.isToday ? (
+                <View style={[styles.streakTodayPill, { backgroundColor: theme.accent }]}>
+                  <ThemedText style={[styles.streakTodayLabel, { color: theme.onAccent }]}>OGGI</ThemedText>
+                </View>
+              ) : (
+                <ThemedText type="caption" themeColor="textSecondary">
+                  {d.label}
+                </ThemedText>
+              )}
             </Pressable>
           );
         })}
@@ -659,101 +664,185 @@ function DayDetailModal({ day, dailyGoalKcal, onClose }: { day: WeeklyGoalDay | 
   );
 }
 
-function TodayStatCard({
-  icon,
-  label,
-  valueLine,
-  progress,
-  statusOk,
-  statusLabel,
-  tint,
-  onPress,
-  subBadge,
-}: {
-  icon: IconName;
-  label: string;
-  valueLine: string;
-  progress: number;
-  statusOk: boolean;
-  statusLabel: string;
-  tint: string;
-  onPress?: () => void;
-  subBadge?: { icon: IconName; label: string };
-}) {
+/** Shared header row for both "Oggi" cards: category icon badge, chevron
+ * (always present — both cards always navigate somewhere), title, and a
+ * value line directly under it. */
+function TodayCardHeader({ icon, tint, title, valueLine, onOpen }: { icon: IconName; tint: string; title: string; valueLine: string; onOpen: () => void }) {
   const theme = useTheme();
-  const content = (
-    <FlatCard radius={Radius.medium} style={styles.todayStatCard}>
-      <View style={styles.todayStatTopRow}>
-        <View style={[styles.todayStatIcon, { backgroundColor: tint }]}>
-          <Icon name={icon} size={15} color={theme.accent} />
+  return (
+    <Pressable onPress={onOpen} style={styles.todayCardHeaderCol}>
+      <View style={styles.todayCardTopRow}>
+        <View style={[styles.todayCardIcon, { backgroundColor: tint }]}>
+          <Icon name={icon} size={17} color={theme.accent} />
         </View>
-        {onPress ? <Icon name="chevronRight" size={14} color={theme.textTertiary} /> : null}
+        <Icon name="chevronRight" size={15} color={theme.textTertiary} />
       </View>
-      <ThemedText style={styles.todayStatLabel}>
-        {label}
+      <ThemedText numberOfLines={1} style={styles.todayCardTitle}>
+        {title}
       </ThemedText>
-      <View style={styles.todaySplitBadge}>
-        {subBadge ? (
-          <>
-            <Icon name={subBadge.icon} size={11} color={theme.accent} />
-            <ThemedText numberOfLines={1} style={styles.todaySplitBadgeLabel}>
-              {subBadge.label}
-            </ThemedText>
-          </>
-        ) : null}
-      </View>
-      <ThemedText numberOfLines={2} style={styles.todayStatValue}>
+      <ThemedText numberOfLines={1} style={styles.todayCardValueLine}>
         {valueLine}
       </ThemedText>
-      <View style={styles.todayStatSpacer} />
-      <View style={[styles.todayStatTrack, { backgroundColor: theme.backgroundElement }]}>
-        <View style={[styles.todayStatFill, { width: `${Math.round(clamp01(progress) * 100)}%`, backgroundColor: statusOk ? theme.success : theme.accent }]} />
-      </View>
-      <View style={styles.todayStatStatusRow}>
-        <Icon name="checkCircle" size={11} color={statusOk ? theme.success : theme.textTertiary} />
-        <ThemedText style={[styles.todayStatStatusLabel, { color: statusOk ? theme.success : theme.textTertiary, flexShrink: 1 }]} numberOfLines={2}>
-          {statusLabel}
-        </ThemedText>
-      </View>
-    </FlatCard>
-  );
-  // Always wrapped in the same flex:1 container, whether or not it's
-  // pressable — letting Passi skip this wrapper (nothing to press) used to
-  // leave its aspectRatio card as the row's direct flex item instead of
-  // nested one level down like its siblings, which resolved to a
-  // different flex-basis and made it visibly wider than the other two.
-  return onPress ? (
-    <Pressable onPress={onPress} style={styles.todayStatPressable}>
-      {content}
     </Pressable>
-  ) : (
-    <View style={styles.todayStatPressable}>{content}</View>
   );
 }
 
-function AICoachMiniCard({ headline, body, onPress }: { headline: string; body: string; onPress: () => void }) {
+function MacroRow({ icon, color, label, value }: { icon: IconName; color: string; label: string; value: string }) {
+  return (
+    <View style={styles.macroRow}>
+      <View style={[styles.macroRowIcon, { backgroundColor: color + '26' }]}>
+        <Icon name={icon} size={13} color={color} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <ThemedText type="caption" themeColor="textSecondary">
+          {label}
+        </ThemedText>
+        <ThemedText style={styles.macroRowValue}>{value}</ThemedText>
+      </View>
+    </View>
+  );
+}
+
+function DietTodayCard({
+  totals,
+  calorieTarget,
+  macroTargets,
+  progress,
+  onOpen,
+  onAddMeal,
+}: {
+  totals: { kcal: number; protein: number; carbs: number; fats: number };
+  calorieTarget: number;
+  macroTargets: { protein: number; carbs: number; fats: number };
+  progress: number;
+  onOpen: () => void;
+  onAddMeal: () => void;
+}) {
   const theme = useTheme();
   return (
-    <Pressable onPress={onPress} style={styles.miniCard}>
-      <FlatCard style={styles.coachMiniCard}>
-        <View style={styles.miniStatHeaderRow}>
-          <View style={[styles.coachMiniIcon, { backgroundColor: theme.accentSoft }]}>
-            <Icon name="bulb" size={16} color={theme.accent} />
+    <FlatCard radius={Radius.medium} style={styles.todayCard}>
+      <TodayCardHeader
+        icon="nutrition"
+        tint={theme.accentSoft}
+        title="Dieta"
+        valueLine={`${formatKcal(totals.kcal)}/${formatKcal(calorieTarget)} kcal`}
+        onOpen={onOpen}
+      />
+      <View style={[styles.todayStatTrack, { backgroundColor: theme.backgroundElement }]}>
+        <View style={[styles.todayStatFill, { width: `${Math.round(clamp01(progress) * 100)}%`, backgroundColor: theme.success }]} />
+      </View>
+      <View style={styles.macroRowsGroup}>
+        <MacroRow icon="keyOutline" color="#C026D3" label="Proteine" value={`${Math.round(totals.protein)}/${Math.round(macroTargets.protein)} g`} />
+        <MacroRow icon="carbs" color={theme.success} label="Carbo" value={`${Math.round(totals.carbs)}/${Math.round(macroTargets.carbs)} g`} />
+        <MacroRow icon="fats" color={theme.calorieSurplus} label="Grassi" value={`${Math.round(totals.fats)}/${Math.round(macroTargets.fats)} g`} />
+      </View>
+      <PrimaryButton label="Aggiungi pasto +" onPress={onAddMeal} dense style={styles.todayCardButton} />
+    </FlatCard>
+  );
+}
+
+function ExerciseCheckRow({ name, done }: { name: string; done: boolean }) {
+  const theme = useTheme();
+  return (
+    <View style={styles.exerciseCheckRow}>
+      <View style={[styles.exerciseCheckDot, done ? { backgroundColor: theme.accent } : { borderWidth: 2, borderColor: theme.backgroundElement }]}>
+        {done ? <Icon name="check" size={11} color={theme.onAccent} /> : null}
+      </View>
+      <ThemedText numberOfLines={1} style={styles.exerciseCheckLabel}>
+        {name}
+      </ThemedText>
+    </View>
+  );
+}
+
+function WorkoutTodayCard({
+  planDay,
+  exercises,
+  completedExercises,
+  today,
+  completedCount,
+  progress,
+  splitTitle,
+  onOpen,
+  onAddWorkout,
+}: {
+  planDay: { type: string; note?: string } | undefined;
+  exercises: TrainingExerciseEntry[];
+  completedExercises: Parameters<typeof isExerciseCompleted>[0];
+  today: string;
+  completedCount: number;
+  progress: number;
+  splitTitle?: string;
+  onOpen: () => void;
+  onAddWorkout: () => void;
+}) {
+  const theme = useTheme();
+  const hasExercises = exercises.length > 0;
+  const valueLine = hasExercises
+    ? `${completedCount}/${exercises.length} esercizi`
+    : planDay?.type === 'cardio'
+      ? (planDay.note ?? 'Sessione cardio')
+      : 'Riposo';
+  return (
+    <FlatCard radius={Radius.medium} style={styles.todayCard}>
+      <TodayCardHeader icon={splitTitle ? splitIconFor(splitTitle) : 'training'} tint={theme.successSoft} title="Allenamento" valueLine={valueLine} onOpen={onOpen} />
+      {hasExercises ? (
+        <>
+          <View style={[styles.todayStatTrack, { backgroundColor: theme.backgroundElement }]}>
+            <View style={[styles.todayStatFill, { width: `${Math.round(clamp01(progress) * 100)}%`, backgroundColor: theme.success }]} />
           </View>
-          <View style={{ flex: 1 }} />
-          <Icon name="chevronRight" size={13} color={theme.textTertiary} />
+          <View style={styles.exerciseCheckList}>
+            {exercises.map((ex) => (
+              <ExerciseCheckRow key={ex.id} name={ex.name} done={isExerciseCompleted(completedExercises, ex.id, today)} />
+            ))}
+          </View>
+        </>
+      ) : (
+        <ThemedText type="caption" themeColor="textSecondary" style={styles.todayCardEmptyNote}>
+          Nessun allenamento pianificato per oggi — registra comunque una sessione se ne hai fatta una.
+        </ThemedText>
+      )}
+      <PrimaryButton label="Aggiungi allenamento +" onPress={onAddWorkout} dense style={styles.todayCardButton} />
+    </FlatCard>
+  );
+}
+
+/** The dark "AI Coach" card — deliberately always dark regardless of the
+ * app's own light/dark setting (a distinct "AI feature" surface, like the
+ * chat FAB's own orb), with a soft glowing accent circle bleeding off the
+ * bottom-right corner. */
+function AICoachDarkCard({
+  headline,
+  body,
+  ctaLabel,
+  onPress,
+  onOpenAll,
+}: {
+  headline: string;
+  body: string;
+  ctaLabel: string;
+  onPress: () => void;
+  onOpenAll: () => void;
+}) {
+  const theme = useTheme();
+  return (
+    <View style={styles.aiCoachDarkCard}>
+      <View pointerEvents="none" style={styles.aiCoachGlow} />
+      <Pressable style={styles.aiCoachHeaderRow} onPress={onOpenAll} hitSlop={4}>
+        <Icon name="bulb" size={16} color={theme.accent} />
+        <ThemedText style={styles.aiCoachTitle}>AI Coach</ThemedText>
+        <View style={styles.aiCoachPill}>
+          <ThemedText style={styles.aiCoachPillLabel}>Nuovo insight</ThemedText>
         </View>
-        <ThemedText type="label" themeColor="textSecondary">
-          AI Coach
-        </ThemedText>
-        <ThemedText type="smallBold" numberOfLines={1}>
-          {headline}
-        </ThemedText>
-        <ThemedText type="caption" themeColor="textSecondary" numberOfLines={2}>
-          {body}
-        </ThemedText>
-      </FlatCard>
-    </Pressable>
+      </Pressable>
+      <ThemedText numberOfLines={1} style={styles.aiCoachHeadline}>
+        {headline}
+      </ThemedText>
+      <ThemedText style={styles.aiCoachBody} numberOfLines={3}>
+        {body}
+      </ThemedText>
+      <PrimaryButton label={ctaLabel} onPress={onPress} style={styles.todayCardButton} />
+    </View>
   );
 }
 
@@ -810,64 +899,84 @@ function InsightsModal({
 }
 
 /** Flat counterpart to StatTile for the Home hero mini-row — same data
- * shape (value/trend/sparkline), but a solid card and a sparkline colored
- * by whether the trend is good news, matching the reference mockup's green
- * "trending the right way" charts instead of a neutral accent line. */
+ * shape, but a solid card matching the reference mockup: a tinted icon
+ * badge + label + chevron header, an optional sub-label (e.g. an exercise
+ * name), a big value, a colored kg-delta trend row, and either a trailing
+ * caption (weight card) or a small decorative bar-chart glyph (strength
+ * card) — never both. */
 function MiniStatCard({
+  icon,
   label,
+  subLabel,
   value,
   unit,
-  icon,
-  trend,
-  trendGoodDirection = 'up',
-  sparkline,
+  deltaKg,
+  deltaGoodDirection = 'up',
+  caption,
+  showBarGlyph,
   onPress,
 }: {
+  icon: IconName;
   label: string;
+  subLabel?: string;
   value: string;
   unit?: string;
-  icon: IconName;
-  trend?: number;
-  trendGoodDirection?: 'up' | 'down';
-  sparkline?: number[];
+  deltaKg?: number;
+  deltaGoodDirection?: 'up' | 'down';
+  caption?: string;
+  showBarGlyph?: boolean;
   onPress?: () => void;
 }) {
   const theme = useTheme();
-  const trendPositive = (trend ?? 0) >= 0;
-  const trendIsGood = trend != null && trendPositive === (trendGoodDirection === 'up');
-  const trendColor = trend == null ? theme.textTertiary : trendIsGood ? theme.success : theme.danger;
-  const sparklineColor = trend == null ? theme.accent : trendColor;
+  const deltaPositive = (deltaKg ?? 0) >= 0;
+  const deltaIsGood = deltaKg != null && deltaPositive === (deltaGoodDirection === 'up');
+  const deltaColor = deltaKg == null ? theme.textTertiary : deltaIsGood ? theme.success : theme.danger;
 
   return (
     <Pressable onPress={onPress} style={styles.miniCard}>
       <FlatCard style={styles.miniStatCard}>
         <View style={styles.miniStatHeaderRow}>
-          <ThemedText type="label" themeColor="textSecondary" numberOfLines={1} style={{ flex: 1 }}>
-            {label}
-          </ThemedText>
-          <Icon name={onPress ? 'chevronRight' : icon} size={onPress ? 13 : 14} color={theme.textTertiary} />
+          <View style={styles.miniStatHeaderLeft}>
+            <View style={[styles.miniStatIcon, { backgroundColor: theme.accentSoft }]}>
+              <Icon name={icon} size={13} color={theme.accent} />
+            </View>
+            <ThemedText themeColor="textSecondary" numberOfLines={2} style={styles.miniStatLabel}>
+              {label}
+            </ThemedText>
+          </View>
+          {onPress ? <Icon name="chevronRight" size={13} color={theme.textTertiary} /> : null}
         </View>
+        {subLabel ? (
+          <ThemedText type="caption" themeColor="textSecondary" numberOfLines={1}>
+            {subLabel}
+          </ThemedText>
+        ) : null}
         <View style={styles.miniStatValueRow}>
           <ThemedText type="title">{value}</ThemedText>
-          {unit ? (
-            <ThemedText type="caption" themeColor="textSecondary" style={{ marginBottom: 2 }}>
-              {unit}
-            </ThemedText>
-          ) : null}
+          {unit ? <ThemedText type="title">{` ${unit}`}</ThemedText> : null}
         </View>
-        {trend != null ? (
+        {deltaKg != null ? (
           <View style={styles.miniStatTrendRow}>
-            <Icon name={trendPositive ? 'trendUp' : 'trendDown'} size={12} color={trendColor} />
-            <ThemedText type="caption" style={{ color: trendColor }}>
-              {trendPositive ? '+' : ''}
-              {trend.toFixed(1)}%
-            </ThemedText>
+            <View style={styles.miniStatTrendLeft}>
+              <Icon name={deltaPositive ? 'trendUp' : 'trendDown'} size={12} color={deltaColor} />
+              <ThemedText type="caption" style={{ color: deltaColor }}>
+                {formatSignedKg(deltaKg)} kg
+              </ThemedText>
+            </View>
+            {showBarGlyph ? (
+              <View style={styles.miniStatBarGlyph}>
+                <View style={[styles.miniStatBar, { height: 8, backgroundColor: theme.success }]} />
+                <View style={[styles.miniStatBar, { height: 13, backgroundColor: theme.success }]} />
+                <View style={[styles.miniStatBar, { height: 18, backgroundColor: theme.success }]} />
+                <View style={[styles.miniStatBar, { height: 10, backgroundColor: theme.backgroundElement }]} />
+              </View>
+            ) : null}
           </View>
         ) : null}
-        {sparkline && sparkline.length >= 2 ? (
-          <View style={styles.miniStatChart}>
-            <TrendChart data={sparkline} width={110} height={32} color={sparklineColor} />
-          </View>
+        {caption ? (
+          <ThemedText type="caption" themeColor="textSecondary" numberOfLines={2}>
+            {caption}
+          </ThemedText>
         ) : null}
       </FlatCard>
     </Pressable>
@@ -885,7 +994,7 @@ const styles = StyleSheet.create({
   },
   homeLogo: {
     width: 132,
-    height: 36,
+    height: 32,
   },
   homeAvatarWrap: {
     width: 40,
@@ -972,10 +1081,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.one,
   },
+  streakSolidCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  streakOutlineCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   streakDayNumber: {
     fontSize: 12,
     lineHeight: 15,
     fontWeight: '700',
+  },
+  streakTodayPill: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: Radius.pill,
   },
   streakTodayLabel: {
     fontSize: 9,
@@ -1044,57 +1173,41 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 2,
   },
-  todayStatsRow: {
+  todayCardsRow: {
     flexDirection: 'row',
+    gap: Spacing.three,
+    alignItems: 'stretch',
+  },
+  todayCard: {
+    flex: 1,
+    minWidth: 0,
+    padding: Spacing.three,
     gap: Spacing.two,
   },
-  todayStatPressable: {
-    flex: 1,
-    minWidth: 0,
+  todayCardHeaderCol: {
+    gap: Spacing.one,
   },
-  todayStatCard: {
-    flex: 1,
-    minWidth: 0,
-    aspectRatio: 1,
-    padding: 8,
-    gap: 4,
-  },
-  todayStatTopRow: {
+  todayCardTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  todayStatIcon: {
-    width: 26,
-    height: 26,
-    borderRadius: Radius.small,
+  todayCardIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: Radius.medium,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  todayStatLabel: {
-    fontSize: 11,
-    lineHeight: 13,
-    height: 13,
+  todayCardTitle: {
+    fontSize: 14,
+    lineHeight: 18,
     fontWeight: '800',
   },
-  todaySplitBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    height: 12,
-  },
-  todaySplitBadgeLabel: {
-    fontSize: 9,
-    lineHeight: 12,
-    fontWeight: '700',
-  },
-  todayStatValue: {
-    fontSize: 11,
-    lineHeight: 13,
-    fontWeight: '700',
-  },
-  todayStatSpacer: {
-    flex: 1,
+  todayCardValueLine: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '500',
   },
   todayStatTrack: {
     height: 5,
@@ -1105,15 +1218,104 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: Radius.pill,
   },
-  todayStatStatusRow: {
+  macroRowsGroup: {
+    gap: Spacing.two,
+  },
+  macroRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: Spacing.two,
   },
-  todayStatStatusLabel: {
+  macroRowIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: Radius.small,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  macroRowValue: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '700',
+  },
+  exerciseCheckList: {
+    gap: 7,
+  },
+  exerciseCheckRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  exerciseCheckDot: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  exerciseCheckLabel: {
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '500',
+  },
+  todayCardEmptyNote: {
+    lineHeight: 17,
+  },
+  todayCardButton: {
+    marginTop: Spacing.one,
+  },
+  aiCoachDarkCard: {
+    backgroundColor: '#15161A',
+    borderRadius: Radius.large,
+    padding: Spacing.four,
+    gap: Spacing.two,
+    overflow: 'hidden',
+  },
+  aiCoachGlow: {
+    position: 'absolute',
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    bottom: -70,
+    right: -50,
+    backgroundColor: '#FF7A00',
+    opacity: 0.3,
+  },
+  aiCoachHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  aiCoachTitle: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    lineHeight: 17,
+    fontWeight: '700',
+  },
+  aiCoachPill: {
+    backgroundColor: 'rgba(255,122,0,0.22)',
+    paddingHorizontal: Spacing.two,
+    paddingVertical: 3,
+    borderRadius: Radius.pill,
+  },
+  aiCoachPillLabel: {
+    color: '#FF7A00',
     fontSize: 10,
     lineHeight: 13,
-    fontWeight: '600',
+    fontWeight: '700',
+  },
+  aiCoachHeadline: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    lineHeight: 21,
+    fontWeight: '800',
+  },
+  aiCoachBody: {
+    color: 'rgba(255,255,255,0.72)',
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '500',
   },
   resultBox: {
     flexDirection: 'row',
@@ -1162,32 +1364,6 @@ const styles = StyleSheet.create({
     flexBasis: 150,
     minWidth: 0,
   },
-  coachMiniCard: {
-    padding: Spacing.three,
-    gap: Spacing.two,
-    minHeight: '100%',
-  },
-  coachMiniIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: Radius.small,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  flatCard: {
-    overflow: 'hidden',
-    borderWidth: StyleSheet.hairlineWidth,
-    ...Platform.select({
-      web: { boxShadow: '0px 8px 20px rgba(20,20,25,0.08)' },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 10,
-        elevation: 3,
-      },
-    }),
-  },
   miniStatCard: {
     padding: Spacing.three,
     gap: 6,
@@ -1195,7 +1371,27 @@ const styles = StyleSheet.create({
   miniStatHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.two,
+    justifyContent: 'space-between',
+  },
+  miniStatHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+    minWidth: 0,
+  },
+  miniStatIcon: {
+    width: 20,
+    height: 20,
+    borderRadius: Radius.medium,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  miniStatLabel: {
+    flex: 1,
+    fontSize: 11,
+    lineHeight: 14,
+    fontWeight: '600',
   },
   miniStatValueRow: {
     flexDirection: 'row',
@@ -1205,10 +1401,20 @@ const styles = StyleSheet.create({
   miniStatTrendRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  miniStatTrendLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 3,
   },
-  miniStatChart: {
-    marginTop: 2,
-    alignSelf: 'stretch',
+  miniStatBarGlyph: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 2,
+  },
+  miniStatBar: {
+    width: 3,
+    borderRadius: 1.5,
   },
 });

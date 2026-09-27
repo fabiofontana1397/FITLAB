@@ -1,25 +1,27 @@
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Image, Pressable, StyleSheet, View } from 'react-native';
 
-import { GlassSurface } from '@/components/glass/glass-surface';
-import { ScreenHeader } from '@/components/screen-header';
 import { ScreenScroll } from '@/components/screen-scroll';
+import { SectionHeader } from '@/components/ui/section-header';
 import { ThemedText } from '@/components/themed-text';
-import { Icon } from '@/components/ui/icon';
+import { Icon, type IconName } from '@/components/ui/icon';
+import { FlatCard } from '@/components/ui/flat-card';
 import { MonthProgressBar } from '@/components/ui/month-progress-bar';
 import { PrimaryButton } from '@/components/ui/primary-button';
-import { SectionHeader } from '@/components/ui/section-header';
-import { DayWheel } from '@/components/training/day-wheel';
+import { ProgressRing } from '@/components/ui/progress-ring';
 import { LogActivityModal } from '@/components/training/log-activity-modal';
 import { PlanExerciseRow } from '@/components/training/plan-exercise-row';
-import { PlanTimeline } from '@/components/training/plan-timeline';
+import { SplitSummaryCard } from '@/components/training/split-summary-card';
+import { WeekDayStrip } from '@/components/training/week-day-strip';
+import { WeekTimeline } from '@/components/training/week-timeline';
 import { Radius, Spacing } from '@/constants/theme';
 import { useStoreHydrated } from '@/hooks/use-store-hydrated';
 import { useTheme } from '@/hooks/use-theme';
 import { latestSnapshot } from '@/lib/mock/body';
-import { daysAgoISO, mondayIndex } from '@/lib/mock/dates';
-import { currentMonthIndex, currentMonthProgress } from '@/lib/planning/plan-progress';
+import type { Goal } from '@/lib/mock/types';
+import { addDaysISO, currentWeekDates, daysAgoISO, mondayIndex } from '@/lib/mock/dates';
+import { currentMonthIndex, currentMonthWeeks } from '@/lib/planning/plan-progress';
 import type { TrainingDayPlan } from '@/lib/planning/types';
 import { useActivityLogStore } from '@/store/activity-log-store';
 import { useBodyStore } from '@/store/body-store';
@@ -35,6 +37,40 @@ import {
 } from '@/store/training-progress-store';
 import { useUserStore } from '@/store/user-store';
 
+/** A generated split label ("Push", "Legs"...) to a loosely-matching icon —
+ * cosmetic only, falls back to the generic dumbbell for anything not in the
+ * map (custom AI-suggested titles included). */
+const SPLIT_ICON: Record<string, IconName> = {
+  Push: 'armFlex',
+  Pull: 'armFlex',
+  Upper: 'armFlex',
+  Legs: 'running',
+  Lower: 'running',
+};
+function splitIconFor(title: string): IconName {
+  return SPLIT_ICON[title] ?? 'training';
+}
+
+/** Short, bodybuilding-shorthand label for the user's goal, matching the
+ * "Cut" / "Bulk"-style copy the reference plan card uses next to the
+ * current month's real phase title. */
+const GOAL_SHORT_LABEL: Record<Goal, string> = {
+  loseFat: 'Cut',
+  gainMuscle: 'Bulk',
+  maintainImprove: 'Mantenimento',
+  gainStrength: 'Forza',
+  improveEndurance: 'Endurance',
+  generalHealth: 'Benessere',
+};
+
+/** Rough estimated session length from real plan data (sets × (rest + an
+ * assumed ~40s working set)) — the plan doesn't track a per-exercise
+ * duration, so this is a derived estimate, not fabricated per-user data. */
+function estimateDurationMinutes(exercises: { sets: number; restSec: number }[]): number {
+  const totalSeconds = exercises.reduce((sum, ex) => sum + ex.sets * (ex.restSec + 40), 0);
+  return Math.round(totalSeconds / 60);
+}
+
 export default function TrainingScreen() {
   const theme = useTheme();
   const trainingPlan = usePlanStore((s) => s.trainingPlan);
@@ -46,18 +82,19 @@ export default function TrainingScreen() {
   const logSet = useTrainingProgressStore((s) => s.logSet);
   const toggleCompleted = useTrainingProgressStore((s) => s.toggleCompleted);
   const bodyEntries = useBodyStore((s) => s.entries);
+  const activityLogEntries = useActivityLogStore((s) => s.entries);
   const addActivityEntry = useActivityLogStore((s) => s.addEntry);
   const [isLogActivityVisible, setLogActivityVisible] = useState(false);
 
-  const [selectedDate, setSelectedDate] = useState(daysAgoISO(0));
-  // Tracks the day currently centered under the wheel while dragging, so the
-  // month/year label can follow the scroll live instead of jumping only once
-  // it settles on `selectedDate`.
-  const [visibleDate, setVisibleDate] = useState(selectedDate);
+  const today = daysAgoISO(0);
+  const [selectedDate, setSelectedDate] = useState(today);
+  const [weekOffset, setWeekOffset] = useState(0);
+
+  const viewedWeekDates = useMemo(() => currentWeekDates(new Date(addDaysISO(today, weekOffset * 7))), [today, weekOffset]);
   const monthYearLabel = useMemo(() => {
-    const label = new Date(visibleDate).toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
+    const label = new Date(viewedWeekDates[3]).toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
     return label.charAt(0).toUpperCase() + label.slice(1);
-  }, [visibleDate]);
+  }, [viewedWeekDates]);
 
   const planStoreHydrated = useStoreHydrated(usePlanStore);
   const onboardingHydrated = useStoreHydrated(useOnboardingStore);
@@ -81,16 +118,9 @@ export default function TrainingScreen() {
 
   const monthIndex = trainingPlan ? currentMonthIndex(trainingPlan) : 1;
   const currentMonth = trainingPlan?.months.find((m) => m.monthIndex === monthIndex);
-  const monthProgress = trainingPlan ? currentMonthProgress(trainingPlan) : null;
+  const weeks = trainingPlan ? currentMonthWeeks(trainingPlan) : [];
   const weeklySplit = currentMonth?.weeklySplit ?? [];
   const selectedDay: TrainingDayPlan | undefined = weeklySplit[mondayIndex(new Date(selectedDate))];
-
-  const dayTypeForDate = (date: string) => weeklySplit[mondayIndex(new Date(date))]?.type;
-
-  const selectedDayHeading =
-    selectedDate === daysAgoISO(0)
-      ? 'Allenamento di oggi'
-      : `Allenamento del ${new Date(selectedDate).toLocaleDateString('it-IT', { day: 'numeric', month: 'long' })}`;
 
   const isDayComplete = (date: string): boolean => {
     const day = weeklySplit[mondayIndex(new Date(date))];
@@ -100,106 +130,138 @@ export default function TrainingScreen() {
     return exercises.every((exercise) => isExerciseCompleted(completedExercises, exercise.id, date));
   };
 
+  // Always the REAL current calendar week, independent of whatever week the
+  // strip below is currently browsing — this ring/progress always answers
+  // "how is this week actually going", not "how did the browsed week go".
+  const realCurrentWeekDates = useMemo(() => currentWeekDates(new Date(today)), [today]);
+  const weekSessionsTotal = weeklySplit.filter((d) => d.type !== 'rest').length;
+  const weekSessionsDone = realCurrentWeekDates.filter((date, i) => {
+    const day = weeklySplit[i];
+    if (!day || day.type === 'rest' || date > today) return false;
+    return day.type === 'workout' ? isDayComplete(date) : activityLogEntries.some((e) => e.date === date);
+  }).length;
+  const weekCompletionFraction = weekSessionsTotal > 0 ? weekSessionsDone / weekSessionsTotal : 0;
+
+  const goToAdjacentWeek = (delta: number) => {
+    const newOffset = weekOffset + delta;
+    const newWeekDates = currentWeekDates(new Date(addDaysISO(today, newOffset * 7)));
+    setWeekOffset(newOffset);
+    setSelectedDate(newWeekDates[mondayIndex(new Date(selectedDate))]);
+  };
+
+  const selectedDayHeading =
+    selectedDate === today ? 'Allenamento di oggi' : `Allenamento del ${new Date(selectedDate).toLocaleDateString('it-IT', { day: 'numeric', month: 'long' })}`;
+
   return (
     <ScreenScroll>
-      <ScreenHeader eyebrow="Il tuo programma" title="Training" />
+      <View style={styles.headerRow}>
+        <Image source={require('@/assets/images/logo-wordmark.png')} style={styles.logo} resizeMode="contain" />
+        <Pressable onPress={() => router.push('/profile')} hitSlop={8} style={[styles.avatar, { backgroundColor: theme.backgroundElevated }]}>
+          <Icon name="profile" size={22} color={theme.text} />
+        </Pressable>
+      </View>
+      <View style={{ gap: 4 }}>
+        <ThemedText type="display">Training</ThemedText>
+        <ThemedText type="default" themeColor="textSecondary">
+          Il tuo percorso, un obiettivo alla volta.
+        </ThemedText>
+      </View>
 
       {!trainingPlan ? (
-        <GlassSurface level="card" radius={Radius.large} style={{ padding: Spacing.four, gap: Spacing.two }}>
+        <FlatCard radius={Radius.large} style={{ padding: Spacing.four, gap: Spacing.two }}>
           <ThemedText type="smallBold">Nessun programma generato</ThemedText>
           <ThemedText type="caption" themeColor="textSecondary">
             Rifai il questionario scegliendo sala pesi o corsa tra le attività per generarne uno.
           </ThemedText>
-        </GlassSurface>
+        </FlatCard>
       ) : (
         <>
-          <GlassSurface level="card" radius={Radius.large} style={{ padding: Spacing.five, gap: Spacing.four }}>
-            <View style={{ gap: 2 }}>
-              <ThemedText type="subtitle">Piano di allenamento di {currentUser.name}</ThemedText>
-              <ThemedText type="caption" themeColor="textSecondary">
-                Durata piano totale: {trainingPlan.durationMonths} mesi
-              </ThemedText>
-            </View>
+          <FlatCard radius={Radius.large} style={{ padding: Spacing.four, gap: Spacing.four }}>
+            <Pressable onPress={() => router.push('/training-plan')} style={styles.planHeaderRow}>
+              <View style={[styles.planIcon, { backgroundColor: theme.accentSoft }]}>
+                <Icon name="calendar" size={18} color={theme.accent} />
+              </View>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <ThemedText type="smallBold" numberOfLines={1}>
+                  Piano di allenamento di {currentUser.name}
+                </ThemedText>
+                {currentMonth ? (
+                  <ThemedText type="caption" themeColor="textSecondary" numberOfLines={2}>
+                    {weeks.length} settimane • {GOAL_SHORT_LABEL[currentUser.goal]} → {currentMonth.title}
+                  </ThemedText>
+                ) : null}
+              </View>
+              <Icon name="chevronRight" size={18} color={theme.textTertiary} />
+            </Pressable>
 
-            <PlanTimeline
-              totalMonths={trainingPlan.durationMonths}
-              currentMonth={monthIndex}
-              selectedMonth={monthIndex}
-              onSelectMonth={() => router.push('/training-plan')}
-            />
+            <WeekTimeline weeks={weeks} />
 
-            {currentMonth && monthProgress ? (
-              <View style={{ gap: Spacing.two }}>
-                <ThemedText type="smallBold">{currentMonth.title}</ThemedText>
-                <MonthProgressBar fraction={monthProgress.fraction} />
+            <View style={styles.completionRow}>
+              <ProgressRing size={48} strokeWidth={5} progress={weekCompletionFraction} color={theme.accent} trackColor={theme.backgroundElement}>
+                <ThemedText type="caption" style={{ fontWeight: '800', color: theme.accent }}>
+                  {Math.round(weekCompletionFraction * 100)}%
+                </ThemedText>
+              </ProgressRing>
+              <View style={{ flex: 1, gap: 6 }}>
                 <ThemedText type="caption" themeColor="textSecondary">
-                  Giorno {monthProgress.dayInMonth} di 30
+                  Completamento settimana
+                </ThemedText>
+                <MonthProgressBar fraction={weekCompletionFraction} />
+                <ThemedText type="caption" themeColor="textSecondary">
+                  {weekSessionsDone}/{weekSessionsTotal} allenamenti
                 </ThemedText>
               </View>
-            ) : null}
-
-            <PrimaryButton
-              variant="ghost"
-              label="Mostra piano"
-              icon="chevronRight"
-              onPress={() => router.push('/training-plan')}
-            />
-          </GlassSurface>
+            </View>
+            <PrimaryButton label="Mostra piano" icon="calendar" onPress={() => router.push('/training-plan')} />
+          </FlatCard>
 
           <View style={{ gap: Spacing.three }}>
             <SectionHeader title="Calendario" />
-            <ThemedText type="smallBold" style={styles.monthYearLabel}>
-              {monthYearLabel}
-            </ThemedText>
-            <DayWheel
+            <WeekDayStrip
+              weekDates={viewedWeekDates}
               selectedDate={selectedDate}
-              dayTypeForDate={dayTypeForDate}
-              onSelect={setSelectedDate}
-              onCenterChange={setVisibleDate}
+              onSelectDate={setSelectedDate}
               isDayComplete={isDayComplete}
+              monthYearLabel={monthYearLabel}
+              onPrevWeek={() => goToAdjacentWeek(-1)}
+              onNextWeek={() => goToAdjacentWeek(1)}
             />
           </View>
 
-          <PrimaryButton
-            variant="outline"
-            label="Aggiungi allenamento non programmato"
-            icon="addCircle"
-            onPress={() => setLogActivityVisible(true)}
-          />
+          <PrimaryButton label="Aggiungi allenamento" icon="plus" onPress={() => setLogActivityVisible(true)} />
 
-          <ThemedText type="subtitle">{selectedDayHeading}</ThemedText>
+          <ThemedText style={styles.dayHeading}>{selectedDayHeading}</ThemedText>
 
           {selectedDay?.type === 'workout' ? (
-            <View>
-              <SectionHeader
+            <View style={{ gap: Spacing.three }}>
+              <SplitSummaryCard
+                icon={splitIconFor(selectedDay.title)}
                 title={selectedDay.title}
-                icon="trendUp"
-                iconLabel="Carichi"
-                onIconPress={() => router.push('/training-progress')}
+                durationMinutes={estimateDurationMinutes(selectedDay.exercises ?? [])}
+                completedCount={(selectedDay.exercises ?? []).filter((ex) => isExerciseCompleted(completedExercises, ex.id, selectedDate)).length}
+                totalCount={(selectedDay.exercises ?? []).length}
               />
-              <View style={{ gap: Spacing.three }}>
-                {(selectedDay.exercises ?? []).map((exercise) => {
-                  const setsToday = setsForExerciseOnDate(progressSets, exercise.id, selectedDate);
-                  const loggedTodayKg = setsToday.length ? Math.max(...setsToday.map((s) => s.weightKg)) : null;
-                  const progression = suggestedNextLoadForExercise(progressSets, exercise.id, exercise.reps, exercise.suggestedKg);
-                  return (
-                    <PlanExerciseRow
-                      key={exercise.id}
-                      exercise={exercise}
-                      history={historyForExercise(progressSets, exercise.id)}
-                      latestWeightKg={latestWeightForExercise(progressSets, exercise.id)}
-                      loggedTodayKg={loggedTodayKg}
-                      completed={isExerciseCompleted(completedExercises, exercise.id, selectedDate)}
-                      onToggleCompleted={() => toggleCompleted(exercise.id, selectedDate)}
-                      onAddLoad={(reps, weightKg, rir) => logSet(exercise.id, exercise.name, reps, weightKg, selectedDate, rir)}
-                      progressionNote={progression.note}
-                    />
-                  );
-                })}
-              </View>
+              {(selectedDay.exercises ?? []).map((exercise) => {
+                const setsToday = setsForExerciseOnDate(progressSets, exercise.id, selectedDate);
+                const loggedTodayKg = setsToday.length ? Math.max(...setsToday.map((s) => s.weightKg)) : null;
+                const progression = suggestedNextLoadForExercise(progressSets, exercise.id, exercise.reps, exercise.suggestedKg);
+                return (
+                  <PlanExerciseRow
+                    key={exercise.id}
+                    exercise={exercise}
+                    history={historyForExercise(progressSets, exercise.id)}
+                    latestWeightKg={latestWeightForExercise(progressSets, exercise.id)}
+                    loggedTodayKg={loggedTodayKg}
+                    completed={isExerciseCompleted(completedExercises, exercise.id, selectedDate)}
+                    onToggleCompleted={() => toggleCompleted(exercise.id, selectedDate)}
+                    onAddLoad={(reps, weightKg, rir) => logSet(exercise.id, exercise.name, reps, weightKg, selectedDate, rir)}
+                    progressionNote={progression.note}
+                  />
+                );
+              })}
             </View>
           ) : selectedDay?.type === 'cardio' ? (
-            <GlassSurface level="card" radius={Radius.large} style={styles.dayCard}>
+            <FlatCard radius={Radius.large} style={styles.dayCard}>
               <View style={[styles.dayIcon, { backgroundColor: theme.accentSoft }]}>
                 <Icon name="running" size={26} color={theme.accent} />
               </View>
@@ -207,9 +269,9 @@ export default function TrainingScreen() {
               <ThemedText type="caption" themeColor="textSecondary">
                 {selectedDay.note}
               </ThemedText>
-            </GlassSurface>
+            </FlatCard>
           ) : (
-            <GlassSurface level="card" radius={Radius.large} style={styles.dayCard}>
+            <FlatCard radius={Radius.large} style={styles.dayCard}>
               <View style={[styles.dayIcon, { backgroundColor: theme.backgroundElement }]}>
                 <Icon name="moon" size={26} color={theme.textSecondary} />
               </View>
@@ -217,7 +279,7 @@ export default function TrainingScreen() {
               <ThemedText type="caption" themeColor="textSecondary" style={{ textAlign: 'center' }}>
                 Il recupero fa parte del piano: dormi bene e resta idratato.
               </ThemedText>
-            </GlassSurface>
+            </FlatCard>
           )}
         </>
       )}
@@ -233,8 +295,44 @@ export default function TrainingScreen() {
 }
 
 const styles = StyleSheet.create({
-  monthYearLabel: {
-    textAlign: 'center',
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  logo: {
+    width: 110,
+    height: 27,
+  },
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: Radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  planHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  planIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: Radius.medium,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  completionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+  },
+  dayHeading: {
+    fontSize: 17,
+    lineHeight: 22,
+    fontWeight: '800',
+    letterSpacing: -0.2,
   },
   dayCard: {
     alignItems: 'center',

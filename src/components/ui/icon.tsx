@@ -73,6 +73,12 @@ const ICONS = {
   trophy: { set: 'ion', name: 'trophy' },
   bulb: { set: 'ion', name: 'bulb' },
   armFlex: { set: 'mci', name: 'arm-flex' },
+  keyOutline: { set: 'mci', name: 'key-outline' },
+  clockOutline: { set: 'mci', name: 'clock-outline' },
+  hourglass: { set: 'mci', name: 'timer-sand' },
+  weightKg: { set: 'mci', name: 'weight-kilogram' },
+  repsHash: { set: 'mci', name: 'pound' },
+  crossedArrows: { set: 'mci', name: 'arrow-decision-outline' },
 } as const satisfies Record<string, { set: 'mci' | 'ion'; name: MCIName | IonName }>;
 
 export type IconName = keyof typeof ICONS;

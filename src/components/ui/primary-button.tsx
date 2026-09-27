@@ -13,6 +13,8 @@ export type PrimaryButtonProps = {
   icon?: IconName;
   style?: StyleProp<ViewStyle>;
   disabled?: boolean;
+  /** Tighter padding + smaller label, for narrow contexts (e.g. a half-width card) where the default size would wrap. */
+  dense?: boolean;
 };
 
 export function PrimaryButton({
@@ -22,6 +24,7 @@ export function PrimaryButton({
   icon,
   style,
   disabled,
+  dense,
 }: PrimaryButtonProps) {
   const theme = useTheme();
   const pressed = useSharedValue(0);
@@ -44,6 +47,7 @@ export function PrimaryButton({
         onPress={onPress}
         style={[
           styles.base,
+          dense && styles.baseDense,
           {
             backgroundColor: background,
             borderWidth: variant === 'outline' ? 1.5 : 0,
@@ -51,7 +55,7 @@ export function PrimaryButton({
           },
         ]}>
         {icon ? <Icon name={icon} size={18} color={textColor} /> : null}
-        <ThemedText type="smallBold" style={{ color: textColor }}>
+        <ThemedText type="smallBold" numberOfLines={1} style={[dense && styles.labelDense, { color: textColor }]}>
           {label}
         </ThemedText>
       </Pressable>
@@ -68,5 +72,13 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.three,
     paddingHorizontal: Spacing.four,
     borderRadius: Radius.pill,
+  },
+  baseDense: {
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.one,
+  },
+  labelDense: {
+    fontSize: 9,
+    lineHeight: 12,
   },
 });

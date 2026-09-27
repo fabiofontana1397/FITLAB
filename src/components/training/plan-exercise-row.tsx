@@ -4,25 +4,15 @@ import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring, w
 
 import { ExerciseInfoModal } from '@/components/training/exercise-info-modal';
 import { NewLoadModal } from '@/components/training/new-load-modal';
-import { GlassSurface } from '@/components/glass/glass-surface';
+import { FlatCard } from '@/components/ui/flat-card';
 import { ThemedText } from '@/components/themed-text';
-import { Icon } from '@/components/ui/icon';
+import { Icon, type IconName } from '@/components/ui/icon';
 import { TrendChart } from '@/components/ui/trend-chart';
 import { SpringSnappy } from '@/constants/motion';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { getExerciseMedia } from '@/lib/exercise-media/exercise-media';
 import type { TrainingExerciseEntry } from '@/lib/planning/types';
-
-const TEMPO_PHASE_LABELS = ['negativa', 'isometria', 'spinta'];
-
-/** "3-0-1" -> "3s negativa · 0s isometria · 1s spinta" — the standard
- * eccentric/isometric/concentric cadence notation used in the plan. */
-function describeTempo(tempo: string): string | null {
-  const parts = tempo.split('-');
-  if (parts.length !== 3) return null;
-  return parts.map((seconds, i) => `${seconds}s ${TEMPO_PHASE_LABELS[i]}`).join(' · ');
-}
 
 export type PlanExerciseRowProps = {
   exercise: TrainingExerciseEntry;
@@ -58,10 +48,13 @@ export function PlanExerciseRow({
   const isFirstTime = latestWeightKg == null;
   const referenceKg = latestWeightKg ?? exercise.suggestedKg;
   const restLabel = exercise.restSec < 60 ? `${exercise.restSec}s` : `${Math.round(exercise.restSec / 60)} min`;
-  const tempoDescription = describeTempo(exercise.tempo);
+
+  const recentHistory = history.slice(-4);
+  const recentDeltaKg =
+    recentHistory.length >= 2 ? recentHistory[recentHistory.length - 1].weightKg - recentHistory[0].weightKg : null;
 
   return (
-    <GlassSurface level="card" radius={Radius.large} style={[styles.card, completed ? { opacity: 0.72 } : undefined]}>
+    <FlatCard radius={Radius.large} style={[styles.card, completed ? { opacity: 0.72 } : undefined]}>
       <View style={styles.header}>
         <CompletionToggle completed={completed} onToggle={onToggleCompleted} />
 
@@ -85,51 +78,53 @@ export function PlanExerciseRow({
         </Pressable>
       </View>
 
-      <View style={styles.splitRow}>
-        <View style={styles.leftCol}>
-          <View style={[styles.targetChip, { backgroundColor: theme.backgroundElement }]}>
-            <ThemedText type="subtitle">
+      <View style={styles.statsRow}>
+        <View style={styles.statColChip}>
+          <View style={[styles.repsChip, { backgroundColor: theme.backgroundElement }]}>
+            <Icon name="repsHash" size={13} color={theme.textSecondary} />
+            <ThemedText type="smallBold">
               {exercise.sets}×{exercise.reps}
             </ThemedText>
           </View>
-          {!isBodyweight && referenceKg != null ? (
-            <ThemedText type="smallBold">
-              {isFirstTime ? 'Consigliato' : 'Ultimo carico'} {referenceKg}kg
-            </ThemedText>
-          ) : null}
-          {progressionNote ? (
-            <ThemedText type="caption" themeColor="textSecondary" style={styles.progressionNote}>
-              {progressionNote}
-            </ThemedText>
-          ) : null}
           <ThemedText type="caption" themeColor="textSecondary">
-            Recupero {restLabel}
+            Serie x Rip
           </ThemedText>
-          {tempoDescription ? (
-            <View style={styles.tempoBlock}>
-              <ThemedText type="label" themeColor="textSecondary">
-                Tempo {exercise.tempo}
-              </ThemedText>
-              <ThemedText type="caption" themeColor="textTertiary">
-                {tempoDescription}
-              </ThemedText>
-            </View>
-          ) : null}
         </View>
 
-        <View style={styles.rightCol}>
-          {history.length >= 2 ? (
-            <TrendChart data={history.map((h) => h.weightKg)} width={128} height={44} color={theme.accent} />
+        {!isBodyweight && referenceKg != null ? (
+          <StatCol icon="weightKg" label={isFirstTime ? 'Consigliato' : 'Ultimo carico'} value={`${referenceKg} kg`} />
+        ) : null}
+        <StatCol icon="clockOutline" label="Recupero" value={restLabel} />
+        <StatCol icon="hourglass" label="Tempo" value={exercise.tempo} />
+      </View>
+
+      <View style={styles.progressionRow}>
+        {recentHistory.length >= 2 ? (
+          <TrendChart data={recentHistory.map((h) => h.weightKg)} width={72} height={36} color={theme.accent} />
+        ) : (
+          <View style={styles.chartPlaceholder} />
+        )}
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <ThemedText type="caption" themeColor="textSecondary">
+            Progressione carichi
+          </ThemedText>
+          {recentDeltaKg != null ? (
+            <ThemedText type="smallBold" style={{ color: recentDeltaKg >= 0 ? theme.success : theme.danger }}>
+              {recentDeltaKg > 0 ? '+' : ''}
+              {recentDeltaKg} kg
+            </ThemedText>
           ) : (
-            <ThemedText type="caption" themeColor="textTertiary" style={styles.chartHint}>
-              {isBodyweight
-                ? 'Aggiungi un carico se appesantisci l’esercizio.'
-                : 'Aggiungi un carico per iniziare a monitorare i progressi.'}
+            <ThemedText type="caption" themeColor="textTertiary">
+              {isBodyweight ? 'Aggiungi un carico se appesantisci l’esercizio.' : 'Aggiungi un carico per iniziare a monitorare i progressi.'}
             </ThemedText>
           )}
-          {loggedTodayKg != null ? (
-            <ThemedText type="caption" themeColor="textSecondary">
-              Aggiornato oggi: {loggedTodayKg}kg
+          {progressionNote ? (
+            <ThemedText type="caption" themeColor="textTertiary" numberOfLines={1}>
+              {progressionNote}
+            </ThemedText>
+          ) : recentDeltaKg != null ? (
+            <ThemedText type="caption" themeColor="textTertiary">
+              ultime 4 settimane
             </ThemedText>
           ) : null}
         </View>
@@ -138,11 +133,17 @@ export function PlanExerciseRow({
       <Pressable
         onPress={() => setLoadModalOpen(true)}
         style={[styles.newLoadButton, { backgroundColor: theme.accent }]}>
-        <Icon name="addCircle" size={13} color={theme.onAccent} />
-        <ThemedText type="caption" style={{ color: theme.onAccent, fontWeight: '700' }}>
+        <Icon name="addCircle" size={15} color={theme.onAccent} />
+        <ThemedText type="smallBold" style={{ color: theme.onAccent }}>
           Nuovo carico
         </ThemedText>
       </Pressable>
+
+      {loggedTodayKg != null ? (
+        <ThemedText type="caption" themeColor="textSecondary" style={{ textAlign: 'center' }}>
+          Aggiornato oggi: {loggedTodayKg}kg
+        </ThemedText>
+      ) : null}
 
       <ExerciseInfoModal
         visible={infoOpen}
@@ -159,7 +160,22 @@ export function PlanExerciseRow({
         onClose={() => setLoadModalOpen(false)}
         onSave={onAddLoad}
       />
-    </GlassSurface>
+    </FlatCard>
+  );
+}
+
+function StatCol({ icon, label, value }: { icon: IconName; label: string; value: string }) {
+  const theme = useTheme();
+  return (
+    <View style={styles.statCol}>
+      <Icon name={icon} size={15} color={theme.textSecondary} />
+      <ThemedText type="caption" themeColor="textSecondary" numberOfLines={1}>
+        {label}
+      </ThemedText>
+      <ThemedText type="smallBold" numberOfLines={1}>
+        {value}
+      </ThemedText>
+    </View>
   );
 }
 
@@ -224,52 +240,41 @@ const styles = StyleSheet.create({
   iconButton: {
     padding: 4,
   },
-  splitRow: {
+  statsRow: {
     flexDirection: 'row',
-    gap: Spacing.three,
+    justifyContent: 'space-between',
   },
-  leftCol: {
-    flex: 1,
-    gap: 6,
-    alignItems: 'flex-start',
-    // Anchor to the bottom like rightCol below, so whichever column has
-    // less content (e.g. a bodyweight exercise with no carico/tempo lines)
-    // doesn't leave empty space above the row's bottom edge.
-    justifyContent: 'flex-end',
+  statColChip: {
+    alignItems: 'center',
+    gap: 4,
   },
-  targetChip: {
-    paddingHorizontal: Spacing.three,
+  repsChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: Spacing.two,
     paddingVertical: 6,
     borderRadius: Radius.small,
   },
-  tempoBlock: {
-    marginTop: 4,
+  statCol: {
+    alignItems: 'center',
     gap: 2,
   },
-  progressionNote: {
-    maxWidth: 160,
-  },
-  rightCol: {
-    width: 132,
+  progressionRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    // The left column (target/load/recupero/tempo) is usually taller than
-    // this one's chart+hint, which otherwise left them stranded near the
-    // top with empty space below — anchor to the bottom so they sit level
-    // with the "Nuovo carico" button right underneath instead.
-    justifyContent: 'flex-end',
-    gap: 6,
+    gap: Spacing.three,
   },
-  chartHint: {
-    textAlign: 'center',
+  chartPlaceholder: {
+    width: 72,
+    height: 36,
   },
   newLoadButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    alignSelf: 'flex-end',
-    gap: 4,
-    paddingHorizontal: Spacing.two,
-    paddingVertical: 6,
+    gap: 6,
+    paddingVertical: Spacing.two,
     borderRadius: Radius.pill,
   },
 });
