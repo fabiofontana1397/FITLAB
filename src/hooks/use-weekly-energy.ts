@@ -115,10 +115,10 @@ export function useWeeklyEnergy(referenceDate?: string): {
       const completionFraction = dayPlan?.type === 'workout' && exercises.length > 0 ? completed / exercises.length : 0;
 
       const dayTotals = sumMacros(nutritionEntries.filter((e) => e.date === date));
-      const dayDietProgress = calorieTarget > 0 ? Math.min(dayTotals.kcal / calorieTarget, 1) : 0;
+      const dayDietProgress = calorieTarget > 0 ? dayTotals.kcal / calorieTarget : 0;
 
       const stepsEntry = stepsHistory.find((s) => s.date === date);
-      const dayStepsProgress = stepsEntry ? Math.min(stepsEntry.steps / dailyStepsTarget, 1) : 0;
+      const dayStepsProgress = stepsEntry ? stepsEntry.steps / dailyStepsTarget : 0;
 
       const estimatedExpenditureKcal = estimateDailyEnergyExpenditure({
         sex: currentUser.sex,

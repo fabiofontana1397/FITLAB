@@ -208,7 +208,7 @@ export default function NutritionScreen() {
               <View style={styles.macroRingsRow}>
                 {macroRings.map((macro) => {
                   const value = totals[macro.key];
-                  const progress = Math.min(value / macro.target, 1);
+                  const progress = value / macro.target;
                   return (
                     <View key={macro.key} style={styles.macroRingCol}>
                       <ProgressRing size={56} strokeWidth={6} progress={progress} color={macro.color} trackColor={theme.backgroundElement}>
