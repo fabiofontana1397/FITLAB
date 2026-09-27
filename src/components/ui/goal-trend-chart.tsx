@@ -6,8 +6,9 @@ import { formatDayRange } from '@/lib/mock/dates';
 
 /** One axis slot (a day/week/month depending on the selected range).
  * `value` is null when nothing was logged for that slot — the slot still
- * gets its gridline/label, it just has no dot and isn't connected into the
- * trend line across the gap. `date` is that slot's real calendar date (the
+ * gets its gridline/label and no dot, but the trend line still runs
+ * straight through it to connect the nearest real points on either side,
+ * rather than breaking. `date` is that slot's real calendar date (the
  * 1st of the month for "anno" slots) — used only to build the "1-30
  * settembre" style period caption, never for x positioning. */
 export type WeightPoint = { xLabel: string; value: number | null; date: string };
@@ -43,25 +44,17 @@ const PERIOD_LABEL_HEIGHT = 20;
 
 type XY = { x: number; y: number; value: number };
 
+/** One continuous line/fill through every real (non-null) point, in order —
+ * gaps where nothing was logged are skipped rather than breaking the line,
+ * so e.g. a Monday and the following Friday's weigh-ins connect straight
+ * through the missing Tue-Thu instead of leaving a visual gap. */
 function buildSegments(xy: (XY | null)[], height: number) {
-  const segments: { path: string; area: string }[] = [];
-  let run: XY[] = [];
+  const run = xy.filter((p): p is XY => p != null);
+  if (run.length === 0) return [];
 
-  const flush = () => {
-    if (run.length === 0) return;
-    const path = run.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(2)} ${p.y.toFixed(2)}`).join(' ');
-    const area = run.length > 1 ? `${path} L ${run[run.length - 1].x.toFixed(2)} ${height} L ${run[0].x.toFixed(2)} ${height} Z` : '';
-    segments.push({ path, area });
-    run = [];
-  };
-
-  for (const pt of xy) {
-    if (pt) run.push(pt);
-    else flush();
-  }
-  flush();
-
-  return segments;
+  const path = run.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(2)} ${p.y.toFixed(2)}`).join(' ');
+  const area = run.length > 1 ? `${path} L ${run[run.length - 1].x.toFixed(2)} ${height} L ${run[0].x.toFixed(2)} ${height} Z` : '';
+  return [{ path, area }];
 }
 
 function buildChart(points: WeightPoint[], target: number, plotWidth: number, height: number) {

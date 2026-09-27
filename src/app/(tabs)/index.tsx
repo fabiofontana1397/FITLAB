@@ -74,13 +74,6 @@ function formatSignedKg(n: number): string {
   return `${sign}${isWhole ? Math.round(abs) : formatWeightKg(abs)}`;
 }
 
-function formatTodayHeading(iso: string): string {
-  const d = new Date(iso);
-  const weekday = capitalize(d.toLocaleDateString('it-IT', { weekday: 'short' }).replace('.', ''));
-  const month = capitalize(d.toLocaleDateString('it-IT', { month: 'short' }).replace('.', ''));
-  return `${weekday} ${d.getDate()} ${month}`;
-}
-
 function capitalize(s: string): string {
   return s.length > 0 ? s.charAt(0).toUpperCase() + s.slice(1) : s;
 }
@@ -345,12 +338,7 @@ export default function HomeScreen() {
       <View style={{ gap: Spacing.three }}>
         <Pressable style={styles.todayHeaderRow} onPress={() => router.push('/nutrition')}>
           <ThemedText style={styles.todayHeaderTitle}>Oggi</ThemedText>
-          <View style={styles.todayHeaderRight}>
-            <ThemedText type="caption" themeColor="textSecondary">
-              {formatTodayHeading(today)}
-            </ThemedText>
-            <Icon name="chevronRight" size={16} color={theme.textTertiary} />
-          </View>
+          <Icon name="chevronRight" size={16} color={theme.textTertiary} />
         </Pressable>
         <View style={styles.todayCardsRow}>
           <DietTodayCard
@@ -751,7 +739,7 @@ function DietTodayCard({
         </View>
         <View style={styles.macroRowsGroup}>
           <MacroRow
-            icon="foodTurkey"
+            icon="protein"
             color={theme.accent}
             label="Proteine"
             value={`${Math.round(totals.protein)}/${Math.round(macroTargets.protein)} g`}
@@ -1204,11 +1192,6 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     fontWeight: '800',
     letterSpacing: -0.2,
-  },
-  todayHeaderRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
   },
   todayCardsRow: {
     flexDirection: 'row',
