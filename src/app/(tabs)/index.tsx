@@ -8,6 +8,7 @@ import { FlatCard } from '@/components/ui/flat-card';
 import { InsightCard } from '@/components/ui/insight-card';
 import { PrimaryButton } from '@/components/ui/primary-button';
 import { ProgressRing } from '@/components/ui/progress-ring';
+import { TrendChart } from '@/components/ui/trend-chart';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
@@ -289,6 +290,7 @@ export default function HomeScreen() {
   const weekAgoDate = daysAgoISO(7);
   const weekAgoWeight = [...bodyEntries].filter((e) => e.date <= weekAgoDate).sort((a, b) => b.date.localeCompare(a.date))[0];
   const weightTrendKg = weekAgoWeight ? latestBody.weightKg - weekAgoWeight.weightKg : undefined;
+  const weightSparkline = [...bodyEntries].sort((a, b) => a.date.localeCompare(b.date)).slice(-10).map((e) => e.weightKg);
   const topInsight = insights[0];
 
   const [selectedDay, setSelectedDay] = useState<WeeklyGoalDay | null>(null);
@@ -384,6 +386,7 @@ export default function HomeScreen() {
             deltaKg={weightTrendKg}
             deltaGoodDirection={currentUser.goal === 'gainMuscle' || currentUser.goal === 'gainStrength' ? 'up' : 'down'}
             caption="rispetto a settimana scorsa"
+            sparkline={weightSparkline}
             onPress={() => router.push('/progress')}
           />
           <MiniStatCard
@@ -393,7 +396,7 @@ export default function HomeScreen() {
             value={topLift ? String(topLift.history[topLift.history.length - 1].weightKg) : '—'}
             unit={topLift ? 'kg' : undefined}
             deltaKg={topLiftDeltaKg}
-            showBarGlyph={!!topLift}
+            sparkline={topLift ? topLift.history.slice(-10).map((h) => h.weightKg) : undefined}
             onPress={() => router.push('/training-progress')}
           />
         </View>
@@ -687,12 +690,25 @@ function TodayCardHeader({ icon, tint, title, valueLine, onOpen }: { icon: IconN
   );
 }
 
-function MacroRow({ icon, color, label, value }: { icon: IconName; color: string; label: string; value: string }) {
+function MacroRow({
+  icon,
+  color,
+  label,
+  value,
+  progress,
+}: {
+  icon: IconName;
+  color: string;
+  label: string;
+  value: string;
+  progress: number;
+}) {
+  const theme = useTheme();
   return (
     <View style={styles.macroRow}>
-      <View style={[styles.macroRowIcon, { backgroundColor: color + '26' }]}>
+      <ProgressRing size={32} strokeWidth={3} progress={progress} color={color} trackColor={theme.backgroundElement}>
         <Icon name={icon} size={13} color={color} />
-      </View>
+      </ProgressRing>
       <View style={{ flex: 1 }}>
         <ThemedText type="caption" themeColor="textSecondary">
           {label}
@@ -732,9 +748,27 @@ function DietTodayCard({
         <View style={[styles.todayStatFill, { width: `${Math.round(clamp01(progress) * 100)}%`, backgroundColor: theme.success }]} />
       </View>
       <View style={styles.macroRowsGroup}>
-        <MacroRow icon="keyOutline" color="#C026D3" label="Proteine" value={`${Math.round(totals.protein)}/${Math.round(macroTargets.protein)} g`} />
-        <MacroRow icon="carbs" color={theme.success} label="Carbo" value={`${Math.round(totals.carbs)}/${Math.round(macroTargets.carbs)} g`} />
-        <MacroRow icon="fats" color={theme.calorieSurplus} label="Grassi" value={`${Math.round(totals.fats)}/${Math.round(macroTargets.fats)} g`} />
+        <MacroRow
+          icon="protein"
+          color="#C026D3"
+          label="Proteine"
+          value={`${Math.round(totals.protein)}/${Math.round(macroTargets.protein)} g`}
+          progress={macroTargets.protein > 0 ? totals.protein / macroTargets.protein : 0}
+        />
+        <MacroRow
+          icon="carbsBread"
+          color={theme.success}
+          label="Carbo"
+          value={`${Math.round(totals.carbs)}/${Math.round(macroTargets.carbs)} g`}
+          progress={macroTargets.carbs > 0 ? totals.carbs / macroTargets.carbs : 0}
+        />
+        <MacroRow
+          icon="oilDrop"
+          color={theme.calorieSurplus}
+          label="Grassi"
+          value={`${Math.round(totals.fats)}/${Math.round(macroTargets.fats)} g`}
+          progress={macroTargets.fats > 0 ? totals.fats / macroTargets.fats : 0}
+        />
       </View>
       <PrimaryButton label="Aggiungi pasto +" onPress={onAddMeal} dense style={styles.todayCardButton} />
     </FlatCard>
@@ -901,9 +935,8 @@ function InsightsModal({
 /** Flat counterpart to StatTile for the Home hero mini-row — same data
  * shape, but a solid card matching the reference mockup: a tinted icon
  * badge + label + chevron header, an optional sub-label (e.g. an exercise
- * name), a big value, a colored kg-delta trend row, and either a trailing
- * caption (weight card) or a small decorative bar-chart glyph (strength
- * card) — never both. */
+ * name), a big value, a colored kg-delta trend row, a real history
+ * sparkline, and an optional trailing caption (weight card only). */
 function MiniStatCard({
   icon,
   label,
@@ -913,7 +946,7 @@ function MiniStatCard({
   deltaKg,
   deltaGoodDirection = 'up',
   caption,
-  showBarGlyph,
+  sparkline,
   onPress,
 }: {
   icon: IconName;
@@ -924,7 +957,7 @@ function MiniStatCard({
   deltaKg?: number;
   deltaGoodDirection?: 'up' | 'down';
   caption?: string;
-  showBarGlyph?: boolean;
+  sparkline?: number[];
   onPress?: () => void;
 }) {
   const theme = useTheme();
@@ -956,21 +989,16 @@ function MiniStatCard({
           {unit ? <ThemedText type="title">{` ${unit}`}</ThemedText> : null}
         </View>
         {deltaKg != null ? (
-          <View style={styles.miniStatTrendRow}>
-            <View style={styles.miniStatTrendLeft}>
-              <Icon name={deltaPositive ? 'trendUp' : 'trendDown'} size={12} color={deltaColor} />
-              <ThemedText type="caption" style={{ color: deltaColor }}>
-                {formatSignedKg(deltaKg)} kg
-              </ThemedText>
-            </View>
-            {showBarGlyph ? (
-              <View style={styles.miniStatBarGlyph}>
-                <View style={[styles.miniStatBar, { height: 8, backgroundColor: theme.success }]} />
-                <View style={[styles.miniStatBar, { height: 13, backgroundColor: theme.success }]} />
-                <View style={[styles.miniStatBar, { height: 18, backgroundColor: theme.success }]} />
-                <View style={[styles.miniStatBar, { height: 10, backgroundColor: theme.backgroundElement }]} />
-              </View>
-            ) : null}
+          <View style={styles.miniStatTrendLeft}>
+            <Icon name={deltaPositive ? 'trendUp' : 'trendDown'} size={12} color={deltaColor} />
+            <ThemedText type="caption" style={{ color: deltaColor }}>
+              {formatSignedKg(deltaKg)} kg
+            </ThemedText>
+          </View>
+        ) : null}
+        {sparkline && sparkline.length >= 2 ? (
+          <View style={styles.miniStatChart}>
+            <TrendChart data={sparkline} width={110} height={32} color={deltaColor} />
           </View>
         ) : null}
         {caption ? (
@@ -1226,13 +1254,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.two,
   },
-  macroRowIcon: {
-    width: 24,
-    height: 24,
-    borderRadius: Radius.small,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   macroRowValue: {
     fontSize: 12,
     lineHeight: 16,
@@ -1398,23 +1419,13 @@ const styles = StyleSheet.create({
     alignItems: 'baseline',
     gap: 4,
   },
-  miniStatTrendRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
   miniStatTrendLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
   },
-  miniStatBarGlyph: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 2,
-  },
-  miniStatBar: {
-    width: 3,
-    borderRadius: 1.5,
+  miniStatChart: {
+    marginTop: 2,
+    alignSelf: 'stretch',
   },
 });
