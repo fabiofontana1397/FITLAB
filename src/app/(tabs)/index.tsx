@@ -1,7 +1,17 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Image, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withRepeat,
+  withSequence,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 
 import { GlassSurface } from '@/components/glass/glass-surface';
 import { FlatCard } from '@/components/ui/flat-card';
@@ -13,6 +23,7 @@ import { Icon, type IconName } from '@/components/ui/icon';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
+import { SpringSnappy, TimingQuick } from '@/constants/motion';
 import { useTheme } from '@/hooks/use-theme';
 import { useWeeklyEnergy } from '@/hooks/use-weekly-energy';
 import { latestSnapshot } from '@/lib/mock/body';
@@ -62,6 +73,14 @@ function formatSignedKcal(n: number): string {
 /** Italian comma-decimal weight, e.g. 78.7 -> "78,7". */
 function formatWeightKg(n: number): string {
   return n.toFixed(1).replace('.', ',');
+}
+
+/** Appends an alpha channel to a "#rrggbb" color (RN supports 8-digit hex).
+ * Returns the input unchanged for any other format, so a caller can pass a
+ * theme token without knowing whether it happens to be hex or rgba(). */
+function withAlpha(hex: string, alpha: number): string {
+  if (!/^#([0-9a-f]{6})$/i.test(hex)) return hex;
+  return `${hex}${Math.round(clamp01(alpha) * 255).toString(16).padStart(2, '0')}`;
 }
 
 /** "-0,3" / "+5" — signed kg delta with an Italian decimal comma, dropping
@@ -540,11 +559,71 @@ function WeeklyGoalCard({
   );
 }
 
+/** A soft colored blob behind the trophy that continuously breathes
+ * (scale + fade), so the icon area never reads as static chrome even
+ * before the day's goal is actually met. */
+function PulsingGlow({ color }: { color: string }) {
+  const pulse = useSharedValue(0);
+  useEffect(() => {
+    pulse.value = withRepeat(withTiming(1, { duration: 1400, easing: Easing.inOut(Easing.ease) }), -1, true);
+  }, [pulse]);
+  const style = useAnimatedStyle(() => ({
+    opacity: 0.5 - pulse.value * 0.3,
+    transform: [{ scale: 1.15 + pulse.value * 0.3 }],
+  }));
+  return <Animated.View pointerEvents="none" style={[styles.resultGlow, { backgroundColor: color }, style]} />;
+}
+
+/** One confetti speck that bobs and twinkles on an infinite loop, each
+ * instance offset by its own `delay` so the whole burst feels organic
+ * instead of a single flat blink. */
+function FloatingDot({
+  positionStyle,
+  color,
+  size = 7,
+  delay = 0,
+}: {
+  positionStyle: { top?: number; left?: number; right?: number; bottom?: number };
+  color: string;
+  size?: number;
+  delay?: number;
+}) {
+  const t = useSharedValue(0);
+  useEffect(() => {
+    t.value = withDelay(
+      delay,
+      withRepeat(
+        withSequence(
+          withTiming(1, { duration: 900, easing: Easing.inOut(Easing.ease) }),
+          withTiming(0, { duration: 900, easing: Easing.inOut(Easing.ease) })
+        ),
+        -1,
+        false
+      )
+    );
+  }, [t, delay]);
+  const style = useAnimatedStyle(() => ({
+    opacity: 0.45 + t.value * 0.55,
+    transform: [{ translateY: -t.value * 5 }],
+  }));
+  return (
+    <Animated.View
+      style={[
+        styles.resultConfettiDot,
+        positionStyle,
+        { width: size, height: size, borderRadius: size / 2, backgroundColor: color },
+        style,
+      ]}
+    />
+  );
+}
+
 /** The achievements/motivational box shown right under the weekly goal
  * card — kept as its own component since it has real internal structure
- * (the ring, confetti dots), not because it's reused elsewhere. Only the
- * "met" state gets the celebratory tint/confetti/gradient ring — an unmet
- * day stays plain so the celebration reads as earned, not default chrome. */
+ * (the gradient sweep, glow, confetti, celebratory pop). The "met" state
+ * is the full celebration (gradient ring, confetti, a streak chip); an
+ * unmet day stays visibly calmer so hitting the goal still reads as
+ * earned, but keeps its own glow/gradient so it never looks inert. */
 function DailyResultBox({
   met,
   progress,
@@ -561,44 +640,69 @@ function DailyResultBox({
   onPress: () => void;
 }) {
   const theme = useTheme();
+  const celebrate = useSharedValue(met ? 1 : 0);
+
+  useEffect(() => {
+    celebrate.value = met ? withDelay(80, withSpring(1, SpringSnappy)) : withTiming(0, TimingQuick);
+  }, [met, celebrate]);
+
+  const celebrateStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: 0.8 + celebrate.value * 0.2 }],
+  }));
+
   return (
-    <Pressable onPress={onPress} style={[styles.resultBox, { backgroundColor: met ? theme.successSoft : theme.backgroundElement }]}>
+    <Pressable onPress={onPress} style={styles.resultBox}>
+      <LinearGradient
+        colors={
+          met
+            ? [withAlpha(theme.warning, 0.35), withAlpha(theme.success, 0.3), withAlpha(theme.accent, 0.25)]
+            : [withAlpha(theme.accent, 0.14), theme.backgroundElement]
+        }
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
       {met ? (
         <>
-          <View style={[styles.resultConfettiDot, { top: 6, left: 10, backgroundColor: theme.accent }]} />
-          <View style={[styles.resultConfettiDot, { top: 18, left: 2, backgroundColor: theme.warning, width: 5, height: 5 }]} />
-          <View style={[styles.resultConfettiDot, { bottom: 10, right: 46, backgroundColor: theme.success, width: 5, height: 5 }]} />
-          <View style={[styles.resultConfettiDot, { bottom: 4, right: 60, backgroundColor: theme.accent }]} />
+          <FloatingDot positionStyle={{ top: 6, left: 10 }} color={theme.accent} delay={0} />
+          <FloatingDot positionStyle={{ top: 20, left: 2 }} color={theme.warning} size={5} delay={220} />
+          <FloatingDot positionStyle={{ top: 10, right: 18 }} color={theme.warning} size={4} delay={340} />
+          <FloatingDot positionStyle={{ bottom: 10, right: 46 }} color={theme.success} size={5} delay={420} />
+          <FloatingDot positionStyle={{ bottom: 4, right: 60 }} color={theme.accent} delay={640} />
         </>
       ) : null}
-      {met ? (
-        <View style={styles.resultIconRing}>
-          <LinearGradient
-            colors={[theme.warning, theme.success, theme.accent]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={StyleSheet.absoluteFill}
-          />
-          <View style={styles.resultIconInner}>
-            <Icon name="trophy" size={20} color={theme.warning} />
-          </View>
-        </View>
-      ) : (
-        <View style={styles.resultRingWrap}>
+      <View style={styles.resultRingWrap}>
+        <PulsingGlow color={met ? theme.warning : theme.accent} />
+        {met ? (
+          <Animated.View style={[styles.resultIconRing, celebrateStyle]}>
+            <LinearGradient
+              colors={[theme.warning, theme.success, theme.accent]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+            <View style={styles.resultIconInner}>
+              <Icon name="trophy" size={22} color={theme.warning} />
+            </View>
+          </Animated.View>
+        ) : (
           <ProgressRing size={56} strokeWidth={6} progress={progress} color={theme.accent} trackColor={theme.backgroundElevated}>
             <Icon name="trophy" size={20} color={theme.textTertiary} />
           </ProgressRing>
-        </View>
-      )}
+        )}
+      </View>
       <View style={{ flex: 1, gap: 2 }}>
         <ThemedText type="label" themeColor="textSecondary">
           Risultato giornaliero
         </ThemedText>
         <ThemedText style={styles.resultHeadline}>{headline}</ThemedText>
         {met && streakCount > 0 ? (
-          <ThemedText type="caption" style={{ color: theme.success, fontWeight: '700' }}>
-            +{streakCount} giorno{streakCount === 1 ? '' : 'i'}
-          </ThemedText>
+          <View style={[styles.resultStreakChip, { backgroundColor: theme.accent }]}>
+            <Icon name="flame" size={11} color={theme.onAccent} />
+            <ThemedText type="caption" style={{ color: theme.onAccent, fontWeight: '700' }}>
+              +{streakCount} giorno{streakCount === 1 ? '' : 'i'}
+            </ThemedText>
+          </View>
         ) : null}
         <ThemedText type="caption" themeColor="textSecondary">
           {body}
@@ -686,7 +790,9 @@ function TodaySummaryCard({
 
       <View style={styles.todaySummaryMacrosRow}>
         <TodaySummaryMacro icon="protein" label="Proteine" value={Math.round(macroTotals.protein)} target={Math.round(macroTargets.protein)} />
+        <View style={[styles.todaySummaryMacroDivider, { backgroundColor: theme.backgroundElement }]} />
         <TodaySummaryMacro icon="carbs" label="Carboidrati" value={Math.round(macroTotals.carbs)} target={Math.round(macroTargets.carbs)} />
+        <View style={[styles.todaySummaryMacroDivider, { backgroundColor: theme.backgroundElement }]} />
         <TodaySummaryMacro icon="fats" label="Grassi" value={Math.round(macroTotals.fats)} target={Math.round(macroTargets.fats)} />
       </View>
     </FlatCard>
@@ -712,6 +818,7 @@ function TodaySummaryMacro({ icon, label, value, target }: { icon: IconName; lab
     </View>
   );
 }
+
 
 function DayDetailModal({ day, dailyGoalKcal, onClose }: { day: WeeklyGoalDay | null; dailyGoalKcal: number; onClose: () => void }) {
   const theme = useTheme();
@@ -1168,6 +1275,23 @@ const styles = StyleSheet.create({
     height: 56,
     flexShrink: 0,
   },
+  resultGlow: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 28,
+  },
+  resultStreakChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 3,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: Radius.pill,
+  },
   resultIconInner: {
     width: 42,
     height: 42,
@@ -1384,15 +1508,21 @@ const styles = StyleSheet.create({
   },
   todaySummaryMacrosRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    alignItems: 'stretch',
   },
   todaySummaryMacroCol: {
     flex: 1,
     gap: 4,
+    alignItems: 'center',
+  },
+  todaySummaryMacroDivider: {
+    width: 1,
+    marginVertical: 2,
   },
   todaySummaryMacroHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 4,
   },
   todaySummaryMacroValue: {
