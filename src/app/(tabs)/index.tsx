@@ -584,9 +584,11 @@ function DailyResultBox({
           </View>
         </View>
       ) : (
-        <ProgressRing size={56} strokeWidth={6} progress={progress} color={theme.accent} trackColor={theme.backgroundElevated}>
-          <Icon name="trophy" size={20} color={theme.textTertiary} />
-        </ProgressRing>
+        <View style={styles.resultRingWrap}>
+          <ProgressRing size={56} strokeWidth={6} progress={progress} color={theme.accent} trackColor={theme.backgroundElevated}>
+            <Icon name="trophy" size={20} color={theme.textTertiary} />
+          </ProgressRing>
+        </View>
       )}
       <View style={{ flex: 1, gap: 2 }}>
         <ThemedText type="label" themeColor="textSecondary">
@@ -1160,6 +1162,11 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  resultRingWrap: {
+    width: 56,
+    height: 56,
+    flexShrink: 0,
   },
   resultIconInner: {
     width: 42,
