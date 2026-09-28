@@ -3,7 +3,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { Image, Pressable, StyleSheet, View } from 'react-native';
 
 import { ScreenScroll } from '@/components/screen-scroll';
-import { SectionHeader } from '@/components/ui/section-header';
 import { ThemedText } from '@/components/themed-text';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { FlatCard } from '@/components/ui/flat-card';
@@ -223,7 +222,6 @@ export default function TrainingScreen() {
           </FlatCard>
 
           <View style={{ gap: Spacing.three }}>
-            <SectionHeader title="Calendario" />
             <WeekDayStrip
               weekDates={viewedWeekDates}
               selectedDate={selectedDate}

@@ -36,7 +36,7 @@ export function WeekDayStrip({
   return (
     <View style={{ gap: Spacing.three }}>
       <View style={styles.monthNavRow}>
-        <ThemedText type="smallBold">{monthYearLabel}</ThemedText>
+        <ThemedText type="subtitle">{monthYearLabel}</ThemedText>
         <View style={styles.monthNavArrows}>
           <Pressable onPress={onPrevWeek} hitSlop={8} style={styles.navButton}>
             <Icon name="arrowBack" size={18} color={theme.textSecondary} />
@@ -55,11 +55,14 @@ export function WeekDayStrip({
             <Pressable
               key={date}
               onPress={() => onSelectDate(date)}
-              style={[styles.dayCol, selected ? { backgroundColor: theme.accentSoft } : null]}>
-              <ThemedText type="caption" themeColor="textSecondary">
+              style={[
+                styles.dayCol,
+                { backgroundColor: selected ? theme.accentSoft : theme.backgroundElevated },
+              ]}>
+              <ThemedText type="caption" themeColor="textSecondary" style={{ fontWeight: '700' }}>
                 {weekdayShort(date)}
               </ThemedText>
-              <ThemedText type="caption" style={{ fontWeight: '700' }}>
+              <ThemedText type="small" style={{ fontWeight: '800' }}>
                 {dayOfMonth(date)}
               </ThemedText>
               <View
@@ -95,15 +98,15 @@ const styles = StyleSheet.create({
   },
   grid: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    gap: 6,
   },
   dayCol: {
+    flex: 1,
     alignItems: 'center',
-    gap: 4,
-    paddingVertical: 6,
-    paddingHorizontal: 4,
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 2,
     borderRadius: Radius.medium,
-    minWidth: 40,
   },
   dayCircle: {
     width: 26,
