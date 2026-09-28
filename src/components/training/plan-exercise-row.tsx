@@ -54,27 +54,26 @@ export function PlanExerciseRow({
     recentHistory.length >= 2 ? recentHistory[recentHistory.length - 1].weightKg - recentHistory[0].weightKg : null;
 
   return (
-    <FlatCard tint={theme.accentSoft} radius={Radius.large} style={[styles.card, completed ? { opacity: 0.72 } : undefined]}>
+    <FlatCard radius={Radius.large} style={[styles.card, completed ? { opacity: 0.72 } : undefined]}>
       <View style={styles.header}>
         <CompletionToggle completed={completed} onToggle={onToggleCompleted} />
 
         <ThemedText
-          type="smallBold"
           numberOfLines={1}
           style={[styles.nameText, completed ? { textDecorationLine: 'line-through' } : undefined]}>
           {exercise.name}
         </ThemedText>
 
         {media ? (
-          <Image source={{ uri: media.gifUrl }} style={[styles.thumb, { backgroundColor: theme.backgroundElevated }]} />
+          <Image source={{ uri: media.gifUrl }} style={[styles.thumb, { backgroundColor: theme.backgroundElement }]} />
         ) : (
-          <View style={[styles.thumb, { backgroundColor: theme.backgroundElevated }]} />
+          <View style={[styles.thumb, { backgroundColor: theme.backgroundElement }]} />
         )}
 
         <View style={styles.headerSpacer} />
 
         <Pressable onPress={() => setInfoOpen(true)} hitSlop={8} style={[styles.iconButton, { borderColor: theme.border }]}>
-          <Icon name="info" size={16} color={theme.textSecondary} />
+          <Icon name="info" size={18} color={theme.textSecondary} />
         </Pressable>
       </View>
 
@@ -89,16 +88,16 @@ export function PlanExerciseRow({
 
       <View style={[styles.progressionBox, { backgroundColor: theme.backgroundElement }]}>
         {recentHistory.length >= 2 ? (
-          <TrendChart data={recentHistory.map((h) => h.weightKg)} width={56} height={36} color={theme.accent} />
+          <TrendChart data={recentHistory.map((h) => h.weightKg)} width={52} height={36} color={theme.accent} />
         ) : (
           <View style={styles.chartPlaceholder} />
         )}
         <View style={{ flex: 1, minWidth: 0 }}>
-          <ThemedText type="caption" themeColor="textSecondary">
+          <ThemedText style={styles.progressionLabel} themeColor="textSecondary">
             Progressione carichi
           </ThemedText>
           {recentDeltaKg != null ? (
-            <ThemedText type="smallBold" style={{ color: recentDeltaKg >= 0 ? theme.success : theme.danger }}>
+            <ThemedText style={[styles.progressionValue, { color: recentDeltaKg >= 0 ? theme.success : theme.danger }]}>
               {recentDeltaKg > 0 ? '+' : ''}
               {recentDeltaKg} kg
             </ThemedText>
@@ -121,8 +120,8 @@ export function PlanExerciseRow({
         <Pressable
           onPress={() => setLoadModalOpen(true)}
           style={[styles.newLoadButton, { backgroundColor: theme.accent }]}>
-          <Icon name="addCircle" size={15} color={theme.onAccent} />
-          <ThemedText type="smallBold" style={{ color: theme.onAccent }} numberOfLines={1}>
+          <Icon name="addCircle" size={14} color={theme.onAccent} />
+          <ThemedText style={{ color: theme.onAccent, fontSize: 13, fontWeight: '700' }} numberOfLines={1}>
             Nuovo carico
           </ThemedText>
         </Pressable>
@@ -169,15 +168,17 @@ function StatCol({
   bottomText: string;
 }) {
   const theme = useTheme();
+  const boldStyle = { fontSize: 15, fontWeight: '800' as const };
+  const labelStyle = { fontSize: 12, fontWeight: '500' as const };
   return (
     <View style={styles.statCol}>
       <View style={styles.statColTopRow}>
-        <Icon name={icon} size={14} color={theme.textSecondary} />
-        <ThemedText type={topBold ? 'smallBold' : 'caption'} themeColor={topBold ? undefined : 'textSecondary'} numberOfLines={1}>
+        <Icon name={icon} size={16} color={theme.textSecondary} />
+        <ThemedText style={topBold ? boldStyle : labelStyle} themeColor={topBold ? undefined : 'textSecondary'} numberOfLines={1}>
           {topText}
         </ThemedText>
       </View>
-      <ThemedText type={topBold ? 'caption' : 'smallBold'} themeColor={topBold ? 'textSecondary' : undefined} numberOfLines={1}>
+      <ThemedText style={topBold ? labelStyle : boldStyle} themeColor={topBold ? 'textSecondary' : undefined} numberOfLines={1}>
         {bottomText}
       </ThemedText>
     </View>
@@ -224,27 +225,29 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   checkCircle: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
   nameText: {
     flexShrink: 1,
+    fontSize: 16,
+    fontWeight: '700',
   },
   thumb: {
-    width: 48,
-    height: 48,
+    width: 56,
+    height: 56,
     borderRadius: Radius.medium,
   },
   headerSpacer: {
     flex: 1,
   },
   iconButton: {
-    width: 30,
-    height: 30,
+    width: 34,
+    height: 34,
     borderRadius: Radius.pill,
     borderWidth: 1.5,
     alignItems: 'center',
@@ -256,12 +259,12 @@ const styles = StyleSheet.create({
   },
   statCol: {
     alignItems: 'flex-start',
-    gap: 3,
+    gap: 4,
   },
   statColTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 5,
   },
   progressionBox: {
     flexDirection: 'row',
@@ -270,15 +273,23 @@ const styles = StyleSheet.create({
     padding: Spacing.two,
     borderRadius: Radius.medium,
   },
+  progressionLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  progressionValue: {
+    fontSize: 15,
+    fontWeight: '800',
+  },
   chartPlaceholder: {
-    width: 56,
+    width: 52,
     height: 36,
   },
   newLoadButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: 5,
     paddingHorizontal: Spacing.three,
     paddingVertical: 10,
     borderRadius: Radius.pill,
