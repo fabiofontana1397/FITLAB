@@ -54,7 +54,7 @@ export function PlanExerciseRow({
     recentHistory.length >= 2 ? recentHistory[recentHistory.length - 1].weightKg - recentHistory[0].weightKg : null;
 
   return (
-    <FlatCard radius={Radius.large} style={[styles.card, completed ? { opacity: 0.72 } : undefined]}>
+    <FlatCard tint={theme.accentSoft} radius={Radius.large} style={[styles.card, completed ? { opacity: 0.72 } : undefined]}>
       <View style={styles.header}>
         <CompletionToggle completed={completed} onToggle={onToggleCompleted} />
 
@@ -66,41 +66,30 @@ export function PlanExerciseRow({
         </ThemedText>
 
         {media ? (
-          <Image source={{ uri: media.gifUrl }} style={[styles.thumb, { backgroundColor: theme.backgroundElement }]} />
+          <Image source={{ uri: media.gifUrl }} style={[styles.thumb, { backgroundColor: theme.backgroundElevated }]} />
         ) : (
-          <View style={[styles.thumb, { backgroundColor: theme.backgroundElement }]} />
+          <View style={[styles.thumb, { backgroundColor: theme.backgroundElevated }]} />
         )}
 
         <View style={styles.headerSpacer} />
 
-        <Pressable onPress={() => setInfoOpen(true)} hitSlop={8} style={styles.iconButton}>
-          <Icon name="info" size={20} color={theme.textSecondary} />
+        <Pressable onPress={() => setInfoOpen(true)} hitSlop={8} style={[styles.iconButton, { borderColor: theme.border }]}>
+          <Icon name="info" size={16} color={theme.textSecondary} />
         </Pressable>
       </View>
 
       <View style={styles.statsRow}>
-        <View style={styles.statColChip}>
-          <View style={[styles.repsChip, { backgroundColor: theme.backgroundElement }]}>
-            <Icon name="repsHash" size={13} color={theme.textSecondary} />
-            <ThemedText type="smallBold">
-              {exercise.sets}×{exercise.reps}
-            </ThemedText>
-          </View>
-          <ThemedText type="caption" themeColor="textSecondary">
-            Serie x Rip
-          </ThemedText>
-        </View>
-
+        <StatCol icon="repsHash" topText={`${exercise.sets}×${exercise.reps}`} topBold bottomText="Serie x Rip." />
         {!isBodyweight && referenceKg != null ? (
-          <StatCol icon="weightKg" label={isFirstTime ? 'Consigliato' : 'Ultimo carico'} value={`${referenceKg} kg`} />
+          <StatCol icon="weightKg" topText={isFirstTime ? 'Consigliato' : 'Ultimo carico'} bottomText={`${referenceKg} kg`} />
         ) : null}
-        <StatCol icon="clockOutline" label="Recupero" value={restLabel} />
-        <StatCol icon="hourglass" label="Tempo" value={exercise.tempo} />
+        <StatCol icon="clockOutline" topText="Recupero" bottomText={restLabel} />
+        <StatCol icon="hourglass" topText="Tempo" bottomText={exercise.tempo} />
       </View>
 
-      <View style={styles.progressionRow}>
+      <View style={[styles.progressionBox, { backgroundColor: theme.backgroundElement }]}>
         {recentHistory.length >= 2 ? (
-          <TrendChart data={recentHistory.map((h) => h.weightKg)} width={72} height={36} color={theme.accent} />
+          <TrendChart data={recentHistory.map((h) => h.weightKg)} width={56} height={36} color={theme.accent} />
         ) : (
           <View style={styles.chartPlaceholder} />
         )}
@@ -114,7 +103,7 @@ export function PlanExerciseRow({
               {recentDeltaKg} kg
             </ThemedText>
           ) : (
-            <ThemedText type="caption" themeColor="textTertiary">
+            <ThemedText type="caption" themeColor="textTertiary" numberOfLines={2}>
               {isBodyweight ? 'Aggiungi un carico se appesantisci l’esercizio.' : 'Aggiungi un carico per iniziare a monitorare i progressi.'}
             </ThemedText>
           )}
@@ -128,16 +117,16 @@ export function PlanExerciseRow({
             </ThemedText>
           ) : null}
         </View>
-      </View>
 
-      <Pressable
-        onPress={() => setLoadModalOpen(true)}
-        style={[styles.newLoadButton, { backgroundColor: theme.accent }]}>
-        <Icon name="addCircle" size={15} color={theme.onAccent} />
-        <ThemedText type="smallBold" style={{ color: theme.onAccent }}>
-          Nuovo carico
-        </ThemedText>
-      </Pressable>
+        <Pressable
+          onPress={() => setLoadModalOpen(true)}
+          style={[styles.newLoadButton, { backgroundColor: theme.accent }]}>
+          <Icon name="addCircle" size={15} color={theme.onAccent} />
+          <ThemedText type="smallBold" style={{ color: theme.onAccent }} numberOfLines={1}>
+            Nuovo carico
+          </ThemedText>
+        </Pressable>
+      </View>
 
       {loggedTodayKg != null ? (
         <ThemedText type="caption" themeColor="textSecondary" style={{ textAlign: 'center' }}>
@@ -164,16 +153,32 @@ export function PlanExerciseRow({
   );
 }
 
-function StatCol({ icon, label, value }: { icon: IconName; label: string; value: string }) {
+/** One stat column: an icon beside the top line, a second line below it —
+ * `topBold` swaps which line is the bold value vs. the gray label (col 1
+ * leads with the bold "4×8-10" value then the "Serie x Rip." label below;
+ * every other column leads with the gray label then the bold value). */
+function StatCol({
+  icon,
+  topText,
+  topBold = false,
+  bottomText,
+}: {
+  icon: IconName;
+  topText: string;
+  topBold?: boolean;
+  bottomText: string;
+}) {
   const theme = useTheme();
   return (
     <View style={styles.statCol}>
-      <Icon name={icon} size={15} color={theme.textSecondary} />
-      <ThemedText type="caption" themeColor="textSecondary" numberOfLines={1}>
-        {label}
-      </ThemedText>
-      <ThemedText type="smallBold" numberOfLines={1}>
-        {value}
+      <View style={styles.statColTopRow}>
+        <Icon name={icon} size={14} color={theme.textSecondary} />
+        <ThemedText type={topBold ? 'smallBold' : 'caption'} themeColor={topBold ? undefined : 'textSecondary'} numberOfLines={1}>
+          {topText}
+        </ThemedText>
+      </View>
+      <ThemedText type={topBold ? 'caption' : 'smallBold'} themeColor={topBold ? 'textSecondary' : undefined} numberOfLines={1}>
+        {bottomText}
       </ThemedText>
     </View>
   );
@@ -238,35 +243,35 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   iconButton: {
-    padding: 4,
+    width: 30,
+    height: 30,
+    borderRadius: Radius.pill,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
-  statColChip: {
-    alignItems: 'center',
-    gap: 4,
-  },
-  repsChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: Spacing.two,
-    paddingVertical: 6,
-    borderRadius: Radius.small,
-  },
   statCol: {
-    alignItems: 'center',
-    gap: 2,
+    alignItems: 'flex-start',
+    gap: 3,
   },
-  progressionRow: {
+  statColTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.three,
+    gap: 4,
+  },
+  progressionBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    padding: Spacing.two,
+    borderRadius: Radius.medium,
   },
   chartPlaceholder: {
-    width: 72,
+    width: 56,
     height: 36,
   },
   newLoadButton: {
@@ -274,7 +279,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: 10,
     borderRadius: Radius.pill,
+    flexShrink: 0,
   },
 });

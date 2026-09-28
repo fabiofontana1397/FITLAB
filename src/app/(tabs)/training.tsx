@@ -4,13 +4,12 @@ import { Image, Pressable, StyleSheet, View } from 'react-native';
 
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
-import { Icon, type IconName } from '@/components/ui/icon';
+import { Icon } from '@/components/ui/icon';
 import { FlatCard } from '@/components/ui/flat-card';
 import { PrimaryButton } from '@/components/ui/primary-button';
 import { ProgressRing } from '@/components/ui/progress-ring';
 import { LogActivityModal } from '@/components/training/log-activity-modal';
 import { PlanExerciseRow } from '@/components/training/plan-exercise-row';
-import { SplitSummaryCard } from '@/components/training/split-summary-card';
 import { WeekDayStrip } from '@/components/training/week-day-strip';
 import { WeekTimeline } from '@/components/training/week-timeline';
 import { Radius, Spacing } from '@/constants/theme';
@@ -35,18 +34,28 @@ import {
 } from '@/store/training-progress-store';
 import { useUserStore } from '@/store/user-store';
 
-/** A generated split label ("Push", "Legs"...) to a loosely-matching icon —
- * cosmetic only, falls back to the generic dumbbell for anything not in the
- * map (custom AI-suggested titles included). */
-const SPLIT_ICON: Record<string, IconName> = {
-  Push: 'armFlex',
-  Pull: 'armFlex',
-  Upper: 'armFlex',
-  Legs: 'running',
-  Lower: 'running',
+/** The standard muscle groups a given split label trains — a fixed,
+ * universally-true convention (not per-user data, which the plan doesn't
+ * track), matching the real `SplitLabel`s the generator produces
+ * (training-planner.ts's VALID_SPLIT_LABELS). */
+const SPLIT_MUSCLE_GROUPS: Record<string, string[]> = {
+  Push: ['petto', 'spalle', 'tricipiti'],
+  Pull: ['schiena', 'bicipiti'],
+  Legs: ['quadricipiti', 'femorali', 'glutei'],
+  Upper: ['petto', 'schiena', 'spalle', 'braccia'],
+  Lower: ['quadricipiti', 'femorali', 'glutei', 'polpacci'],
+  'Full Body': ['corpo intero'],
 };
-function splitIconFor(title: string): IconName {
-  return SPLIT_ICON[title] ?? 'training';
+
+/** "Push, petto, spalle e tricipiti" — the split title folded into a
+ * natural-reading Italian list of what it trains, for the "Allenamento
+ * di oggi" heading. Falls back to just the title for any split label
+ * (custom AI-suggested titles included) not in the fixed map above. */
+function splitHeadingSuffix(title: string): string {
+  const groups = SPLIT_MUSCLE_GROUPS[title];
+  if (!groups || groups.length === 0) return title;
+  const list = groups.length === 1 ? groups[0] : `${groups.slice(0, -1).join(', ')} e ${groups[groups.length - 1]}`;
+  return `${title}, ${list}`;
 }
 
 /** Short, bodybuilding-shorthand label for the user's goal, matching the
@@ -60,14 +69,6 @@ const GOAL_SHORT_LABEL: Record<Goal, string> = {
   improveEndurance: 'Endurance',
   generalHealth: 'Benessere',
 };
-
-/** Rough estimated session length from real plan data (sets × (rest + an
- * assumed ~40s working set)) — the plan doesn't track a per-exercise
- * duration, so this is a derived estimate, not fabricated per-user data. */
-function estimateDurationMinutes(exercises: { sets: number; restSec: number }[]): number {
-  const totalSeconds = exercises.reduce((sum, ex) => sum + ex.sets * (ex.restSec + 40), 0);
-  return Math.round(totalSeconds / 60);
-}
 
 export default function TrainingScreen() {
   const theme = useTheme();
@@ -147,8 +148,10 @@ export default function TrainingScreen() {
     setSelectedDate(newWeekDates[mondayIndex(new Date(selectedDate))]);
   };
 
-  const selectedDayHeading =
+  const baseDayHeading =
     selectedDate === today ? 'Allenamento di oggi' : `Allenamento del ${new Date(selectedDate).toLocaleDateString('it-IT', { day: 'numeric', month: 'long' })}`;
+  const selectedDayHeading =
+    selectedDay?.type === 'workout' ? `${baseDayHeading} • ${splitHeadingSuffix(selectedDay.title)}` : baseDayHeading;
 
   return (
     <ScreenScroll>
@@ -216,31 +219,26 @@ export default function TrainingScreen() {
             </View>
           </FlatCard>
 
-          <View style={{ gap: Spacing.three }}>
-            <WeekDayStrip
-              weekDates={viewedWeekDates}
-              selectedDate={selectedDate}
-              onSelectDate={setSelectedDate}
-              isDayComplete={isDayComplete}
-              monthYearLabel={monthYearLabel}
-              onPrevWeek={() => goToAdjacentWeek(-1)}
-              onNextWeek={() => goToAdjacentWeek(1)}
-            />
-          </View>
+          <View style={{ gap: Spacing.two }}>
+            <View style={{ gap: Spacing.three }}>
+              <WeekDayStrip
+                weekDates={viewedWeekDates}
+                selectedDate={selectedDate}
+                onSelectDate={setSelectedDate}
+                isDayComplete={isDayComplete}
+                monthYearLabel={monthYearLabel}
+                onPrevWeek={() => goToAdjacentWeek(-1)}
+                onNextWeek={() => goToAdjacentWeek(1)}
+              />
+            </View>
 
-          <PrimaryButton label="Aggiungi allenamento" icon="plus" onPress={() => setLogActivityVisible(true)} />
+            <PrimaryButton label="Aggiungi allenamento" icon="plus" dense onPress={() => setLogActivityVisible(true)} />
+          </View>
 
           <ThemedText style={styles.dayHeading}>{selectedDayHeading}</ThemedText>
 
           {selectedDay?.type === 'workout' ? (
             <View style={{ gap: Spacing.three }}>
-              <SplitSummaryCard
-                icon={splitIconFor(selectedDay.title)}
-                title={selectedDay.title}
-                durationMinutes={estimateDurationMinutes(selectedDay.exercises ?? [])}
-                completedCount={(selectedDay.exercises ?? []).filter((ex) => isExerciseCompleted(completedExercises, ex.id, selectedDate)).length}
-                totalCount={(selectedDay.exercises ?? []).length}
-              />
               {(selectedDay.exercises ?? []).map((exercise) => {
                 const setsToday = setsForExerciseOnDate(progressSets, exercise.id, selectedDate);
                 const loggedTodayKg = setsToday.length ? Math.max(...setsToday.map((s) => s.weightKg)) : null;
