@@ -39,7 +39,8 @@ export function ChatFab({ size }: { size?: number | null }) {
         level="raised"
         radius={Radius.pill}
         style={[styles.button, { width: buttonSize, height: buttonSize }]}
-        bordered={false}>
+        bordered={false}
+        nativeGlass>
         <ChatOrb size={orbSize} />
       </GlassSurface>
     </Pressable>

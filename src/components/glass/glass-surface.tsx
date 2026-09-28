@@ -1,4 +1,5 @@
 import { BlurView } from 'expo-blur';
+import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Platform, StyleSheet, View, type LayoutChangeEvent, type StyleProp, type ViewStyle } from 'react-native';
 
@@ -32,6 +33,15 @@ export type GlassSurfaceProps = {
   children?: React.ReactNode;
   bordered?: boolean;
   onLayout?: (event: LayoutChangeEvent) => void;
+  /** Opt-in: render with the OS's actual Liquid Glass material
+   * (`expo-glass-effect`'s GlassView) instead of the BlurView-based
+   * approximation, on devices where it's genuinely available (iOS 26+).
+   * Everywhere else — Android, web, older iOS, and whenever this is left
+   * off — falls back to the normal blur rendering unchanged. Opt-in
+   * rather than automatic because real glass has its own look (no
+   * gradient sheen, no hairline border) that hasn't been checked against
+   * every surface this component is used for yet. */
+  nativeGlass?: boolean;
 };
 
 // Properties that arrange *children* (as opposed to sizing/positioning the
@@ -55,9 +65,11 @@ export function GlassSurface({
   children,
   bordered = true,
   onLayout,
+  nativeGlass = false,
 }: GlassSurfaceProps) {
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
+  const useRealGlass = nativeGlass && isLiquidGlassAvailable();
 
   // A brighter specular band along the top edge fading into a soft wash,
   // the way light catches the top of a curved glass surface.
@@ -77,6 +89,21 @@ export function GlassSurface({
     } else {
       outerStyle[key] = value;
     }
+  }
+
+  // Real glass draws its own light/edge treatment natively — the
+  // gradient sheen and hairline border below are this component's own
+  // stand-in for that, so they'd not just be redundant but visually
+  // fight the system's real effect.
+  if (useRealGlass) {
+    return (
+      <GlassView
+        onLayout={onLayout}
+        glassEffectStyle="regular"
+        style={[{ borderRadius: radius, overflow: 'hidden' }, outerStyle]}>
+        <View style={[styles.content, contentStyle]}>{children}</View>
+      </GlassView>
+    );
   }
 
   return (

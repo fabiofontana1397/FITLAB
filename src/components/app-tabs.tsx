@@ -124,6 +124,7 @@ function FloatingTabBar({
           intensity={16}
           radius={Radius.xlarge}
           style={styles.bar}
+          nativeGlass
           onLayout={(e) => {
             // The row re-measures on every tab switch (the focused
             // TabButton's own layout shifts slightly), which can report a
