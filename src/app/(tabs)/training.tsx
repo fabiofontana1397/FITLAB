@@ -204,9 +204,6 @@ export default function TrainingScreen() {
                 <ThemedText type="caption" themeColor="textSecondary" numberOfLines={2}>
                   Completamento settimana
                 </ThemedText>
-                <ThemedText type="caption" themeColor="textSecondary" numberOfLines={1}>
-                  {weekSessionsDone} / {weekSessionsTotal} allenamenti
-                </ThemedText>
               </View>
               <PrimaryButton
                 label="Mostra piano"

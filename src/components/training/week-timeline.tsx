@@ -44,14 +44,14 @@ export function WeekTimeline({ weeks }: { weeks: WeekTimelineWeek[] }) {
                 style={[
                   styles.node,
                   {
-                    backgroundColor: week.isCurrent || done ? theme.accent : theme.backgroundElevated,
+                    backgroundColor: done ? theme.accent : theme.backgroundElevated,
                     borderColor: week.isCurrent || done ? theme.accent : theme.border,
                   },
                 ]}>
                 {done ? (
                   <Icon name="check" size={14} color={theme.onAccent} />
                 ) : (
-                  <ThemedText type="caption" style={{ color: week.isCurrent ? theme.onAccent : theme.textSecondary, fontWeight: '700' }}>
+                  <ThemedText type="caption" style={{ color: week.isCurrent ? theme.accent : theme.textSecondary, fontWeight: '700' }}>
                     {week.weekNumber}
                   </ThemedText>
                 )}
