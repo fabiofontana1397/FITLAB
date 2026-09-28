@@ -176,7 +176,7 @@ export default function TrainingScreen() {
         </FlatCard>
       ) : (
         <>
-          <FlatCard radius={Radius.large} style={{ padding: Spacing.four, gap: Spacing.four }}>
+          <FlatCard radius={Radius.large} style={{ padding: Spacing.three, gap: Spacing.three }}>
             <Pressable onPress={() => router.push('/training-plan')} style={styles.planHeaderRow}>
               <View style={[styles.planIcon, { backgroundColor: theme.accentSoft }]}>
                 <Icon name="calendar" size={18} color={theme.accent} />
@@ -197,27 +197,29 @@ export default function TrainingScreen() {
             <WeekTimeline weeks={weeks} />
 
             <View style={styles.completionRow}>
-              <ProgressRing size={64} strokeWidth={6} progress={weekCompletionFraction} color={theme.accent} trackColor={theme.backgroundElement}>
-                <ThemedText type="smallBold" style={{ color: theme.text }}>
+              <ProgressRing size={48} strokeWidth={5} progress={weekCompletionFraction} color={theme.accent} trackColor={theme.backgroundElement}>
+                <ThemedText type="caption" style={{ fontWeight: '800', color: theme.text }}>
                   {Math.round(weekCompletionFraction * 100)}%
                 </ThemedText>
               </ProgressRing>
-              <View style={{ flex: 1, gap: 6, minWidth: 0 }}>
-                <ThemedText type="caption" themeColor="textSecondary">
+              <View style={{ flex: 1, gap: 4, minWidth: 0 }}>
+                <ThemedText type="caption" themeColor="textSecondary" numberOfLines={2}>
                   Completamento settimana
                 </ThemedText>
                 <MonthProgressBar fraction={weekCompletionFraction} />
-                <ThemedText type="caption" themeColor="textSecondary">
+                <ThemedText type="caption" themeColor="textSecondary" numberOfLines={1}>
                   {weekSessionsDone} / {weekSessionsTotal} allenamenti
                 </ThemedText>
               </View>
+              <PrimaryButton
+                label="Mostra piano"
+                icon="calendar"
+                trailingIcon="chevronRight"
+                dense
+                onPress={() => router.push('/training-plan')}
+                style={styles.showPlanButton}
+              />
             </View>
-            <PrimaryButton
-              label="Mostra piano"
-              icon="calendar"
-              trailingIcon="chevronRight"
-              onPress={() => router.push('/training-plan')}
-            />
           </FlatCard>
 
           <View style={{ gap: Spacing.three }}>
@@ -331,7 +333,10 @@ const styles = StyleSheet.create({
   completionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.three,
+    gap: Spacing.two,
+  },
+  showPlanButton: {
+    flexShrink: 0,
   },
   dayHeading: {
     fontSize: 17,
