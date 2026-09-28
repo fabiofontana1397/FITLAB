@@ -11,6 +11,9 @@ export type PrimaryButtonProps = {
   onPress?: () => void;
   variant?: 'filled' | 'ghost' | 'outline';
   icon?: IconName;
+  /** An extra icon at the trailing edge (e.g. a "›" chevron hinting the
+   * button opens a detail screen), independent of the leading `icon`. */
+  trailingIcon?: IconName;
   style?: StyleProp<ViewStyle>;
   disabled?: boolean;
   /** Tighter padding + smaller label, for narrow contexts (e.g. a half-width card) where the default size would wrap. */
@@ -22,6 +25,7 @@ export function PrimaryButton({
   onPress,
   variant = 'filled',
   icon,
+  trailingIcon,
   style,
   disabled,
   dense,
@@ -58,6 +62,7 @@ export function PrimaryButton({
         <ThemedText type="smallBold" numberOfLines={1} style={{ color: textColor }}>
           {label}
         </ThemedText>
+        {trailingIcon ? <Icon name={trailingIcon} size={18} color={textColor} /> : null}
       </Pressable>
     </Animated.View>
   );

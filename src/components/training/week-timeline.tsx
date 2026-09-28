@@ -14,8 +14,8 @@ function compactDayRange(startISO: string, endISO: string): string {
   const start = new Date(startISO);
   const end = new Date(endISO);
   const shortMonth = (d: Date) => d.toLocaleDateString('it-IT', { month: 'short' }).replace('.', '');
-  if (start.getMonth() === end.getMonth()) return `${start.getDate()}-${end.getDate()} ${shortMonth(start)}`;
-  return `${start.getDate()} ${shortMonth(start)} - ${end.getDate()} ${shortMonth(end)}`;
+  if (start.getMonth() === end.getMonth()) return `${start.getDate()} – ${end.getDate()} ${shortMonth(start)}`;
+  return `${start.getDate()} ${shortMonth(start)} – ${end.getDate()} ${shortMonth(end)}`;
 }
 
 /** The plan card's "Settimana 1..4" strip: a connecting line under 4 dots,
@@ -49,10 +49,7 @@ export function WeekTimeline({ weeks }: { weeks: WeekTimelineWeek[] }) {
                 {week.weekNumber}
               </ThemedText>
             </View>
-            <ThemedText
-              type="caption"
-              numberOfLines={1}
-              style={{ color: week.isCurrent ? theme.accent : theme.text, fontWeight: '700', marginTop: 6 }}>
+            <ThemedText type="caption" numberOfLines={1} style={{ color: theme.text, fontWeight: '700', marginTop: 6 }}>
               Settimana {week.weekNumber}
             </ThemedText>
             <ThemedText type="caption" themeColor="textTertiary" numberOfLines={1}>

@@ -197,22 +197,27 @@ export default function TrainingScreen() {
             <WeekTimeline weeks={weeks} />
 
             <View style={styles.completionRow}>
-              <ProgressRing size={48} strokeWidth={5} progress={weekCompletionFraction} color={theme.accent} trackColor={theme.backgroundElement}>
-                <ThemedText type="caption" style={{ fontWeight: '800', color: theme.accent }}>
+              <ProgressRing size={64} strokeWidth={6} progress={weekCompletionFraction} color={theme.accent} trackColor={theme.backgroundElement}>
+                <ThemedText type="smallBold" style={{ color: theme.text }}>
                   {Math.round(weekCompletionFraction * 100)}%
                 </ThemedText>
               </ProgressRing>
-              <View style={{ flex: 1, gap: 6 }}>
+              <View style={{ flex: 1, gap: 6, minWidth: 0 }}>
                 <ThemedText type="caption" themeColor="textSecondary">
                   Completamento settimana
                 </ThemedText>
                 <MonthProgressBar fraction={weekCompletionFraction} />
                 <ThemedText type="caption" themeColor="textSecondary">
-                  {weekSessionsDone}/{weekSessionsTotal} allenamenti
+                  {weekSessionsDone} / {weekSessionsTotal} allenamenti
                 </ThemedText>
               </View>
             </View>
-            <PrimaryButton label="Mostra piano" icon="calendar" onPress={() => router.push('/training-plan')} />
+            <PrimaryButton
+              label="Mostra piano"
+              icon="calendar"
+              trailingIcon="chevronRight"
+              onPress={() => router.push('/training-plan')}
+            />
           </FlatCard>
 
           <View style={{ gap: Spacing.three }}>
