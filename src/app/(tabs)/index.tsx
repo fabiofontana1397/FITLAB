@@ -885,6 +885,7 @@ function TodayStatusCard({
           <ThemedText type="smallBold" numberOfLines={1} style={{ flex: 1 }}>
             {title}
           </ThemedText>
+          <Icon name="chevronRight" size={15} color={theme.textTertiary} />
         </View>
         <View style={styles.todayCardPercentRow}>
           <ThemedText style={styles.todayCardPercent}>{percent}%</ThemedText>
@@ -1553,7 +1554,7 @@ const styles = StyleSheet.create({
   miniStatLabel: {
     fontSize: 11,
     lineHeight: 14,
-    fontWeight: '600',
+    fontWeight: '800',
   },
   miniStatSubLabel: {
     height: 15,
