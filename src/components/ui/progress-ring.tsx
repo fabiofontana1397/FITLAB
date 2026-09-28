@@ -11,15 +11,19 @@ import { TimingSlow } from '@/constants/motion';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
-/** Darkens a "#rrggbb" color by `amount` (0..1) — used to shade the
- * completed-lap base ring once a second lap overlaps it. Returns the
- * input unchanged for any other format (e.g. an rgba() string) rather
- * than risk producing a wrong color. */
-function darken(hex: string, amount: number): string {
+/** Lightens a "#rrggbb" color toward white by `amount` (0..1) — used for
+ * the second-lap arc once a ring overlaps itself, so the base ring below
+ * it can stay exactly its normal color. Returns the input unchanged for
+ * any other format (e.g. an rgba() string) rather than risk producing a
+ * wrong color. */
+function lighten(hex: string, amount: number): string {
   const match = /^#([0-9a-f]{6})$/i.exec(hex);
   if (!match) return hex;
   const num = parseInt(match[1], 16);
-  const channel = (shift: number) => Math.round(((num >> shift) & 0xff) * (1 - amount));
+  const channel = (shift: number) => {
+    const value = (num >> shift) & 0xff;
+    return Math.round(value + (255 - value) * amount);
+  };
   const toHex = (n: number) => n.toString(16).padStart(2, '0');
   return `#${toHex(channel(16))}${toHex(channel(8))}${toHex(channel(0))}`;
 }
@@ -28,10 +32,10 @@ export type ProgressRingProps = {
   size?: number;
   strokeWidth?: number;
   /** 0..1 for a single lap. Values beyond 1 (goal exceeded) wrap: the base
-   * ring shades to a darker tone of `color` (a completed lap) and a second
-   * arc in the full-brightness `color` is drawn on top of it from the same
-   * 12 o'clock start — the same "starting another lap on itself" read as
-   * the Activity rings. */
+   * ring stays exactly its normal `color` — same full ring as always — and
+   * a second arc in a lighter tone of that color is drawn on top of it
+   * from the same 12 o'clock start, so only the coloring (never the ring's
+   * shape or the icon in the center) shows the overlap. */
   progress: number;
   color: string;
   trackColor: string;
@@ -67,7 +71,7 @@ export function ProgressRing({
   }));
 
   const showOverlap = progress > 1;
-  const baseColor = showOverlap ? darken(color, 0.35) : color;
+  const overlapColor = lighten(color, 0.45);
 
   return (
     <View style={[styles.container, { width: size, height: size }]}>
@@ -77,7 +81,7 @@ export function ProgressRing({
           cx={cx}
           cy={cy}
           r={radius}
-          stroke={baseColor}
+          stroke={color}
           strokeWidth={strokeWidth}
           strokeLinecap="round"
           fill="none"
@@ -90,7 +94,7 @@ export function ProgressRing({
             cx={cx}
             cy={cy}
             r={radius}
-            stroke={color}
+            stroke={overlapColor}
             strokeWidth={strokeWidth}
             strokeLinecap="round"
             fill="none"
