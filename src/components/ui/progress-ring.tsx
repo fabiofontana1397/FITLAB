@@ -30,8 +30,8 @@ export type ProgressRingProps = {
   /** 0..1 for a single lap. Values beyond 1 (goal exceeded) wrap: the base
    * ring shades to a darker tone of `color` (a completed lap) and a second
    * arc in the full-brightness `color` is drawn on top of it from the same
-   * 12 o'clock start, with a soft concentric halo behind it — the same
-   * "starting another lap on itself" read as the Activity rings. */
+   * 12 o'clock start — the same "starting another lap on itself" read as
+   * the Activity rings. */
   progress: number;
   color: string;
   trackColor: string;
@@ -86,36 +86,18 @@ export function ProgressRing({
           transform={`rotate(-90 ${cx} ${cy})`}
         />
         {showOverlap ? (
-          <>
-            {/* Soft concentric halo — same center/radius as the overlap arc
-                (never offset, so it can't drift out of angular alignment
-                with it) — reads as the arc sitting slightly above the base
-                ring instead of flush with it. */}
-            <AnimatedCircle
-              cx={cx}
-              cy={cy}
-              r={radius}
-              stroke="rgba(0,0,0,0.18)"
-              strokeWidth={strokeWidth + 4}
-              strokeLinecap="round"
-              fill="none"
-              strokeDasharray={`${circumference} ${circumference}`}
-              animatedProps={overlapProps}
-              transform={`rotate(-90 ${cx} ${cy})`}
-            />
-            <AnimatedCircle
-              cx={cx}
-              cy={cy}
-              r={radius}
-              stroke={color}
-              strokeWidth={strokeWidth}
-              strokeLinecap="round"
-              fill="none"
-              strokeDasharray={`${circumference} ${circumference}`}
-              animatedProps={overlapProps}
-              transform={`rotate(-90 ${cx} ${cy})`}
-            />
-          </>
+          <AnimatedCircle
+            cx={cx}
+            cy={cy}
+            r={radius}
+            stroke={color}
+            strokeWidth={strokeWidth}
+            strokeLinecap="round"
+            fill="none"
+            strokeDasharray={`${circumference} ${circumference}`}
+            animatedProps={overlapProps}
+            transform={`rotate(-90 ${cx} ${cy})`}
+          />
         ) : null}
       </Svg>
       {children ? <View style={styles.center}>{children}</View> : null}
