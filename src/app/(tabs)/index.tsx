@@ -359,10 +359,7 @@ export default function HomeScreen() {
       />
 
       <View style={{ gap: Spacing.three }}>
-        <Pressable style={styles.todayHeaderRow} onPress={() => router.push('/nutrition')}>
-          <ThemedText style={styles.todayHeaderTitle}>Oggi</ThemedText>
-          <Icon name="chevronRight" size={16} color={theme.textTertiary} />
-        </Pressable>
+        <ThemedText style={styles.todayHeaderTitle}>Oggi</ThemedText>
         <TodaySummaryCard
           eatenKcal={todaysTotals.kcal}
           calorieTarget={calorieTarget}
@@ -372,8 +369,6 @@ export default function HomeScreen() {
           trainingProgress={trainingProgress}
           macroTotals={todaysTotals}
           macroTargets={macroTargets}
-          onOpenDiet={() => router.push('/nutrition')}
-          onOpenTraining={() => router.push('/training')}
         />
         <View style={styles.todayCardsRow}>
           <TodayStatusCard
@@ -640,6 +635,9 @@ function DailyResultBox({
   onPress: () => void;
 }) {
   const theme = useTheme();
+  // Green reads as "on track", orange as "needs a push" — same mapping the
+  // day-circle ring/x-mark already uses elsewhere on Home.
+  const moodColor = met ? theme.success : theme.accent;
   const celebrate = useSharedValue(met ? 1 : 0);
 
   useEffect(() => {
@@ -653,41 +651,31 @@ function DailyResultBox({
   return (
     <Pressable onPress={onPress} style={styles.resultBox}>
       <LinearGradient
-        colors={
-          met
-            ? [withAlpha(theme.warning, 0.35), withAlpha(theme.success, 0.3), withAlpha(theme.accent, 0.25)]
-            : [withAlpha(theme.accent, 0.14), theme.backgroundElement]
-        }
+        colors={[withAlpha(moodColor, met ? 0.32 : 0.16), withAlpha(moodColor, met ? 0.16 : 0.08)]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFill}
       />
       {met ? (
         <>
-          <FloatingDot positionStyle={{ top: 6, left: 10 }} color={theme.accent} delay={0} />
-          <FloatingDot positionStyle={{ top: 20, left: 2 }} color={theme.warning} size={5} delay={220} />
+          <FloatingDot positionStyle={{ top: 6, left: 10 }} color={theme.success} delay={0} />
+          <FloatingDot positionStyle={{ top: 20, left: 2 }} color={theme.success} size={5} delay={220} />
           <FloatingDot positionStyle={{ top: 10, right: 18 }} color={theme.warning} size={4} delay={340} />
           <FloatingDot positionStyle={{ bottom: 10, right: 46 }} color={theme.success} size={5} delay={420} />
-          <FloatingDot positionStyle={{ bottom: 4, right: 60 }} color={theme.accent} delay={640} />
+          <FloatingDot positionStyle={{ bottom: 4, right: 60 }} color={theme.warning} delay={640} />
         </>
       ) : null}
       <View style={styles.resultRingWrap}>
-        <PulsingGlow color={met ? theme.warning : theme.accent} />
+        <PulsingGlow color={moodColor} />
         {met ? (
-          <Animated.View style={[styles.resultIconRing, celebrateStyle]}>
-            <LinearGradient
-              colors={[theme.warning, theme.success, theme.accent]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={StyleSheet.absoluteFill}
-            />
+          <Animated.View style={[styles.resultIconRing, celebrateStyle, { backgroundColor: theme.success }]}>
             <View style={styles.resultIconInner}>
-              <Icon name="trophy" size={22} color={theme.warning} />
+              <Icon name="trophy" size={22} color={theme.success} />
             </View>
           </Animated.View>
         ) : (
           <ProgressRing size={56} strokeWidth={6} progress={progress} color={theme.accent} trackColor={theme.backgroundElevated}>
-            <Icon name="trophy" size={20} color={theme.textTertiary} />
+            <Icon name="trophy" size={20} color={theme.accent} />
           </ProgressRing>
         )}
       </View>
@@ -697,7 +685,7 @@ function DailyResultBox({
         </ThemedText>
         <ThemedText style={styles.resultHeadline}>{headline}</ThemedText>
         {met && streakCount > 0 ? (
-          <View style={[styles.resultStreakChip, { backgroundColor: theme.accent }]}>
+          <View style={[styles.resultStreakChip, { backgroundColor: theme.success }]}>
             <Icon name="flame" size={11} color={theme.onAccent} />
             <ThemedText type="caption" style={{ color: theme.onAccent, fontWeight: '700' }}>
               +{streakCount} giorno{streakCount === 1 ? '' : 'i'}
@@ -727,8 +715,6 @@ function TodaySummaryCard({
   trainingProgress,
   macroTotals,
   macroTargets,
-  onOpenDiet,
-  onOpenTraining,
 }: {
   eatenKcal: number;
   calorieTarget: number;
@@ -738,8 +724,6 @@ function TodaySummaryCard({
   trainingProgress: number;
   macroTotals: { protein: number; carbs: number; fats: number };
   macroTargets: { protein: number; carbs: number; fats: number };
-  onOpenDiet: () => void;
-  onOpenTraining: () => void;
 }) {
   const theme = useTheme();
   const balanceNoun = balanceKcal < 0 ? 'Deficit' : balanceKcal > 0 ? 'Surplus' : 'Bilancio';
@@ -748,7 +732,7 @@ function TodaySummaryCard({
   return (
     <FlatCard style={styles.todaySummaryCard}>
       <View style={styles.todaySummaryTopRow}>
-        <Pressable style={styles.todaySummaryLeft} onPress={onOpenDiet}>
+        <View style={styles.todaySummaryLeft}>
           <ProgressRing size={56} strokeWidth={6} progress={dietProgress} color={theme.success} trackColor={theme.accentSoft}>
             <Icon name="flame" size={20} color={theme.accent} />
           </ProgressRing>
@@ -769,21 +753,20 @@ function TodaySummaryCard({
               {balanceNoun} <ThemedText type="caption" style={{ color: theme.success, fontWeight: '700' }}>{formatKcal(Math.abs(balanceKcal))} kcal</ThemedText>
             </ThemedText>
           </View>
-        </Pressable>
+        </View>
 
-        <Pressable style={styles.todaySummaryRight} onPress={onOpenTraining}>
+        <View style={styles.todaySummaryRight}>
           <View style={styles.todaySummaryRightHeader}>
             <Icon name="training" size={15} color={theme.text} />
             <ThemedText type="smallBold" numberOfLines={1} style={{ flex: 1 }}>
               Allenamento
             </ThemedText>
-            <Icon name="chevronRight" size={14} color={theme.textTertiary} />
           </View>
           <ThemedText style={styles.todaySummaryPercent}>{trainingPct}%</ThemedText>
           <View style={[styles.goalProgressTrack, { backgroundColor: theme.backgroundElement }]}>
             <View style={[styles.goalProgressFill, { width: `${trainingPct}%`, backgroundColor: theme.success }]} />
           </View>
-        </Pressable>
+        </View>
       </View>
 
       <View style={[styles.todaySummaryDivider, { backgroundColor: theme.backgroundElement }]} />
@@ -899,11 +882,10 @@ function TodayStatusCard({
           <View style={[styles.todayCardIcon, { backgroundColor: theme.accentSoft }]}>
             <Icon name={icon} size={17} color={theme.accent} />
           </View>
-          <Icon name="chevronRight" size={15} color={theme.textTertiary} />
+          <ThemedText type="smallBold" numberOfLines={1} style={{ flex: 1 }}>
+            {title}
+          </ThemedText>
         </View>
-        <ThemedText type="smallBold" numberOfLines={1}>
-          {title}
-        </ThemedText>
         <View style={styles.todayCardPercentRow}>
           <ThemedText style={styles.todayCardPercent}>{percent}%</ThemedText>
           <ThemedText type="caption" themeColor="textSecondary" numberOfLines={1}>
@@ -1375,7 +1357,7 @@ const styles = StyleSheet.create({
   todayCardTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: Spacing.two,
   },
   todayCardIcon: {
     width: 36,
