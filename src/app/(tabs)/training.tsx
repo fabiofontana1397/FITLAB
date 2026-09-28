@@ -6,7 +6,6 @@ import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { FlatCard } from '@/components/ui/flat-card';
-import { MonthProgressBar } from '@/components/ui/month-progress-bar';
 import { PrimaryButton } from '@/components/ui/primary-button';
 import { ProgressRing } from '@/components/ui/progress-ring';
 import { LogActivityModal } from '@/components/training/log-activity-modal';
@@ -198,14 +197,13 @@ export default function TrainingScreen() {
             <View style={styles.completionRow}>
               <ProgressRing size={48} strokeWidth={5} progress={weekCompletionFraction} color={theme.accent} trackColor={theme.backgroundElement}>
                 <ThemedText type="caption" style={{ fontWeight: '800', color: theme.text }}>
-                  {Math.round(weekCompletionFraction * 100)}%
+                  {weekSessionsDone}/{weekSessionsTotal}
                 </ThemedText>
               </ProgressRing>
               <View style={{ flex: 1, gap: 4, minWidth: 0 }}>
                 <ThemedText type="caption" themeColor="textSecondary" numberOfLines={2}>
                   Completamento settimana
                 </ThemedText>
-                <MonthProgressBar fraction={weekCompletionFraction} />
                 <ThemedText type="caption" themeColor="textSecondary" numberOfLines={1}>
                   {weekSessionsDone} / {weekSessionsTotal} allenamenti
                 </ThemedText>

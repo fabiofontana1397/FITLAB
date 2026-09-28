@@ -1,6 +1,7 @@
 import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { Icon } from '@/components/ui/icon';
 import { useTheme } from '@/hooks/use-theme';
 
 export type WeekTimelineWeek = { weekNumber: number; startISO: string; endISO: string; isCurrent: boolean };
@@ -35,28 +36,35 @@ export function WeekTimeline({ weeks }: { weeks: WeekTimelineWeek[] }) {
         </View>
       </View>
       <View style={styles.row}>
-        {weeks.map((week) => (
-          <View key={week.weekNumber} style={styles.col}>
-            <View
-              style={[
-                styles.node,
-                {
-                  backgroundColor: week.isCurrent ? theme.accent : theme.backgroundElevated,
-                  borderColor: week.isCurrent ? theme.accent : theme.border,
-                },
-              ]}>
-              <ThemedText type="caption" style={{ color: week.isCurrent ? theme.onAccent : theme.textSecondary, fontWeight: '700' }}>
-                {week.weekNumber}
+        {weeks.map((week, index) => {
+          const done = currentIndex >= 0 && index < currentIndex;
+          return (
+            <View key={week.weekNumber} style={styles.col}>
+              <View
+                style={[
+                  styles.node,
+                  {
+                    backgroundColor: week.isCurrent || done ? theme.accent : theme.backgroundElevated,
+                    borderColor: week.isCurrent || done ? theme.accent : theme.border,
+                  },
+                ]}>
+                {done ? (
+                  <Icon name="check" size={14} color={theme.onAccent} />
+                ) : (
+                  <ThemedText type="caption" style={{ color: week.isCurrent ? theme.onAccent : theme.textSecondary, fontWeight: '700' }}>
+                    {week.weekNumber}
+                  </ThemedText>
+                )}
+              </View>
+              <ThemedText type="caption" numberOfLines={1} style={{ color: theme.text, fontWeight: '700', marginTop: 6 }}>
+                Sett {week.weekNumber}
+              </ThemedText>
+              <ThemedText type="caption" themeColor="textTertiary" numberOfLines={1}>
+                {compactDayRange(week.startISO, week.endISO)}
               </ThemedText>
             </View>
-            <ThemedText type="caption" numberOfLines={1} style={{ color: theme.text, fontWeight: '700', marginTop: 6 }}>
-              Settimana {week.weekNumber}
-            </ThemedText>
-            <ThemedText type="caption" themeColor="textTertiary" numberOfLines={1}>
-              {compactDayRange(week.startISO, week.endISO)}
-            </ThemedText>
-          </View>
-        ))}
+          );
+        })}
       </View>
     </View>
   );
