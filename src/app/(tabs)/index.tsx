@@ -15,16 +15,17 @@ import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useWeeklyEnergy } from '@/hooks/use-weekly-energy';
 import { latestSnapshot } from '@/lib/mock/body';
-import { addDaysISO, currentWeekDates, daysAgoISO, formatFullDay, mondayIndex } from '@/lib/mock/dates';
+import { currentWeekDates, daysAgoISO, formatFullDay, mondayIndex } from '@/lib/mock/dates';
 import { useCoachInsights } from '@/hooks/use-coach-insights';
 import { estimateDailyEnergyExpenditure } from '@/lib/nutrition/targets';
 import { WEEKDAY_LABELS } from '@/lib/planning/exercise-library';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
+import type { TrainingExerciseEntry } from '@/lib/planning/types';
 import { useBodyStore } from '@/store/body-store';
 import { useNutritionStore, sumMacros } from '@/store/nutrition-store';
 import { useOnboardingStore } from '@/store/onboarding-store';
 import { usePlanStore } from '@/store/plan-store';
-import { isExerciseCompleted, useTrainingProgressStore } from '@/store/training-progress-store';
+import { historyForExercise, isExerciseCompleted, useTrainingProgressStore } from '@/store/training-progress-store';
 import { useUserStore } from '@/store/user-store';
 
 function greeting() {
@@ -72,14 +73,6 @@ function formatSignedKg(n: number): string {
   return `${sign}${isWhole ? Math.round(abs) : formatWeightKg(abs)}`;
 }
 
-/** "-1,2%" / "+0,4%" — signed percentage-point delta with an Italian
- * decimal comma, always one decimal (unlike formatSignedKg, these are
- * near-always fractional). */
-function formatSignedPercent(n: number): string {
-  const sign = n > 0 ? '+' : n < 0 ? '-' : '';
-  return `${sign}${formatWeightKg(Math.abs(n))}%`;
-}
-
 /** ±100 kcal — how close a day's net balance (intake minus expenditure)
  * has to land to that day's share of the weekly goal to count as "met". */
 const DAILY_TOLERANCE_KCAL = 100;
@@ -112,6 +105,7 @@ export default function HomeScreen() {
   const dietPlan = usePlanStore((s) => s.dietPlan);
   const onboardingAnswers = useOnboardingStore((s) => s.answers);
   const completedExercises = useTrainingProgressStore((s) => s.completed);
+  const loggedSets = useTrainingProgressStore((s) => s.sets);
   const nutritionEntries = useNutritionStore((s) => s.entries);
   const bodyEntries = useBodyStore((s) => s.entries);
 
@@ -143,17 +137,6 @@ export default function HomeScreen() {
   const calorieTarget = dietMonth?.calorieTarget ?? currentUser.dailyCalorieTarget;
   const macroTargets = dietMonth?.macroTargetsG ?? currentUser.macroTargetsG;
 
-  // "Settimana X/Y" in the goal card — the plan itself is month-based (each
-  // month reuses one weeklySplit template), so a week number isn't a field
-  // anywhere; approximated as 4 weeks/month against how many days have
-  // elapsed since the plan was generated.
-  const activePlan = dietPlan ?? trainingPlan;
-  const planTotalWeeks = activePlan ? Math.max(1, activePlan.durationMonths * 4) : 0;
-  const daysSincePlanStart = activePlan
-    ? Math.max(0, Math.floor((new Date(today).getTime() - new Date(activePlan.generatedAt.slice(0, 10)).getTime()) / 86400000))
-    : 0;
-  const currentPlanWeek = activePlan ? Math.min(Math.floor(daysSincePlanStart / 7) + 1, planTotalWeeks) : 0;
-
   const todaysTotals = sumMacros(nutritionEntries.filter((e) => e.date === today));
   const dietProgress = calorieTarget > 0 ? Math.min(todaysTotals.kcal / calorieTarget, 1) : 0;
 
@@ -167,26 +150,10 @@ export default function HomeScreen() {
   const { insights, isLoading: insightsLoading, refresh: refreshInsights } = useCoachInsights();
   const [insightsModalOpen, setInsightsModalOpen] = useState(false);
 
-  // Which week the goal card is showing — 0 is the current calendar week,
-  // negative pages back into history, positive previews the rest of the
-  // plan (those days just render empty, same as future days within the
-  // current week already do). Clamped by the prev/next handlers below to
-  // [1, planTotalWeeks].
-  const [weekOffset, setWeekOffset] = useState(0);
-  const viewedWeekIndex = currentPlanWeek > 0 ? Math.max(1, currentPlanWeek + weekOffset) : 0;
-  const viewedWeekReferenceDate = weekOffset === 0 ? undefined : addDaysISO(today, weekOffset * 7);
-
   // Shared with the Progressi tab's own weekly burn chart — see
   // use-weekly-energy.ts for the day-by-day pipeline this reduces to.
-  // Two separate calls on purpose: `currentWeek` always anchors to the
-  // real calendar week and feeds today-specific numbers (daily result
-  // card) that must stay put while browsing history; `viewedWeek` follows
-  // weekOffset and feeds the weekly goal card's own display, the part the
-  // user can page back through.
   const currentWeek = useWeeklyEnergy();
-  const viewedWeek = useWeeklyEnergy(viewedWeekReferenceDate);
-  const { todayEstimatedBalance } = currentWeek;
-  const { weekDaysWithActivity, weekEstimatedExpenditureSoFar, weeklyProgrammedKcal } = viewedWeek;
+  const { todayEstimatedBalance, weekDaysWithActivity, weekEstimatedExpenditureSoFar, weeklyProgrammedKcal } = currentWeek;
 
   // weeklyExpenditureFullAdherence below is Home-hero-specific (it assumes
   // full plan adherence, unlike useWeeklyEnergy's actual-completion figures
@@ -233,8 +200,35 @@ export default function HomeScreen() {
   const weekAgoWeight = [...bodyEntries].filter((e) => e.date <= weekAgoDate).sort((a, b) => b.date.localeCompare(a.date))[0];
   const weightTrendKg = weekAgoWeight ? latestBody.weightKg - weekAgoWeight.weightKg : undefined;
   const weightSparkline = [...bodyEntries].sort((a, b) => a.date.localeCompare(b.date)).slice(-10).map((e) => e.weightKg);
-  const bodyFatTrendPct = weekAgoWeight ? latestBody.bodyFatPct - weekAgoWeight.bodyFatPct : undefined;
-  const bodyFatSparkline = [...bodyEntries].sort((a, b) => a.date.localeCompare(b.date)).slice(-10).map((e) => e.bodyFatPct);
+
+  // Every exercise appearing anywhere in the plan (same de-duplication
+  // training-progress.tsx uses), so "recent" lifts aren't limited to today.
+  const exercisesInPlan = useMemo(() => {
+    if (!trainingPlan) return [];
+    const byId = new Map<string, TrainingExerciseEntry>();
+    for (const month of trainingPlan.months) {
+      for (const day of month.weeklySplit) {
+        if (day.type !== 'workout') continue;
+        for (const ex of day.exercises ?? []) {
+          if (!byId.has(ex.id)) byId.set(ex.id, ex);
+        }
+      }
+    }
+    return [...byId.values()];
+  }, [trainingPlan]);
+
+  const recentLifts = useMemo(() => {
+    const withHistory = exercisesInPlan
+      .map((exercise) => ({ exercise, history: historyForExercise(loggedSets, exercise.id) }))
+      .filter((l) => l.history.length >= 2);
+    return withHistory
+      .sort((a, b) => b.history[b.history.length - 1].date.localeCompare(a.history[a.history.length - 1].date))
+      .slice(0, 3);
+  }, [exercisesInPlan, loggedSets]);
+
+  const topLift = recentLifts[0];
+  const topLiftDeltaKg = topLift ? topLift.history[topLift.history.length - 1].weightKg - topLift.history[0].weightKg : undefined;
+
   const topInsight = insights[0];
 
   const [selectedDay, setSelectedDay] = useState<WeeklyGoalDay | null>(null);
@@ -273,10 +267,6 @@ export default function HomeScreen() {
           balanceKcal: d.eatenKcal - d.estimatedExpenditureKcal,
         }))}
         onSelectDay={setSelectedDay}
-        weekIndex={viewedWeekIndex}
-        weekTotal={planTotalWeeks}
-        onPrevWeek={viewedWeekIndex > 1 ? () => setWeekOffset((o) => o - 1) : undefined}
-        onNextWeek={viewedWeekIndex > 0 && viewedWeekIndex < planTotalWeeks ? () => setWeekOffset((o) => o + 1) : undefined}
       />
       <DayDetailModal day={selectedDay} dailyGoalKcal={dailyGoalPerDayKcal} onClose={() => setSelectedDay(null)} />
 
@@ -344,16 +334,16 @@ export default function HomeScreen() {
             onPress={() => router.push('/progress')}
           />
           <MiniStatCard
-            icon="body"
-            label="Composizione corporea"
-            value={formatWeightKg(latestBody.bodyFatPct)}
-            unit="% BF"
-            delta={bodyFatTrendPct}
-            deltaLabel={bodyFatTrendPct != null ? formatSignedPercent(bodyFatTrendPct) : undefined}
-            deltaGoodDirection="down"
-            caption="rispetto a settimana scorsa"
-            sparkline={bodyFatSparkline}
-            onPress={() => router.push('/body')}
+            icon="training"
+            label="Andamento carichi"
+            subLabel={topLift ? topLift.exercise.name : undefined}
+            value={topLift ? String(topLift.history[topLift.history.length - 1].weightKg) : '—'}
+            unit={topLift ? 'kg' : undefined}
+            delta={topLiftDeltaKg}
+            deltaLabel={topLiftDeltaKg != null ? `${formatSignedKg(topLiftDeltaKg)} kg` : undefined}
+            caption="ultime 4 settimane"
+            sparkline={topLift ? topLift.history.slice(-10).map((h) => h.weightKg) : undefined}
+            onPress={() => router.push('/training-progress')}
           />
         </View>
       </View>
@@ -392,10 +382,6 @@ function WeeklyGoalCard({
   dailyGoalKcal,
   days,
   onSelectDay,
-  weekIndex,
-  weekTotal,
-  onPrevWeek,
-  onNextWeek,
 }: {
   goalKcal: number;
   soFarKcal: number;
@@ -403,43 +389,30 @@ function WeeklyGoalCard({
   dailyGoalKcal: number;
   days: WeeklyGoalDay[];
   onSelectDay: (day: WeeklyGoalDay) => void;
-  weekIndex: number;
-  weekTotal: number;
-  onPrevWeek?: () => void;
-  onNextWeek?: () => void;
 }) {
   const theme = useTheme();
   return (
-    <FlatCard tint={theme.accentSoft} style={styles.goalHeroCard}>
+    <FlatCard style={styles.goalHeroCard}>
       <View style={styles.goalHeroHeader}>
         <View style={styles.goalHeroHeaderLeft}>
-          <View style={[styles.goalHeroIcon, { backgroundColor: theme.backgroundElevated }]}>
-            <Icon name="flame" size={16} color={theme.accent} />
-          </View>
+          <Icon name="flame" size={20} color={theme.accent} />
           <ThemedText style={styles.goalHeroLabel} numberOfLines={2}>
             Bilancio calorico settimanale
           </ThemedText>
         </View>
-        {weekTotal > 0 ? (
-          <View style={[styles.goalWeekPill, { backgroundColor: theme.backgroundElevated }]}>
-            <Pressable onPress={onPrevWeek} disabled={!onPrevWeek} hitSlop={6}>
-              <Icon name="arrowBack" size={13} color={onPrevWeek ? theme.text : theme.textTertiary} />
-            </Pressable>
-            <ThemedText style={styles.goalWeekPillLabel} numberOfLines={1}>
-              Settimana {weekIndex}/{weekTotal}
-            </ThemedText>
-            <Pressable onPress={onNextWeek} disabled={!onNextWeek} hitSlop={6}>
-              <Icon name="chevronRight" size={13} color={onNextWeek ? theme.text : theme.textTertiary} />
-            </Pressable>
-          </View>
-        ) : null}
+        <View style={styles.goalTargetPill}>
+          <Icon name="target" size={12} color="#FFFFFF" />
+          <ThemedText style={styles.goalTargetPillLabel} numberOfLines={1}>
+            Obiettivo: {formatSignedKcal(goalKcal)} kcal
+          </ThemedText>
+        </View>
       </View>
 
       <ThemedText style={[styles.goalHeroValue, { color: theme.accent }]}>{formatSignedKcal(soFarKcal)} kcal</ThemedText>
       <ThemedText style={styles.goalHeroSubValue}>di {formatKcal(Math.abs(goalKcal))} kcal</ThemedText>
 
       <View style={styles.goalProgressRow}>
-        <View style={[styles.goalProgressTrack, { backgroundColor: theme.backgroundElevated }]}>
+        <View style={[styles.goalProgressTrack, { backgroundColor: theme.backgroundElement }]}>
           <View style={[styles.goalProgressFill, { width: `${Math.round(clamp01(progress) * 100)}%`, backgroundColor: theme.accent }]} />
         </View>
         <ThemedText style={styles.goalProgressPercent}>{Math.round(clamp01(progress) * 100)}%</ThemedText>
@@ -456,7 +429,7 @@ function WeeklyGoalCard({
                 {d.label}
               </ThemedText>
               {d.isToday ? (
-                <ProgressRing size={32} strokeWidth={4} progress={Math.max(ringProgress, 0.06)} color={theme.accent} trackColor={theme.backgroundElevated} />
+                <ProgressRing size={32} strokeWidth={4} progress={Math.max(ringProgress, 0.06)} color={theme.accent} trackColor={theme.backgroundElement} />
               ) : clickable && met ? (
                 <View style={[styles.streakSolidCircle, { backgroundColor: theme.success }]}>
                   <Icon name="check" size={15} color={theme.onAccent} />
@@ -466,7 +439,7 @@ function WeeklyGoalCard({
                   <Icon name="close" size={14} color={theme.danger} />
                 </View>
               ) : (
-                <View style={[styles.streakOutlineCircle, { borderColor: theme.backgroundElevated }]} />
+                <View style={[styles.streakOutlineCircle, { borderColor: theme.backgroundElement }]} />
               )}
               <ThemedText style={[styles.streakDayValue, clickable && !met ? { color: theme.danger } : null]} numberOfLines={1}>
                 {d.hasHappened ? formatSignedKcal(d.balanceKcal) : '–'}
@@ -509,28 +482,30 @@ function TodaySummaryCard({
 }) {
   const theme = useTheme();
   const balanceNoun = balanceKcal < 0 ? 'Deficit' : balanceKcal > 0 ? 'Surplus' : 'Bilancio';
-  const ringColor = goalMet ? theme.success : theme.accent;
   const trainingPct = Math.round(clamp01(trainingProgress) * 100);
 
   return (
-    <FlatCard tint={theme.successSoft} style={styles.todaySummaryCard}>
+    <FlatCard style={styles.todaySummaryCard}>
       <View style={styles.todaySummaryTopRow}>
         <Pressable style={styles.todaySummaryLeft} onPress={onOpenDiet}>
-          <ProgressRing size={56} strokeWidth={6} progress={dietProgress} color={ringColor} trackColor={theme.backgroundElevated}>
-            <Icon name="flame" size={20} color={ringColor} />
+          <ProgressRing size={56} strokeWidth={6} progress={dietProgress} color={theme.success} trackColor={theme.accentSoft}>
+            <Icon name="flame" size={20} color={theme.accent} />
           </ProgressRing>
           <View style={{ flex: 1, minWidth: 0 }}>
-            <ThemedText type="caption" themeColor="textSecondary">
-              Oggi
-            </ThemedText>
+            <View style={styles.todaySummaryOggiRow}>
+              <View style={[styles.todaySummaryDot, { backgroundColor: theme.success }]} />
+              <ThemedText type="caption" themeColor="textSecondary">
+                Oggi
+              </ThemedText>
+            </View>
             <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
               <ThemedText style={styles.todaySummaryKcal}>{formatKcal(eatenKcal)}</ThemedText>
               <ThemedText type="caption" themeColor="textSecondary">
                 kcal / {formatKcal(calorieTarget)}
               </ThemedText>
             </View>
-            <ThemedText type="caption" style={{ color: theme.success, fontWeight: '700' }} numberOfLines={1}>
-              {balanceNoun} {formatKcal(Math.abs(balanceKcal))} kcal
+            <ThemedText type="caption" numberOfLines={1}>
+              {balanceNoun} <ThemedText type="caption" style={{ color: theme.success, fontWeight: '700' }}>{formatKcal(Math.abs(balanceKcal))} kcal</ThemedText>
             </ThemedText>
           </View>
         </Pressable>
@@ -544,13 +519,13 @@ function TodaySummaryCard({
             <Icon name="chevronRight" size={14} color={theme.textTertiary} />
           </View>
           <ThemedText style={styles.todaySummaryPercent}>{trainingPct}%</ThemedText>
-          <View style={[styles.goalProgressTrack, { backgroundColor: theme.backgroundElevated }]}>
+          <View style={[styles.goalProgressTrack, { backgroundColor: theme.backgroundElement }]}>
             <View style={[styles.goalProgressFill, { width: `${trainingPct}%`, backgroundColor: theme.success }]} />
           </View>
         </Pressable>
       </View>
 
-      <View style={[styles.todaySummaryDivider, { backgroundColor: theme.backgroundElevated }]} />
+      <View style={[styles.todaySummaryDivider, { backgroundColor: theme.backgroundElement }]} />
 
       <View style={styles.todaySummaryMacrosRow}>
         <TodaySummaryMacro icon="protein" label="Proteine" value={Math.round(macroTotals.protein)} target={Math.round(macroTargets.protein)} />
@@ -655,9 +630,9 @@ function TodayStatusCard({
   const theme = useTheme();
   return (
     <Pressable onPress={onOpen} style={styles.todayCard}>
-      <FlatCard tint={theme.accentSoft} radius={Radius.medium} style={styles.todayCardInner}>
+      <FlatCard radius={Radius.medium} style={styles.todayCardInner}>
         <View style={styles.todayCardTopRow}>
-          <View style={[styles.todayCardIcon, { backgroundColor: theme.backgroundElevated }]}>
+          <View style={[styles.todayCardIcon, { backgroundColor: theme.accentSoft }]}>
             <Icon name={icon} size={17} color={theme.accent} />
           </View>
           <Icon name="chevronRight" size={15} color={theme.textTertiary} />
@@ -671,7 +646,7 @@ function TodayStatusCard({
             {percentCaption}
           </ThemedText>
         </View>
-        <View style={[styles.goalProgressTrack, { backgroundColor: theme.backgroundElevated }]}>
+        <View style={[styles.goalProgressTrack, { backgroundColor: theme.backgroundElement }]}>
           <View style={[styles.goalProgressFill, { width: `${percent}%`, backgroundColor: barColor }]} />
         </View>
         <View style={styles.todayCardStatusRow}>
@@ -915,13 +890,6 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
   },
-  goalHeroIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: Radius.small,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   goalHeroLabel: {
     flex: 1,
     fontSize: 12,
@@ -940,19 +908,21 @@ const styles = StyleSheet.create({
     lineHeight: 17,
     fontWeight: '600',
   },
-  goalWeekPill: {
+  goalTargetPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
+    gap: 4,
     flexShrink: 0,
     paddingHorizontal: Spacing.two,
     paddingVertical: 5,
     borderRadius: Radius.pill,
+    backgroundColor: '#15161A',
   },
-  goalWeekPillLabel: {
+  goalTargetPillLabel: {
     fontSize: 11,
     lineHeight: 14,
     fontWeight: '700',
+    color: '#FFFFFF',
   },
   goalProgressRow: {
     flexDirection: 'row',
@@ -1174,6 +1144,16 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     fontWeight: '800',
     letterSpacing: -0.2,
+  },
+  todaySummaryOggiRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  todaySummaryDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   todaySummaryRight: {
     flex: 1,
