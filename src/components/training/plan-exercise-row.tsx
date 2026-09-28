@@ -7,7 +7,6 @@ import { NewLoadModal } from '@/components/training/new-load-modal';
 import { FlatCard } from '@/components/ui/flat-card';
 import { ThemedText } from '@/components/themed-text';
 import { Icon, type IconName } from '@/components/ui/icon';
-import { TrendChart } from '@/components/ui/trend-chart';
 import { SpringSnappy } from '@/constants/motion';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -16,27 +15,20 @@ import type { TrainingExerciseEntry } from '@/lib/planning/types';
 
 export type PlanExerciseRowProps = {
   exercise: TrainingExerciseEntry;
-  history: { date: string; weightKg: number }[];
   latestWeightKg: number | null;
   loggedTodayKg: number | null;
   completed: boolean;
   onToggleCompleted: () => void;
   onAddLoad: (reps: number, weightKg: number, rir?: number) => void;
-  /** Scoped progression-engine suggestion (lib/planning/progression.ts) —
-   * only has a `note` once the user has logged at least one RIR value for
-   * this exercise, otherwise undefined and nothing extra is shown. */
-  progressionNote?: string | null;
 };
 
 export function PlanExerciseRow({
   exercise,
-  history,
   latestWeightKg,
   loggedTodayKg,
   completed,
   onToggleCompleted,
   onAddLoad,
-  progressionNote,
 }: PlanExerciseRowProps) {
   const theme = useTheme();
   const [infoOpen, setInfoOpen] = useState(false);
@@ -48,10 +40,6 @@ export function PlanExerciseRow({
   const isFirstTime = latestWeightKg == null;
   const referenceKg = latestWeightKg ?? exercise.suggestedKg;
   const restLabel = exercise.restSec < 60 ? `${exercise.restSec}s` : `${Math.round(exercise.restSec / 60)} min`;
-
-  const recentHistory = history.slice(-4);
-  const recentDeltaKg =
-    recentHistory.length >= 2 ? recentHistory[recentHistory.length - 1].weightKg - recentHistory[0].weightKg : null;
 
   return (
     <FlatCard radius={Radius.large} style={[styles.card, completed ? { opacity: 0.72 } : undefined]}>
@@ -73,7 +61,7 @@ export function PlanExerciseRow({
         <View style={styles.headerSpacer} />
 
         <Pressable onPress={() => setInfoOpen(true)} hitSlop={8} style={[styles.iconButton, { borderColor: theme.border }]}>
-          <Icon name="info" size={18} color={theme.textSecondary} />
+          <Icon name="info" size={15} color={theme.textSecondary} />
         </Pressable>
       </View>
 
@@ -86,46 +74,14 @@ export function PlanExerciseRow({
         <StatCol icon="hourglass" topText="Tempo" bottomText={exercise.tempo} />
       </View>
 
-      <View style={[styles.progressionBox, { backgroundColor: theme.backgroundElement }]}>
-        {recentHistory.length >= 2 ? (
-          <TrendChart data={recentHistory.map((h) => h.weightKg)} width={52} height={36} color={theme.accent} />
-        ) : (
-          <View style={styles.chartPlaceholder} />
-        )}
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <ThemedText style={styles.progressionLabel} themeColor="textSecondary">
-            Progressione carichi
-          </ThemedText>
-          {recentDeltaKg != null ? (
-            <ThemedText style={[styles.progressionValue, { color: recentDeltaKg >= 0 ? theme.success : theme.danger }]}>
-              {recentDeltaKg > 0 ? '+' : ''}
-              {recentDeltaKg} kg
-            </ThemedText>
-          ) : (
-            <ThemedText type="caption" themeColor="textTertiary" numberOfLines={2}>
-              {isBodyweight ? 'Aggiungi un carico se appesantisci l’esercizio.' : 'Aggiungi un carico per iniziare a monitorare i progressi.'}
-            </ThemedText>
-          )}
-          {progressionNote ? (
-            <ThemedText type="caption" themeColor="textTertiary" numberOfLines={1}>
-              {progressionNote}
-            </ThemedText>
-          ) : recentDeltaKg != null ? (
-            <ThemedText type="caption" themeColor="textTertiary">
-              ultime 4 settimane
-            </ThemedText>
-          ) : null}
-        </View>
-
-        <Pressable
-          onPress={() => setLoadModalOpen(true)}
-          style={[styles.newLoadButton, { backgroundColor: theme.accent }]}>
-          <Icon name="addCircle" size={14} color={theme.onAccent} />
-          <ThemedText style={{ color: theme.onAccent, fontSize: 13, fontWeight: '700' }} numberOfLines={1}>
-            Nuovo carico
-          </ThemedText>
-        </Pressable>
-      </View>
+      <Pressable
+        onPress={() => setLoadModalOpen(true)}
+        style={[styles.newLoadButton, { backgroundColor: theme.accent }]}>
+        <Icon name="addCircle" size={13} color={theme.onAccent} />
+        <ThemedText style={{ color: theme.onAccent, fontSize: 12, fontWeight: '700' }} numberOfLines={1}>
+          Nuovo carico
+        </ThemedText>
+      </Pressable>
 
       {loggedTodayKg != null ? (
         <ThemedText type="caption" themeColor="textSecondary" style={{ textAlign: 'center' }}>
@@ -168,12 +124,12 @@ function StatCol({
   bottomText: string;
 }) {
   const theme = useTheme();
-  const boldStyle = { fontSize: 15, fontWeight: '800' as const };
-  const labelStyle = { fontSize: 12, fontWeight: '500' as const };
+  const boldStyle = { fontSize: 13, fontWeight: '800' as const };
+  const labelStyle = { fontSize: 11, fontWeight: '500' as const };
   return (
     <View style={styles.statCol}>
       <View style={styles.statColTopRow}>
-        <Icon name={icon} size={16} color={theme.textSecondary} />
+        <Icon name={icon} size={13} color={theme.textSecondary} />
         <ThemedText style={topBold ? boldStyle : labelStyle} themeColor={topBold ? undefined : 'textSecondary'} numberOfLines={1}>
           {topText}
         </ThemedText>
@@ -225,29 +181,29 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   checkCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
   nameText: {
     flexShrink: 1,
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '700',
   },
   thumb: {
-    width: 56,
-    height: 56,
+    width: 40,
+    height: 40,
     borderRadius: Radius.medium,
   },
   headerSpacer: {
     flex: 1,
   },
   iconButton: {
-    width: 34,
-    height: 34,
+    width: 28,
+    height: 28,
     borderRadius: Radius.pill,
     borderWidth: 1.5,
     alignItems: 'center',
@@ -259,40 +215,21 @@ const styles = StyleSheet.create({
   },
   statCol: {
     alignItems: 'flex-start',
-    gap: 4,
+    gap: 3,
   },
   statColTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-  },
-  progressionBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-    padding: Spacing.two,
-    borderRadius: Radius.medium,
-  },
-  progressionLabel: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  progressionValue: {
-    fontSize: 15,
-    fontWeight: '800',
-  },
-  chartPlaceholder: {
-    width: 52,
-    height: 36,
+    gap: 4,
   },
   newLoadButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 5,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: 10,
+    gap: 4,
+    alignSelf: 'flex-start',
+    paddingHorizontal: Spacing.two,
+    paddingVertical: 7,
     borderRadius: Radius.pill,
-    flexShrink: 0,
   },
 });

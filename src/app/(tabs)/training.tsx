@@ -25,11 +25,9 @@ import { useBodyStore } from '@/store/body-store';
 import { useOnboardingStore } from '@/store/onboarding-store';
 import { isValidTrainingPlan, usePlanStore } from '@/store/plan-store';
 import {
-  historyForExercise,
   isExerciseCompleted,
   latestWeightForExercise,
   setsForExerciseOnDate,
-  suggestedNextLoadForExercise,
   useTrainingProgressStore,
 } from '@/store/training-progress-store';
 import { useUserStore } from '@/store/user-store';
@@ -148,10 +146,8 @@ export default function TrainingScreen() {
     setSelectedDate(newWeekDates[mondayIndex(new Date(selectedDate))]);
   };
 
-  const baseDayHeading =
-    selectedDate === today ? 'Allenamento di oggi' : `Allenamento del ${new Date(selectedDate).toLocaleDateString('it-IT', { day: 'numeric', month: 'long' })}`;
   const selectedDayHeading =
-    selectedDay?.type === 'workout' ? `${baseDayHeading} • ${splitHeadingSuffix(selectedDay.title)}` : baseDayHeading;
+    selectedDate === today ? 'Allenamento di oggi' : `Allenamento del ${new Date(selectedDate).toLocaleDateString('it-IT', { day: 'numeric', month: 'long' })}`;
 
   return (
     <ScreenScroll>
@@ -235,25 +231,29 @@ export default function TrainingScreen() {
             <PrimaryButton label="Aggiungi allenamento" icon="plus" dense onPress={() => setLogActivityVisible(true)} />
           </View>
 
-          <ThemedText style={styles.dayHeading}>{selectedDayHeading}</ThemedText>
+          <View style={{ gap: 2 }}>
+            <ThemedText type="subtitle">{selectedDayHeading}</ThemedText>
+            {selectedDay?.type === 'workout' ? (
+              <ThemedText type="caption" themeColor="textSecondary">
+                {splitHeadingSuffix(selectedDay.title)}
+              </ThemedText>
+            ) : null}
+          </View>
 
           {selectedDay?.type === 'workout' ? (
             <View style={{ gap: Spacing.three }}>
               {(selectedDay.exercises ?? []).map((exercise) => {
                 const setsToday = setsForExerciseOnDate(progressSets, exercise.id, selectedDate);
                 const loggedTodayKg = setsToday.length ? Math.max(...setsToday.map((s) => s.weightKg)) : null;
-                const progression = suggestedNextLoadForExercise(progressSets, exercise.id, exercise.reps, exercise.suggestedKg);
                 return (
                   <PlanExerciseRow
                     key={exercise.id}
                     exercise={exercise}
-                    history={historyForExercise(progressSets, exercise.id)}
                     latestWeightKg={latestWeightForExercise(progressSets, exercise.id)}
                     loggedTodayKg={loggedTodayKg}
                     completed={isExerciseCompleted(completedExercises, exercise.id, selectedDate)}
                     onToggleCompleted={() => toggleCompleted(exercise.id, selectedDate)}
                     onAddLoad={(reps, weightKg, rir) => logSet(exercise.id, exercise.name, reps, weightKg, selectedDate, rir)}
-                    progressionNote={progression.note}
                   />
                 );
               })}
@@ -328,12 +328,6 @@ const styles = StyleSheet.create({
   },
   showPlanButton: {
     flexShrink: 0,
-  },
-  dayHeading: {
-    fontSize: 17,
-    lineHeight: 22,
-    fontWeight: '800',
-    letterSpacing: -0.2,
   },
   dayCard: {
     alignItems: 'center',
