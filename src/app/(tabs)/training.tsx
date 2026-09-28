@@ -25,6 +25,7 @@ import { useBodyStore } from '@/store/body-store';
 import { useOnboardingStore } from '@/store/onboarding-store';
 import { isValidTrainingPlan, usePlanStore } from '@/store/plan-store';
 import {
+  historyForExercise,
   isExerciseCompleted,
   latestWeightForExercise,
   setsForExerciseOnDate,
@@ -249,6 +250,7 @@ export default function TrainingScreen() {
                   <PlanExerciseRow
                     key={exercise.id}
                     exercise={exercise}
+                    history={historyForExercise(progressSets, exercise.id)}
                     latestWeightKg={latestWeightForExercise(progressSets, exercise.id)}
                     loggedTodayKg={loggedTodayKg}
                     completed={isExerciseCompleted(completedExercises, exercise.id, selectedDate)}

@@ -7,6 +7,7 @@ import { NewLoadModal } from '@/components/training/new-load-modal';
 import { FlatCard } from '@/components/ui/flat-card';
 import { ThemedText } from '@/components/themed-text';
 import { Icon, type IconName } from '@/components/ui/icon';
+import { TrendChart } from '@/components/ui/trend-chart';
 import { SpringSnappy } from '@/constants/motion';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -15,6 +16,7 @@ import type { TrainingExerciseEntry } from '@/lib/planning/types';
 
 export type PlanExerciseRowProps = {
   exercise: TrainingExerciseEntry;
+  history: { date: string; weightKg: number }[];
   latestWeightKg: number | null;
   loggedTodayKg: number | null;
   completed: boolean;
@@ -24,6 +26,7 @@ export type PlanExerciseRowProps = {
 
 export function PlanExerciseRow({
   exercise,
+  history,
   latestWeightKg,
   loggedTodayKg,
   completed,
@@ -40,6 +43,7 @@ export function PlanExerciseRow({
   const isFirstTime = latestWeightKg == null;
   const referenceKg = latestWeightKg ?? exercise.suggestedKg;
   const restLabel = exercise.restSec < 60 ? `${exercise.restSec}s` : `${Math.round(exercise.restSec / 60)} min`;
+  const recentHistory = history.slice(-4);
 
   return (
     <FlatCard radius={Radius.large} style={[styles.card, completed ? { opacity: 0.72 } : undefined]}>
@@ -65,23 +69,39 @@ export function PlanExerciseRow({
         </Pressable>
       </View>
 
-      <View style={styles.statsRow}>
-        <StatCol icon="repsHash" topText={`${exercise.sets}×${exercise.reps}`} topBold bottomText="Serie x Rip." />
-        {!isBodyweight && referenceKg != null ? (
-          <StatCol icon="weightKg" topText={isFirstTime ? 'Consigliato' : 'Ultimo carico'} bottomText={`${referenceKg} kg`} />
-        ) : null}
-        <StatCol icon="clockOutline" topText="Recupero" bottomText={restLabel} />
-        <StatCol icon="hourglass" topText="Tempo" bottomText={exercise.tempo} />
+      <View style={styles.metaRow}>
+        <MetaItem icon="repsHash" value={`${exercise.sets}×${exercise.reps}`} label="Serie x Rip." />
+        <View style={[styles.metaDivider, { backgroundColor: theme.border }]} />
+        <MetaItem icon="hourglass" value={exercise.tempo} label="Tempo" />
+        <View style={[styles.metaDivider, { backgroundColor: theme.border }]} />
+        <MetaItem icon="clockOutline" value={restLabel} label="Recupero" />
       </View>
 
-      <Pressable
-        onPress={() => setLoadModalOpen(true)}
-        style={[styles.newLoadButton, { backgroundColor: theme.accent }]}>
-        <Icon name="addCircle" size={13} color={theme.onAccent} />
-        <ThemedText style={{ color: theme.onAccent, fontSize: 12, fontWeight: '700' }} numberOfLines={1}>
-          Nuovo carico
-        </ThemedText>
-      </Pressable>
+      <View style={styles.loadRow}>
+        <View style={styles.loadCol}>
+          <ThemedText type="caption" themeColor="textSecondary" numberOfLines={1}>
+            {isBodyweight ? 'Carico' : isFirstTime ? 'Consigliato' : 'Ultimo carico'}
+          </ThemedText>
+          <ThemedText style={styles.loadValue} numberOfLines={1}>
+            {referenceKg != null ? `${referenceKg} kg` : '—'}
+          </ThemedText>
+        </View>
+
+        {recentHistory.length >= 2 ? (
+          <TrendChart data={recentHistory.map((h) => h.weightKg)} width={48} height={32} color={theme.accent} />
+        ) : (
+          <View style={styles.chartPlaceholder} />
+        )}
+
+        <Pressable
+          onPress={() => setLoadModalOpen(true)}
+          style={[styles.newLoadButton, { backgroundColor: theme.accent }]}>
+          <Icon name="addCircle" size={13} color={theme.onAccent} />
+          <ThemedText style={{ color: theme.onAccent, fontSize: 12, fontWeight: '700' }} numberOfLines={1}>
+            Nuovo carico
+          </ThemedText>
+        </Pressable>
+      </View>
 
       {loggedTodayKg != null ? (
         <ThemedText type="caption" themeColor="textSecondary" style={{ textAlign: 'center' }}>
@@ -108,34 +128,22 @@ export function PlanExerciseRow({
   );
 }
 
-/** One stat column: an icon beside the top line, a second line below it —
- * `topBold` swaps which line is the bold value vs. the gray label (col 1
- * leads with the bold "4×8-10" value then the "Serie x Rip." label below;
- * every other column leads with the gray label then the bold value). */
-function StatCol({
-  icon,
-  topText,
-  topBold = false,
-  bottomText,
-}: {
-  icon: IconName;
-  topText: string;
-  topBold?: boolean;
-  bottomText: string;
-}) {
+/** One item in the serie×rip / tempo / recupero row: an icon+value on top,
+ * a small gray label below — centered within its own flex share of the
+ * row, so the vertical dividers between items land evenly regardless of
+ * how long each value happens to be. */
+function MetaItem({ icon, value, label }: { icon: IconName; value: string; label: string }) {
   const theme = useTheme();
-  const boldStyle = { fontSize: 13, fontWeight: '800' as const };
-  const labelStyle = { fontSize: 11, fontWeight: '500' as const };
   return (
-    <View style={styles.statCol}>
-      <View style={styles.statColTopRow}>
+    <View style={styles.metaItem}>
+      <View style={styles.metaItemTopRow}>
         <Icon name={icon} size={13} color={theme.textSecondary} />
-        <ThemedText style={topBold ? boldStyle : labelStyle} themeColor={topBold ? undefined : 'textSecondary'} numberOfLines={1}>
-          {topText}
+        <ThemedText style={styles.metaValue} numberOfLines={1}>
+          {value}
         </ThemedText>
       </View>
-      <ThemedText style={topBold ? labelStyle : boldStyle} themeColor={topBold ? 'textSecondary' : undefined} numberOfLines={1}>
-        {bottomText}
+      <ThemedText type="caption" themeColor="textSecondary" numberOfLines={1}>
+        {label}
       </ThemedText>
     </View>
   );
@@ -209,25 +217,51 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  statsRow: {
+  metaRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 2,
   },
-  statCol: {
-    alignItems: 'flex-start',
+  metaItem: {
+    flex: 1,
+    alignItems: 'center',
     gap: 3,
   },
-  statColTopRow: {
+  metaItemTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+  },
+  metaValue: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  metaDivider: {
+    width: 1,
+    height: 22,
+  },
+  loadRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  loadCol: {
+    gap: 2,
+  },
+  loadValue: {
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  chartPlaceholder: {
+    width: 48,
+    height: 32,
   },
   newLoadButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
-    alignSelf: 'flex-start',
+    marginLeft: 'auto',
     paddingHorizontal: Spacing.two,
     paddingVertical: 7,
     borderRadius: Radius.pill,
