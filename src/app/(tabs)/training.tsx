@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { Image, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
@@ -11,14 +11,14 @@ import { ProgressRing } from '@/components/ui/progress-ring';
 import { LogActivityModal } from '@/components/training/log-activity-modal';
 import { PlanExerciseRow } from '@/components/training/plan-exercise-row';
 import { WeekDayStrip } from '@/components/training/week-day-strip';
-import { WeekTimeline } from '@/components/training/week-timeline';
+import { PeriodTimeline, type TimelinePeriod } from '@/components/training/period-timeline';
 import { Radius, Spacing } from '@/constants/theme';
 import { useStoreHydrated } from '@/hooks/use-store-hydrated';
 import { useTheme } from '@/hooks/use-theme';
 import { latestSnapshot } from '@/lib/mock/body';
 import type { Goal } from '@/lib/mock/types';
 import { addDaysISO, currentWeekDates, daysAgoISO, mondayIndex } from '@/lib/mock/dates';
-import { currentMonthIndex, currentMonthWeeks } from '@/lib/planning/plan-progress';
+import { currentMonthIndex } from '@/lib/planning/plan-progress';
 import type { TrainingDayPlan } from '@/lib/planning/types';
 import { useActivityLogStore } from '@/store/activity-log-store';
 import { useBodyStore } from '@/store/body-store';
@@ -116,7 +116,6 @@ export default function TrainingScreen() {
 
   const monthIndex = trainingPlan ? currentMonthIndex(trainingPlan) : 1;
   const currentMonth = trainingPlan?.months.find((m) => m.monthIndex === monthIndex);
-  const weeks = trainingPlan ? currentMonthWeeks(trainingPlan) : [];
   const weeklySplit = currentMonth?.weeklySplit ?? [];
   const selectedDay: TrainingDayPlan | undefined = weeklySplit[mondayIndex(new Date(selectedDate))];
 
@@ -128,17 +127,32 @@ export default function TrainingScreen() {
     return exercises.every((exercise) => isExerciseCompleted(completedExercises, exercise.id, date));
   };
 
-  // Always the REAL current calendar week, independent of whatever week the
-  // strip below is currently browsing — this ring/progress always answers
-  // "how is this week actually going", not "how did the browsed week go".
-  const realCurrentWeekDates = useMemo(() => currentWeekDates(new Date(today)), [today]);
-  const weekSessionsTotal = weeklySplit.filter((d) => d.type !== 'rest').length;
-  const weekSessionsDone = realCurrentWeekDates.filter((date, i) => {
-    const day = weeklySplit[i];
+  // The plan card now shows the whole current MONTH (a fixed 30-day block
+  // starting at generatedAt — see plan-progress.ts — not a real calendar
+  // month), both for the month-strip timeline and for this ring: "days
+  // trained" counts any already-elapsed day in that block whose plan slot
+  // wasn't rest and is done; "days programmed" counts every non-rest slot
+  // across the whole block, elapsed or not — same convention the old
+  // weekly version used, just over ~30 days instead of 7.
+  const planStartDate = trainingPlan ? trainingPlan.generatedAt.slice(0, 10) : today;
+  const monthWindowStart = addDaysISO(planStartDate, (monthIndex - 1) * 30);
+  const monthDates = useMemo(() => Array.from({ length: 30 }, (_, i) => addDaysISO(monthWindowStart, i)), [monthWindowStart]);
+  const monthSessionsTotal = monthDates.filter((date) => weeklySplit[mondayIndex(new Date(date))]?.type !== 'rest').length;
+  const monthSessionsDone = monthDates.filter((date) => {
+    const day = weeklySplit[mondayIndex(new Date(date))];
     if (!day || day.type === 'rest' || date > today) return false;
     return day.type === 'workout' ? isDayComplete(date) : activityLogEntries.some((e) => e.date === date);
   }).length;
-  const weekCompletionFraction = weekSessionsTotal > 0 ? weekSessionsDone / weekSessionsTotal : 0;
+  const monthCompletionFraction = monthSessionsTotal > 0 ? monthSessionsDone / monthSessionsTotal : 0;
+
+  const monthPeriods: TimelinePeriod[] = trainingPlan
+    ? Array.from({ length: trainingPlan.durationMonths }, (_, i) => ({
+        number: i + 1,
+        startISO: addDaysISO(planStartDate, i * 30),
+        endISO: addDaysISO(planStartDate, i * 30 + 29),
+        isCurrent: i + 1 === monthIndex,
+      }))
+    : [];
 
   const goToAdjacentWeek = (delta: number) => {
     const newOffset = weekOffset + delta;
@@ -153,16 +167,15 @@ export default function TrainingScreen() {
   return (
     <ScreenScroll>
       <View style={styles.headerRow}>
-        <Image source={require('@/assets/images/logo-wordmark.png')} style={styles.logo} resizeMode="contain" />
+        <View style={{ gap: 4, flex: 1 }}>
+          <ThemedText type="display">Training</ThemedText>
+          <ThemedText type="default" themeColor="textSecondary">
+            Il tuo percorso, un obiettivo alla volta.
+          </ThemedText>
+        </View>
         <Pressable onPress={() => router.push('/profile')} hitSlop={8} style={[styles.avatar, { backgroundColor: theme.backgroundElevated }]}>
           <Icon name="profile" size={22} color={theme.text} />
         </Pressable>
-      </View>
-      <View style={{ gap: 4 }}>
-        <ThemedText type="display">Training</ThemedText>
-        <ThemedText type="default" themeColor="textSecondary">
-          Il tuo percorso, un obiettivo alla volta.
-        </ThemedText>
       </View>
 
       {!trainingPlan ? (
@@ -185,24 +198,24 @@ export default function TrainingScreen() {
                 </ThemedText>
                 {currentMonth ? (
                   <ThemedText type="caption" themeColor="textSecondary" numberOfLines={2}>
-                    {weeks.length} settimane • {GOAL_SHORT_LABEL[currentUser.goal]} → {currentMonth.title}
+                    {trainingPlan.durationMonths} mesi • {GOAL_SHORT_LABEL[currentUser.goal]} → {currentMonth.title}
                   </ThemedText>
                 ) : null}
               </View>
               <Icon name="chevronRight" size={18} color={theme.textTertiary} />
             </Pressable>
 
-            <WeekTimeline weeks={weeks} />
+            <PeriodTimeline label="Mese" periods={monthPeriods} />
 
             <View style={styles.completionRow}>
-              <ProgressRing size={48} strokeWidth={5} progress={weekCompletionFraction} color={theme.accent} trackColor={theme.backgroundElement}>
+              <ProgressRing size={48} strokeWidth={5} progress={monthCompletionFraction} color={theme.accent} trackColor={theme.backgroundElement}>
                 <ThemedText type="caption" style={{ fontWeight: '800', color: theme.text }}>
-                  {weekSessionsDone}/{weekSessionsTotal}
+                  {monthSessionsDone}/{monthSessionsTotal}
                 </ThemedText>
               </ProgressRing>
               <View style={{ flex: 1, gap: 4, minWidth: 0 }}>
                 <ThemedText type="caption" themeColor="textSecondary" numberOfLines={2}>
-                  Completamento settimana
+                  Completamento mese
                 </ThemedText>
               </View>
               <PrimaryButton
@@ -299,10 +312,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-  },
-  logo: {
-    width: 110,
-    height: 27,
   },
   avatar: {
     width: 40,

@@ -4,12 +4,12 @@ import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
 import { useTheme } from '@/hooks/use-theme';
 
-export type WeekTimelineWeek = { weekNumber: number; startISO: string; endISO: string; isCurrent: boolean };
+export type TimelinePeriod = { number: number; startISO: string; endISO: string; isCurrent: boolean };
 
 const NODE_SIZE = 28;
 
 /** "19-25 set" / "29 set - 5 ott" — a 3-letter-month date range compact
- * enough for the narrow week-node columns (formatDayRange's full month
+ * enough for the narrow period-node columns (formatDayRange's full month
  * name doesn't fit here). */
 function compactDayRange(startISO: string, endISO: string): string {
   const start = new Date(startISO);
@@ -19,14 +19,16 @@ function compactDayRange(startISO: string, endISO: string): string {
   return `${start.getDate()} ${shortMonth(start)} – ${end.getDate()} ${shortMonth(end)}`;
 }
 
-/** The plan card's "Settimana 1..4" strip: a connecting line under 4 dots,
- * the current week filled solid, each with its label and real calendar date
- * range underneath — the week-level counterpart to PlanTimeline's month
- * dots (used elsewhere for the whole multi-month plan). */
-export function WeekTimeline({ weeks }: { weeks: WeekTimelineWeek[] }) {
+/** A generic "N of these periods" strip: a connecting line under one dot
+ * per period, the current one outlined, past ones filled solid with a
+ * checkmark, each with its label (`{label} {number}`, e.g. "Sett 1" or
+ * "Mese 1") and real calendar date range underneath. Used for both the
+ * plan card's week strip (label="Sett") and month strip (label="Mese") —
+ * same visual convention at either granularity. */
+export function PeriodTimeline({ label, periods }: { label: string; periods: TimelinePeriod[] }) {
   const theme = useTheme();
-  const currentIndex = weeks.findIndex((w) => w.isCurrent);
-  const fillFraction = weeks.length > 1 ? Math.max(currentIndex, 0) / (weeks.length - 1) : 0;
+  const currentIndex = periods.findIndex((p) => p.isCurrent);
+  const fillFraction = periods.length > 1 ? Math.max(currentIndex, 0) / (periods.length - 1) : 0;
 
   return (
     <View style={styles.wrap}>
@@ -36,31 +38,31 @@ export function WeekTimeline({ weeks }: { weeks: WeekTimelineWeek[] }) {
         </View>
       </View>
       <View style={styles.row}>
-        {weeks.map((week, index) => {
+        {periods.map((period, index) => {
           const done = currentIndex >= 0 && index < currentIndex;
           return (
-            <View key={week.weekNumber} style={styles.col}>
+            <View key={period.number} style={styles.col}>
               <View
                 style={[
                   styles.node,
                   {
                     backgroundColor: done ? theme.accent : theme.backgroundElevated,
-                    borderColor: week.isCurrent || done ? theme.accent : theme.border,
+                    borderColor: period.isCurrent || done ? theme.accent : theme.border,
                   },
                 ]}>
                 {done ? (
                   <Icon name="check" size={14} color={theme.onAccent} />
                 ) : (
-                  <ThemedText type="caption" style={{ color: week.isCurrent ? theme.accent : theme.textSecondary, fontWeight: '700' }}>
-                    {week.weekNumber}
+                  <ThemedText type="caption" style={{ color: period.isCurrent ? theme.accent : theme.textSecondary, fontWeight: '700' }}>
+                    {period.number}
                   </ThemedText>
                 )}
               </View>
               <ThemedText type="caption" numberOfLines={1} style={{ color: theme.text, fontWeight: '700', marginTop: 6 }}>
-                Sett {week.weekNumber}
+                {label} {period.number}
               </ThemedText>
               <ThemedText type="caption" themeColor="textTertiary" numberOfLines={1}>
-                {compactDayRange(week.startISO, week.endISO)}
+                {compactDayRange(period.startISO, period.endISO)}
               </ThemedText>
             </View>
           );
