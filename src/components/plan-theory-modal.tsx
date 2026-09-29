@@ -63,9 +63,15 @@ export function PlanTheoryModal({ visible, kicker, title, subtitle, steps, ctaLa
   const [carouselWidth, setCarouselWidth] = useState(0);
   const colors = stepColors(theme);
 
+  // Driven by plain onScroll (not just onMomentumScrollEnd/onScrollEndDrag)
+  // so the dots stay in sync on web, where a trackpad/mouse-wheel swipe
+  // through a horizontal ScrollView doesn't reliably fire those two —
+  // clamped since RN's elastic overscroll can momentarily push the offset
+  // past either end.
   const syncPageFromScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     if (carouselWidth <= 0) return;
-    setPageIndex(Math.round(e.nativeEvent.contentOffset.x / carouselWidth));
+    const raw = Math.round(e.nativeEvent.contentOffset.x / carouselWidth);
+    setPageIndex(Math.min(Math.max(raw, 0), steps.length - 1));
   };
 
   return (
@@ -97,6 +103,8 @@ export function PlanTheoryModal({ visible, kicker, title, subtitle, steps, ctaLa
                 horizontal
                 pagingEnabled
                 showsHorizontalScrollIndicator={false}
+                onScroll={syncPageFromScroll}
+                scrollEventThrottle={16}
                 onMomentumScrollEnd={syncPageFromScroll}
                 onScrollEndDrag={syncPageFromScroll}>
                 {steps.map((step, i) => (
