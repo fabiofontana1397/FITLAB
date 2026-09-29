@@ -72,7 +72,7 @@ export function PlanExerciseRow({
       <View style={styles.metaRow}>
         <MetaItem icon="repsHash" value={`${exercise.sets}×${exercise.reps}`} label="Serie x Rip." />
         <View style={[styles.metaDivider, { backgroundColor: theme.border }]} />
-        <MetaItem icon="hourglass" value={exercise.tempo} label="Tempo" />
+        <MetaItem icon="hourglass" value={exercise.tempo} label="Modalità di esecuzione" />
         <View style={[styles.metaDivider, { backgroundColor: theme.border }]} />
         <MetaItem icon="clockOutline" value={restLabel} label="Recupero" />
       </View>
@@ -113,6 +113,10 @@ export function PlanExerciseRow({
         visible={infoOpen}
         exerciseName={exercise.name}
         media={media}
+        sets={exercise.sets}
+        reps={exercise.reps}
+        tempo={exercise.tempo}
+        restLabel={restLabel}
         onClose={() => setInfoOpen(false)}
       />
 
@@ -142,7 +146,7 @@ function MetaItem({ icon, value, label }: { icon: IconName; value: string; label
           {value}
         </ThemedText>
       </View>
-      <ThemedText type="caption" themeColor="textSecondary" numberOfLines={1}>
+      <ThemedText type="caption" themeColor="textSecondary" numberOfLines={2} style={{ textAlign: 'center' }}>
         {label}
       </ThemedText>
     </View>

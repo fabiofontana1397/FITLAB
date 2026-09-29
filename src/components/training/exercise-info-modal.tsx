@@ -10,16 +10,38 @@ import type { ExerciseMedia } from '@/lib/exercise-media/exercise-media';
 
 const SHEET_MAX_WIDTH = 440;
 
+/** "2-0-1" / "3-1-1-0" — the standard tempo notation used across the
+ * plan: eccentric (lowering) - pause at the bottom - concentric
+ * (lifting) - an optional final pause at the top. Returns null for any
+ * value that doesn't parse as 3 or 4 dash-separated numbers, so a
+ * custom/free-text tempo just renders as-is with no breakdown rather
+ * than a broken one. */
+const TEMPO_PHASE_LABELS: Record<3 | 4, string[]> = {
+  3: ['Fase eccentrica (discesa)', 'Pausa in basso', 'Fase concentrica (spinta)'],
+  4: ['Fase eccentrica (discesa)', 'Pausa in basso', 'Fase concentrica (spinta)', 'Pausa in alto'],
+};
+function describeTempo(tempo: string): { phase: string; seconds: string }[] | null {
+  const parts = tempo.split('-').map((p) => p.trim());
+  if ((parts.length !== 3 && parts.length !== 4) || parts.some((p) => p === '' || Number.isNaN(Number(p)))) return null;
+  const labels = TEMPO_PHASE_LABELS[parts.length as 3 | 4];
+  return parts.map((seconds, i) => ({ phase: labels[i], seconds }));
+}
+
 export type ExerciseInfoModalProps = {
   visible: boolean;
   exerciseName: string;
   media: ExerciseMedia | undefined;
+  sets: number;
+  reps: string;
+  tempo: string;
+  restLabel: string;
   onClose: () => void;
 };
 
-export function ExerciseInfoModal({ visible, exerciseName, media, onClose }: ExerciseInfoModalProps) {
+export function ExerciseInfoModal({ visible, exerciseName, media, sets, reps, tempo, restLabel, onClose }: ExerciseInfoModalProps) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const tempoPhases = describeTempo(tempo);
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -38,6 +60,26 @@ export function ExerciseInfoModal({ visible, exerciseName, media, onClose }: Exe
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false}>
+            <View style={[styles.detailsCard, { backgroundColor: theme.backgroundElement }]}>
+              <DetailRow icon="repsHash" label="Serie e ripetizioni" value={`${sets} serie × ${reps} rip.`} />
+              <DetailRow icon="hourglass" label="Modalità di esecuzione" value={tempo} />
+              {tempoPhases ? (
+                <View style={styles.tempoBreakdown}>
+                  {tempoPhases.map((p) => (
+                    <View key={p.phase} style={styles.tempoPhaseRow}>
+                      <ThemedText type="caption" themeColor="textSecondary" style={{ flex: 1 }}>
+                        {p.phase}
+                      </ThemedText>
+                      <ThemedText type="caption" style={{ fontWeight: '700' }}>
+                        {p.seconds}s
+                      </ThemedText>
+                    </View>
+                  ))}
+                </View>
+              ) : null}
+              <DetailRow icon="clockOutline" label="Recupero tra le serie" value={restLabel} />
+            </View>
+
             {media ? (
               <>
                 <Image source={{ uri: media.gifUrl }} style={[styles.gif, { backgroundColor: theme.backgroundElement }]} resizeMode="cover" />
@@ -82,6 +124,21 @@ export function ExerciseInfoModal({ visible, exerciseName, media, onClose }: Exe
         </GlassSurface>
       </View>
     </Modal>
+  );
+}
+
+function DetailRow({ icon, label, value }: { icon: 'repsHash' | 'hourglass' | 'clockOutline'; label: string; value: string }) {
+  const theme = useTheme();
+  return (
+    <View style={styles.detailRow}>
+      <Icon name={icon} size={15} color={theme.textSecondary} />
+      <ThemedText type="small" themeColor="textSecondary" style={{ flex: 1 }} numberOfLines={1}>
+        {label}
+      </ThemedText>
+      <ThemedText type="smallBold" numberOfLines={1}>
+        {value}
+      </ThemedText>
+    </View>
   );
 }
 
@@ -136,5 +193,24 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: Spacing.two,
     paddingVertical: 3,
+  },
+  detailsCard: {
+    gap: Spacing.two,
+    padding: Spacing.three,
+    borderRadius: Radius.medium,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  tempoBreakdown: {
+    gap: 2,
+    marginLeft: Spacing.four,
+  },
+  tempoPhaseRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
   },
 });

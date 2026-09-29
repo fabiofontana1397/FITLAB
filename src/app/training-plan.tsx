@@ -25,7 +25,16 @@ import { usePlanStore } from '@/store/plan-store';
 import { latestWeightForExercise, useTrainingProgressStore } from '@/store/training-progress-store';
 import { useUserStore } from '@/store/user-store';
 
-type DayItem = { key: string; exerciseId?: string; name: string; subtitle: string };
+type DayItem = {
+  key: string;
+  exerciseId?: string;
+  name: string;
+  subtitle: string;
+  sets?: number;
+  reps?: string;
+  tempo?: string;
+  restLabel?: string;
+};
 
 const WEEKDAY_OPTIONS = WEEKDAY_LABELS.map((weekday) => ({ value: weekday, label: weekday }));
 
@@ -226,6 +235,10 @@ export default function TrainingPlanScreen() {
                           exerciseId: ex.id,
                           name: ex.name,
                           subtitle: `${ex.sets}×${ex.reps} · recupero ${rest}`,
+                          sets: ex.sets,
+                          reps: ex.reps,
+                          tempo: ex.tempo,
+                          restLabel: rest,
                         }}
                       />
                     );
@@ -282,6 +295,10 @@ function ExerciseSummaryCard({ item }: { item: DayItem }) {
         visible={infoOpen}
         exerciseName={item.name}
         media={media}
+        sets={item.sets ?? 0}
+        reps={item.reps ?? ''}
+        tempo={item.tempo ?? ''}
+        restLabel={item.restLabel ?? ''}
         onClose={() => setInfoOpen(false)}
       />
     </GlassSurface>

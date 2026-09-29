@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { ScreenHeader } from '@/components/screen-header';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
@@ -184,17 +185,7 @@ export default function TrainingScreen() {
 
   return (
     <ScreenScroll>
-      <View style={styles.headerRow}>
-        <View style={{ gap: 4, flex: 1 }}>
-          <ThemedText type="display">Training</ThemedText>
-          <ThemedText type="default" themeColor="textSecondary">
-            Il tuo percorso, un obiettivo alla volta.
-          </ThemedText>
-        </View>
-        <Pressable onPress={() => router.push('/profile')} hitSlop={8} style={[styles.avatar, { backgroundColor: theme.backgroundElevated }]}>
-          <Icon name="profile" size={22} color={theme.text} />
-        </Pressable>
-      </View>
+      <ScreenHeader eyebrow="Il tuo percorso" title="Training" />
 
       {!trainingPlan ? (
         <FlatCard radius={Radius.large} style={{ padding: Spacing.four, gap: Spacing.two }}>
@@ -265,7 +256,17 @@ export default function TrainingScreen() {
           </View>
 
           <View style={{ gap: 2 }}>
-            <ThemedText type="subtitle">{selectedDayHeading}</ThemedText>
+            <View style={styles.dayHeadingRow}>
+              <ThemedText type="subtitle" style={{ flex: 1 }}>
+                {selectedDayHeading}
+              </ThemedText>
+              <Pressable
+                onPress={() => router.push('/training-progress')}
+                hitSlop={8}
+                style={[styles.trendButton, { borderColor: theme.border }]}>
+                <Icon name="trendUp" size={16} color={theme.textSecondary} />
+              </Pressable>
+            </View>
             {selectedDay?.type === 'workout' ? (
               <ThemedText type="caption" themeColor="textSecondary">
                 {splitHeadingSuffix(selectedDay.title)}
@@ -327,15 +328,16 @@ export default function TrainingScreen() {
 }
 
 const styles = StyleSheet.create({
-  headerRow: {
+  dayHeadingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: Spacing.two,
   },
-  avatar: {
-    width: 40,
-    height: 40,
+  trendButton: {
+    width: 32,
+    height: 32,
     borderRadius: Radius.pill,
+    borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
   },
