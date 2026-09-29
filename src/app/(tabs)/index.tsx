@@ -14,6 +14,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { GlassSurface } from '@/components/glass/glass-surface';
+import { PlanTheoryModal } from '@/components/plan-theory-modal';
 import { FlatCard } from '@/components/ui/flat-card';
 import { InsightCard } from '@/components/ui/insight-card';
 import { PrimaryButton } from '@/components/ui/primary-button';
@@ -32,6 +33,7 @@ import { useCoachInsights } from '@/hooks/use-coach-insights';
 import { estimateDailyEnergyExpenditure } from '@/lib/nutrition/targets';
 import { WEEKDAY_LABELS } from '@/lib/planning/exercise-library';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
+import { dietRoadmapSteps, trainingRoadmapSteps } from '@/lib/planning/roadmap-content';
 import type { TrainingExerciseEntry } from '@/lib/planning/types';
 import { useBodyStore } from '@/store/body-store';
 import { useNutritionStore, sumMacros } from '@/store/nutrition-store';
@@ -166,6 +168,7 @@ export default function HomeScreen() {
   // can differ month to month) takes priority over the static profile
   // default, since that's what the plan actually asks for today.
   const dietMonth = dietPlan?.months.find((m) => m.monthIndex === currentMonthIndex(dietPlan));
+  const trainingMonth = trainingPlan?.months.find((m) => m.monthIndex === currentMonthIndex(trainingPlan));
   const calorieTarget = dietMonth?.calorieTarget ?? currentUser.dailyCalorieTarget;
   const macroTargets = dietMonth?.macroTargetsG ?? currentUser.macroTargetsG;
 
@@ -308,6 +311,13 @@ export default function HomeScreen() {
 
   const [selectedDay, setSelectedDay] = useState<WeeklyGoalDay | null>(null);
 
+  // Quick-link cards above the weekly balance goal: each opens a popup
+  // explaining the "why" behind that plan (same phase content shown once
+  // during onboarding), with a persistent shortcut into this month's plan.
+  const [theoryTopic, setTheoryTopic] = useState<'training' | 'diet' | null>(null);
+  const dietSteps = dietRoadmapSteps(onboardingAnswers.goal as string | undefined);
+  const trainingSteps = trainingRoadmapSteps(onboardingAnswers.gymSkillLevel as string | undefined);
+
   return (
     <ScreenScroll>
       <View style={styles.homeHeader}>
@@ -328,6 +338,55 @@ export default function HomeScreen() {
           Continua così, stai facendo un ottimo lavoro.
         </ThemedText>
       </View>
+
+      {trainingPlan || dietPlan ? (
+        <View style={styles.todayCardsRow}>
+          {trainingPlan ? (
+            <PlanQuickLinkCard
+              icon="training"
+              title="Allenamento"
+              subtitle={trainingMonth?.title ?? 'Il tuo piano'}
+              onPress={() => setTheoryTopic('training')}
+            />
+          ) : null}
+          {dietPlan ? (
+            <PlanQuickLinkCard
+              icon="nutrition"
+              title="Alimentazione"
+              subtitle={dietMonth?.title ?? 'Il tuo piano'}
+              onPress={() => setTheoryTopic('diet')}
+            />
+          ) : null}
+        </View>
+      ) : null}
+
+      <PlanTheoryModal
+        visible={theoryTopic === 'training'}
+        kicker="Allenamento"
+        title="Come evolve il tuo allenamento"
+        subtitle="Il percorso pensato per te, fase per fase."
+        steps={trainingSteps}
+        ctaLabel="Vai al piano del mese"
+        onPressCta={() => {
+          setTheoryTopic(null);
+          router.push('/training-plan');
+        }}
+        onClose={() => setTheoryTopic(null)}
+      />
+
+      <PlanTheoryModal
+        visible={theoryTopic === 'diet'}
+        kicker="Alimentazione"
+        title="Come evolve la tua dieta"
+        subtitle="Un percorso a fasi, non una dieta fissa."
+        steps={dietSteps}
+        ctaLabel="Vai al piano del mese"
+        onPressCta={() => {
+          setTheoryTopic(null);
+          router.push('/diet-plan');
+        }}
+        onClose={() => setTheoryTopic(null)}
+      />
 
       <WeeklyGoalCard
         goalKcal={weeklyBalanceGoalKcal}
@@ -849,6 +908,42 @@ function DayDetailModal({ day, dailyGoalKcal, onClose }: { day: WeeklyGoalDay | 
         </Pressable>
       </Pressable>
     </Modal>
+  );
+}
+
+/** The pair of quick-link cards above the weekly balance goal, opening a
+ * "why behind the plan" popup (see PlanTheoryModal) rather than jumping
+ * straight to the full plan screen — reserving one deliberate tap for
+ * users who want the detail, without cluttering Home with it by default. */
+function PlanQuickLinkCard({
+  icon,
+  title,
+  subtitle,
+  onPress,
+}: {
+  icon: IconName;
+  title: string;
+  subtitle: string;
+  onPress: () => void;
+}) {
+  const theme = useTheme();
+  return (
+    <Pressable onPress={onPress} style={styles.todayCard}>
+      <FlatCard radius={Radius.medium} style={styles.todayCardInner}>
+        <View style={styles.todayCardTopRow}>
+          <View style={[styles.todayCardIcon, { backgroundColor: theme.accentSoft }]}>
+            <Icon name={icon} size={17} color={theme.accent} />
+          </View>
+          <Icon name="chevronRight" size={15} color={theme.textTertiary} />
+        </View>
+        <ThemedText type="smallBold" numberOfLines={1}>
+          {title}
+        </ThemedText>
+        <ThemedText type="caption" themeColor="textSecondary" numberOfLines={1}>
+          {subtitle}
+        </ThemedText>
+      </FlatCard>
+    </Pressable>
   );
 }
 
