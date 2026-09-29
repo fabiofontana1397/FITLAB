@@ -18,7 +18,6 @@ export type PlanExerciseRowProps = {
   exercise: TrainingExerciseEntry;
   history: { date: string; weightKg: number }[];
   latestWeightKg: number | null;
-  loggedTodayKg: number | null;
   completed: boolean;
   onToggleCompleted: () => void;
   onAddLoad: (reps: number, weightKg: number, rir?: number) => void;
@@ -28,7 +27,6 @@ export function PlanExerciseRow({
   exercise,
   history,
   latestWeightKg,
-  loggedTodayKg,
   completed,
   onToggleCompleted,
   onAddLoad,
@@ -102,12 +100,6 @@ export function PlanExerciseRow({
           </ThemedText>
         </Pressable>
       </View>
-
-      {loggedTodayKg != null ? (
-        <ThemedText type="caption" themeColor="textSecondary" style={{ textAlign: 'center' }}>
-          Aggiornato oggi: {loggedTodayKg}kg
-        </ThemedText>
-      ) : null}
 
       <ExerciseInfoModal
         visible={infoOpen}
