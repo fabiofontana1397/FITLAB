@@ -4,27 +4,16 @@ import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
 import { useTheme } from '@/hooks/use-theme';
 
-export type TimelinePeriod = { number: number; startISO: string; endISO: string; isCurrent: boolean };
+export type TimelinePeriod = { number: number; isCurrent: boolean };
 
 const NODE_SIZE = 28;
-
-/** "19-25 set" / "29 set - 5 ott" — a 3-letter-month date range compact
- * enough for the narrow period-node columns (formatDayRange's full month
- * name doesn't fit here). */
-function compactDayRange(startISO: string, endISO: string): string {
-  const start = new Date(startISO);
-  const end = new Date(endISO);
-  const shortMonth = (d: Date) => d.toLocaleDateString('it-IT', { month: 'short' }).replace('.', '');
-  if (start.getMonth() === end.getMonth()) return `${start.getDate()} – ${end.getDate()} ${shortMonth(start)}`;
-  return `${start.getDate()} ${shortMonth(start)} – ${end.getDate()} ${shortMonth(end)}`;
-}
 
 /** A generic "N of these periods" strip: a connecting line under one dot
  * per period, the current one outlined, past ones filled solid with a
  * checkmark, each with its label (`{label} {number}`, e.g. "Sett 1" or
- * "Mese 1") and real calendar date range underneath. Used for both the
- * plan card's week strip (label="Sett") and month strip (label="Mese") —
- * same visual convention at either granularity. */
+ * "Mese 1") underneath. Used for the plan card's month strip
+ * (label="Mese") — same visual convention week-level use would follow
+ * too, if that comes back. */
 export function PeriodTimeline({ label, periods }: { label: string; periods: TimelinePeriod[] }) {
   const theme = useTheme();
   const currentIndex = periods.findIndex((p) => p.isCurrent);
@@ -60,9 +49,6 @@ export function PeriodTimeline({ label, periods }: { label: string; periods: Tim
               </View>
               <ThemedText type="caption" numberOfLines={1} style={{ color: theme.text, fontWeight: '700', marginTop: 6 }}>
                 {label} {period.number}
-              </ThemedText>
-              <ThemedText type="caption" themeColor="textTertiary" numberOfLines={1}>
-                {compactDayRange(period.startISO, period.endISO)}
               </ThemedText>
             </View>
           );

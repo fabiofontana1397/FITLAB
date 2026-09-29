@@ -127,6 +127,24 @@ export default function TrainingScreen() {
     return exercises.every((exercise) => isExerciseCompleted(completedExercises, exercise.id, date));
   };
 
+  // Tapping a calendar day's circle directly marks every exercise
+  // scheduled that day as done in one go — or undoes all of them if the
+  // day was already fully done — instead of requiring each exercise to
+  // be checked off individually. No-op for non-workout days (nothing to
+  // check off) and for days still in the future (can't have trained yet).
+  const toggleDayComplete = (date: string) => {
+    if (date > today) return;
+    const day = weeklySplit[mondayIndex(new Date(date))];
+    if (day?.type !== 'workout') return;
+    const exercises = day.exercises ?? [];
+    if (exercises.length === 0) return;
+    const allDone = isDayComplete(date);
+    exercises.forEach((exercise) => {
+      const done = isExerciseCompleted(completedExercises, exercise.id, date);
+      if (allDone || !done) toggleCompleted(exercise.id, date);
+    });
+  };
+
   // The plan card now shows the whole current MONTH (a fixed 30-day block
   // starting at generatedAt — see plan-progress.ts — not a real calendar
   // month), both for the month-strip timeline and for this ring: "days
@@ -215,7 +233,7 @@ export default function TrainingScreen() {
               </ProgressRing>
               <View style={{ flex: 1, gap: 4, minWidth: 0 }}>
                 <ThemedText type="caption" themeColor="textSecondary" numberOfLines={2}>
-                  Completamento mese
+                  Completamento allenamenti del mese
                 </ThemedText>
               </View>
               <PrimaryButton
@@ -236,6 +254,7 @@ export default function TrainingScreen() {
                 selectedDate={selectedDate}
                 onSelectDate={setSelectedDate}
                 isDayComplete={isDayComplete}
+                onToggleDayComplete={toggleDayComplete}
                 monthYearLabel={monthYearLabel}
                 onPrevWeek={() => goToAdjacentWeek(-1)}
                 onNextWeek={() => goToAdjacentWeek(1)}

@@ -11,6 +11,11 @@ export type WeekDayStripProps = {
   selectedDate: string;
   onSelectDate: (date: string) => void;
   isDayComplete: (date: string) => boolean;
+  /** Tapping a day's circle directly (not the rest of the card) marks
+   * every exercise scheduled that day as done — or, if the day is
+   * already fully done, undoes all of them — without needing to open
+   * that day and check off each exercise one by one. */
+  onToggleDayComplete: (date: string) => void;
   monthYearLabel: string;
   onPrevWeek: () => void;
   onNextWeek: () => void;
@@ -27,6 +32,7 @@ export function WeekDayStrip({
   selectedDate,
   onSelectDate,
   isDayComplete,
+  onToggleDayComplete,
   monthYearLabel,
   onPrevWeek,
   onNextWeek,
@@ -65,7 +71,13 @@ export function WeekDayStrip({
               <ThemedText type="small" style={{ fontWeight: '800' }}>
                 {dayOfMonth(date)}
               </ThemedText>
-              <View
+              <Pressable
+                onPress={(e) => {
+                  e.stopPropagation();
+                  onSelectDate(date);
+                  onToggleDayComplete(date);
+                }}
+                hitSlop={6}
                 style={[
                   styles.dayCircle,
                   complete
@@ -74,7 +86,7 @@ export function WeekDayStrip({
                   today && !complete ? { borderColor: theme.accent } : null,
                 ]}>
                 {complete ? <Icon name="check" size={13} color={theme.onAccent} /> : null}
-              </View>
+              </Pressable>
             </Pressable>
           );
         })}
