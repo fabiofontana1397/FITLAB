@@ -26,15 +26,16 @@ import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import { SpringSnappy, TimingQuick } from '@/constants/motion';
 import { useTheme } from '@/hooks/use-theme';
-import { useWeeklyEnergy } from '@/hooks/use-weekly-energy';
+import { sumActivityKcalForDate, useWeeklyEnergy } from '@/hooks/use-weekly-energy';
 import { latestSnapshot } from '@/lib/mock/body';
 import { addDaysISO, currentWeekDates, dayOfMonth, daysAgoISO, formatFullDay, mondayIndex } from '@/lib/mock/dates';
 import { useCoachInsights } from '@/hooks/use-coach-insights';
-import { estimateDailyEnergyExpenditure } from '@/lib/nutrition/targets';
+import { estimateDailyEnergyExpenditure, estimateEnergyExpenditureBreakdown } from '@/lib/nutrition/targets';
 import { WEEKDAY_LABELS } from '@/lib/planning/exercise-library';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
 import { dietRoadmapSteps, trainingRoadmapSteps } from '@/lib/planning/roadmap-content';
 import type { TrainingExerciseEntry } from '@/lib/planning/types';
+import { useActivityLogStore } from '@/store/activity-log-store';
 import { useBodyStore } from '@/store/body-store';
 import { useNutritionStore, sumMacros } from '@/store/nutrition-store';
 import { useOnboardingStore } from '@/store/onboarding-store';
@@ -142,6 +143,7 @@ export default function HomeScreen() {
   const loggedSets = useTrainingProgressStore((s) => s.sets);
   const nutritionEntries = useNutritionStore((s) => s.entries);
   const bodyEntries = useBodyStore((s) => s.entries);
+  const activityLogEntries = useActivityLogStore((s) => s.entries);
 
   // Same weeklySplit[weekday] lookup training.tsx uses for the selected day
   // — here always pinned to today, so the ring/card below track the exact
@@ -161,6 +163,13 @@ export default function HomeScreen() {
   // value.
   const trainingProgress =
     todayPlanDay?.type === 'workout' ? (workoutExercises.length > 0 ? completedCount / workoutExercises.length : 1) : 1;
+  // Distinct from trainingProgress above: that one reads 1 ("done") on a
+  // rest/cardio day purely so the ring shows nothing pending — it would
+  // fabricate exercise calories on a day with no workout at all if reused
+  // here. This is 0 on any non-workout day, matching the same convention
+  // useWeeklyEnergy.ts uses for the real per-day expenditure estimate.
+  const todayExerciseCompletionFraction =
+    todayPlanDay?.type === 'workout' && workoutExercises.length > 0 ? completedCount / workoutExercises.length : 0;
   const workoutSplitTitle = todayPlanDay?.type === 'workout' ? todayPlanDay.title : undefined;
   const isWorkoutDayIncomplete = todayPlanDay?.type === 'workout' && workoutExercises.length > 0 && trainingProgress < 1;
 
@@ -191,6 +200,25 @@ export default function HomeScreen() {
   // the React Compiler can't prove a member access on that is safe to use
   // as a dependency.
   const latestBody = useMemo(() => latestSnapshot(bodyEntries), [bodyEntries]);
+
+  // Today's real estimated-expenditure breakdown (not the full-adherence
+  // hypothetical weeklyExpenditureFullAdherence below) — feeds the "Calorie
+  // bruciate" bar chart on the Oggi card: basale = resting + baseline daily
+  // activity (everything that isn't training), allenamento = today's
+  // workout contribution plus any manually-logged activity. A plain
+  // per-render call, not a useMemo, same reasoning as weeklyExpenditureFullAdherence below.
+  const todayEnergyBreakdown = estimateEnergyExpenditureBreakdown({
+    sex: currentUser.sex,
+    age: currentUser.age,
+    heightCm: currentUser.heightCm,
+    weightKg: latestBody.weightKg,
+    jobActivity: onboardingAnswers.jobActivity as string | undefined,
+    sessionDurationBucket: onboardingAnswers.sessionDuration as string | undefined,
+    completionFraction: todayExerciseCompletionFraction,
+    loggedActivitiesKcal: sumActivityKcalForDate(activityLogEntries, today),
+  });
+  const basalKcal = todayEnergyBreakdown.resting + todayEnergyBreakdown.baselineActivity;
+  const trainingBurnKcal = todayEnergyBreakdown.exercise + todayEnergyBreakdown.loggedActivities;
 
   const { insights, isLoading: insightsLoading, refresh: refreshInsights } = useCoachInsights();
   const [insightsModalOpen, setInsightsModalOpen] = useState(false);
@@ -420,10 +448,9 @@ export default function HomeScreen() {
         <TodaySummaryCard
           eatenKcal={todaysTotals.kcal}
           calorieTarget={calorieTarget}
-          balanceKcal={dailyBalanceKcal}
-          goalMet={dailyGoalMet}
-          dietProgress={dailyGoalProgress}
-          trainingProgress={trainingProgress}
+          dietProgress={dietProgress}
+          basalKcal={basalKcal}
+          trainingBurnKcal={trainingBurnKcal}
           macroTotals={todaysTotals}
           macroTargets={macroTargets}
         />
@@ -758,70 +785,57 @@ function DailyResultBox({
   );
 }
 
-/** The combined "Oggi" summary card: a calorie ring + deficit/surplus
- * readout on the left, today's training completion on the right, and the
- * three macros in a row underneath — the single at-a-glance card that
- * replaces the old separate ring/result box, keeping Home to one screen's
- * worth of content instead of stacking every metric as its own card. */
+/** The combined "Oggi" summary card: a calorie-intake ring on the left, a
+ * two-bar basale/allenamento burn chart on the right, and the three
+ * macros in a row underneath — the single at-a-glance card that replaces
+ * the old separate ring/result box, keeping Home to one screen's worth of
+ * content instead of stacking every metric as its own card. */
 function TodaySummaryCard({
   eatenKcal,
   calorieTarget,
-  balanceKcal,
-  goalMet,
   dietProgress,
-  trainingProgress,
+  basalKcal,
+  trainingBurnKcal,
   macroTotals,
   macroTargets,
 }: {
   eatenKcal: number;
   calorieTarget: number;
-  balanceKcal: number;
-  goalMet: boolean;
   dietProgress: number;
-  trainingProgress: number;
+  basalKcal: number;
+  trainingBurnKcal: number;
   macroTotals: { protein: number; carbs: number; fats: number };
   macroTargets: { protein: number; carbs: number; fats: number };
 }) {
   const theme = useTheme();
-  const balanceNoun = balanceKcal < 0 ? 'Deficit' : balanceKcal > 0 ? 'Surplus' : 'Bilancio';
-  const trainingPct = Math.round(clamp01(trainingProgress) * 100);
 
   return (
     <FlatCard style={styles.todaySummaryCard}>
       <View style={styles.todaySummaryTopRow}>
         <View style={styles.todaySummaryLeft}>
           <ProgressRing size={56} strokeWidth={6} progress={dietProgress} color={theme.success} trackColor={theme.accentSoft}>
-            <Icon name="flame" size={20} color={theme.accent} />
+            <Icon name="nutrition" size={20} color={theme.accent} />
           </ProgressRing>
           <View style={{ flex: 1, minWidth: 0 }}>
-            <View style={styles.todaySummaryOggiRow}>
-              <View style={[styles.todaySummaryDot, { backgroundColor: theme.success }]} />
-              <ThemedText type="caption" themeColor="textSecondary">
-                Oggi
-              </ThemedText>
-            </View>
+            <ThemedText type="caption" themeColor="textSecondary">
+              Calorie assunte
+            </ThemedText>
             <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
               <ThemedText style={styles.todaySummaryKcal}>{formatKcal(eatenKcal)}</ThemedText>
               <ThemedText type="caption" themeColor="textSecondary">
                 kcal / {formatKcal(calorieTarget)}
               </ThemedText>
             </View>
-            <ThemedText type="caption" numberOfLines={1}>
-              {balanceNoun} <ThemedText type="caption" style={{ color: theme.success, fontWeight: '700' }}>{formatKcal(Math.abs(balanceKcal))} kcal</ThemedText>
-            </ThemedText>
           </View>
         </View>
 
         <View style={styles.todaySummaryRight}>
-          <View style={styles.todaySummaryRightHeader}>
-            <Icon name="training" size={15} color={theme.text} />
-            <ThemedText type="smallBold" numberOfLines={1} style={{ flex: 1 }}>
-              Allenamento
-            </ThemedText>
-          </View>
-          <ThemedText style={styles.todaySummaryPercent}>{trainingPct}%</ThemedText>
-          <View style={[styles.goalProgressTrack, { backgroundColor: theme.backgroundElement }]}>
-            <View style={[styles.goalProgressFill, { width: `${trainingPct}%`, backgroundColor: theme.success }]} />
+          <ThemedText type="caption" themeColor="textSecondary" numberOfLines={1}>
+            Calorie bruciate
+          </ThemedText>
+          <View style={styles.burnChartRow}>
+            <BurnBar label="Basale" kcal={basalKcal} maxKcal={Math.max(basalKcal, trainingBurnKcal, 1)} color={theme.calorieSurplus} />
+            <BurnBar label="Training" kcal={trainingBurnKcal} maxKcal={Math.max(basalKcal, trainingBurnKcal, 1)} color={theme.accent} />
           </View>
         </View>
       </View>
@@ -859,6 +873,27 @@ function TodaySummaryMacro({ icon, label, value, target }: { icon: IconName; lab
   );
 }
 
+/** One column of the "Calorie bruciate" mini bar chart — bar height is
+ * relative to whichever of the two values (basale/allenamento) is larger,
+ * with a small minimum sliver so a genuine 0 still reads as an empty bar
+ * rather than nothing at all. */
+function BurnBar({ label, kcal, maxKcal, color }: { label: string; kcal: number; maxKcal: number; color: string }) {
+  const theme = useTheme();
+  const heightPct = maxKcal > 0 ? Math.max(kcal / maxKcal, 0.05) * 100 : 5;
+  return (
+    <View style={styles.burnBarCol}>
+      <ThemedText type="caption" style={styles.burnBarValue} numberOfLines={1}>
+        {formatKcal(kcal)}
+      </ThemedText>
+      <View style={[styles.burnBarTrack, { backgroundColor: theme.backgroundElement }]}>
+        <View style={[styles.burnBarFill, { height: `${heightPct}%`, backgroundColor: color }]} />
+      </View>
+      <ThemedText type="caption" themeColor="textSecondary" numberOfLines={1} style={{ textAlign: 'center' }}>
+        {label}
+      </ThemedText>
+    </View>
+  );
+}
 
 function DayDetailModal({ day, dailyGoalKcal, onClose }: { day: WeeklyGoalDay | null; dailyGoalKcal: number; onClose: () => void }) {
   const theme = useTheme();
@@ -1522,31 +1557,36 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: -0.2,
   },
-  todaySummaryOggiRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  todaySummaryDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
   todaySummaryRight: {
     flex: 1,
     gap: 6,
     alignSelf: 'stretch',
     justifyContent: 'center',
   },
-  todaySummaryRightHeader: {
+  burnChartRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
+    alignItems: 'flex-end',
+    gap: Spacing.three,
+    marginTop: 2,
   },
-  todaySummaryPercent: {
-    fontSize: 18,
-    lineHeight: 22,
+  burnBarCol: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 4,
+  },
+  burnBarValue: {
     fontWeight: '800',
+  },
+  burnBarTrack: {
+    width: 26,
+    height: 44,
+    borderRadius: 6,
+    overflow: 'hidden',
+    justifyContent: 'flex-end',
+  },
+  burnBarFill: {
+    width: '100%',
+    borderRadius: 6,
   },
   todaySummaryDivider: {
     height: 1,
