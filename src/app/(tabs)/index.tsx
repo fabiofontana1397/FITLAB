@@ -834,6 +834,7 @@ function TodaySummaryCard({
             <BurnBar label="BMR" kcal={basalKcal} maxKcal={maxBurnKcal} color={theme.calorieSurplus} onPress={() => setInfoTopic('basal')} />
             <BurnBar label="Allenamento" kcal={trainingBurnKcal} maxKcal={maxBurnKcal} color={theme.accent} onPress={() => setInfoTopic('training')} />
           </View>
+          <ThemedText style={styles.todaySummaryKcal}>{formatKcal(basalKcal + trainingBurnKcal)}</ThemedText>
         </View>
       </View>
 
@@ -913,14 +914,14 @@ function BurnBar({
   const heightPct = maxKcal > 0 ? Math.max(kcal / maxKcal, 0.05) * 100 : 5;
   return (
     <Pressable onPress={onPress} style={styles.burnBarCol}>
-      <ThemedText type="caption" style={styles.burnBarValue} numberOfLines={1}>
-        {formatKcal(kcal)}
+      <ThemedText type="caption" themeColor="textSecondary" numberOfLines={1} style={styles.burnBarLabel}>
+        {label}
       </ThemedText>
       <View style={[styles.burnBarTrack, { backgroundColor: theme.backgroundElement }]}>
         <View style={[styles.burnBarFill, { height: `${heightPct}%`, backgroundColor: color }]} />
       </View>
-      <ThemedText type="caption" themeColor="textSecondary" numberOfLines={1} style={styles.burnBarLabel}>
-        {label}
+      <ThemedText type="caption" style={styles.burnBarValue} numberOfLines={1}>
+        {formatKcal(kcal)}
       </ThemedText>
     </Pressable>
   );
