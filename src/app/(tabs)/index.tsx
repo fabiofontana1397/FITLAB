@@ -16,6 +16,7 @@ import Animated, {
 import { GlassSurface } from '@/components/glass/glass-surface';
 import { PlanTheoryModal } from '@/components/plan-theory-modal';
 import { FlatCard } from '@/components/ui/flat-card';
+import { InfoPopover } from '@/components/ui/info-popover';
 import { InsightCard } from '@/components/ui/insight-card';
 import { PrimaryButton } from '@/components/ui/primary-button';
 import { ProgressRing } from '@/components/ui/progress-ring';
@@ -808,37 +809,55 @@ function TodaySummaryCard({
   macroTargets: { protein: number; carbs: number; fats: number };
 }) {
   const theme = useTheme();
+  const [infoTopic, setInfoTopic] = useState<'intake' | 'basal' | 'training' | null>(null);
+  const maxBurnKcal = Math.max(basalKcal, trainingBurnKcal, 1);
 
   return (
     <FlatCard style={styles.todaySummaryCard}>
       <View style={styles.todaySummaryTopRow}>
-        <View style={styles.todaySummaryLeft}>
+        <Pressable onPress={() => setInfoTopic('intake')} style={styles.todaySummaryLeft}>
+          <ThemedText style={styles.metricTitle}>Calorie assunte</ThemedText>
           <ProgressRing size={56} strokeWidth={6} progress={dietProgress} color={theme.success} trackColor={theme.accentSoft}>
             <Icon name="nutrition" size={20} color={theme.accent} />
           </ProgressRing>
-          <View style={{ flex: 1, minWidth: 0 }}>
-            <ThemedText type="caption" themeColor="textSecondary">
-              Calorie assunte
-            </ThemedText>
-            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
-              <ThemedText style={styles.todaySummaryKcal}>{formatKcal(eatenKcal)}</ThemedText>
-              <ThemedText type="caption" themeColor="textSecondary">
-                kcal / {formatKcal(calorieTarget)}
-              </ThemedText>
-            </View>
-          </View>
-        </View>
+          <ThemedText style={styles.todaySummaryKcal}>{formatKcal(eatenKcal)}</ThemedText>
+          <ThemedText type="caption" themeColor="textSecondary">
+            kcal / {formatKcal(calorieTarget)}
+          </ThemedText>
+        </Pressable>
 
         <View style={styles.todaySummaryRight}>
-          <ThemedText type="caption" themeColor="textSecondary" numberOfLines={1}>
+          <ThemedText style={styles.metricTitle} numberOfLines={1}>
             Calorie bruciate
           </ThemedText>
           <View style={styles.burnChartRow}>
-            <BurnBar label="Basale" kcal={basalKcal} maxKcal={Math.max(basalKcal, trainingBurnKcal, 1)} color={theme.calorieSurplus} />
-            <BurnBar label="Training" kcal={trainingBurnKcal} maxKcal={Math.max(basalKcal, trainingBurnKcal, 1)} color={theme.accent} />
+            <BurnBar label="BMR" kcal={basalKcal} maxKcal={maxBurnKcal} color={theme.calorieSurplus} onPress={() => setInfoTopic('basal')} />
+            <BurnBar label="Allenamento" kcal={trainingBurnKcal} maxKcal={maxBurnKcal} color={theme.accent} onPress={() => setInfoTopic('training')} />
           </View>
         </View>
       </View>
+
+      <InfoPopover
+        visible={infoTopic === 'intake'}
+        icon="nutrition"
+        title="Calorie assunte"
+        body="Il totale delle calorie che hai registrato oggi tra i pasti, rispetto all'obiettivo calorico giornaliero del tuo piano alimentare. Restare vicino a questo obiettivo è ciò che determina se sei in deficit, surplus o mantenimento rispetto al tuo obiettivo."
+        onClose={() => setInfoTopic(null)}
+      />
+      <InfoPopover
+        visible={infoTopic === 'basal'}
+        icon="flame"
+        title="BMR (metabolismo basale)"
+        body="Una stima delle calorie che il tuo corpo brucia a riposo per le funzioni vitali, più l'energia della tua attività quotidiana non sportiva. Si calcola dai tuoi dati fisici e concorre al totale delle calorie bruciate usato per calcolare il tuo bilancio energetico verso l'obiettivo."
+        onClose={() => setInfoTopic(null)}
+      />
+      <InfoPopover
+        visible={infoTopic === 'training'}
+        icon="training"
+        title="Allenamento"
+        body="Una stima delle calorie bruciate con l'allenamento di oggi (o le attività registrate manualmente). Più alto è questo valore, maggiore è il contributo al deficit o surplus calorico necessario per raggiungere il tuo obiettivo."
+        onClose={() => setInfoTopic(null)}
+      />
 
       <View style={[styles.todaySummaryDivider, { backgroundColor: theme.backgroundElement }]} />
 
@@ -877,21 +896,33 @@ function TodaySummaryMacro({ icon, label, value, target }: { icon: IconName; lab
  * relative to whichever of the two values (basale/allenamento) is larger,
  * with a small minimum sliver so a genuine 0 still reads as an empty bar
  * rather than nothing at all. */
-function BurnBar({ label, kcal, maxKcal, color }: { label: string; kcal: number; maxKcal: number; color: string }) {
+function BurnBar({
+  label,
+  kcal,
+  maxKcal,
+  color,
+  onPress,
+}: {
+  label: string;
+  kcal: number;
+  maxKcal: number;
+  color: string;
+  onPress: () => void;
+}) {
   const theme = useTheme();
   const heightPct = maxKcal > 0 ? Math.max(kcal / maxKcal, 0.05) * 100 : 5;
   return (
-    <View style={styles.burnBarCol}>
+    <Pressable onPress={onPress} style={styles.burnBarCol}>
       <ThemedText type="caption" style={styles.burnBarValue} numberOfLines={1}>
         {formatKcal(kcal)}
       </ThemedText>
       <View style={[styles.burnBarTrack, { backgroundColor: theme.backgroundElement }]}>
         <View style={[styles.burnBarFill, { height: `${heightPct}%`, backgroundColor: color }]} />
       </View>
-      <ThemedText type="caption" themeColor="textSecondary" numberOfLines={1} style={{ textAlign: 'center' }}>
+      <ThemedText type="caption" themeColor="textSecondary" numberOfLines={1} style={styles.burnBarLabel}>
         {label}
       </ThemedText>
-    </View>
+    </Pressable>
   );
 }
 
@@ -1541,13 +1572,18 @@ const styles = StyleSheet.create({
   },
   todaySummaryTopRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: Spacing.three,
   },
+  metricTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
   todaySummaryLeft: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.two,
+    gap: 2,
     flex: 1.3,
     minWidth: 0,
   },
@@ -1559,20 +1595,21 @@ const styles = StyleSheet.create({
   },
   todaySummaryRight: {
     flex: 1,
-    gap: 6,
-    alignSelf: 'stretch',
-    justifyContent: 'center',
+    alignItems: 'center',
+    minWidth: 0,
   },
   burnChartRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    gap: Spacing.three,
+    gap: Spacing.two,
     marginTop: 2,
+    width: '100%',
   },
   burnBarCol: {
     flex: 1,
     alignItems: 'center',
     gap: 4,
+    minWidth: 0,
   },
   burnBarValue: {
     fontWeight: '800',
@@ -1587,6 +1624,10 @@ const styles = StyleSheet.create({
   burnBarFill: {
     width: '100%',
     borderRadius: 6,
+  },
+  burnBarLabel: {
+    fontSize: 9,
+    textAlign: 'center',
   },
   todaySummaryDivider: {
     height: 1,
