@@ -3,7 +3,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Switch, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
-import { NutritionCalendarModal } from '@/components/nutrition/nutrition-calendar-modal';
 import { FoodSearchModal } from '@/components/nutrition/food-search-modal';
 import { PeriodTimeline, type TimelinePeriod } from '@/components/training/period-timeline';
 import { WeekDayStrip } from '@/components/training/week-day-strip';
@@ -11,6 +10,7 @@ import { ScreenHeader } from '@/components/screen-header';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { AiCoachCard } from '@/components/ui/ai-coach-card';
+import { DayCalendarModal } from '@/components/ui/day-calendar-modal';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { PrimaryButton } from '@/components/ui/primary-button';
@@ -99,11 +99,15 @@ export default function NutritionScreen() {
     const label = new Date(viewedWeekDates[3]).toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
     return label.charAt(0).toUpperCase() + label.slice(1);
   }, [viewedWeekDates]);
-  const goToAdjacentWeek = (delta: number) => {
-    const newOffset = weekOffset + delta;
-    const newWeekDates = currentWeekDates(new Date(addDaysISO(today, newOffset * 7)));
-    setWeekOffset(newOffset);
-    setSelectedDate(newWeekDates[mondayIndex(new Date(selectedDate))]);
+  // Whole Monday-to-Monday weeks between the picked date and today — a
+  // plain (date-today)/7 day-diff rounds wrong whenever the two dates
+  // fall on different weekdays, landing the strip on a week that doesn't
+  // even contain the picked date.
+  const selectDateFromCalendar = (date: string) => {
+    setSelectedDate(date);
+    const dateMonday = addDaysISO(date, -mondayIndex(new Date(date)));
+    const todayMonday = addDaysISO(today, -mondayIndex(new Date(today)));
+    setWeekOffset(Math.round((new Date(dateMonday).getTime() - new Date(todayMonday).getTime()) / (7 * 86400000)));
   };
 
   const loggedDates = useMemo(() => new Set(entries.map((e) => e.date)), [entries]);
@@ -128,8 +132,8 @@ export default function NutritionScreen() {
   // one-off palette per screen).
   const macroRows: { key: 'protein' | 'carbs' | 'fats'; label: string; icon: IconName; color: string; target: number }[] = [
     { key: 'protein', label: 'Proteine', icon: 'protein', color: theme.calorieSurplus, target: currentUser.macroTargetsG.protein },
-    { key: 'carbs', label: 'Carbo', icon: 'carbs', color: theme.success, target: currentUser.macroTargetsG.carbs },
     { key: 'fats', label: 'Grassi', icon: 'fats', color: theme.warning, target: currentUser.macroTargetsG.fats },
+    { key: 'carbs', label: 'Carbo', icon: 'carbs', color: theme.success, target: currentUser.macroTargetsG.carbs },
   ];
 
   // Mirrors training.tsx's own "current month" block exactly: a fixed
@@ -161,7 +165,7 @@ export default function NutritionScreen() {
 
   return (
     <ScreenScroll>
-      <ScreenHeader eyebrow="Bilancio energetico" title="Nutrizione" icon="calendar" onIconPress={() => setCalendarOpen(true)} />
+      <ScreenHeader eyebrow="Bilancio energetico" title="Nutrizione" />
 
       {dietPlan ? (
         <FlatCard radius={Radius.large} style={{ padding: Spacing.three, gap: Spacing.three }}>
@@ -213,17 +217,6 @@ export default function NutritionScreen() {
           </ThemedText>
         </FlatCard>
       )}
-
-      <WeekDayStrip
-        weekDates={viewedWeekDates}
-        selectedDate={selectedDate}
-        onSelectDate={setSelectedDate}
-        isDayComplete={(date) => loggedDates.has(date)}
-        onToggleDayComplete={() => {}}
-        monthYearLabel={monthYearLabel}
-        onPrevWeek={() => goToAdjacentWeek(-1)}
-        onNextWeek={() => goToAdjacentWeek(1)}
-      />
 
       <Animated.View style={heroAnimatedStyle}>
         <FlatCard radius={Radius.xlarge} style={styles.heroCard}>
@@ -279,6 +272,16 @@ export default function NutritionScreen() {
           </View>
         </FlatCard>
       </Animated.View>
+
+      <WeekDayStrip
+        weekDates={viewedWeekDates}
+        selectedDate={selectedDate}
+        onSelectDate={setSelectedDate}
+        isDayComplete={(date) => loggedDates.has(date)}
+        onToggleDayComplete={() => {}}
+        monthYearLabel={monthYearLabel}
+        onOpenCalendar={() => setCalendarOpen(true)}
+      />
 
       <View>
         <View style={styles.mealsSectionHeader}>
@@ -394,20 +397,11 @@ export default function NutritionScreen() {
         body="Chiedi al coach AI consigli su pasti, macro e calorie in base al tuo piano."
       />
 
-      <NutritionCalendarModal
+      <DayCalendarModal
         visible={calendarOpen}
         selectedDate={selectedDate}
-        loggedDates={loggedDates}
-        onSelectDate={(date) => {
-          setSelectedDate(date);
-          // Whole Monday-to-Monday weeks between the picked date and today
-          // — a plain (date-today)/7 day-diff rounds wrong whenever the two
-          // dates fall on different weekdays, landing the strip on a week
-          // that doesn't even contain the picked date.
-          const dateMonday = addDaysISO(date, -mondayIndex(new Date(date)));
-          const todayMonday = addDaysISO(today, -mondayIndex(new Date(today)));
-          setWeekOffset(Math.round((new Date(dateMonday).getTime() - new Date(todayMonday).getTime()) / (7 * 86400000)));
-        }}
+        isDayMarked={(date) => loggedDates.has(date)}
+        onSelectDate={selectDateFromCalendar}
         onClose={() => setCalendarOpen(false)}
       />
 

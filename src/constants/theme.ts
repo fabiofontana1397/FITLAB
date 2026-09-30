@@ -79,9 +79,16 @@ export const Colors = {
   },
   dark: {
     background: neutral[950],
-    backgroundElevated: neutral[900],
+    // Card surfaces need a clearly different dark gray from the page's
+    // near-black background, or every flat card silently disappears into
+    // it — neutral[900] read as almost the same color as neutral[950] at
+    // a glance, so this jumps to neutral[800] instead (backgroundElement,
+    // used for inset wells/tracks *inside* a card, now reads as a subtly
+    // recessed shade relative to the card surface, which is the right way
+    // around for an elevation hierarchy).
+    backgroundElevated: neutral[800],
     backgroundElement: neutral[850],
-    backgroundSelected: neutral[800],
+    backgroundSelected: '#26272F',
     surfaceGlass: 'rgba(28,29,34,0.55)',
     surfaceGlassStrong: 'rgba(28,29,34,0.78)',
     border: 'rgba(255,255,255,0.08)',

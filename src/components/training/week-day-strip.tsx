@@ -17,8 +17,10 @@ export type WeekDayStripProps = {
    * that day and check off each exercise one by one. */
   onToggleDayComplete: (date: string) => void;
   monthYearLabel: string;
-  onPrevWeek: () => void;
-  onNextWeek: () => void;
+  /** Opens the full month-grid calendar popup — replaces the old prev/next
+   * week arrows, since jumping to any day there also repositions the week
+   * this strip shows. */
+  onOpenCalendar: () => void;
 };
 
 /** A fixed Mon–Sun week grid with month-navigation arrows above it — the
@@ -34,8 +36,7 @@ export function WeekDayStrip({
   isDayComplete,
   onToggleDayComplete,
   monthYearLabel,
-  onPrevWeek,
-  onNextWeek,
+  onOpenCalendar,
 }: WeekDayStripProps) {
   const theme = useTheme();
 
@@ -43,14 +44,9 @@ export function WeekDayStrip({
     <View style={{ gap: Spacing.three }}>
       <View style={styles.monthNavRow}>
         <ThemedText type="subtitle">{monthYearLabel}</ThemedText>
-        <View style={styles.monthNavArrows}>
-          <Pressable onPress={onPrevWeek} hitSlop={8} style={styles.navButton}>
-            <Icon name="arrowBack" size={18} color={theme.textSecondary} />
-          </Pressable>
-          <Pressable onPress={onNextWeek} hitSlop={8} style={styles.navButton}>
-            <Icon name="chevronRight" size={18} color={theme.textSecondary} />
-          </Pressable>
-        </View>
+        <Pressable onPress={onOpenCalendar} hitSlop={8} style={styles.navButton}>
+          <Icon name="calendar" size={20} color={theme.textSecondary} />
+        </Pressable>
       </View>
       <View style={styles.grid}>
         {weekDates.map((date) => {
@@ -100,10 +96,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-  },
-  monthNavArrows: {
-    flexDirection: 'row',
-    gap: Spacing.two,
   },
   navButton: {
     padding: 2,

@@ -6,6 +6,7 @@ import { ScreenHeader } from '@/components/screen-header';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { AiCoachCard } from '@/components/ui/ai-coach-card';
+import { DayCalendarModal } from '@/components/ui/day-calendar-modal';
 import { Icon } from '@/components/ui/icon';
 import { FlatCard } from '@/components/ui/flat-card';
 import { PrimaryButton } from '@/components/ui/primary-button';
@@ -84,6 +85,7 @@ export default function TrainingScreen() {
   const activityLogEntries = useActivityLogStore((s) => s.entries);
   const addActivityEntry = useActivityLogStore((s) => s.addEntry);
   const [isLogActivityVisible, setLogActivityVisible] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(false);
 
   const today = daysAgoISO(0);
   const [selectedDate, setSelectedDate] = useState(today);
@@ -173,11 +175,15 @@ export default function TrainingScreen() {
       }))
     : [];
 
-  const goToAdjacentWeek = (delta: number) => {
-    const newOffset = weekOffset + delta;
-    const newWeekDates = currentWeekDates(new Date(addDaysISO(today, newOffset * 7)));
-    setWeekOffset(newOffset);
-    setSelectedDate(newWeekDates[mondayIndex(new Date(selectedDate))]);
+  // Whole Monday-to-Monday weeks between the picked date and today — a
+  // plain (date-today)/7 day-diff rounds wrong whenever the two dates
+  // fall on different weekdays, landing the strip on a week that doesn't
+  // even contain the picked date.
+  const selectDateFromCalendar = (date: string) => {
+    setSelectedDate(date);
+    const dateMonday = addDaysISO(date, -mondayIndex(new Date(date)));
+    const todayMonday = addDaysISO(today, -mondayIndex(new Date(today)));
+    setWeekOffset(Math.round((new Date(dateMonday).getTime() - new Date(todayMonday).getTime()) / (7 * 86400000)));
   };
 
   const selectedDayHeading =
@@ -247,8 +253,7 @@ export default function TrainingScreen() {
                 isDayComplete={isDayComplete}
                 onToggleDayComplete={toggleDayComplete}
                 monthYearLabel={monthYearLabel}
-                onPrevWeek={() => goToAdjacentWeek(-1)}
-                onNextWeek={() => goToAdjacentWeek(1)}
+                onOpenCalendar={() => setCalendarOpen(true)}
               />
             </View>
 
@@ -317,6 +322,14 @@ export default function TrainingScreen() {
       <AiCoachCard
         headline="Un dubbio sull'allenamento?"
         body="Chiedi al coach AI consigli su tecnica, carichi e progressione per il tuo piano."
+      />
+
+      <DayCalendarModal
+        visible={calendarOpen}
+        selectedDate={selectedDate}
+        isDayMarked={isDayComplete}
+        onSelectDate={selectDateFromCalendar}
+        onClose={() => setCalendarOpen(false)}
       />
 
       <LogActivityModal

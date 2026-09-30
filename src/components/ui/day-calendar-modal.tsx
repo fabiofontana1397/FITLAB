@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -7,7 +8,6 @@ import { Icon } from '@/components/ui/icon';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { isToday, mondayIndex } from '@/lib/mock/dates';
-import { useState } from 'react';
 
 const SHEET_MAX_WIDTH = 440;
 const WEEKDAY_LETTERS = ['L', 'M', 'M', 'G', 'V', 'S', 'D'];
@@ -26,19 +26,23 @@ function monthLabel(year: number, month0: number): string {
   return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
-export type NutritionCalendarModalProps = {
+export type DayCalendarModalProps = {
   visible: boolean;
   selectedDate: string;
-  loggedDates: Set<string>;
+  /** Whether a given date gets the small dot marker — e.g. "has logged
+   * food" for Nutrition, "workout done" for Training. A plain predicate
+   * (rather than a precomputed Set) so callers can answer for any date
+   * the popup happens to page to, not just a pre-enumerated range. */
+  isDayMarked: (date: string) => boolean;
   onSelectDate: (date: string) => void;
   onClose: () => void;
 };
 
-/** A full month-grid popup opened from Nutrition's header calendar icon —
+/** A full month-grid popup opened from a screen's header calendar icon —
  * lets the user jump straight to any day across months (unlike the
  * always-visible week strip, which only pages a week at a time), with a
- * checkmark on every day that already has logged meals. */
-export function NutritionCalendarModal({ visible, selectedDate, loggedDates, onSelectDate, onClose }: NutritionCalendarModalProps) {
+ * dot marker on days that satisfy `isDayMarked`. */
+export function DayCalendarModal({ visible, selectedDate, isDayMarked, onSelectDate, onClose }: DayCalendarModalProps) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const selected = new Date(selectedDate);
@@ -118,7 +122,7 @@ export function NutritionCalendarModal({ visible, selectedDate, loggedDates, onS
           <View style={styles.grid}>
             {cells.map((date, i) => {
               if (!date) return <View key={`blank-${i}`} style={styles.cell} />;
-              const logged = loggedDates.has(date);
+              const marked = isDayMarked(date);
               const isSelected = date === selectedDate;
               const today = isToday(date);
               return (
@@ -138,10 +142,10 @@ export function NutritionCalendarModal({ visible, selectedDate, loggedDates, onS
                       style={{ fontWeight: '700', color: isSelected ? theme.onAccent : theme.text }}>
                       {new Date(date).getDate()}
                     </ThemedText>
-                    {logged ? (
+                    {marked ? (
                       <View
                         style={[
-                          styles.loggedDot,
+                          styles.markedDot,
                           { backgroundColor: isSelected ? theme.onAccent : theme.success },
                         ]}
                       />
@@ -207,7 +211,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  loggedDot: {
+  markedDot: {
     position: 'absolute',
     bottom: 4,
     width: 4,
