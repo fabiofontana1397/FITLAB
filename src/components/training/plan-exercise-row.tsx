@@ -4,6 +4,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring, w
 
 import { ExerciseInfoModal } from '@/components/training/exercise-info-modal';
 import { NewLoadModal } from '@/components/training/new-load-modal';
+import { AiCoachTipRow } from '@/components/ui/ai-coach-tip-row';
 import { FlatCard } from '@/components/ui/flat-card';
 import { ThemedText } from '@/components/themed-text';
 import { Icon, type IconName } from '@/components/ui/icon';
@@ -100,6 +101,8 @@ export function PlanExerciseRow({
           </ThemedText>
         </Pressable>
       </View>
+
+      <AiCoachTipRow tip={`Chiedi al coach AI consigli su tecnica e progressione per ${exercise.name}.`} />
 
       <ExerciseInfoModal
         visible={infoOpen}

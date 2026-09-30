@@ -10,6 +10,7 @@ import { WeekDayStrip } from '@/components/training/week-day-strip';
 import { ScreenHeader } from '@/components/screen-header';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
+import { AiCoachTipRow } from '@/components/ui/ai-coach-tip-row';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { PrimaryButton } from '@/components/ui/primary-button';
@@ -83,17 +84,12 @@ export default function NutritionScreen() {
 
   // Tracking is opt-in (spec request): a date's calorie/macro totals must
   // never populate themselves just from opening it — the user explicitly
-  // approves "follow the meal plan for this day" per date, same principle
-  // as the training side's completion checkboxes. Generalized to any date
-  // (not just selectedDate) so the week strip's day-circle can bulk-toggle
-  // a whole day at once, mirroring Training's toggleDayComplete.
+  // approves "follow the meal plan for this day" only via the "Segui il
+  // piano" switch next to the meals heading below. Unlike Training's day
+  // circle (which bulk-toggles workout completion on tap), the week
+  // strip's checkmark here is read-only status — whether that day has any
+  // logged food — so it isn't wired to a tap action at all.
   const planDayForDate = (date: string) => currentMonthData?.weeklySplit[mondayIndex(new Date(date))];
-  const toggleFollowPlanForDate = (date: string) => {
-    const dayPlan = planDayForDate(date);
-    if (!dayPlan) return;
-    if (seededDates.includes(date)) unseedDay(date);
-    else seedDayFromPlan(date, dayPlan.meals);
-  };
   const planDayForSelectedDate = planDayForDate(selectedDate);
   const isFollowingPlanToday = seededDates.includes(selectedDate);
   const canFollowPlanToday = !!planDayForSelectedDate;
@@ -154,17 +150,22 @@ export default function NutritionScreen() {
   const mealsSectionTitle =
     selectedDate === today ? 'Pasti di oggi' : `Pasti del ${new Date(selectedDate).toLocaleDateString('it-IT', { day: 'numeric', month: 'long' })}`;
 
-  // Peach/orange for the two main meals, pink for the snack slots, blue
-  // for dinner — reusing existing theme tokens (no new palette colors)
-  // just to give the meal list some of the same visual variety the
-  // reference design has across its four rows.
   const MEAL_COLOR: Record<MealSlot, string> = {
-    colazione: theme.accent,
-    pranzo: theme.accent,
-    spuntinoMattina: theme.calorieDeficit,
-    spuntinoPomeriggio: theme.calorieDeficit,
-    spuntinoSera: theme.calorieDeficit,
+    colazione: theme.warning,
+    pranzo: theme.success,
+    spuntinoMattina: theme.accent,
+    spuntinoPomeriggio: theme.accent,
+    spuntinoSera: theme.accent,
     cena: theme.calorieSurplus,
+  };
+
+  const MEAL_TIP: Record<MealSlot, string> = {
+    colazione: 'Chiedi al coach AI come rendere la colazione più saziante e proteica.',
+    spuntinoMattina: 'Chiedi al coach AI uno spuntino leggero per arrivare a pranzo con energia.',
+    pranzo: 'Chiedi al coach AI come bilanciare proteine, carboidrati e verdure a pranzo.',
+    spuntinoPomeriggio: 'Chiedi al coach AI un’idea di spuntino per evitare di arrivare affamato a cena.',
+    cena: 'Chiedi al coach AI consigli per una cena leggera che favorisca il recupero.',
+    spuntinoSera: 'Chiedi al coach AI cosa scegliere se hai fame la sera senza sforare gli obiettivi.',
   };
 
   return (
@@ -227,64 +228,65 @@ export default function NutritionScreen() {
         selectedDate={selectedDate}
         onSelectDate={setSelectedDate}
         isDayComplete={(date) => loggedDates.has(date)}
-        onToggleDayComplete={toggleFollowPlanForDate}
+        onToggleDayComplete={() => {}}
         monthYearLabel={monthYearLabel}
         onPrevWeek={() => goToAdjacentWeek(-1)}
         onNextWeek={() => goToAdjacentWeek(1)}
       />
 
       <Animated.View style={heroAnimatedStyle}>
-        <View style={styles.heroCard}>
+        <FlatCard radius={Radius.xlarge} style={styles.heroCard}>
           <View style={styles.heroTopRow}>
             <View style={styles.heroTitleRow}>
               <Icon name="flame" size={17} color={theme.accent} />
-              <ThemedText style={styles.heroTitle}>Le tue calorie oggi</ThemedText>
+              <ThemedText type="smallBold">Le tue calorie oggi</ThemedText>
             </View>
             <View style={{ alignItems: 'flex-end' }}>
               <View style={styles.heroGoalRow}>
-                <Icon name="target" size={11} color="rgba(255,255,255,0.55)" />
-                <ThemedText style={styles.heroGoalLabel}>Obiettivo giornaliero</ThemedText>
+                <Icon name="target" size={11} color={theme.textTertiary} />
+                <ThemedText type="caption" themeColor="textSecondary">
+                  Obiettivo giornaliero
+                </ThemedText>
               </View>
-              <ThemedText style={styles.heroGoalValue}>{currentUser.dailyCalorieTarget} kcal</ThemedText>
+              <ThemedText type="smallBold">{currentUser.dailyCalorieTarget} kcal</ThemedText>
             </View>
           </View>
 
           <View style={styles.heroBodyRow}>
-            <ProgressRing
-              size={112}
-              strokeWidth={11}
-              progress={calorieProgress}
-              color={theme.accent}
-              trackColor="rgba(255,255,255,0.12)">
+            <ProgressRing size={104} strokeWidth={10} progress={calorieProgress} color={theme.accent} trackColor={theme.backgroundElement}>
               <ThemedText style={styles.heroKcal}>{Math.round(totals.kcal)}</ThemedText>
-              <ThemedText style={styles.heroKcalUnit}>kcal</ThemedText>
-              <ThemedText style={styles.heroKcalSub}>assunte</ThemedText>
+              <ThemedText type="caption" themeColor="textSecondary">
+                kcal
+              </ThemedText>
+              <ThemedText type="caption" themeColor="textTertiary">
+                assunte
+              </ThemedText>
             </ProgressRing>
 
-            <View style={styles.heroMacrosRow}>
+            <View style={styles.heroMacrosStack}>
               {macroRows.map((macro) => {
                 const value = totals[macro.key];
                 const pct = macro.target ? Math.round((value / macro.target) * 100) : 0;
                 return (
-                  <View key={macro.key} style={styles.heroMacroCol}>
-                    <View style={[styles.heroMacroIcon, { backgroundColor: withAlpha(macro.color, 0.2) }]}>
-                      <Icon name={macro.icon} size={16} color={macro.color} />
+                  <View key={macro.key} style={styles.heroMacroRow}>
+                    <View style={[styles.heroMacroIcon, { backgroundColor: withAlpha(macro.color, 0.16) }]}>
+                      <Icon name={macro.icon} size={15} color={macro.color} />
                     </View>
-                    <ThemedText style={styles.heroMacroColLabel} numberOfLines={1}>
-                      {macro.label}
+                    <ThemedText type="caption" style={styles.heroMacroGrams} numberOfLines={1}>
+                      {Math.round(value)}g <ThemedText type="caption" themeColor="textTertiary">/ {macro.target}g</ThemedText>
                     </ThemedText>
-                    <ThemedText style={styles.heroMacroColValue}>{Math.round(value)}g</ThemedText>
-                    <ThemedText style={styles.heroMacroColTarget}>/ {macro.target}g</ThemedText>
-                    <View style={styles.heroMacroColTrack}>
-                      <View style={[styles.heroMacroColFill, { width: `${Math.min(pct, 100)}%`, backgroundColor: macro.color }]} />
+                    <View style={[styles.heroMacroTrack, { backgroundColor: theme.backgroundElement }]}>
+                      <View style={[styles.heroMacroFill, { width: `${Math.min(pct, 100)}%`, backgroundColor: macro.color }]} />
                     </View>
-                    <ThemedText style={[styles.heroMacroColPct, { color: macro.color }]}>{pct}%</ThemedText>
+                    <ThemedText type="caption" style={[styles.heroMacroPct, { color: macro.color }]}>
+                      {pct}%
+                    </ThemedText>
                   </View>
                 );
               })}
             </View>
           </View>
-        </View>
+        </FlatCard>
       </Animated.View>
 
       <View>
@@ -390,6 +392,8 @@ export default function NutritionScreen() {
                     </Pressable>
                   </View>
                 ) : null}
+
+                <AiCoachTipRow tip={MEAL_TIP[meta.id]} />
               </FlatCard>
             );
           })}
@@ -448,12 +452,7 @@ const styles = StyleSheet.create({
   showPlanButton: {
     flexShrink: 0,
   },
-  // Deliberately always dark regardless of the app's own light/dark
-  // setting, same convention as Home's AI Coach card — a distinct "hero
-  // metric" surface rather than a plain themed one.
   heroCard: {
-    backgroundColor: '#15161A',
-    borderRadius: Radius.xlarge,
     padding: Spacing.four,
     gap: Spacing.four,
   },
@@ -467,26 +466,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
-  heroTitle: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '800',
-  },
   heroGoalRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-  },
-  heroGoalLabel: {
-    color: 'rgba(255,255,255,0.55)',
-    fontSize: 10,
-    fontWeight: '600',
-  },
-  heroGoalValue: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '800',
-    marginTop: 2,
   },
   heroBodyRow: {
     flexDirection: 'row',
@@ -494,75 +477,47 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
   },
   heroKcal: {
-    color: '#FFFFFF',
-    fontSize: 22,
-    lineHeight: 26,
+    fontSize: 20,
+    lineHeight: 24,
     fontWeight: '800',
     letterSpacing: -0.3,
   },
-  heroKcalUnit: {
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: 11,
-    fontWeight: '600',
-    marginTop: -2,
-  },
-  heroKcalSub: {
-    color: 'rgba(255,255,255,0.5)',
-    fontSize: 10,
-    fontWeight: '500',
-  },
-  heroMacrosRow: {
+  // Macros stacked one under another — each row itself ordered icon,
+  // grams, progress bar left to right, per spec.
+  heroMacrosStack: {
     flex: 1,
+    gap: Spacing.two,
+  },
+  heroMacroRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  heroMacroCol: {
-    flex: 1,
     alignItems: 'center',
-    gap: 2,
-    paddingHorizontal: 2,
+    gap: Spacing.two,
   },
   heroMacroIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 2,
   },
-  heroMacroColLabel: {
-    color: 'rgba(255,255,255,0.75)',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  heroMacroColValue: {
-    color: '#FFFFFF',
-    fontSize: 13,
+  heroMacroGrams: {
+    width: 74,
     fontWeight: '800',
-    marginTop: 2,
   },
-  heroMacroColTarget: {
-    color: 'rgba(255,255,255,0.5)',
-    fontSize: 10,
-    fontWeight: '500',
-    marginTop: -2,
-  },
-  heroMacroColTrack: {
-    width: '100%',
-    height: 5,
+  heroMacroTrack: {
+    flex: 1,
+    height: 6,
     borderRadius: 3,
-    backgroundColor: 'rgba(255,255,255,0.14)',
     overflow: 'hidden',
-    marginTop: 5,
   },
-  heroMacroColFill: {
+  heroMacroFill: {
     height: '100%',
     borderRadius: 3,
   },
-  heroMacroColPct: {
-    fontSize: 11,
+  heroMacroPct: {
+    width: 32,
+    textAlign: 'right',
     fontWeight: '800',
-    marginTop: 2,
   },
   mealsSectionHeader: {
     flexDirection: 'row',
