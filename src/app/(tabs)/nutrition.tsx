@@ -10,7 +10,7 @@ import { WeekDayStrip } from '@/components/training/week-day-strip';
 import { ScreenHeader } from '@/components/screen-header';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
-import { AiCoachTipRow } from '@/components/ui/ai-coach-tip-row';
+import { AiCoachCard } from '@/components/ui/ai-coach-card';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { PrimaryButton } from '@/components/ui/primary-button';
@@ -157,15 +157,6 @@ export default function NutritionScreen() {
     spuntinoPomeriggio: theme.accent,
     spuntinoSera: theme.accent,
     cena: theme.calorieSurplus,
-  };
-
-  const MEAL_TIP: Record<MealSlot, string> = {
-    colazione: 'Chiedi al coach AI come rendere la colazione più saziante e proteica.',
-    spuntinoMattina: 'Chiedi al coach AI uno spuntino leggero per arrivare a pranzo con energia.',
-    pranzo: 'Chiedi al coach AI come bilanciare proteine, carboidrati e verdure a pranzo.',
-    spuntinoPomeriggio: 'Chiedi al coach AI un’idea di spuntino per evitare di arrivare affamato a cena.',
-    cena: 'Chiedi al coach AI consigli per una cena leggera che favorisca il recupero.',
-    spuntinoSera: 'Chiedi al coach AI cosa scegliere se hai fame la sera senza sforare gli obiettivi.',
   };
 
   return (
@@ -392,13 +383,16 @@ export default function NutritionScreen() {
                     </Pressable>
                   </View>
                 ) : null}
-
-                <AiCoachTipRow tip={MEAL_TIP[meta.id]} />
               </FlatCard>
             );
           })}
         </View>
       </View>
+
+      <AiCoachCard
+        headline="Un dubbio sull'alimentazione?"
+        body="Chiedi al coach AI consigli su pasti, macro e calorie in base al tuo piano."
+      />
 
       <NutritionCalendarModal
         visible={calendarOpen}

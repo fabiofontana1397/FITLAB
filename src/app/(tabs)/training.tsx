@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { ScreenHeader } from '@/components/screen-header';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
+import { AiCoachCard } from '@/components/ui/ai-coach-card';
 import { Icon } from '@/components/ui/icon';
 import { FlatCard } from '@/components/ui/flat-card';
 import { PrimaryButton } from '@/components/ui/primary-button';
@@ -312,6 +313,11 @@ export default function TrainingScreen() {
           )}
         </>
       )}
+
+      <AiCoachCard
+        headline="Un dubbio sull'allenamento?"
+        body="Chiedi al coach AI consigli su tecnica, carichi e progressione per il tuo piano."
+      />
 
       <LogActivityModal
         visible={isLogActivityVisible}
