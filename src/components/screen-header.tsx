@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { GlassSurface } from '@/components/glass/glass-surface';
 import { ThemedText } from '@/components/themed-text';
-import { Icon } from '@/components/ui/icon';
+import { Icon, type IconName } from '@/components/ui/icon';
 import { Radius } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -11,9 +11,14 @@ export type ScreenHeaderProps = {
   eyebrow?: string;
   title: string;
   showProfile?: boolean;
+  /** Overrides the default profile-avatar button with a different icon
+   * (e.g. Nutrition's calendar shortcut) while keeping the exact same
+   * circular glass-button treatment every screen's header uses. */
+  icon?: IconName;
+  onIconPress?: () => void;
 };
 
-export function ScreenHeader({ eyebrow, title, showProfile = true }: ScreenHeaderProps) {
+export function ScreenHeader({ eyebrow, title, showProfile = true, icon = 'profile', onIconPress }: ScreenHeaderProps) {
   const theme = useTheme();
 
   return (
@@ -28,10 +33,10 @@ export function ScreenHeader({ eyebrow, title, showProfile = true }: ScreenHeade
       </View>
 
       {showProfile ? (
-        <Pressable onPress={() => router.push('/profile')} hitSlop={8}>
+        <Pressable onPress={onIconPress ?? (() => router.push('/profile'))} hitSlop={8}>
           <GlassSurface level="card" radius={Radius.pill} style={styles.avatarWrap}>
             <View style={styles.avatarInner}>
-              <Icon name="profile" size={22} color={theme.text} />
+              <Icon name={icon} size={22} color={theme.text} />
             </View>
           </GlassSurface>
         </Pressable>
