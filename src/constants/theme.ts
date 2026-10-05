@@ -74,6 +74,9 @@ export const Colors = {
     // good/bad framing already carried by color elsewhere on that card.
     calorieSurplus: '#0B72E0',
     calorieDeficit: '#C2178E',
+    // Fixed brand greens/yellows from the Figma screens — unlike success/warning (neon in dark mode, chosen to read as *text*), these also have to work as solid fills behind white labels (e.g. the green "Registra allenamento" button), so they don't change per scheme.
+    brandGreen: '#22B35E',
+    brandYellow: '#F6B21B',
     tabBarBlur: 'light' as const,
     shadow: 'rgba(20,20,25,0.12)',
   },
@@ -113,6 +116,8 @@ export const Colors = {
     // good/bad framing already carried by color elsewhere on that card.
     calorieSurplus: '#3AA0FF',
     calorieDeficit: '#FF3FD1',
+    brandGreen: '#22B35E',
+    brandYellow: '#F6B21B',
     tabBarBlur: 'dark' as const,
     shadow: 'rgba(0,0,0,0.5)',
   },
