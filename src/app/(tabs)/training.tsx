@@ -191,7 +191,7 @@ export default function TrainingScreen() {
 
   return (
     <ScreenScroll>
-      <ScreenHeader eyebrow="Il tuo percorso" title="Training" />
+      <ScreenHeader title="Allenamento" icon="training" iconColor={theme.accent} onIconPress={() => router.push('/training-plan')} />
 
       {!trainingPlan ? (
         <FlatCard radius={Radius.large} style={{ padding: Spacing.four, gap: Spacing.two }}>
@@ -257,7 +257,7 @@ export default function TrainingScreen() {
               />
             </View>
 
-            <PrimaryButton label="Aggiungi allenamento" icon="plus" dense onPress={() => setLogActivityVisible(true)} />
+            <PrimaryButton label="Registra allenamento" icon="plus" dense onPress={() => setLogActivityVisible(true)} />
           </View>
 
           <View style={{ gap: 2 }}>

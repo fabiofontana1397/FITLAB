@@ -1,15 +1,13 @@
 import { useState } from 'react';
-import { Modal, Pressable, StyleSheet, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Pressable, StyleSheet, View } from 'react-native';
 
-import { GlassSurface } from '@/components/glass/glass-surface';
+import { GlassPopup } from '@/components/glass/glass-popup';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { isToday, mondayIndex } from '@/lib/mock/dates';
 
-const SHEET_MAX_WIDTH = 440;
 const WEEKDAY_LETTERS = ['L', 'M', 'M', 'G', 'V', 'S', 'D'];
 
 function daysInMonth(year: number, month0: number): number {
@@ -44,7 +42,6 @@ export type DayCalendarModalProps = {
  * dot marker on days that satisfy `isDayMarked`. */
 export function DayCalendarModal({ visible, selectedDate, isDayMarked, onSelectDate, onClose }: DayCalendarModalProps) {
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
   const selected = new Date(selectedDate);
   const [viewedYear, setViewedYear] = useState(selected.getFullYear());
   const [viewedMonth0, setViewedMonth0] = useState(selected.getMonth());
@@ -84,12 +81,7 @@ export function DayCalendarModal({ visible, selectedDate, isDayMarked, onSelectD
   ];
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.backdrop}>
-        <GlassSurface
-          level="overlay"
-          radius={Radius.xlarge}
-          style={[styles.sheet, { paddingBottom: insets.bottom + Spacing.four }]}>
+    <GlassPopup visible={visible} onClose={onClose}>
           <View style={styles.header}>
             <ThemedText type="subtitle" style={{ flex: 1 }}>
               Calendario
@@ -155,25 +147,11 @@ export function DayCalendarModal({ visible, selectedDate, isDayMarked, onSelectD
               );
             })}
           </View>
-        </GlassSurface>
-      </View>
-    </Modal>
+    </GlassPopup>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.4)',
-  },
-  sheet: {
-    width: '100%',
-    maxWidth: SHEET_MAX_WIDTH,
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.four,
-  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -1,9 +1,10 @@
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Switch, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Switch, View } from 'react-native';
 
 import { FoodSearchModal } from '@/components/nutrition/food-search-modal';
-import { NutritionWeekStrip } from '@/components/nutrition/nutrition-week-strip';
+import { MealPickerModal, mealSlotColor } from '@/components/nutrition/meal-picker-modal';
+import { HeaderIconButton } from '@/components/screen-header';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { AiCoachCard } from '@/components/ui/ai-coach-card';
@@ -14,7 +15,7 @@ import { ProgressRing } from '@/components/ui/progress-ring';
 import { TickProgressBar } from '@/components/ui/tick-progress-bar';
 import { useStoreHydrated } from '@/hooks/use-store-hydrated';
 import { useTheme } from '@/hooks/use-theme';
-import { addDaysISO, currentWeekDates, daysAgoISO, mondayIndex } from '@/lib/mock/dates';
+import { daysAgoISO, mondayIndex } from '@/lib/mock/dates';
 import { findFood } from '@/lib/mock/food-database';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
 import {
@@ -74,8 +75,8 @@ export default function NutritionScreen() {
   const [editingEntry, setEditingEntry] = useState<MealFoodEntry | null>(null);
   const today = daysAgoISO(0);
   const [selectedDate, setSelectedDate] = useState(today);
-  const [weekOffset, setWeekOffset] = useState(0);
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [expandedSlot, setExpandedSlot] = useState<MealSlot | null>('colazione');
 
   const planStoreHydrated = useStoreHydrated(usePlanStore);
@@ -113,21 +114,19 @@ export default function NutritionScreen() {
   const planDayForSelectedDate = currentMonthData?.weeklySplit[mondayIndex(new Date(selectedDate))];
   const isFollowingPlan = seededDates.includes(selectedDate);
 
-  const viewedWeekDates = useMemo(() => currentWeekDates(new Date(addDaysISO(today, weekOffset * 7))), [today, weekOffset]);
-  const monthLabel = useMemo(() => {
-    const label = new Date(viewedWeekDates[3]).toLocaleDateString('it-IT', { month: 'long' });
-    return label.charAt(0).toUpperCase() + label.slice(1);
-  }, [viewedWeekDates]);
+  const mealsHeading =
+    selectedDate === today
+      ? 'Pasti di oggi'
+      : `Pasti del ${new Date(selectedDate).toLocaleDateString('it-IT', { day: 'numeric', month: 'long' })}`;
 
-  // Whole Monday-to-Monday weeks between the picked date and today — a
-  // plain (date-today)/7 day-diff rounds wrong whenever the two dates fall
-  // on different weekdays, landing the strip on a week that doesn't even
-  // contain the picked date.
-  const selectDateFromCalendar = (date: string) => {
-    setSelectedDate(date);
-    const dateMonday = addDaysISO(date, -mondayIndex(new Date(date)));
-    const todayMonday = addDaysISO(today, -mondayIndex(new Date(today)));
-    setWeekOffset(Math.round((new Date(dateMonday).getTime() - new Date(todayMonday).getTime()) / (7 * 86400000)));
+  // Picking a meal in the "Registra pasto" popup hands over to "Registra
+  // alimento". On iOS a Modal can't present while another is still
+  // dismissing, so wait a beat there.
+  const pickMeal = (slot: MealSlot) => {
+    setPickerOpen(false);
+    setEditingEntry(null);
+    if (Platform.OS === 'ios') setTimeout(() => setActiveSlot(slot), 350);
+    else setActiveSlot(slot);
   };
 
   const loggedDates = useMemo(() => new Set(entries.map((e) => e.date)), [entries]);
@@ -143,21 +142,17 @@ export default function NutritionScreen() {
     { key: 'fats' as const, label: 'Grassi', color: theme.brandYellow, target: macroTargets.fats },
   ];
 
-  // Colazione follows the Figma (orange on a peach disc); the other meals
-  // keep the per-meal colors asked for earlier (lunch green, snacks orange,
-  // dinner blue).
-  const MEAL_COLOR: Record<MealSlot, string> = {
-    colazione: theme.accent,
-    pranzo: theme.brandGreen,
-    spuntinoMattina: theme.accent,
-    spuntinoPomeriggio: theme.accent,
-    spuntinoSera: theme.accent,
-    cena: theme.calorieSurplus,
-  };
-
   return (
     <ScreenScroll contentContainerStyle={styles.page}>
-      <ThemedText style={styles.pageTitle}>Nutrizione</ThemedText>
+      <View style={styles.headerRow}>
+        <ThemedText style={styles.pageTitle}>Nutrizione</ThemedText>
+        <HeaderIconButton
+          icon="nutrition"
+          color={theme.accent}
+          accessibilityLabel="Piano alimentare"
+          onPress={() => router.push('/diet-plan')}
+        />
+      </View>
 
       <FlatCard radius={CARD_RADIUS} style={styles.calorieCard}>
         <View style={styles.cardTitleRow}>
@@ -198,12 +193,14 @@ export default function NutritionScreen() {
         </View>
       </FlatCard>
 
-      <View style={styles.weekStrip}>
-        <NutritionWeekStrip dates={viewedWeekDates} selectedDate={selectedDate} onSelect={setSelectedDate} monthLabel={monthLabel} />
-      </View>
+      <Pressable onPress={() => setPickerOpen(true)} style={[styles.registerButton, { backgroundColor: theme.accent }]}>
+        <Icon name="utensils" size={22} color="#FFFFFF" />
+        <ThemedText style={styles.registerLabel}>Registra pasto</ThemedText>
+        <Icon name="chevronRight" size={16} color="#FFFFFF" />
+      </Pressable>
 
       <View style={styles.mealsHeader}>
-        <ThemedText style={styles.sectionTitle}>Pasti</ThemedText>
+        <ThemedText style={styles.sectionTitle}>{mealsHeading}</ThemedText>
         <Pressable onPress={() => setCalendarOpen(true)} hitSlop={10}>
           <Icon name="calendar" size={24} color={theme.text} />
         </Pressable>
@@ -214,7 +211,7 @@ export default function NutritionScreen() {
           const slotEntries = entriesForSlot(entries, meta.id, selectedDate);
           const slotTotals = sumMacros(slotEntries);
           const expanded = expandedSlot === meta.id;
-          const color = MEAL_COLOR[meta.id];
+          const color = mealSlotColor(theme, meta.id);
 
           return (
             <FlatCard key={meta.id} radius={CARD_RADIUS} style={styles.mealCard}>
@@ -321,9 +318,11 @@ export default function NutritionScreen() {
         visible={calendarOpen}
         selectedDate={selectedDate}
         isDayMarked={(date) => loggedDates.has(date)}
-        onSelectDate={selectDateFromCalendar}
+        onSelectDate={setSelectedDate}
         onClose={() => setCalendarOpen(false)}
       />
+
+      <MealPickerModal visible={pickerOpen} date={selectedDate} onClose={() => setPickerOpen(false)} onPick={pickMeal} />
 
       <FoodSearchModal
         visible={activeSlot != null}
@@ -344,12 +343,37 @@ const styles = StyleSheet.create({
     paddingHorizontal: SCREEN_PADDING,
     gap: 0,
   },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
   pageTitle: {
     fontSize: 22,
     lineHeight: 28,
     fontWeight: '700',
     letterSpacing: -0.3,
-    marginBottom: 18,
+  },
+  registerButton: {
+    marginTop: 12,
+    height: 56,
+    borderRadius: 20,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    ...Platform.select({
+      web: { boxShadow: '0px 6px 14px #FF6A1347' },
+      default: { shadowColor: '#FF6A13', shadowOpacity: 0.28, shadowRadius: 10, shadowOffset: { width: 0, height: 5 }, elevation: 3 },
+    }),
+  },
+  registerLabel: {
+    flex: 1,
+    color: '#FFFFFF',
+    fontSize: 16,
+    lineHeight: 20,
+    fontWeight: '700',
   },
   calorieCard: {
     padding: CARD_PADDING,
@@ -423,11 +447,8 @@ const styles = StyleSheet.create({
     lineHeight: 15,
     fontWeight: '500',
   },
-  weekStrip: {
-    marginTop: 9,
-  },
   mealsHeader: {
-    marginTop: 12,
+    marginTop: 20,
     marginBottom: 9,
     flexDirection: 'row',
     alignItems: 'center',

@@ -6,6 +6,8 @@ import { Image, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { OggiGauge } from '@/components/home/oggi-gauge';
 import { HomeCoachCard } from '@/components/home/home-coach-card';
 import { FoodSearchModal } from '@/components/nutrition/food-search-modal';
+import { MealPickerModal } from '@/components/nutrition/meal-picker-modal';
+import { DayCalendarModal } from '@/components/ui/day-calendar-modal';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { FlatCard } from '@/components/ui/flat-card';
@@ -60,17 +62,6 @@ function weeklyMessage(progress: number): string {
   return 'Ogni giorno conta, continua così!';
 }
 
-/** The meal slot a "Registra pasto" tap should default to, from the time of day. */
-function defaultSlotForNow(): MealSlot {
-  const hour = new Date().getHours();
-  if (hour < 10) return 'colazione';
-  if (hour < 12) return 'spuntinoMattina';
-  if (hour < 15) return 'pranzo';
-  if (hour < 18) return 'spuntinoPomeriggio';
-  if (hour < 21) return 'cena';
-  return 'spuntinoSera';
-}
-
 /** Soft colored glow under a filled button, like the Figma's. */
 function glow(color: string, alpha: number) {
   return Platform.select({
@@ -99,25 +90,43 @@ export default function HomeScreen() {
   const [infoTopic, setInfoTopic] = useState<InfoTopic | null>(null);
   const [registerMealOpen, setRegisterMealOpen] = useState(false);
   const [registerWorkoutOpen, setRegisterWorkoutOpen] = useState(false);
+  const [mealSlot, setMealSlot] = useState<MealSlot | null>(null);
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [viewDate, setViewDate] = useState(today);
 
   const latestBody = latestSnapshot(bodyEntries);
+
+  // The "Registra pasto" popup hands the chosen meal to "Registra alimento".
+  // On iOS a Modal can't present while another is still dismissing.
+  const pickMeal = (slot: MealSlot) => {
+    setRegisterMealOpen(false);
+    if (Platform.OS === 'ios') setTimeout(() => setMealSlot(slot), 350);
+    else setMealSlot(slot);
+  };
 
   // The active month's weekly split: the same weekday-indexed lookup the
   // Training tab uses, so Home and Training agree on what's planned.
   const trainingMonth = trainingPlan?.months.find((m) => m.monthIndex === currentMonthIndex(trainingPlan));
   const weeklySplit = trainingMonth?.weeklySplit ?? [];
-  const todayPlanDay = weeklySplit[mondayIndex(new Date(today))];
-  const workoutExercises = todayPlanDay?.type === 'workout' ? (todayPlanDay.exercises ?? []) : [];
-  const completedCount = workoutExercises.filter((ex) => isExerciseCompleted(completedExercises, ex.id, today)).length;
-  const isWorkoutDayIncomplete = workoutExercises.length > 0 && completedCount < workoutExercises.length;
-  // 0 on any non-workout day — only a real workout earns exercise calories.
-  const todayExerciseCompletionFraction = workoutExercises.length > 0 ? completedCount / workoutExercises.length : 0;
+  const exercisesOn = (date: string) => {
+    const planDay = weeklySplit[mondayIndex(new Date(date))];
+    return planDay?.type === 'workout' ? (planDay.exercises ?? []) : [];
+  };
+  const todayExercises = exercisesOn(today);
+  const todayDoneCount = todayExercises.filter((ex) => isExerciseCompleted(completedExercises, ex.id, today)).length;
+  const isWorkoutDayIncomplete = todayExercises.length > 0 && todayDoneCount < todayExercises.length;
+  // The "Oggi" card follows the day picked with the calendar icon (today by
+  // default). 0 on any non-workout day — only a real workout earns exercise
+  // calories.
+  const viewExercises = exercisesOn(viewDate);
+  const viewDoneCount = viewExercises.filter((ex) => isExerciseCompleted(completedExercises, ex.id, viewDate)).length;
+  const viewExerciseCompletionFraction = viewExercises.length > 0 ? viewDoneCount / viewExercises.length : 0;
 
   // The generated diet plan's own calorie target for the active month
   // (it can differ month to month) takes priority over the static profile.
   const dietMonth = dietPlan?.months.find((m) => m.monthIndex === currentMonthIndex(dietPlan));
   const calorieTarget = dietMonth?.calorieTarget ?? currentUser.dailyCalorieTarget;
-  const todaysTotals = sumMacros(nutritionEntries.filter((e) => e.date === today));
+  const todaysTotals = sumMacros(nutritionEntries.filter((e) => e.date === viewDate));
 
   // Today's real estimated-expenditure breakdown: BMR + baseline daily
   // activity (everything that isn't training), plus today's workout and any
@@ -129,8 +138,8 @@ export default function HomeScreen() {
     weightKg: latestBody.weightKg,
     jobActivity: onboardingAnswers.jobActivity as string | undefined,
     sessionDurationBucket: onboardingAnswers.sessionDuration as string | undefined,
-    completionFraction: todayExerciseCompletionFraction,
-    loggedActivitiesKcal: sumActivityKcalForDate(activityLogEntries, today),
+    completionFraction: viewExerciseCompletionFraction,
+    loggedActivitiesKcal: sumActivityKcalForDate(activityLogEntries, viewDate),
   });
   const basalKcal = energy.resting + energy.baselineActivity;
   const trainingBurnKcal = energy.exercise + energy.loggedActivities;
@@ -229,7 +238,14 @@ export default function HomeScreen() {
         Oggi è un ottimo giorno per il tuo obiettivo.
       </ThemedText>
 
-      <ThemedText style={[styles.sectionTitle, { marginTop: 26 }]}>Oggi</ThemedText>
+      <View style={styles.oggiHeader}>
+        <ThemedText style={styles.sectionTitle}>
+          {viewDate === today ? 'Oggi' : new Date(viewDate).toLocaleDateString('it-IT', { day: 'numeric', month: 'long' })}
+        </ThemedText>
+        <Pressable onPress={() => setCalendarOpen(true)} hitSlop={10} accessibilityLabel="Apri calendario">
+          <Icon name="calendar" size={22} color={theme.text} />
+        </Pressable>
+      </View>
       <FlatCard radius={CARD_RADIUS} style={styles.oggiCard}>
         <View style={styles.oggiRow}>
           <Pressable onPress={() => setInfoTopic('burned')} style={styles.sideCol}>
@@ -352,7 +368,16 @@ export default function HomeScreen() {
         onClose={() => setInfoTopic(null)}
       />
 
-      <FoodSearchModal visible={registerMealOpen} slot={defaultSlotForNow()} date={today} onClose={() => setRegisterMealOpen(false)} />
+      <DayCalendarModal
+        visible={calendarOpen}
+        selectedDate={viewDate}
+        isDayMarked={(date) => nutritionEntries.some((e) => e.date === date)}
+        onSelectDate={setViewDate}
+        onClose={() => setCalendarOpen(false)}
+      />
+
+      <MealPickerModal visible={registerMealOpen} date={viewDate} onClose={() => setRegisterMealOpen(false)} onPick={pickMeal} />
+      <FoodSearchModal visible={mealSlot != null} slot={mealSlot} date={viewDate} onClose={() => setMealSlot(null)} />
 
       <LogActivityModal
         visible={registerWorkoutOpen}
@@ -412,6 +437,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 16,
     fontWeight: '500',
+  },
+  oggiHeader: {
+    marginTop: 26,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   sectionTitle: {
     fontSize: 22,

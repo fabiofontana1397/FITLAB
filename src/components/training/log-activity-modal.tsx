@@ -1,16 +1,13 @@
 import { useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
-import { GlassSurface } from '@/components/glass/glass-surface';
+import { GlassPopup } from '@/components/glass/glass-popup';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
 import { PrimaryButton } from '@/components/ui/primary-button';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { ACTIVITY_INTENSITY_OPTIONS, ACTIVITY_TYPE_OPTIONS, estimateActivityKcal, type ActivityIntensity, type ActivityType } from '@/lib/nutrition/activity-log';
-
-const SHEET_MAX_WIDTH = 440;
 
 export type LogActivityModalProps = {
   visible: boolean;
@@ -19,22 +16,18 @@ export type LogActivityModalProps = {
   onSave: (activityType: ActivityType, intensity: ActivityIntensity, durationMinutes: number) => void;
 };
 
-/** Bottom-sheet quick-entry for "Aggiungi allenamento" — logs any session
- * (planned or not) by type/duration/intensity, estimating its kcal
- * contribution the same MET-based way targets.ts already does for the
- * generated plan's own workouts (see lib/nutrition/activity-log.ts). */
+/** Centered glass popup (rest of the app blurred) for "Registra
+ * allenamento" — logs any session (planned or not) by type/duration/
+ * intensity, estimating its kcal contribution the same MET-based way
+ * targets.ts already does for the generated plan's own workouts (see
+ * lib/nutrition/activity-log.ts). */
 export function LogActivityModal({ visible, weightKg, onClose, onSave }: LogActivityModalProps) {
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.backdrop}>
-        <GlassSurface level="overlay" radius={Radius.xlarge} style={[styles.sheet, { paddingBottom: insets.bottom + Spacing.four }]}>
-          <LogActivityForm key={visible ? 'open' : 'closed'} theme={theme} weightKg={weightKg} onClose={onClose} onSave={onSave} />
-        </GlassSurface>
-      </View>
-    </Modal>
+    <GlassPopup visible={visible} onClose={onClose}>
+      <LogActivityForm key={visible ? 'open' : 'closed'} theme={theme} weightKg={weightKg} onClose={onClose} onSave={onSave} />
+    </GlassPopup>
   );
 }
 
@@ -69,7 +62,7 @@ function LogActivityForm({
     <>
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
-          <ThemedText type="subtitle">Aggiungi allenamento non programmato</ThemedText>
+          <ThemedText type="subtitle">Registra allenamento</ThemedText>
           <ThemedText type="caption" themeColor="textSecondary">
             Stima le calorie bruciate in base a tipo, durata e intensità
           </ThemedText>
@@ -161,18 +154,6 @@ function LogActivityForm({
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.4)',
-  },
-  sheet: {
-    width: '100%',
-    maxWidth: SHEET_MAX_WIDTH,
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.four,
-  },
   header: {
     flexDirection: 'row',
     alignItems: 'flex-start',
