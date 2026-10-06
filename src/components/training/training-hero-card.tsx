@@ -1,20 +1,16 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
 import { useTheme } from '@/hooks/use-theme';
 
-/** The Figma Training hero: dark card, headline + supporting copy on the
- * left, full-width orange "Registra allenamento" button at the bottom. Like
- * Home's AI Coach card it stays dark in both app themes. */
+/** The Figma Training hero: green gradient card, white headline + copy and a
+ * full-width white "Registra allenamento" button with green label. */
 export function TrainingHeroCard({ onRegister }: { onRegister: () => void }) {
   const theme = useTheme();
   return (
-    <View style={styles.card}>
-      <View pointerEvents="none" style={styles.glow} />
-      <View pointerEvents="none" style={styles.art}>
-        <Icon name="training" size={120} color="rgba(255,255,255,0.1)" />
-      </View>
+    <LinearGradient colors={['#2FBF71', '#1FA85B', '#3DC77F']} locations={[0, 0.6, 1]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.card}>
       <View style={styles.copy}>
         <ThemedText style={styles.title}>Il tuo allenamento fa la differenza.</ThemedText>
         <ThemedText style={styles.body}>Più energia, più risultati. Traccia le tue sessioni e monitora i tuoi progressi.</ThemedText>
@@ -23,46 +19,28 @@ export function TrainingHeroCard({ onRegister }: { onRegister: () => void }) {
         onPress={onRegister}
         style={[
           styles.button,
-          { backgroundColor: theme.accent },
           Platform.select({
-            web: { boxShadow: '0px 6px 14px #FF6A1347' },
-            default: { shadowColor: '#FF6A13', shadowOpacity: 0.28, shadowRadius: 10, shadowOffset: { width: 0, height: 5 }, elevation: 3 },
+            web: { boxShadow: '0px 6px 14px rgba(0,0,0,0.12)' },
+            default: { shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 10, shadowOffset: { width: 0, height: 5 }, elevation: 3 },
           }),
         ]}>
-        <Icon name="training" size={22} color="#FFFFFF" />
-        <ThemedText style={styles.buttonLabel}>Registra allenamento</ThemedText>
-        <Icon name="chevronRight" size={16} color="#FFFFFF" />
+        <Icon name="barbell" size={22} color={theme.brandGreen} />
+        <ThemedText style={[styles.buttonLabel, { color: theme.brandGreen }]}>Registra allenamento</ThemedText>
+        <Icon name="chevronRight" size={16} color={theme.brandGreen} />
       </Pressable>
-    </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#15161A',
     borderRadius: 20,
     padding: 20,
-    gap: 18,
+    gap: 22,
     overflow: 'hidden',
   },
-  glow: {
-    position: 'absolute',
-    width: 190,
-    height: 190,
-    borderRadius: 95,
-    top: -50,
-    right: -60,
-    backgroundColor: '#FF7A00',
-    opacity: 0.3,
-  },
-  art: {
-    position: 'absolute',
-    top: 28,
-    right: 14,
-    transform: [{ rotate: '-18deg' }],
-  },
   copy: {
-    maxWidth: '62%',
+    maxWidth: '78%',
     gap: 10,
   },
   title: {
@@ -73,7 +51,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
   },
   body: {
-    color: 'rgba(255,255,255,0.72)',
+    color: 'rgba(255,255,255,0.88)',
     fontSize: 12.5,
     lineHeight: 18,
     fontWeight: '500',
@@ -85,10 +63,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
+    backgroundColor: '#FFFFFF',
   },
   buttonLabel: {
     flex: 1,
-    color: '#FFFFFF',
     fontSize: 16,
     lineHeight: 20,
     fontWeight: '700',

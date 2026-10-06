@@ -18,8 +18,8 @@ export function difficultyLabel(phase: PlanPhaseKind | undefined): 'Bassa' | 'Me
 export function WorkoutBadge({ size = 60 }: { size?: number }) {
   const theme = useTheme();
   return (
-    <View style={[styles.badge, { width: size, height: size, borderRadius: size * 0.3, backgroundColor: theme.accentSoft }]}>
-      <Icon name="training" size={size / 2} color={theme.accent} />
+    <View style={[styles.badge, { width: size, height: size, borderRadius: size * 0.3, backgroundColor: theme.accent }]}>
+      <Icon name="barbell" size={size / 2} color="#FFFFFF" />
     </View>
   );
 }

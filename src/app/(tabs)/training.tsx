@@ -133,8 +133,8 @@ export default function TrainingScreen() {
       <View style={styles.headerRow}>
         <ThemedText style={styles.pageTitle}>Allenamento</ThemedText>
         <HeaderIconButton
-          icon="training"
-          color={theme.accent}
+          icon="barbell"
+          color={theme.text}
           accessibilityLabel="Piano di allenamento"
           onPress={() => router.push('/training-plan')}
         />
