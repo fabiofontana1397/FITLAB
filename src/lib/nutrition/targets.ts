@@ -146,6 +146,12 @@ const SESSION_DURATION_MINUTES: Record<string, number> = {
   gt90: 100,
 };
 
+/** Typical length in minutes of one planned session, from the questionnaire's
+ * session-duration bucket (45-60 min when unanswered). */
+export function sessionDurationMinutes(bucket?: string): number {
+  return SESSION_DURATION_MINUTES[bucket ?? '45-60'] ?? 45;
+}
+
 // Metabolic-equivalent (MET) value for a moderate-to-vigorous resistance
 // training session — a standard ballpark (ACSM compendium territory, ~5-6
 // METs for weight training), not a per-exercise calculation, since the plan

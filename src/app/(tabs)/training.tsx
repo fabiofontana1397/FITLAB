@@ -2,74 +2,36 @@ import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { ScreenHeader } from '@/components/screen-header';
+import { HeaderIconButton } from '@/components/screen-header';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { AiCoachCard } from '@/components/ui/ai-coach-card';
 import { DayCalendarModal } from '@/components/ui/day-calendar-modal';
-import { Icon } from '@/components/ui/icon';
 import { FlatCard } from '@/components/ui/flat-card';
-import { PrimaryButton } from '@/components/ui/primary-button';
-import { ProgressRing } from '@/components/ui/progress-ring';
+import { Icon } from '@/components/ui/icon';
 import { LogActivityModal } from '@/components/training/log-activity-modal';
-import { PlanExerciseRow } from '@/components/training/plan-exercise-row';
-import { WeekDayStrip } from '@/components/training/week-day-strip';
-import { PeriodTimeline, type TimelinePeriod } from '@/components/training/period-timeline';
-import { Radius, Spacing } from '@/constants/theme';
+import { TrainingHeroCard } from '@/components/training/training-hero-card';
+import { TrainingWeekCard } from '@/components/training/training-week-card';
+import { difficultyLabel, WorkoutSummaryCard } from '@/components/training/workout-summary-card';
 import { useStoreHydrated } from '@/hooks/use-store-hydrated';
 import { useTheme } from '@/hooks/use-theme';
 import { latestSnapshot } from '@/lib/mock/body';
-import type { Goal } from '@/lib/mock/types';
 import { addDaysISO, currentWeekDates, daysAgoISO, mondayIndex } from '@/lib/mock/dates';
+import { estimateTrainingContributionKcal, sessionDurationMinutes } from '@/lib/nutrition/targets';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
 import type { TrainingDayPlan } from '@/lib/planning/types';
 import { useActivityLogStore } from '@/store/activity-log-store';
 import { useBodyStore } from '@/store/body-store';
 import { useOnboardingStore } from '@/store/onboarding-store';
 import { isValidTrainingPlan, usePlanStore } from '@/store/plan-store';
-import {
-  historyForExercise,
-  isExerciseCompleted,
-  latestWeightForExercise,
-  useTrainingProgressStore,
-} from '@/store/training-progress-store';
+import { isExerciseCompleted, useTrainingProgressStore } from '@/store/training-progress-store';
 import { useUserStore } from '@/store/user-store';
 
-/** The standard muscle groups a given split label trains — a fixed,
- * universally-true convention (not per-user data, which the plan doesn't
- * track), matching the real `SplitLabel`s the generator produces
- * (training-planner.ts's VALID_SPLIT_LABELS). */
-const SPLIT_MUSCLE_GROUPS: Record<string, string[]> = {
-  Push: ['petto', 'spalle', 'tricipiti'],
-  Pull: ['schiena', 'bicipiti'],
-  Legs: ['quadricipiti', 'femorali', 'glutei'],
-  Upper: ['petto', 'schiena', 'spalle', 'braccia'],
-  Lower: ['quadricipiti', 'femorali', 'glutei', 'polpacci'],
-  'Full Body': ['corpo intero'],
-};
+const SCREEN_PADDING = 20;
 
-/** "Push, petto, spalle e tricipiti" — the split title folded into a
- * natural-reading Italian list of what it trains, for the "Allenamento
- * di oggi" heading. Falls back to just the title for any split label
- * (custom AI-suggested titles included) not in the fixed map above. */
-function splitHeadingSuffix(title: string): string {
-  const groups = SPLIT_MUSCLE_GROUPS[title];
-  if (!groups || groups.length === 0) return title;
-  const list = groups.length === 1 ? groups[0] : `${groups.slice(0, -1).join(', ')} e ${groups[groups.length - 1]}`;
-  return `${title}, ${list}`;
+function capitalized(label: string): string {
+  return label.charAt(0).toUpperCase() + label.slice(1);
 }
-
-/** Short, bodybuilding-shorthand label for the user's goal, matching the
- * "Cut" / "Bulk"-style copy the reference plan card uses next to the
- * current month's real phase title. */
-const GOAL_SHORT_LABEL: Record<Goal, string> = {
-  loseFat: 'Cut',
-  gainMuscle: 'Bulk',
-  maintainImprove: 'Mantenimento',
-  gainStrength: 'Forza',
-  improveEndurance: 'Endurance',
-  generalHealth: 'Benessere',
-};
 
 export default function TrainingScreen() {
   const theme = useTheme();
@@ -77,12 +39,9 @@ export default function TrainingScreen() {
   const generatePlans = usePlanStore((s) => s.generatePlans);
   const onboardingAnswers = useOnboardingStore((s) => s.answers);
   const currentUser = useUserStore();
-  const progressSets = useTrainingProgressStore((s) => s.sets);
   const completedExercises = useTrainingProgressStore((s) => s.completed);
-  const logSet = useTrainingProgressStore((s) => s.logSet);
   const toggleCompleted = useTrainingProgressStore((s) => s.toggleCompleted);
   const bodyEntries = useBodyStore((s) => s.entries);
-  const activityLogEntries = useActivityLogStore((s) => s.entries);
   const addActivityEntry = useActivityLogStore((s) => s.addEntry);
   const [isLogActivityVisible, setLogActivityVisible] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
@@ -92,10 +51,7 @@ export default function TrainingScreen() {
   const [weekOffset, setWeekOffset] = useState(0);
 
   const viewedWeekDates = useMemo(() => currentWeekDates(new Date(addDaysISO(today, weekOffset * 7))), [today, weekOffset]);
-  const monthYearLabel = useMemo(() => {
-    const label = new Date(viewedWeekDates[3]).toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
-    return label.charAt(0).toUpperCase() + label.slice(1);
-  }, [viewedWeekDates]);
+  const monthLabel = capitalized(new Date(viewedWeekDates[3]).toLocaleDateString('it-IT', { month: 'long' }));
 
   const planStoreHydrated = useStoreHydrated(usePlanStore);
   const onboardingHydrated = useStoreHydrated(useOnboardingStore);
@@ -132,9 +88,8 @@ export default function TrainingScreen() {
 
   // Tapping a calendar day's circle directly marks every exercise
   // scheduled that day as done in one go — or undoes all of them if the
-  // day was already fully done — instead of requiring each exercise to
-  // be checked off individually. No-op for non-workout days (nothing to
-  // check off) and for days still in the future (can't have trained yet).
+  // day was already fully done. No-op for non-workout days and for days
+  // still in the future (can't have trained yet).
   const toggleDayComplete = (date: string) => {
     if (date > today) return;
     const day = weeklySplit[mondayIndex(new Date(date))];
@@ -148,33 +103,6 @@ export default function TrainingScreen() {
     });
   };
 
-  // The plan card now shows the whole current MONTH (a fixed 30-day block
-  // starting at generatedAt — see plan-progress.ts — not a real calendar
-  // month), both for the month-strip timeline and for this ring: "days
-  // trained" counts any already-elapsed day in that block whose plan slot
-  // wasn't rest and is done; "days programmed" counts every non-rest slot
-  // across the whole block, elapsed or not — same convention the old
-  // weekly version used, just over ~30 days instead of 7.
-  const planStartDate = trainingPlan ? trainingPlan.generatedAt.slice(0, 10) : today;
-  const monthWindowStart = addDaysISO(planStartDate, (monthIndex - 1) * 30);
-  const monthDates = useMemo(() => Array.from({ length: 30 }, (_, i) => addDaysISO(monthWindowStart, i)), [monthWindowStart]);
-  const monthSessionsTotal = monthDates.filter((date) => weeklySplit[mondayIndex(new Date(date))]?.type !== 'rest').length;
-  const monthSessionsDone = monthDates.filter((date) => {
-    const day = weeklySplit[mondayIndex(new Date(date))];
-    if (!day || day.type === 'rest' || date > today) return false;
-    return day.type === 'workout' ? isDayComplete(date) : activityLogEntries.some((e) => e.date === date);
-  }).length;
-  const monthCompletionFraction = monthSessionsTotal > 0 ? monthSessionsDone / monthSessionsTotal : 0;
-
-  const monthPeriods: TimelinePeriod[] = trainingPlan
-    ? Array.from({ length: trainingPlan.durationMonths }, (_, i) => ({
-        number: i + 1,
-        startISO: addDaysISO(planStartDate, i * 30),
-        endISO: addDaysISO(planStartDate, i * 30 + 29),
-        isCurrent: i + 1 === monthIndex,
-      }))
-    : [];
-
   // Whole Monday-to-Monday weeks between the picked date and today — a
   // plain (date-today)/7 day-diff rounds wrong whenever the two dates
   // fall on different weekdays, landing the strip on a week that doesn't
@@ -186,143 +114,103 @@ export default function TrainingScreen() {
     setWeekOffset(Math.round((new Date(dateMonday).getTime() - new Date(todayMonday).getTime()) / (7 * 86400000)));
   };
 
-  const selectedDayHeading =
+  const weightKg = latestSnapshot(bodyEntries).weightKg;
+  const sessionBucket = onboardingAnswers.sessionDuration as string | undefined;
+  const sessionKcal = estimateTrainingContributionKcal({
+    sex: currentUser.sex,
+    age: currentUser.age,
+    heightCm: currentUser.heightCm,
+    weightKg,
+    sessionDurationBucket: sessionBucket,
+    completionFraction: 1,
+  });
+
+  const dayHeading =
     selectedDate === today ? 'Allenamento di oggi' : `Allenamento del ${new Date(selectedDate).toLocaleDateString('it-IT', { day: 'numeric', month: 'long' })}`;
 
   return (
-    <ScreenScroll>
-      <ScreenHeader title="Allenamento" icon="training" iconColor={theme.accent} onIconPress={() => router.push('/training-plan')} />
+    <ScreenScroll contentContainerStyle={styles.page}>
+      <View style={styles.headerRow}>
+        <ThemedText style={styles.pageTitle}>Allenamento</ThemedText>
+        <HeaderIconButton
+          icon="training"
+          color={theme.accent}
+          accessibilityLabel="Piano di allenamento"
+          onPress={() => router.push('/training-plan')}
+        />
+      </View>
+
+      <TrainingHeroCard onRegister={() => setLogActivityVisible(true)} />
+
+      <View style={styles.sectionRow}>
+        <ThemedText style={styles.sectionTitle}>{monthLabel}</ThemedText>
+        <Pressable onPress={() => setCalendarOpen(true)} hitSlop={10} accessibilityLabel="Apri calendario">
+          <Icon name="calendar" size={22} color={theme.text} />
+        </Pressable>
+      </View>
+
+      <TrainingWeekCard
+        weekDates={viewedWeekDates}
+        selectedDate={selectedDate}
+        onSelectDate={setSelectedDate}
+        isDayComplete={isDayComplete}
+        onToggleDayComplete={toggleDayComplete}
+      />
+
+      <View style={styles.sectionRow}>
+        <ThemedText style={styles.sectionTitle}>{dayHeading}</ThemedText>
+        <Pressable
+          onPress={() => router.push('/training-progress')}
+          hitSlop={8}
+          accessibilityLabel="Andamento carichi"
+          style={[styles.trendButton, { borderColor: theme.border }]}>
+          <Icon name="trendUp" size={16} color={theme.textSecondary} />
+        </Pressable>
+      </View>
 
       {!trainingPlan ? (
-        <FlatCard radius={Radius.large} style={{ padding: Spacing.four, gap: Spacing.two }}>
-          <ThemedText type="smallBold">Nessun programma generato</ThemedText>
-          <ThemedText type="caption" themeColor="textSecondary">
+        <FlatCard radius={20} style={styles.messageCard}>
+          <ThemedText style={styles.cardTitle}>Nessun programma generato</ThemedText>
+          <ThemedText style={styles.cardBody} themeColor="textSecondary">
             Rifai il questionario scegliendo sala pesi o corsa tra le attività per generarne uno.
           </ThemedText>
         </FlatCard>
+      ) : selectedDay?.type === 'workout' ? (
+        <WorkoutSummaryCard
+          title={selectedDay.title}
+          difficulty={difficultyLabel(currentMonth?.phase)}
+          minutes={sessionDurationMinutes(sessionBucket)}
+          kcal={sessionKcal}
+          onPress={() => router.push({ pathname: '/workout-detail', params: { date: selectedDate } })}
+        />
+      ) : selectedDay?.type === 'cardio' ? (
+        <FlatCard radius={20} style={styles.messageCard}>
+          <View style={[styles.dayIcon, { backgroundColor: theme.accentSoft }]}>
+            <Icon name="running" size={26} color={theme.accent} />
+          </View>
+          <ThemedText style={styles.cardTitle}>{selectedDay.title}</ThemedText>
+          <ThemedText style={styles.cardBody} themeColor="textSecondary">
+            {selectedDay.note}
+          </ThemedText>
+        </FlatCard>
       ) : (
-        <>
-          <FlatCard radius={Radius.large} style={{ padding: Spacing.three, gap: Spacing.three }}>
-            <Pressable onPress={() => router.push('/training-plan')} style={styles.planHeaderRow}>
-              <View style={[styles.planIcon, { backgroundColor: theme.accentSoft }]}>
-                <Icon name="calendar" size={18} color={theme.accent} />
-              </View>
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <ThemedText type="smallBold" numberOfLines={1}>
-                  Piano di allenamento di {currentUser.name}
-                </ThemedText>
-                {currentMonth ? (
-                  <ThemedText type="caption" themeColor="textSecondary" numberOfLines={2}>
-                    {trainingPlan.durationMonths} mesi • {GOAL_SHORT_LABEL[currentUser.goal]} → {currentMonth.title}
-                  </ThemedText>
-                ) : null}
-              </View>
-              <Icon name="chevronRight" size={18} color={theme.textTertiary} />
-            </Pressable>
-
-            <PeriodTimeline label="Mese" periods={monthPeriods} />
-
-            <View style={styles.completionRow}>
-              <ProgressRing size={48} strokeWidth={5} progress={monthCompletionFraction} color={theme.accent} trackColor={theme.backgroundElement}>
-                <ThemedText type="caption" style={{ fontWeight: '800', color: theme.text }}>
-                  {monthSessionsDone}/{monthSessionsTotal}
-                </ThemedText>
-              </ProgressRing>
-              <View style={{ flex: 1, gap: 4, minWidth: 0 }}>
-                <ThemedText type="caption" themeColor="textSecondary" numberOfLines={2}>
-                  Completamento allenamenti del mese
-                </ThemedText>
-              </View>
-              <PrimaryButton
-                label="Mostra piano"
-                icon="calendar"
-                trailingIcon="chevronRight"
-                dense
-                onPress={() => router.push('/training-plan')}
-                style={styles.showPlanButton}
-              />
-            </View>
-          </FlatCard>
-
-          <View style={{ gap: Spacing.two }}>
-            <View style={{ gap: Spacing.three }}>
-              <WeekDayStrip
-                weekDates={viewedWeekDates}
-                selectedDate={selectedDate}
-                onSelectDate={setSelectedDate}
-                isDayComplete={isDayComplete}
-                onToggleDayComplete={toggleDayComplete}
-                monthYearLabel={monthYearLabel}
-                onOpenCalendar={() => setCalendarOpen(true)}
-              />
-            </View>
-
-            <PrimaryButton label="Registra allenamento" icon="plus" dense onPress={() => setLogActivityVisible(true)} />
+        <FlatCard radius={20} style={styles.messageCard}>
+          <View style={[styles.dayIcon, { backgroundColor: theme.backgroundElement }]}>
+            <Icon name="moon" size={26} color={theme.textSecondary} />
           </View>
-
-          <View style={{ gap: 2 }}>
-            <View style={styles.dayHeadingRow}>
-              <ThemedText type="subtitle" style={{ flex: 1 }}>
-                {selectedDayHeading}
-              </ThemedText>
-              <Pressable
-                onPress={() => router.push('/training-progress')}
-                hitSlop={8}
-                style={[styles.trendButton, { borderColor: theme.border }]}>
-                <Icon name="trendUp" size={16} color={theme.textSecondary} />
-              </Pressable>
-            </View>
-            {selectedDay?.type === 'workout' ? (
-              <ThemedText type="caption" themeColor="textSecondary">
-                {splitHeadingSuffix(selectedDay.title)}
-              </ThemedText>
-            ) : null}
-          </View>
-
-          {selectedDay?.type === 'workout' ? (
-            <View style={{ gap: Spacing.three }}>
-              {(selectedDay.exercises ?? []).map((exercise) => {
-                return (
-                  <PlanExerciseRow
-                    key={exercise.id}
-                    exercise={exercise}
-                    history={historyForExercise(progressSets, exercise.id)}
-                    latestWeightKg={latestWeightForExercise(progressSets, exercise.id)}
-                    completed={isExerciseCompleted(completedExercises, exercise.id, selectedDate)}
-                    onToggleCompleted={() => toggleCompleted(exercise.id, selectedDate)}
-                    onAddLoad={(reps, weightKg, rir) => logSet(exercise.id, exercise.name, reps, weightKg, selectedDate, rir)}
-                  />
-                );
-              })}
-            </View>
-          ) : selectedDay?.type === 'cardio' ? (
-            <FlatCard radius={Radius.large} style={styles.dayCard}>
-              <View style={[styles.dayIcon, { backgroundColor: theme.accentSoft }]}>
-                <Icon name="running" size={26} color={theme.accent} />
-              </View>
-              <ThemedText type="subtitle">{selectedDay.title}</ThemedText>
-              <ThemedText type="caption" themeColor="textSecondary">
-                {selectedDay.note}
-              </ThemedText>
-            </FlatCard>
-          ) : (
-            <FlatCard radius={Radius.large} style={styles.dayCard}>
-              <View style={[styles.dayIcon, { backgroundColor: theme.backgroundElement }]}>
-                <Icon name="moon" size={26} color={theme.textSecondary} />
-              </View>
-              <ThemedText type="subtitle">Giorno di riposo</ThemedText>
-              <ThemedText type="caption" themeColor="textSecondary" style={{ textAlign: 'center' }}>
-                Il recupero fa parte del piano: dormi bene e resta idratato.
-              </ThemedText>
-            </FlatCard>
-          )}
-        </>
+          <ThemedText style={styles.cardTitle}>Giorno di riposo</ThemedText>
+          <ThemedText style={[styles.cardBody, { textAlign: 'center' }]} themeColor="textSecondary">
+            Il recupero fa parte del piano: dormi bene e resta idratato.
+          </ThemedText>
+        </FlatCard>
       )}
 
-      <AiCoachCard
-        headline="Un dubbio sull'allenamento?"
-        body="Chiedi al coach AI consigli su tecnica, carichi e progressione per il tuo piano."
-      />
+      <View style={styles.coachWrap}>
+        <AiCoachCard
+          headline="Un dubbio sull'allenamento?"
+          body="Chiedi al coach AI consigli su tecnica, carichi e progressione per il tuo piano."
+        />
+      </View>
 
       <DayCalendarModal
         visible={calendarOpen}
@@ -334,58 +222,75 @@ export default function TrainingScreen() {
 
       <LogActivityModal
         visible={isLogActivityVisible}
-        weightKg={latestSnapshot(bodyEntries).weightKg}
+        weightKg={weightKg}
         onClose={() => setLogActivityVisible(false)}
-        onSave={(activityType, intensity, durationMinutes) => addActivityEntry(activityType, intensity, durationMinutes, latestSnapshot(bodyEntries).weightKg)}
+        onSave={(activityType, intensity, durationMinutes) => addActivityEntry(activityType, intensity, durationMinutes, weightKg)}
       />
     </ScreenScroll>
   );
 }
 
 const styles = StyleSheet.create({
-  dayHeadingRow: {
+  page: {
+    paddingHorizontal: SCREEN_PADDING,
+    gap: 0,
+  },
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.two,
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  pageTitle: {
+    fontSize: 22,
+    lineHeight: 28,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+  },
+  sectionRow: {
+    marginTop: 24,
+    marginBottom: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  sectionTitle: {
+    fontSize: 22,
+    lineHeight: 28,
+    fontWeight: '700',
+    letterSpacing: -0.3,
   },
   trendButton: {
-    width: 32,
-    height: 32,
-    borderRadius: Radius.pill,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  planHeaderRow: {
-    flexDirection: 'row',
+  messageCard: {
     alignItems: 'center',
-    gap: Spacing.two,
+    gap: 8,
+    padding: 24,
   },
-  planIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: Radius.medium,
-    alignItems: 'center',
-    justifyContent: 'center',
+  cardTitle: {
+    fontSize: 15,
+    lineHeight: 19,
+    fontWeight: '700',
   },
-  completionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  showPlanButton: {
-    flexShrink: 0,
-  },
-  dayCard: {
-    alignItems: 'center',
-    gap: Spacing.two,
-    padding: Spacing.five,
+  cardBody: {
+    fontSize: 12.5,
+    lineHeight: 17,
+    fontWeight: '500',
   },
   dayIcon: {
     width: 56,
     height: 56,
-    borderRadius: Radius.medium,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  coachWrap: {
+    marginTop: 24,
   },
 });
