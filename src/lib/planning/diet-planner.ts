@@ -1,19 +1,16 @@
-import { findFood } from '@/lib/mock/food-database';
-import type { Goal } from '@/lib/mock/types';
+import type { PlanTargets } from '@/domain/targets';
+import type { UserContext } from '@/domain/user-context';
+import { findFood, type FoodItem } from '@/lib/mock/food-database';
 import type { MealSlot } from '@/store/nutrition-store';
 
 import { WEEKDAY_LABELS } from './exercise-library';
 import { formatFoodQuantity } from './food-quantity';
-import { buildFoodPools, pick } from './food-pools';
+import { buildFoodPools, pick, type MealType } from './food-pools';
 import { buildMealSlotsFromAnswers, type MealSlotDef } from './meal-slots';
-import { computePlanDurationMonths } from './plan-duration';
-import { resolveTrainingSchedule } from './training-days';
 import type { DietStrategy } from './strategy-types';
 import type { DietDayPlan, DietMonthPlan, DietPlan, PlanMeal, PlanMealItem, PlanPhaseKind } from './types';
 
-/** colazione/pranzo/cena get main-meal-appropriate proteins/carbs (no lean
- * beef for breakfast); the 3 snack slots get snack-appropriate ones
- * instead — see food-pools.ts's proteinFor/carbsFor. */
+/** colazione/pranzo/cena get main-meal-appropriate proteins/carbs; snacks get snack-appropriate ones. */
 const SLOT_MEAL_TYPE: Record<MealSlot, 'breakfast' | 'main' | 'snack'> = {
   colazione: 'breakfast',
   spuntinoMattina: 'snack',
@@ -24,67 +21,19 @@ const SLOT_MEAL_TYPE: Record<MealSlot, 'breakfast' | 'main' | 'snack'> = {
 };
 
 export type DietPlanInput = {
-  answers: Record<string, unknown>;
-  dailyCalorieTarget: number;
-  macroTargetsG: { protein: number; carbs: number; fats: number };
+  ctx: UserContext;
+  /** One entry per plan month (index 0 = month 1), from computeTargets on that month's training week. */
+  monthTargets: PlanTargets[];
+  /** The AI strategy contributes titles/notes only: calories and macros come from the energy model. */
   strategy?: DietStrategy | null;
-  /** Monthly check-in regeneration (spec §0.4, punto 2): months before this
-   * index are copied verbatim from `existingMonths` instead of regenerated
-   * — a month the user already lived through never changes retroactively,
-   * only the upcoming one(s) reflect the adjusted target. */
+  /** Rotates the picked foods (recalibration changes it every month). */
+  variant?: number;
+  /** Monthly recalibration: months before this index are copied verbatim. */
   preserveMonthsBefore?: number;
   existingMonths?: DietMonthPlan[];
 };
 
-// Real per-day-type nutrition plans (spec §0.4 examples: separate "giorni
-// di allenamento"/"giorni di riposo" protocols) give rest days modestly
-// fewer calories than training days — the body burns less with no session
-// that day. Kept small and compensated (see dayCalorieMultipliers) so the
-// week's average still lands exactly on the month's own calorieTarget;
-// this only redistributes it across the week; nothing to compensate for
-// when every day (or no day) is a training day.
-const REST_DAY_CALORIE_MULTIPLIER = 0.93;
-
-/** Per-weekday calorie multiplier (training days get a bit more, rest days
- * a bit less), averaging to exactly 1 across the 7 days so the month's
- * calorieTarget/macroTargetsG (used for progress rings, PDF export, etc.)
- * stay meaningful as "the average day" even though no single day matches
- * it exactly — same principle real coaches use ("more on training days,
- * less on rest days") without changing the weekly total. */
-function dayCalorieMultipliers(isTrainingDay: boolean[]): number[] {
-  const trainCount = isTrainingDay.filter(Boolean).length;
-  const restCount = isTrainingDay.length - trainCount;
-  if (trainCount === 0 || restCount === 0) return isTrainingDay.map(() => 1);
-  const trainMultiplier = (isTrainingDay.length - restCount * REST_DAY_CALORIE_MULTIPLIER) / trainCount;
-  return isTrainingDay.map((isTrain) => (isTrain ? trainMultiplier : REST_DAY_CALORIE_MULTIPLIER));
-}
-
-/** Main-meal (pranzo/cena) macro split — spec §0.4 examples consistently
- * give dinner a lighter carb portion than lunch ("CENA: limitato a verdure
- * fibrose l'apporto di carboidrati") and give rest days overall lighter
- * carbs than training days; both nudges stack (cena on a rest day is the
- * lightest-carb meal of the week), floored so a meal never goes near-zero
- * carb. Freed-up share always goes to fat, never protein — protein stays
- * flat since muscle-repair needs don't really track training/rest days the
- * way carb (glycogen) needs do. Breakfast/snacks are intentionally left
- * out of this — they have no separate fats line item to absorb the shift
- * (see buildDayMeals), so cycling them would just quietly under-deliver
- * their calorie target instead of redistributing it. */
-function mainMealRatios(slotId: MealSlot, isTrainingDayToday: boolean): { protein: number; carb: number; fat: number } {
-  const protein = 0.4;
-  let carb = 0.35;
-  if (slotId === 'cena') carb -= 0.08;
-  if (!isTrainingDayToday) carb -= 0.05;
-  carb = Math.max(carb, 0.18);
-  const fat = Math.max(1 - protein - carb, 0.15);
-  return { protein, carb, fat };
-}
-
-// One evening a week left unprescribed — spec §0.4 examples all include a
-// weekly "pasto libero"/"cena libera", explicitly meant to be the user's
-// own choice within reason, not a planner-assigned food. Saturday dinner:
-// the most common real-world default among the examples, and the natural
-// end of "a week starting Monday" (WEEKDAY_LABELS[5] = 'Sab').
+// One evening a week is left unprescribed ("pasto libero"): Saturday dinner.
 const FREE_MEAL_WEEKDAY_INDEX = 5;
 const FREE_MEAL_SLOT: MealSlot = 'cena';
 
@@ -94,7 +43,7 @@ function phaseForMonth(monthIndex: number, totalMonths: number): PlanPhaseKind {
   return 'progressione';
 }
 
-function phaseTitle(phase: PlanPhaseKind, goal: Goal): string {
+function phaseTitle(phase: PlanPhaseKind, goal: UserContext['goal']): string {
   if (phase === 'adattamento') return 'Adattamento';
   if (phase === 'consolidamento') return 'Consolidamento';
   if (goal === 'loseFat') return 'Deficit progressivo';
@@ -102,194 +51,336 @@ function phaseTitle(phase: PlanPhaseKind, goal: Goal): string {
   return 'Aggiustamenti mirati';
 }
 
-function phaseNote(phase: PlanPhaseKind, goal: Goal): string {
-  if (phase === 'adattamento') {
-    return 'Calorie vicine al tuo mantenimento per abituare corpo e abitudini al nuovo piano, senza cali di energia improvvisi.';
-  }
-  if (phase === 'consolidamento') {
-    return 'I target si stabilizzano: da qui il piano si mantiene e si ricalibra ogni mese in base ai tuoi progressi reali.';
-  }
-  if (goal === 'loseFat') {
-    return 'Il deficit calorico è pienamente attivo: la priorità è preservare la massa muscolare mentre il peso scende.';
-  }
-  if (goal === 'gainMuscle' || goal === 'gainStrength') {
-    return 'Il surplus calorico è pienamente attivo per sostenere la crescita muscolare, con un ritmo di aumento controllato.';
-  }
+function phaseNote(phase: PlanPhaseKind, goal: UserContext['goal']): string {
+  if (phase === 'adattamento') return 'Il primo mese serve a prendere le misure: abitudini, orari e porzioni. A fine mese l’agente rivede calorie e allenamento in base ai tuoi progressi reali.';
+  if (phase === 'consolidamento') return 'I target si stabilizzano: da qui il piano si mantiene e si ricalibra ogni mese in base ai tuoi progressi reali.';
+  if (goal === 'loseFat') return 'Il deficit calorico è pienamente attivo: la priorità è preservare la massa muscolare mentre il peso scende.';
+  if (goal === 'gainMuscle' || goal === 'gainStrength') return 'Il surplus calorico sostiene la crescita muscolare, con un ritmo di aumento controllato.';
   return 'Piccoli aggiustamenti su calorie e macro, guidati dai tuoi progressi reali in energia e performance.';
-}
-
-function monthCalorieTarget(phase: PlanPhaseKind, finalTarget: number, goal: Goal): number {
-  if (phase !== 'adattamento') return finalTarget;
-  const nudge = goal === 'loseFat' ? 150 : goal === 'gainMuscle' || goal === 'gainStrength' ? -150 : 0;
-  return Math.round(finalTarget + nudge);
-}
-
-function monthMacros(
-  calorieTarget: number,
-  finalTarget: number,
-  finalMacros: { protein: number; carbs: number; fats: number }
-): { protein: number; carbs: number; fats: number } {
-  const ratio = finalTarget ? calorieTarget / finalTarget : 1;
-  return {
-    protein: Math.round(finalMacros.protein * Math.max(ratio, 0.92)),
-    carbs: Math.round(finalMacros.carbs * ratio),
-    fats: Math.round(finalMacros.fats * ratio),
-  };
 }
 
 function round5(n: number): number {
   return Math.max(5, Math.round(n / 5) * 5);
 }
 
-// Real isocaloric-exchange nutrition plans (spec §0.4 diet examples) list
-// 3-5 alternatives per food, not 2 — a substitution list this short reads
-// as an afterthought rather than a real "swap it for any of these" tool.
-const MAX_SUBSTITUTES = 4;
+// ---------------------------------------------------------------- portions --
 
-/** Same-role swaps for an item (e.g. another protein source at an
- * equivalent portion), so the plan reads as flexible rather than fixed —
- * "eventuali sostituzioni complementari" from the same food pool, never
- * repeating the item actually chosen. */
-function buildSubstitutes(pool: string[], seed: number, primaryId: string, targetKcal: number) {
-  const substitutes: PlanMealItem['substitutes'] = [];
-  for (let offset = 1; offset < pool.length && substitutes.length < MAX_SUBSTITUTES; offset++) {
-    const id = pick(pool, seed + offset);
-    if (id === primaryId || substitutes.some((s) => s.name === findFood(id)?.name)) continue;
-    const food = findFood(id);
-    if (!food) continue;
-    const grams = round5((targetKcal / food.kcal100) * 100);
-    substitutes.push({ name: food.name, grams, foodId: food.id, quantityLabel: formatFoodQuantity(food.id, grams) });
+/** Largest reasonable amount of a food in one sitting (grams). */
+function maxPerMeal(food: FoodItem): number {
+  switch (food.id) {
+    case 'eggs':
+      return 150; // 3 eggs
+    case 'egg-whites':
+      return 200;
+    case 'whey-protein':
+      return 40;
+    case 'prosciutto-crudo':
+    case 'bresaola':
+      return 60;
+    case 'tofu':
+      return 250;
+    case 'greek-yogurt':
+    case 'cottage-cheese':
+    case 'skyr':
+    case 'ricotta':
+      return 300;
+    case 'oats':
+      return 100;
+    case 'pizza-margherita':
+      return 350;
   }
-  return substitutes.length > 0 ? substitutes : undefined;
+  switch (food.category) {
+    case 'proteine':
+      return 220;
+    case 'latticini':
+      return 300;
+    case 'legumi':
+      return 250;
+    case 'carboidrati':
+      return food.kcal100 >= 200 ? 120 : 350;
+    case 'grassi':
+      return food.id.includes('oil') ? 25 : food.id === 'avocado' ? 80 : 35;
+    case 'verdura':
+      return 300;
+    case 'frutta':
+      return 250;
+    default:
+      return 200;
+  }
 }
 
-function buildItem(pool: string[], seed: number, targetKcal: number, portionOverride?: number): PlanMealItem {
-  const primaryId = pick(pool, seed);
-  const food = findFood(primaryId)!;
-  const grams = portionOverride ?? round5((targetKcal / food.kcal100) * 100);
-  const kcal = Math.round((food.kcal100 * grams) / 100);
+type Macros = { protein: number; carbs: number; fats: number };
+
+function macrosOfFood(food: FoodItem, grams: number): Macros {
+  const k = grams / 100;
+  return { protein: food.protein100 * k, carbs: food.carbs100 * k, fats: food.fats100 * k };
+}
+
+function sum(...m: Macros[]): Macros {
+  return m.reduce((a, b) => ({ protein: a.protein + b.protein, carbs: a.carbs + b.carbs, fats: a.fats + b.fats }), { protein: 0, carbs: 0, fats: 0 });
+}
+
+function kcalOf(m: Macros): number {
+  return m.protein * 4 + m.carbs * 4 + m.fats * 9;
+}
+
+/** Solves a1·x + b1·y = c1, a2·x + b2·y = c2. */
+function solve2(a1: number, b1: number, c1: number, a2: number, b2: number, c2: number): [number, number] | null {
+  const det = a1 * b2 - a2 * b1;
+  if (Math.abs(det) < 1e-6) return null;
+  return [(c1 * b2 - c2 * b1) / det, (a1 * c2 - a2 * c1) / det];
+}
+
+type Item = { food: FoodItem; grams: number; role: 'protein' | 'carb' | 'fat' | 'veg' | 'fruit' };
+
+function toPlanItem(it: Item, substitutes?: PlanMealItem['substitutes']): PlanMealItem {
+  const kcal = Math.round((it.food.kcal100 * it.grams) / 100);
+  return { name: it.food.name, grams: it.grams, kcal, foodId: it.food.id, quantityLabel: formatFoodQuantity(it.food.id, it.grams), substitutes };
+}
+
+const MAX_SUBSTITUTES = 4;
+
+/** Same-role swaps sized to deliver the same amount of the nutrient the item is there for. */
+function substitutesFor(pool: string[], it: Item, seed: number): PlanMealItem['substitutes'] {
+  if (it.role === 'veg' || it.role === 'fruit') return undefined;
+  const result: NonNullable<PlanMealItem['substitutes']> = [];
+  const nutrient = it.role === 'protein' ? 'protein100' : it.role === 'carb' ? 'carbs100' : 'fats100';
+  const wanted = (it.food[nutrient] * it.grams) / 100;
+  for (let offset = 1; offset <= pool.length && result.length < MAX_SUBSTITUTES; offset++) {
+    const id = pick(pool, seed + offset);
+    if (id === it.food.id || result.some((r) => r.foodId === id)) continue;
+    const food = findFood(id);
+    if (!food || food[nutrient] < 1) continue;
+    const grams = round5((wanted / food[nutrient]) * 100);
+    if (grams > maxPerMeal(food)) continue;
+    result.push({ name: food.name, grams, foodId: food.id, quantityLabel: formatFoodQuantity(food.id, grams) });
+  }
+  return result.length > 0 ? result : undefined;
+}
+
+// -------------------------------------------------------------------- meals --
+
+/** Eggs eaten so far today, and how often each protein food was already used this week (variety). */
+type DayState = { eggGrams: number; usage: Map<string, number> };
+
+function pickDistinct(pool: string[], seed: number, count: number): string[] {
+  const out: string[] = [];
+  for (let i = 0; out.length < count && i < pool.length * 2; i++) {
+    const id = pick(pool, seed + i);
+    if (!out.includes(id)) out.push(id);
+  }
+  return out;
+}
+
+const OLIVE_OIL_ID = 'olive-oil';
+
+/**
+ * Builds one meal for a slot's macro targets. Protein and CALORIES are solved
+ * exactly (so the day lands on its calorie target and its protein target);
+ * carbohydrates absorb whatever fat the foods bring along:
+ *
+ *   1. fixed items first — vegetables or fruit, and a spoon of olive oil sized
+ *      to the meal's fat budget;
+ *   2. protein-food and carb-food grams solved from the remaining protein and
+ *      calories, trying a few protein candidates and keeping the one whose fat
+ *      lands closest to budget;
+ *   3. portion caps are respected (max 4 eggs a day, no 400 g of potatoes): when
+ *      a cap binds, a second protein / carb source covers the rest;
+ *   4. a last calorie top-up from fat or carbs if caps left the meal short.
+ */
+function buildMeal(
+  mealType: 'breakfast' | 'main' | 'snack',
+  target: Macros,
+  pools: ReturnType<typeof buildFoodPools>,
+  seed: number,
+  day: DayState
+): { items: PlanMealItem[]; macros: Macros } {
+  const week = day;
+  const isMain = mealType === 'main';
+  const proteinPool = pools.proteinFor(mealType);
+  const carbPool = pools.carbsFor(mealType);
+  const kcalTarget = kcalOf(target);
+  const fixed: Item[] = [];
+
+  if (isMain) {
+    const veg = findFood(pick(pools.vegetablesFor(mealType), seed));
+    if (veg) fixed.push({ food: veg, grams: 150, role: 'veg' });
+    const oil = pools.fats.includes(OLIVE_OIL_ID) ? (findFood(OLIVE_OIL_ID) ?? null) : null;
+    const oilGrams = Math.min(10, Math.floor((target.fats * 0.4) / 5) * 5);
+    if (oil && oilGrams >= 5) fixed.push({ food: oil, grams: oilGrams, role: 'fat' });
+  } else if (kcalTarget >= 120) {
+    const fruit = findFood(pick(pools.fruitFor(mealType), seed));
+    if (fruit) {
+      const grams = Math.min(fruit.defaultPortionG, Math.max(50, Math.round(((kcalTarget * 0.3) / fruit.kcal100) * 100 / 5) * 5));
+      fixed.push({ food: fruit, grams, role: 'fruit' });
+    }
+  }
+  const carbFood = findFood(pick(carbPool, seed + 1)) ?? null;
+  const candidates = pickDistinct(proteinPool, seed, 6)
+    .map((id) => findFood(id))
+    .filter((f): f is FoodItem => !!f);
+
+  type Solution = { protein: FoodItem; px: number; carb: FoodItem | null; cy: number; score: number; fixed: Item[] };
+  const variants: Item[][] = [fixed];
+  if (fixed.some((f) => f.food.id === OLIVE_OIL_ID)) variants.push(fixed.filter((f) => f.food.id !== OLIVE_OIL_ID)); // no oil when the protein foods already bring enough fat
+
+  let best: Solution | null = null;
+  for (const variantFixed of variants) {
+    const fixedMacros = sum(...variantFixed.map((f) => macrosOfFood(f.food, f.grams)));
+    const remP = Math.max(target.protein - fixedMacros.protein, 0);
+    const remK = Math.max(kcalTarget - kcalOf(fixedMacros), 0);
+    const remF = Math.max(target.fats - fixedMacros.fats, 0);
+    for (const pf of candidates) {
+      const eggRoom = pf.id === 'eggs' ? Math.max(200 - day.eggGrams, 0) : Infinity; // ≤ 4 eggs a day
+      const pCap = Math.min(maxPerMeal(pf), eggRoom);
+      let x = 0;
+      let y = 0;
+      if (carbFood) {
+        const sol = solve2(pf.protein100 / 100, carbFood.protein100 / 100, remP, pf.kcal100 / 100, carbFood.kcal100 / 100, remK);
+        if (sol && sol[0] > 0 && sol[1] >= 0) {
+          x = sol[0];
+          y = sol[1];
+        } else {
+          x = pf.protein100 > 0 ? (remP / pf.protein100) * 100 : 0;
+          y = Math.max((remK - (pf.kcal100 * x) / 100) / (carbFood.kcal100 / 100), 0);
+        }
+      } else {
+        x = pf.protein100 > 0 ? (remP / pf.protein100) * 100 : 0;
+      }
+      const capped = x > pCap || y > (carbFood ? maxPerMeal(carbFood) : 0);
+      x = Math.min(x, pCap);
+      y = Math.min(y, carbFood ? maxPerMeal(carbFood) : 0);
+      const got = sum(macrosOfFood(pf, x), carbFood ? macrosOfFood(carbFood, y) : { protein: 0, carbs: 0, fats: 0 });
+      const score = (week.usage.get(pf.id) ?? 0) * 3 + Math.abs(got.fats - remF) * 2 + (capped ? 8 : 0) + Math.abs(kcalOf(got) - remK) * 0.05 + Math.abs(got.protein - remP);
+      if (!best || score < best.score) best = { protein: pf, px: x, carb: carbFood, cy: y, score, fixed: variantFixed };
+    }
+  }
+
+  const items: Item[] = [...(best ? best.fixed : fixed)];
+  if (best) {
+    const px = pick5(best.px, best.protein);
+    if (px > 0) items.push({ food: best.protein, grams: px, role: 'protein' });
+    day.usage.set(best.protein.id, (day.usage.get(best.protein.id) ?? 0) + 1);
+    if (best.protein.id === 'eggs') day.eggGrams += px;
+    if (best.carb && best.cy >= 10) items.push({ food: best.carb, grams: pick5(best.cy, best.carb), role: 'carb' });
+  }
+
+  const totalOf = () => sum(...items.map((i) => macrosOfFood(i.food, i.grams)));
+  let got = totalOf();
+
+  // protein still short because of a cap → a second, different protein source
+  if (target.protein - got.protein > 8) {
+    const second = pickDistinct(proteinPool, seed + 7, 5)
+      .map((id) => findFood(id))
+      .find((f): f is FoodItem => !!f && !items.some((i) => i.food.id === f.id) && !(f.id === 'eggs' && day.eggGrams >= 200));
+    if (second && second.protein100 > 0) {
+      const grams = Math.min(((target.protein - got.protein) / second.protein100) * 100, maxPerMeal(second));
+      if (grams >= 20) {
+        items.push({ food: second, grams: pick5(grams, second), role: 'protein' });
+        if (second.id === 'eggs') day.eggGrams += grams;
+      }
+    }
+    got = totalOf();
+  }
+
+  // calories still short (caps) → carbs first, then fat
+  for (const pool of [[...carbPool, ...pools.fruitFor(mealType)], pools.fatsFor(mealType)]) {
+    const missing = kcalTarget - kcalOf(got);
+    if (missing < 60) break;
+    const extra = pool
+      .map((id) => findFood(id))
+      .find((f): f is FoodItem => !!f && f.kcal100 > 0 && (!items.some((i) => i.food.id === f.id) || f.category === 'grassi'));
+    if (!extra) continue;
+    const grams = Math.min((missing / extra.kcal100) * 100, maxPerMeal(extra));
+    if (grams < 15 && extra.category !== 'grassi') continue;
+    if (grams < 5) continue;
+    const existing = items.find((i) => i.food.id === extra.id);
+    if (existing) existing.grams = pick5(existing.grams + grams, extra);
+    else items.push({ food: extra, grams: pick5(grams, extra), role: extra.category === 'grassi' ? 'fat' : extra.category === 'frutta' ? 'fruit' : 'carb' });
+    got = totalOf();
+  }
+
+  // far too little fat → swap some carb calories for a fat source (kcal-neutral)
+  if (got.fats < target.fats * 0.85 && target.fats - got.fats > 3) {
+    const fatId = pools.fatsFor(mealType).find((id) => id !== OLIVE_OIL_ID && !items.some((i) => i.food.id === id)) ?? OLIVE_OIL_ID;
+    const fat = findFood(fatId);
+    const carbItem = [...items].reverse().find((i) => i.role === 'carb');
+    if (fat && carbItem && fat.fats100 > 0) {
+      const fatGrams = Math.min(((target.fats * 0.9 - got.fats) / fat.fats100) * 100, maxPerMeal(fat));
+      const carbDrop = Math.min(((fatGrams * fat.kcal100) / carbItem.food.kcal100), carbItem.grams * 0.6);
+      if (fatGrams >= 5 && carbDrop > 0) {
+        carbItem.grams = pick5(carbItem.grams - carbDrop, carbItem.food);
+        const existing = items.find((i) => i.food.id === fat.id);
+        if (existing) existing.grams = pick5(existing.grams + fatGrams, fat);
+        else items.push({ food: fat, grams: pick5(fatGrams, fat), role: 'fat' });
+        got = totalOf();
+      }
+    }
+  }
+
+  const planItems = items.map((it) => {
+    const pool = it.role === 'protein' ? proteinPool : it.role === 'carb' ? carbPool : it.role === 'fat' ? pools.fats : [];
+    return toPlanItem(it, substitutesFor(pool, it, seed));
+  });
+  return { items: planItems, macros: got };
+}
+
+/** Rounds a portion: eggs to whole eggs (50 g), everything else to 5 g. */
+function pick5(grams: number, food: FoodItem): number {
+  if (food.id === 'eggs') return Math.max(50, Math.round(grams / 50) * 50);
+  return round5(Math.min(grams, maxPerMeal(food)));
+}
+
+// ---------------------------------------------------------------- the week --
+
+function buildDay(
+  weekdayIndex: number,
+  monthIndex: number,
+  dayTarget: PlanTargets['perWeekday'][number],
+  pools: ReturnType<typeof buildFoodPools>,
+  slots: MealSlotDef[],
+  usage: Map<string, number>
+): DietDayPlan {
+  const day: DayState = { eggGrams: 0, usage };
+  const seed = (monthIndex - 1) * 7 + weekdayIndex;
+  const isFreeDay = weekdayIndex === FREE_MEAL_WEEKDAY_INDEX && slots.some((s) => s.id === FREE_MEAL_SLOT);
+
+  const meals: PlanMeal[] = slots.map((slot, slotIdx) => {
+    const kcalShare = slot.sharePct;
+    const slotKcal = dayTarget.calories * kcalShare;
+    if (isFreeDay && slot.id === FREE_MEAL_SLOT) {
+      return { slotId: slot.id, label: slot.label, time: slot.time, items: [], totalKcal: Math.round(slotKcal), isFreeMeal: true };
+    }
+    const target: Macros = {
+      protein: dayTarget.macros.protein * kcalShare,
+      carbs: dayTarget.macros.carbs * kcalShare,
+      fats: dayTarget.macros.fats * kcalShare,
+    };
+    const { items, macros } = buildMeal(SLOT_MEAL_TYPE[slot.id], target, pools, seed + slotIdx, day);
+    return {
+      slotId: slot.id,
+      label: slot.label,
+      time: slot.time,
+      items,
+      totalKcal: items.reduce((s, i) => s + i.kcal, 0),
+      macros: { protein: Math.round(macros.protein), carbs: Math.round(macros.carbs), fats: Math.round(macros.fats) },
+    };
+  });
+
   return {
-    name: food.name,
-    grams,
-    kcal,
-    foodId: primaryId,
-    quantityLabel: formatFoodQuantity(primaryId, grams),
-    // Substitutes match the *actual* kcal this item ended up at (not the
-    // raw target), so a fixed-portion item (veg/fruit) still gets swaps
-    // sized to roughly the same calories rather than a near-zero portion.
-    substitutes: buildSubstitutes(pool, seed, primaryId, kcal),
+    weekday: WEEKDAY_LABELS[weekdayIndex],
+    meals,
+    calorieTarget: dayTarget.calories,
+    macroTargetsG: dayTarget.macros,
+    isTrainingDay: dayTarget.isTrainingDay,
   };
 }
 
-// Standard Mediterranean-diet condiment: a fixed olive oil serving at every
-// main meal, not one more rotating option in the fats pool — diet
-// restructure request: "pranzo e cena non viene messo l'olio d'oliva"
-// (today it only shows up when the fats-pool rotation happens to land on
-// it). Still respects hard exclusions: only forced in when 'olive-oil'
-// actually survived the user's allergy/exclusion filtering.
-const OLIVE_OIL_ID = 'olive-oil';
-
-function buildOliveOilItem(): PlanMealItem | null {
-  const food = findFood(OLIVE_OIL_ID);
-  if (!food) return null;
-  const grams = food.defaultPortionG;
-  const kcal = Math.round((food.kcal100 * grams) / 100);
-  return { name: food.name, grams, kcal, foodId: OLIVE_OIL_ID, quantityLabel: formatFoodQuantity(OLIVE_OIL_ID, grams) };
-}
-
-function buildDayMeals(
-  seed: number,
-  calorieTarget: number,
-  pools: ReturnType<typeof buildFoodPools>,
-  slots: MealSlotDef[],
-  isTrainingDayToday: boolean,
-  isFreeMealDay: boolean
-): PlanMeal[] {
-  return slots.map((slot, slotIdx) => {
-    const slotKcal = calorieTarget * slot.sharePct;
-    const mealType = SLOT_MEAL_TYPE[slot.id];
-    const isMain = mealType === 'main';
-    const slotSeed = seed + slotIdx;
-
-    if (isFreeMealDay && slot.id === FREE_MEAL_SLOT) {
-      return { slotId: slot.id, label: slot.label, time: slot.time, items: [], totalKcal: Math.round(slotKcal), isFreeMeal: true };
-    }
-
-    const proteinPool = pools.proteinFor(mealType);
-    const carbPool = pools.carbsFor(mealType);
-    const ratios = isMain ? mainMealRatios(slot.id, isTrainingDayToday) : { protein: 0.4, carb: 0.35, fat: 0.25 };
-
-    const items: PlanMealItem[] = [
-      buildItem(proteinPool, slotSeed, slotKcal * ratios.protein),
-      buildItem(carbPool, slotSeed + 1, slotKcal * ratios.carb),
-    ];
-
-    if (isMain) {
-      const fatsPool = pools.fatsFor(mealType);
-      const vegetablesPool = pools.vegetablesFor(mealType);
-      const fatsTargetKcal = slotKcal * ratios.fat;
-      // 'olive-oil' surviving in the unrestricted pool means it wasn't
-      // excluded (allergy/exclusion text) — only then is it safe to force.
-      const oliveOilItem = pools.fats.includes(OLIVE_OIL_ID) ? buildOliveOilItem() : null;
-      if (oliveOilItem) {
-        items.push(oliveOilItem);
-        const remainingFatsKcal = Math.max(fatsTargetKcal - oliveOilItem.kcal, 0);
-        const otherFatsPool = fatsPool.filter((id) => id !== OLIVE_OIL_ID);
-        // Below this, a second fats item would round down to a near-zero,
-        // not-worth-listing portion — the olive oil alone already covers
-        // the slot's fats target closely enough.
-        if (remainingFatsKcal > 20 && otherFatsPool.length > 0) {
-          items.push(buildItem(otherFatsPool, slotSeed, remainingFatsKcal));
-        }
-      } else {
-        items.push(buildItem(fatsPool, slotSeed, fatsTargetKcal));
-      }
-      items.push(buildItem(vegetablesPool, slotSeed, 0, 150));
-    } else {
-      const fruitPool = pools.fruitFor(mealType);
-      const fruitId = pick(fruitPool, slotSeed);
-      const fruit = findFood(fruitId)!;
-      items.push(buildItem(fruitPool, slotSeed, 0, fruit.defaultPortionG));
-    }
-
-    const totalKcal = items.reduce((sum, item) => sum + item.kcal, 0);
-    return { slotId: slot.id, label: slot.label, time: slot.time, items, totalKcal };
-  });
-}
-
-/** One full week of day-by-day meals for the month — each weekday gets its
- * own rotation through the food pools (rather than one "example day"
- * repeated), so the plan reads as an actual schedule to follow. `isTrainingDay`
- * (Monday-first, matching WEEKDAY_LABELS) drives the training/rest-day
- * calorie and carb cycling — see dayCalorieMultipliers/mainMealRatios. */
-function buildWeeklySplit(
-  monthIndex: number,
-  calorieTarget: number,
-  pools: ReturnType<typeof buildFoodPools>,
-  slots: MealSlotDef[],
-  isTrainingDay: boolean[]
-): DietDayPlan[] {
-  const calorieMultipliers = dayCalorieMultipliers(isTrainingDay);
-  return WEEKDAY_LABELS.map((weekday, dayIdx) => ({
-    weekday,
-    meals: buildDayMeals(
-      (monthIndex - 1) * 7 + dayIdx,
-      calorieTarget * calorieMultipliers[dayIdx],
-      pools,
-      slots,
-      isTrainingDay[dayIdx],
-      dayIdx === FREE_MEAL_WEEKDAY_INDEX
-    ),
-  }));
-}
-
 export function generateDietPlan(input: DietPlanInput): DietPlan {
-  const { answers, dailyCalorieTarget, macroTargetsG, strategy, preserveMonthsBefore, existingMonths } = input;
-  const goal = (answers.goal as Goal) ?? 'generalHealth';
-  const durationMonths = computePlanDurationMonths(answers);
-  const pools = buildFoodPools(answers);
-  const slots = buildMealSlotsFromAnswers(answers);
-  const { isTrainingDay } = resolveTrainingSchedule(answers);
+  const { ctx, monthTargets, strategy, variant = 0, preserveMonthsBefore, existingMonths } = input;
+  const durationMonths = monthTargets.length;
+  const pools = buildFoodPools(ctx.answers);
+  const slots = buildMealSlotsFromAnswers(ctx.answers);
 
   const months: DietMonthPlan[] = [];
   for (let monthIndex = 1; monthIndex <= durationMonths; monthIndex++) {
@@ -301,21 +392,22 @@ export function generateDietPlan(input: DietPlanInput): DietPlan {
       }
     }
     const phase = phaseForMonth(monthIndex, durationMonths);
-    const strategyTarget = strategy?.monthlyTargets?.find((m) => m.monthIndex === monthIndex);
-    const calorieTarget = strategyTarget?.calorieTarget ?? monthCalorieTarget(phase, dailyCalorieTarget, goal);
-    const macros = strategyTarget?.macroTargetsG ?? monthMacros(calorieTarget, dailyCalorieTarget, macroTargetsG);
+    const targets = monthTargets[monthIndex - 1];
+    const usage = new Map<string, number>(); // protein variety within the month's week
     const monthlyFocus = strategy?.monthlyFocus?.find((m) => m.monthIndex === monthIndex);
-
     months.push({
       monthIndex,
       phase,
-      title: monthlyFocus?.title ?? `Mese ${monthIndex} · ${phaseTitle(phase, goal)}`,
-      focusNote: monthlyFocus?.focusNote ?? phaseNote(phase, goal),
-      calorieTarget,
-      macroTargetsG: macros,
-      weeklySplit: buildWeeklySplit(monthIndex, calorieTarget, pools, slots, isTrainingDay),
+      title: monthlyFocus?.title ?? `Mese ${monthIndex} · ${phaseTitle(phase, ctx.goal)}`,
+      focusNote: monthlyFocus?.focusNote ?? phaseNote(phase, ctx.goal),
+      calorieTarget: targets.calories,
+      macroTargetsG: targets.macros,
+      weeklySplit: WEEKDAY_LABELS.map((_, i) => buildDay(i, monthIndex + variant * 5, targets.perWeekday[i], pools, slots, usage)),
     });
   }
 
-  return { generatedAt: new Date().toISOString(), durationMonths, goal, months };
+  return { generatedAt: new Date().toISOString(), durationMonths, goal: ctx.goal, months };
 }
+
+/** Which meal type a pool lookup should use for a slot (re-exported for tests). */
+export type { MealType };

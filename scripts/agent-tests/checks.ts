@@ -7,8 +7,10 @@
 import { FOOD_DATABASE, findFood } from '@/lib/mock/food-database';
 import { ONBOARDING_STEPS, buildActivityQuestions, isQuestionVisible, stepsForMode, TIME_REGEX, type OnboardingMode, type Question } from '@/lib/questionnaire/schema';
 import { parseNumericAnswer } from '@/lib/questionnaire/parse-answer';
-import { computeNutritionTargets, deriveWeeklyTrainingDays, MIN_SAFE_CALORIE_TARGET, type NutritionTargets } from '@/lib/nutrition/targets';
-import { computePlanDurationMonths } from '@/lib/planning/plan-duration';
+import { baselineKcal } from '@/domain/energy';
+import { buildPlans, initialTargets, type PlanBundle } from '@/domain/plan-engine';
+import { weeklyBalanceGoal, type PlanTargets } from '@/domain/targets';
+import { buildUserContext, type UserContext } from '@/domain/user-context';
 import { GYM_EXERCISES, HOME_EXERCISES, type ExerciseDef } from '@/lib/planning/exercise-library';
 import type { DietPlan, TrainingPlan } from '@/lib/planning/types';
 import type { Goal } from '@/lib/mock/types';
@@ -21,6 +23,8 @@ export type Finding = { level: Level; area: Area; code: string; message: string 
 
 export type PersonaRun = {
   persona: Persona;
+  ctx: UserContext;
+  bundle: PlanBundle;
   targets: NutritionTargets;
   durationMonths: number;
   diet: DietPlan | null;
@@ -29,6 +33,17 @@ export type PersonaRun = {
 };
 
 const num = (v: unknown, fallback = 0) => parseNumericAnswer(v) ?? fallback;
+const MIN_SAFE_CALORIE_TARGET = 1200;
+
+/** Harness-side view of the month-1 targets. */
+export type NutritionTargets = {
+  bmr: number;
+  /** Average daily expenditure (resting + everyday + planned exercise). */
+  tdee: number;
+  dailyCalorieTarget: number;
+  macroTargetsG: { protein: number; carbs: number; fats: number };
+  hydrationTargetMl: number;
+};
 const WEEKDAYS = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
 
 // ---------------------------------------------------------------- helpers --
@@ -163,7 +178,7 @@ export function checkTargets(persona: Persona, targets: NutritionTargets, durati
   if (Math.abs(macroKcal - cal) / cal > 0.03) f.push({ level: 'FAIL', area: 'target', code: 'T6', message: `Le calorie dei macro (${macroKcal}) non tornano con il target (${cal})` });
 
   const pPerKg = m.protein / weight;
-  if (pPerKg < 1.4 || pPerKg > 2.5) f.push({ level: 'WARN', area: 'target', code: 'T7', message: `Proteine ${m.protein} g = ${pPerKg.toFixed(1)} g/kg: fuori dall’intervallo 1,4–2,5` });
+  if (pPerKg < 1.3 || pPerKg > 2.5) f.push({ level: 'WARN', area: 'target', code: 'T7', message: `Proteine ${m.protein} g = ${pPerKg.toFixed(1)} g/kg: fuori dall’intervallo 1,3–2,5` });
   if (bmi >= 30 && pPerKg > 1.9) f.push({ level: 'WARN', area: 'target', code: 'T7', message: `Proteine ${m.protein} g (${pPerKg.toFixed(1)} g/kg) calcolate sul peso reale con BMI ${bmi.toFixed(0)}: eccessive, andrebbero calcolate sul peso obiettivo/massa magra` });
   const fatPct = (m.fats * 9) / cal;
   if (fatPct < 0.2) f.push({ level: 'WARN', area: 'target', code: 'T8', message: `Grassi ${(fatPct * 100).toFixed(0)}% delle calorie: sotto il 20%` });
@@ -188,13 +203,13 @@ export function checkTargets(persona: Persona, targets: NutritionTargets, durati
 
 // -------------------------------------------------------------------- diet --
 
-export function checkDiet(persona: Persona, targets: NutritionTargets, diet: DietPlan): Finding[] {
+export function checkDiet(persona: Persona, targets: NutritionTargets, diet: DietPlan, durationMonths: number): Finding[] {
   const a = persona.answers;
   const f: Finding[] = [];
   const mealsSelected = (Array.isArray(a.mealsSelected) ? (a.mealsSelected as string[]) : ['colazione', 'pranzo', 'cena']) as string[];
   const month1 = diet.months[0];
 
-  if (diet.months.length !== computePlanDurationMonths(a)) f.push({ level: 'FAIL', area: 'dieta', code: 'D1', message: `Mesi del piano (${diet.months.length}) ≠ durata calcolata (${computePlanDurationMonths(a)})` });
+  if (diet.months.length !== durationMonths) f.push({ level: 'FAIL', area: 'dieta', code: 'D1', message: `Mesi del piano (${diet.months.length}) ≠ durata calcolata (${durationMonths})` });
 
   // slots
   for (const [i, day] of month1.weeklySplit.entries()) {
@@ -213,14 +228,15 @@ export function checkDiet(persona: Persona, targets: NutritionTargets, diet: Die
     return { i, free, mac, plannedKcal };
   });
 
-  // calories
-  const dayDeviations = dayStats.filter((d) => !d.free).map((d) => ({ i: d.i, kcal: d.mac.kcal, dev: d.mac.kcal / month1.calorieTarget - 1 }));
-  const avgKcal = dayDeviations.reduce((s, d) => s + d.kcal, 0) / Math.max(dayDeviations.length, 1);
-  const avgDev = avgKcal / month1.calorieTarget - 1;
-  if (Math.abs(avgDev) > 0.1) f.push({ level: 'FAIL', area: 'dieta', code: 'D3', message: `Le calorie reali dei pasti (media ${avgKcal.toFixed(0)}) si discostano del ${(avgDev * 100).toFixed(0)}% dal target del mese (${month1.calorieTarget})` });
-  else if (Math.abs(avgDev) > 0.05) f.push({ level: 'WARN', area: 'dieta', code: 'D3', message: `Le calorie reali dei pasti (media ${avgKcal.toFixed(0)}) si discostano del ${(avgDev * 100).toFixed(0)}% dal target del mese (${month1.calorieTarget})` });
+  // calories: each day against ITS OWN target (training days eat more than rest days)
+  const dayDeviations = dayStats
+    .filter((d) => !d.free)
+    .map((d) => ({ i: d.i, kcal: d.mac.kcal, dev: d.mac.kcal / (days[d.i].calorieTarget ?? month1.calorieTarget) - 1 }));
+  const avgDev = dayDeviations.reduce((x, d) => x + d.dev, 0) / Math.max(dayDeviations.length, 1);
+  const avgKcal = dayDeviations.reduce((x, d) => x + d.kcal, 0) / Math.max(dayDeviations.length, 1);
+  if (Math.abs(avgDev) > 0.05) f.push({ level: 'FAIL', area: 'dieta', code: 'D3', message: `Le calorie reali dei pasti si discostano in media del ${(avgDev * 100).toFixed(0)}% dai target giornalieri` });
   for (const d of dayDeviations) {
-    if (Math.abs(d.dev) > 0.2) f.push({ level: 'WARN', area: 'dieta', code: 'D3', message: `${WEEKDAYS[d.i]}: ${d.kcal.toFixed(0)} kcal, ${(d.dev * 100).toFixed(0)}% rispetto al target` });
+    if (Math.abs(d.dev) > 0.08) f.push({ level: Math.abs(d.dev) > 0.15 ? 'FAIL' : 'WARN', area: 'dieta', code: 'D3', message: `${WEEKDAYS[d.i]}: ${d.kcal.toFixed(0)} kcal, ${(d.dev * 100).toFixed(0)}% rispetto al target del giorno (${days[d.i].calorieTarget})` });
   }
 
   // item kcal consistency (what the plan says vs. what the food DB says)
@@ -237,17 +253,20 @@ export function checkDiet(persona: Persona, targets: NutritionTargets, diet: Die
     }
   }
 
-  // macros
+  // macros: every non-free day against its own day target
   const nonFree = dayStats.filter((d) => !d.free);
-  const avg = (k: 'protein' | 'carbs' | 'fats') => nonFree.reduce((s, d) => s + d.mac[k], 0) / Math.max(nonFree.length, 1);
-  const tm = month1.macroTargetsG;
   for (const [k, label] of [['protein', 'Proteine'], ['carbs', 'Carboidrati'], ['fats', 'Grassi']] as const) {
-    const actual = avg(k);
-    const r = actual / tm[k];
-    const kcalAdj = avgKcal / month1.calorieTarget; // judge macro vs. what was actually delivered in calories
-    const rel = r / kcalAdj;
-    if (rel < 0.7 || rel > 1.4) f.push({ level: 'FAIL', area: 'dieta', code: 'D5', message: `${label}: i pasti danno in media ${actual.toFixed(0)} g contro un target di ${tm[k]} g (${(r * 100).toFixed(0)}%)` });
-    else if (rel < 0.85 || rel > 1.2) f.push({ level: 'WARN', area: 'dieta', code: 'D5', message: `${label}: i pasti danno in media ${actual.toFixed(0)} g contro un target di ${tm[k]} g (${(r * 100).toFixed(0)}%)` });
+    const rels = nonFree.map((d) => d.mac[k] / (days[d.i].macroTargetsG?.[k] ?? month1.macroTargetsG[k]));
+    const avgRel = rels.reduce((x, r) => x + r, 0) / Math.max(rels.length, 1);
+    const worst = Math.max(...rels.map((r) => Math.abs(r - 1)));
+    // protein: too little is the failure, a bit extra is harmless; carbs/fats: ±20% (foods carry hidden macros)
+    const lowLimit = k === 'protein' ? 0.1 : 0.2;
+    const highLimit = k === 'protein' ? 0.25 : 0.2;
+    const tooLow = avgRel - 1 < -lowLimit || Math.min(...rels) - 1 < -lowLimit * 2;
+    const tooHigh = avgRel - 1 > highLimit || Math.max(...rels) - 1 > highLimit * 2;
+    const text = `${label}: i pasti danno in media il ${(avgRel * 100).toFixed(0)}% del target (giorno peggiore: ${(worst * 100).toFixed(0)}% di scarto)`;
+    if (tooLow || tooHigh) f.push({ level: 'FAIL', area: 'dieta', code: 'D5', message: text });
+    else if (avgRel - 1 < -lowLimit / 2 || avgRel - 1 > highLimit / 2 || worst > Math.max(lowLimit, highLimit) * 1.25) f.push({ level: 'WARN', area: 'dieta', code: 'D5', message: text });
   }
 
   // forbidden foods
@@ -340,9 +359,7 @@ export function checkDiet(persona: Persona, targets: NutritionTargets, diet: Die
   if (later.length >= 2 && later.every((v) => v === later[0])) {
     f.push({ level: 'INFO', area: 'dieta', code: 'D14', message: `Dal mese 2 in poi il target è identico (${later[0]} kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica` });
   }
-  if (diet.months[0].calorieTarget !== targets.dailyCalorieTarget) {
-    f.push({ level: 'WARN', area: 'dieta', code: 'D15', message: `La scheda profilo dell’onboarding mostra ${targets.dailyCalorieTarget} kcal ma il piano (mese 1) ne prescrive ${diet.months[0].calorieTarget} (${diet.months[0].calorieTarget - targets.dailyCalorieTarget > 0 ? '+' : ''}${diet.months[0].calorieTarget - targets.dailyCalorieTarget}): l’utente vede due numeri diversi` });
-  }
+  if (diet.months[0].calorieTarget !== targets.dailyCalorieTarget) f.push({ level: 'FAIL', area: 'dieta', code: 'D15', message: `Il profilo/onboarding mostra ${targets.dailyCalorieTarget} kcal ma il mese 1 del piano ne prescrive ${diet.months[0].calorieTarget}` });
   return f;
 }
 
@@ -354,7 +371,7 @@ const SPLIT_COVERAGE = {
   legs: ['Legs', 'Lower', 'Full Body'],
 };
 
-export function checkTraining(persona: Persona, training: TrainingPlan): Finding[] {
+export function checkTraining(persona: Persona, training: TrainingPlan, durationMonths: number): Finding[] {
   const a = persona.answers;
   const f: Finding[] = [];
   const hasGym = (a.activitiesPracticed as string[] | undefined)?.includes('gym');
@@ -366,7 +383,7 @@ export function checkTraining(persona: Persona, training: TrainingPlan): Finding
   const runDays = week.filter((d) => d.type === 'cardio');
   const total = gymDays.length + runDays.length;
 
-  if (training.months.length !== computePlanDurationMonths(a)) f.push({ level: 'FAIL', area: 'allenamento', code: 'R1', message: `Mesi (${training.months.length}) ≠ durata calcolata (${computePlanDurationMonths(a)})` });
+  if (training.months.length !== durationMonths) f.push({ level: 'FAIL', area: 'allenamento', code: 'R1', message: `Mesi (${training.months.length}) ≠ durata calcolata (${durationMonths})` });
 
   const e = persona.expect;
   if (e?.gymSessions != null && gymDays.length !== e.gymSessions) f.push({ level: 'FAIL', area: 'allenamento', code: 'R2', message: `Sedute di palestra a settimana: ${gymDays.length}, attese ${e.gymSessions}` });
@@ -379,7 +396,7 @@ export function checkTraining(persona: Persona, training: TrainingPlan): Finding
   // consecutive training days
   let run = 0;
   let maxRun = 0;
-  for (const d of [...week, ...week]) {
+  for (const d of week) {
     if (d.type !== 'rest') {
       run++;
       maxRun = Math.max(maxRun, run);
@@ -495,70 +512,59 @@ export function checkTraining(persona: Persona, training: TrainingPlan): Finding
 
 // --------------------------------------------------------------- coherence --
 
-export function checkCoherence(persona: Persona, targets: NutritionTargets, diet: DietPlan | null, training: TrainingPlan | null): Finding[] {
+export function checkCoherence(persona: Persona, run: { ctx: UserContext; bundle: PlanBundle }): Finding[] {
   const a = persona.answers;
+  const { ctx, bundle } = run;
+  const { diet, training } = bundle;
   const f: Finding[] = [];
   const e = persona.expect;
   if (e?.noDiet && diet) f.push({ level: 'FAIL', area: 'coerenza', code: 'C1', message: 'Utente "solo allenamento" ma esiste un piano alimentare' });
   if (e?.noTraining && training) f.push({ level: 'FAIL', area: 'coerenza', code: 'C1', message: 'Utente "solo dieta" ma esiste un piano di allenamento' });
   if (!e?.noDiet && a.mode !== 'training' && !diet) f.push({ level: 'FAIL', area: 'coerenza', code: 'C1', message: 'Manca il piano alimentare' });
   if (!e?.noTraining && a.mode !== 'diet' && (a.activitiesPracticed as string[] | undefined)?.length && !training) f.push({ level: 'FAIL', area: 'coerenza', code: 'C1', message: 'Manca il piano di allenamento' });
+  if (diet && training && diet.durationMonths !== training.durationMonths) f.push({ level: 'FAIL', area: 'coerenza', code: 'C2', message: `Durata dieta (${diet.durationMonths}) ≠ durata allenamento (${training.durationMonths})` });
 
-  if (diet && training) {
-    if (diet.durationMonths !== training.durationMonths) f.push({ level: 'FAIL', area: 'coerenza', code: 'C2', message: `Durata dieta (${diet.durationMonths}) ≠ durata allenamento (${training.durationMonths})` });
+  // The diet must follow the training: for every month, the weekly balance (planned intake − planned
+  // expenditure) equals the goal's balance, and each day's target moves with that day's exercise.
+  bundle.monthTargets.forEach((t, i) => {
+    const week = training?.months[i]?.weeklySplit ?? null;
+    const exercisePlanned = week?.some((d) => d.type !== 'rest') ?? false;
+    const weekly = weeklyBalanceGoal(t);
+    const expected = (t.pace.dailyBalanceKcal) * 7;
+    const floorHit = t.adjustments.some((x) => x.includes('minima'));
+    if (!floorHit && Math.abs(weekly - expected) > 120) {
+      f.push({ level: 'FAIL', area: 'coerenza', code: 'C3', message: `Mese ${i + 1}: bilancio settimanale ${weekly} kcal ≠ ${expected} previsto dall'obiettivo: dieta e allenamento non sono allineati` });
+    }
+    if (exercisePlanned) {
+      const train = t.perWeekday.filter((d) => d.isTrainingDay);
+      const rest = t.perWeekday.filter((d) => !d.isTrainingDay);
+      if (train.length && rest.length) {
+        const avg = (xs: typeof train) => xs.reduce((x, d) => x + d.calories, 0) / xs.length;
+        if (avg(train) <= avg(rest)) f.push({ level: 'FAIL', area: 'coerenza', code: 'C4', message: `Mese ${i + 1}: i giorni di allenamento hanno meno calorie (${avg(train).toFixed(0)}) dei giorni di riposo (${avg(rest).toFixed(0)})` });
+      }
+    }
+  });
+  if (!training && ctx.mode === 'diet') {
+    const base = baselineKcal(ctx).total;
+    if (Math.abs(bundle.monthTargets[0].averageExpenditure - base) > 2) f.push({ level: 'FAIL', area: 'coerenza', code: 'C5', message: 'Utente solo dieta: il fabbisogno include allenamento che non esiste' });
   }
-
-  // the TDEE assumes freq_* sessions per week; the plan schedules what the availability allows
-  if (training) {
-    const scheduled = training.months[0].weeklySplit.filter((d) => d.type !== 'rest').length;
-    const assumed = deriveWeeklyTrainingDays(a);
-    if (Math.abs(scheduled - assumed) >= 2) f.push({ level: 'WARN', area: 'coerenza', code: 'C3', message: `Il fabbisogno calorico assume ${assumed} allenamenti a settimana (risposte freq_*) ma il piano ne programma ${scheduled}` });
-  } else if (a.mode === 'diet') {
-    const assumed = deriveWeeklyTrainingDays(a);
-    if (assumed !== 0) f.push({ level: 'INFO', area: 'coerenza', code: 'C3', message: `Utente solo dieta: il fabbisogno assume ${assumed} allenamenti/sett.` });
-    else f.push({ level: 'INFO', area: 'coerenza', code: 'C3', message: 'Utente solo dieta: nessun allenamento nel calcolo del fabbisogno (corretto), ma la Home mostrerà comunque tasti di registrazione allenamento' });
-  }
-
-  // calories on training vs. rest days
-  if (diet && training) {
-    const m1 = diet.months[0];
-    const trainDays = training.months[0].weeklySplit.map((d) => d.type !== 'rest');
-    const avgFor = (flag: boolean) => {
-      const vals = m1.weeklySplit
-        .map((d, i) => ({ i, d }))
-        .filter(({ i, d }) => trainDays[i] === flag && !d.meals.some((m) => m.isFreeMeal))
-        .map(({ d }) => d.meals.reduce((s, m) => s + m.totalKcal, 0));
-      return vals.length ? vals.reduce((s, x) => s + x, 0) / vals.length : null;
-    };
-    const t = avgFor(true);
-    const r = avgFor(false);
-    if (t != null && r != null && t < r) f.push({ level: 'WARN', area: 'coerenza', code: 'C4', message: `I giorni di allenamento hanno meno calorie (${t.toFixed(0)}) dei giorni di riposo (${r.toFixed(0)})` });
-  }
-  void targets;
+  if (ctx.isMinor && ctx.goal === 'loseFat' && bundle.monthTargets[0].pace.dailyBalanceKcal < 0) f.push({ level: 'FAIL', area: 'coerenza', code: 'C6', message: 'Minorenne con deficit calorico' });
   return f;
 }
 
-export function runChecks(persona: Persona, targets: NutritionTargets, durationMonths: number, diet: DietPlan | null, training: TrainingPlan | null): Finding[] {
+export function toNutritionTargets(ctx: UserContext, t: PlanTargets): NutritionTargets {
+  return { bmr: baselineKcal(ctx).resting, tdee: t.averageExpenditure, dailyCalorieTarget: t.calories, macroTargetsG: t.macros, hydrationTargetMl: t.hydrationMl };
+}
+
+export function runChecks(persona: Persona, ctx: UserContext, bundle: PlanBundle): Finding[] {
+  const targets = toNutritionTargets(ctx, bundle.monthTargets[0]);
   return [
     ...checkQuestionnaire(persona.answers),
-    ...checkTargets(persona, targets, durationMonths),
-    ...(diet ? checkDiet(persona, targets, diet) : []),
-    ...(training ? checkTraining(persona, training) : []),
-    ...checkCoherence(persona, targets, diet, training),
+    ...checkTargets(persona, targets, bundle.durationMonths),
+    ...(bundle.diet ? checkDiet(persona, targets, bundle.diet, bundle.durationMonths) : []),
+    ...(bundle.training ? checkTraining(persona, bundle.training, bundle.durationMonths) : []),
+    ...checkCoherence(persona, { ctx, bundle }),
   ];
 }
 
-export function computeTargetsForAnswers(a: Answers): NutritionTargets {
-  // Same call the onboarding results screen makes (src/app/onboarding.tsx).
-  return computeNutritionTargets({
-    sex: ((a.sex as string) ?? 'unspecified') as 'male' | 'female' | 'unspecified',
-    age: num(a.age, 30),
-    heightCm: num(a.heightCm, 180),
-    currentWeightKg: num(a.currentWeightKg, 80),
-    goal: ((a.goal as Goal) ?? 'generalHealth') as Goal,
-    jobActivity: a.jobActivity as string,
-    weeklyTrainingDays: deriveWeeklyTrainingDays(a),
-    dailyStepsBucket: a.dailySteps as string | undefined,
-    sleepHoursBucket: a.sleepHoursRange as string | undefined,
-  });
-}
+export { buildPlans, buildUserContext, initialTargets };

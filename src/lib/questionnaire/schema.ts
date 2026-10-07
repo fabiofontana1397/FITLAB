@@ -3,7 +3,7 @@
 // — written alongside every answers upsert (see lib/api/onboarding.ts) so
 // existing responses can always be traced back to the schema version that
 // collected them.
-export const QUESTIONNAIRE_VERSION = 2;
+export const QUESTIONNAIRE_VERSION = 3;
 
 export type QuestionType = 'single' | 'multi' | 'scale' | 'number' | 'text' | 'longtext' | 'time';
 
@@ -249,7 +249,7 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     id: 'physical',
     title: 'Profilo fisico',
     questions: [
-      { id: 'age', type: 'number', label: 'Età', unit: 'anni' },
+      { id: 'age', type: 'number', label: 'Età', unit: 'anni', min: 16, max: 75 },
       {
         id: 'sex',
         type: 'single',
@@ -259,8 +259,8 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
           { value: 'female', label: 'Donna' },
         ],
       },
-      { id: 'heightCm', type: 'number', label: 'Altezza', unit: 'cm' },
-      { id: 'currentWeightKg', type: 'number', label: 'Peso attuale', unit: 'kg' },
+      { id: 'heightCm', type: 'number', label: 'Altezza', unit: 'cm', min: 130, max: 220 },
+      { id: 'currentWeightKg', type: 'number', label: 'Peso attuale', unit: 'kg', min: 35, max: 200 },
     ],
   },
   {
@@ -281,7 +281,7 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
           { value: 'generalHealth', label: 'Migliorare salute e benessere generale' },
         ],
       },
-      { id: 'targetWeightKg', type: 'number', label: 'Peso obiettivo', unit: 'kg', optional: true },
+      { id: 'targetWeightKg', type: 'number', label: 'Peso obiettivo', unit: 'kg', optional: true, min: 35, max: 200 },
     ],
   },
   {
@@ -301,18 +301,6 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
         ],
       },
       {
-        id: 'generalActivityLevel',
-        type: 'single',
-        label: 'Oltre il lavoro e gli allenamenti, quanto ti muovi mediamente durante la giornata?',
-        options: [
-          { value: 'mostlySeated', label: 'Quasi sempre seduto' },
-          { value: 'occasional', label: 'Mi muovo occasionalmente' },
-          { value: 'moderate', label: 'Mi muovo abbastanza' },
-          { value: 'active', label: 'Molto attivo' },
-          { value: 'veryActive', label: 'Molto attivo fisicamente' },
-        ],
-      },
-      {
         id: 'dailySteps',
         type: 'single',
         label: 'Quanti passi fai mediamente al giorno?',
@@ -325,8 +313,6 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
           { value: 'unknown', label: 'Non lo so' },
         ],
       },
-      { id: 'bedTime', type: 'time', label: 'A che ora vai generalmente a dormire?', placeholder: '23:00' },
-      { id: 'wakeTime', type: 'time', label: 'A che ora ti svegli generalmente?', placeholder: '07:00' },
       {
         id: 'sleepHoursRange',
         type: 'single',
@@ -339,7 +325,6 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
           { value: 'gt8', label: '>8 ore' },
         ],
       },
-      { id: 'sleepQuality', type: 'scale', label: 'Come valuteresti la qualità del tuo sonno?', min: 1, max: 5 },
     ],
   },
   {
@@ -389,10 +374,8 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
           { value: 'pescetarian', label: 'Pescetariana' },
           { value: 'mediterranean', label: 'Mediterranea' },
           { value: 'lowCarb', label: 'Low carb' },
-          { value: 'other', label: 'Altro' },
         ],
       },
-      { id: 'dietaryPatternOther', type: 'text', label: 'Specifica', optional: true, dependsOn: { questionId: 'dietaryPattern', equals: 'other' } },
       { id: 'allergiesIntolerances', type: 'text', label: 'Hai allergie alimentari, intolleranze o alimenti che digerisci male?', placeholder: 'No, oppure elenca quali', optional: true },
       { id: 'excludedFoods', type: 'longtext', label: 'Quali alimenti NON vuoi nella tua dieta?', optional: true },
       { id: 'includedFoods', type: 'longtext', label: 'Quali alimenti vuoi assolutamente includere?', optional: true },
@@ -435,10 +418,8 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
           { value: 'yogurt', label: 'Yogurt' },
           { value: 'proteinPowder', label: 'Proteine in polvere' },
           { value: 'tofu', label: 'Tofu/alternative vegetali' },
-          { value: 'other', label: 'Altro' },
         ],
       },
-      { id: 'preferredProteinsOther', type: 'text', label: 'Specifica', optional: true, dependsOn: { questionId: 'preferredProteins', equals: 'other' } },
       {
         id: 'preferredCarbs',
         type: 'multi',
@@ -452,10 +433,8 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
           { value: 'cereals', label: 'Cereali' },
           { value: 'legumes', label: 'Legumi' },
           { value: 'fruit', label: 'Frutta' },
-          { value: 'other', label: 'Altro' },
         ],
       },
-      { id: 'preferredCarbsOther', type: 'text', label: 'Specifica', optional: true, dependsOn: { questionId: 'preferredCarbs', equals: 'other' } },
       {
         id: 'preferredFats',
         type: 'multi',
@@ -467,10 +446,8 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
           { value: 'eggs', label: 'Uova' },
           { value: 'fattyFish', label: 'Pesce grasso' },
           { value: 'butter', label: 'Burro' },
-          { value: 'other', label: 'Altro' },
         ],
       },
-      { id: 'preferredFatsOther', type: 'text', label: 'Specifica', optional: true, dependsOn: { questionId: 'preferredFats', equals: 'other' } },
       {
         id: 'coffeeIntake',
         type: 'single',
@@ -559,7 +536,6 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
           { value: 'kettlebell', label: 'Kettlebell' },
           { value: 'bands', label: 'Elastici' },
           { value: 'cardioMachine', label: 'Cardio machine' },
-          { value: 'other', label: 'Altro' },
         ],
       },
     ],

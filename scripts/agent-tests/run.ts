@@ -15,32 +15,25 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { generateDietPlan } from '@/lib/planning/diet-planner';
-import { generateTrainingPlan } from '@/lib/planning/training-planner';
-import { computePlanDurationMonths } from '@/lib/planning/plan-duration';
 
 import type { PlanStrategy } from '@/lib/planning/strategy-types';
 
 import { checkStrategy, openAiSession } from './ai';
 import { checkFlow, checkGlobal } from './flow';
-import { computeTargetsForAnswers, macrosOf, runChecks, type Finding, type PersonaRun } from './checks';
+import { SCENARIOS, simulate, type SimulationResult } from './simulate';
+import { buildPlans, buildUserContext, macrosOf, runChecks, toNutritionTargets, type Finding, type PersonaRun } from './checks';
 import { PERSONAS, type Persona } from './personas';
 
 const WEEKDAYS = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
 
 export function generateForPersona(persona: Persona, strategy: PlanStrategy | null = null, aiMode = false): PersonaRun {
-  const answers = persona.answers;
-  const mode = answers.mode as string | undefined;
-  const targets = computeTargetsForAnswers(answers);
-  const durationMonths = computePlanDurationMonths(answers);
-
-  // Mirrors usePlanStore.generatePlans (strategy = null unless --ai).
-  const diet = mode === 'training' ? null : generateDietPlan({ answers, dailyCalorieTarget: targets.dailyCalorieTarget, macroTargetsG: targets.macroTargetsG, strategy: strategy?.diet ?? null });
-  const training = mode === 'diet' ? null : generateTrainingPlan({ answers, strategy: strategy?.training ?? null });
-
-  const findings = [...runChecks(persona, targets, durationMonths, diet, training), ...checkFlow(persona, targets, diet, training)];
-  if (aiMode) findings.push(...checkStrategy(persona, strategy, targets.dailyCalorieTarget, durationMonths));
-  return { persona, targets, durationMonths, diet, training, findings };
+  // Same pipeline the app runs at the end of onboarding: normalize the answers, build both plans together.
+  const ctx = buildUserContext(persona.answers);
+  const bundle = buildPlans(ctx, { strategy });
+  const targets = toNutritionTargets(ctx, bundle.monthTargets[0]);
+  const findings = [...runChecks(persona, ctx, bundle), ...checkFlow(persona, ctx, bundle)];
+  if (aiMode) findings.push(...checkStrategy(persona, strategy, targets.dailyCalorieTarget, bundle.durationMonths));
+  return { persona, ctx, bundle, targets, durationMonths: bundle.durationMonths, diet: bundle.diet, training: bundle.training, findings };
 }
 
 // ------------------------------------------------------------------ report --
@@ -125,7 +118,27 @@ function personaSection(run: PersonaRun): string {
   return out.join('\n');
 }
 
-function buildReport(runs: PersonaRun[], globals: Finding[]): string {
+function simulationSection(sims: SimulationResult[]): string {
+  const lines: string[] = ['## Simulazione: ricalibrazione mensile su 6 mesi', ''];
+  lines.push('Un corpo virtuale segue il piano; a fine mese l’agente di ricalibrazione vede le pesate (con rumore) e l’aderenza e rielabora dieta e allenamento. Si verifica che il peso vada verso l’obiettivo anche se il metabolismo reale si discosta dal modello del ±10%, e che con bassa aderenza non si corregga sui numeri.', '');
+  const byPersona = new Map<string, SimulationResult[]>();
+  for (const sim of sims) byPersona.set(sim.persona.id, [...(byPersona.get(sim.persona.id) ?? []), sim]);
+  for (const [id, list] of byPersona) {
+    lines.push(`### ${list[0].persona.name}`, '', '| Scenario | Peso (inizio → fine) | Ritmo medio | Verdetti mensili | Regolazione kcal |', '|---|---|---|---|---|');
+    for (const sim of list) {
+      const m = sim.months;
+      const avgRate = m.reduce((a, x) => a + x.rateKgPerWeek, 0) / Math.max(m.length, 1);
+      lines.push(`| ${sim.scenario.label} | ${m[0]?.startKg} → ${m[m.length - 1]?.endKg} kg | ${avgRate.toFixed(2)} kg/sett. | ${m.map((x) => x.verdict).join(' › ')} | ${m.map((x) => x.adjustment).join(', ')} |`);
+    }
+    const fs2 = list.flatMap((l) => l.findings);
+    for (const f of fs2) lines.push('', `- ${ICON[f.level]} \`${f.code}\` ${f.message}`);
+    lines.push('');
+    void id;
+  }
+  return lines.join('\n');
+}
+
+function buildReport(runs: PersonaRun[], globals: Finding[], sims: SimulationResult[]): string {
   const total = counts(runs.flatMap((r) => r.findings));
   const lines: string[] = [];
   lines.push('# Test dei piani generati dai questionari', '');
@@ -147,6 +160,7 @@ function buildReport(runs: PersonaRun[], globals: Finding[]): string {
     for (const g of globals) lines.push(`- ${ICON[g.level]} \`${g.code}\` ${g.message}`);
     lines.push('', '---', '');
   }
+  if (sims.length) lines.push(simulationSection(sims), '---', '');
   for (const r of runs) lines.push(personaSection(r), '---', '');
   return lines.join('\n');
 }
@@ -173,9 +187,11 @@ async function main() {
     }
     runs = [];
     for (const persona of personas) {
-      const targets = computeTargetsForAnswers(persona.answers);
+      const aiCtx = buildUserContext(persona.answers);
+      const aiBundle = buildPlans(aiCtx);
+      const targets = toNutritionTargets(aiCtx, aiBundle.monthTargets[0]);
       process.stdout.write(`Chiedo la strategia all'agente AI per ${persona.id}… `);
-      const strategy = await session.call(persona, targets, computePlanDurationMonths(persona.answers));
+      const strategy = await session.call(persona, targets, aiBundle.durationMonths);
       console.log(strategy ? 'ok' : 'nessuna strategia');
       runs.push(generateForPersona(persona, strategy, true));
     }
@@ -192,18 +208,26 @@ async function main() {
       console.log(`     ${ICON[f.level]} ${f.code} ${f.message}`);
     }
   }
+  const sims = runs
+    .filter((r) => r.bundle.diet)
+    .flatMap((r) => SCENARIOS.map((sc) => simulate(r.persona, sc)));
+  const simFindings = sims.flatMap((x) => x.findings);
+  if (simFindings.length) {
+    console.log('\nSimulazione della ricalibrazione mensile');
+    for (const sim of sims) for (const f of sim.findings) console.log(`     ${ICON[f.level]} ${f.code} ${sim.persona.id}: ${f.message}`);
+  } else console.log(`\nSimulazione della ricalibrazione mensile: ${sims.length} scenari ok`);
   const globals = checkGlobal();
   if (globals.length) {
     console.log('\nControlli generali dell’app');
     for (const g of globals) console.log(`     ${ICON[g.level]} ${g.code} ${g.message}`);
   }
-  const total = counts([...runs.flatMap((r) => r.findings), ...globals]);
+  const total = counts([...runs.flatMap((r) => r.findings), ...globals, ...simFindings]);
   console.log(`\nTotale: ${total.fail} errori, ${total.warn} avvisi, ${total.info} note su ${runs.length} questionari`);
 
   const dir = join(dirname(fileURLToPath(import.meta.url)), 'reports');
   mkdirSync(dir, { recursive: true });
   const file = join(dir, only ? `persona-${only}.md` : 'latest.md');
-  writeFileSync(file, buildReport(runs, globals), 'utf8');
+  writeFileSync(file, buildReport(runs, globals, sims), 'utf8');
   console.log(`Report: ${file}`);
   process.exit(total.fail > 0 ? 1 : 0);
 }

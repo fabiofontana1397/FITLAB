@@ -1,75 +1,554 @@
 # Test dei piani generati dai questionari
 
-Generato il 2026-10-07 17:29 — 18 questionari finti, piani creati con i generatori reali dell’app.
+Generato il 2026-10-07 17:55 — 16 questionari finti, piani creati con i generatori reali dell’app.
 
-**Totale:** 31 errori · 128 avvisi · 41 note
+**Totale:** 0 errori · 8 avvisi · 21 note
 
 | Persona | Target kcal | P/C/G (g) | Mesi | Palestra/Corsa a sett. | Errori | Avvisi |
 |---|---|---|---|---|---|---|
-| Marco, 32 anni | 1938 | 202/161/54 | 5 | 3/0 | 2 | 6 |
-| Giulia, 27 anni | 2006 | 112/264/56 | 4 | 4/0 | 1 | 5 |
-| Luca, 22 anni | 2875 | 136/403/80 | 7 | 5/0 | 2 | 9 |
-| Anna, 45 anni | 1373 | 172/86/38 | 6 | 2/0 | 2 | 8 |
-| Paolo, 38 anni | 2583 | 115/369/72 | 4 | 0/4 | 3 | 7 |
-| Sara, 30 anni | 2098 | 116/278/58 | 4 | 3/0 | 0 | 8 |
-| Roberto, 58 anni | 2546 | 144/333/71 | 4 | 2/0 | 2 | 7 |
-| Elena, 35 anni | 1200 | 110/116/33 | 2 | 3/0 | 2 | 5 |
-| Davide, 28 anni | 3234 | 275/331/90 | 12 | 4/0 | 1 | 12 |
-| Chiara, 25 anni | 1680 | 132/182/47 | 2 | 2/2 | 1 | 9 |
-| Andrea, 40 anni | 1702 | 176/144/47 | 3 | –/– | 2 | 6 |
-| Ilaria, 29 anni | 2126 | 128/271/59 | 2 | 4/0 | 0 | 0 |
-| Giorgio, 34 anni | 2358 | 148/293/66 | 4 | 3/0 | 1 | 11 |
-| Valentina, 31 anni | 2193 | 132/279/61 | 3 | 5/0 | 2 | 6 |
-| Franco, 67 anni | 1876 | 125/227/52 | 4 | 1/0 | 1 | 9 |
-| Tommaso, 35 anni | 2143 | 144/257/60 | 4 | 3/0 | 2 | 8 |
-| Nina, 33 anni | 1603 | 154/146/45 | 4 | 3/0 | 3 | 6 |
-| Omar, 41 anni | 1903 | 187/170/53 | 4 | –/– | 4 | 6 |
+| Sofia, 16 anni | 1703 | 88/209/57 | 4 | 2/0 | 0 | 0 |
+| Matteo, 17 anni | 2601 | 118/337/87 | 5 | 3/0 | 0 | 0 |
+| Giulia, 24 anni | 1506 | 112/152/50 | 4 | 3/0 | 0 | 1 |
+| Luca, 22 anni | 2759 | 129/353/92 | 9 | 5/0 | 0 | 0 |
+| Alessandro, 29 anni | 3370 | 128/463/112 | 4 | 4/2 | 0 | 1 |
+| Marco, 32 anni | 1913 | 143/192/64 | 6 | 3/0 | 0 | 0 |
+| Chiara, 25 anni | 1591 | 119/160/53 | 3 | 2/2 | 0 | 1 |
+| Paolo, 38 anni | 2579 | 108/344/86 | 4 | 0/4 | 0 | 1 |
+| Andrea, 40 anni | 1702 | 127/170/57 | 3 | –/– | 0 | 2 |
+| Ilaria, 29 anni | 2143 | 122/254/71 | 5 | 4/0 | 0 | 0 |
+| Anna, 52 anni | 1238 | 92/107/49 | 5 | 2/0 | 0 | 0 |
+| Roberto, 58 anni | 2387 | 115/302/80 | 4 | 2/0 | 0 | 0 |
+| Franco, 60 anni | 1892 | 109/223/63 | 4 | 1/0 | 0 | 0 |
+| Tommaso, 35 anni | 2184 | 128/254/73 | 4 | 1/0 | 0 | 0 |
+| Nina, 33 anni | 1586 | 118/159/53 | 4 | 3/0 | 0 | 0 |
+| Omar, 41 anni | 1734 | 130/171/59 | 5 | –/– | 0 | 2 |
 
 ## Controlli generali dell’app
 
-- ❌ `G1` Gli id dei pasti "Segui il piano" (plan-<data>-<pasto>-<n>) non contengono l’utente ma meal_entries.id è chiave primaria globale: due utenti che seguono il piano nello stesso giorno si scontrano e il salvataggio sul server del secondo fallisce in silenzio
-- ℹ️ `G2` Nei fusi orari a ovest di Greenwich il giorno della settimana del piano slitta di un giorno (mondayIndex su date ISO): corretto in Italia, sbagliato per utenti in America
-- ℹ️ `G3` Peso obiettivo facoltativo ma, se vuoto, il profilo salva 75 kg (valore inventato)
-- ⚠️ `G4` generatePlans non ha try/catch: se un generatore lancia un errore isGenerating resta true e la schermata "stiamo creando il tuo piano" non finisce mai
-- ❌ `G5` Le risposte vengono salvate sul server a ogni domanda e, al successivo avvio, bastano risposte parziali per considerare l’onboarding completato: chi abbandona il questionario a metà trova Home con profilo a zero e piani generati con target 0 kcal
+- ❌ `G1` Gli id dei pasti "Segui il piano" non contengono l’utente ma meal_entries.id è chiave primaria globale: due utenti nello stesso giorno si scontrano
+- ℹ️ `G2` Giorno della settimana calcolato da date ISO con getDay() locale: slitta di un giorno a ovest di Greenwich
+- ❌ `G3` Il peso obiettivo vuoto diventa 75 kg nel profilo
+- ❌ `G4` generatePlans senza try/catch: un errore lascia isGenerating a true per sempre
+- ❌ `G5` Risposte parziali sul server bastano per considerare l’onboarding completato
+- ❌ `G6` Il hook dell’energia settimanale non usa il modello energetico unico (src/domain/energy.ts)
+- ❌ `G6` Home usa ancora il vecchio modello energetico
+- ⚠️ `G8` La tab Nutrizione mostra sempre i 6 pasti fissi invece di quelli scelti dall’utente
 
 ---
 
-## Marco, 32 anni — dimagrimento, principiante
+## Simulazione: ricalibrazione mensile su 6 mesi
 
-**Esito:** ❌ NON SUPERATO (2 errori, 6 avvisi, 2 note)
+Un corpo virtuale segue il piano; a fine mese l’agente di ricalibrazione vede le pesate (con rumore) e l’aderenza e rielabora dieta e allenamento. Si verifica che il peso vada verso l’obiettivo anche se il metabolismo reale si discosta dal modello del ±10%, e che con bassa aderenza non si corregga sui numeri.
 
-- **Chi è:** Impiegato sedentario, 92 kg per 178 cm, vuole scendere a 82 kg. Mai fatto palestra, 3 giorni a settimana, 45-60 min.
-- **Cosa ci aspettiamo:** Deficit moderato (non estremo), proteine alte, durata del piano intorno ai 5 mesi (10 kg a 0,5 kg/sett.), scheda full body principiante con mese 1 di adattamento.
+### Sofia, 16 anni — studentessa, vuole tonificarsi
+
+| Scenario | Peso (inizio → fine) | Ritmo medio | Verdetti mensili | Regolazione kcal |
+|---|---|---|---|---|
+| Modello accurato, piano seguito | 55 → 55.2 kg | 0.01 kg/sett. | on_track › on_track › on_track › on_track | 0, 0, 0, 0 |
+| Metabolismo più lento del 10% | 55 → 57.7 kg | 0.16 kg/sett. | on_track › on_track › on_track › on_track | 0, 0, 0, 0 |
+| Metabolismo più veloce del 10% | 55 → 52.5 kg | -0.15 kg/sett. | on_track › on_track › on_track › on_track | 0, 0, 0, 0 |
+| Segue il piano a metà (mangia il 20% in più, salta metà degli allenamenti) | 55 → 60.7 kg | 0.33 kg/sett. | low_adherence › low_adherence › low_adherence › low_adherence | 0, 0, 0, 0 |
+
+### Matteo, 17 anni — magro, vuole mettere massa
+
+| Scenario | Peso (inizio → fine) | Ritmo medio | Verdetti mensili | Regolazione kcal |
+|---|---|---|---|---|
+| Modello accurato, piano seguito | 62 → 67.5 kg | 0.26 kg/sett. | on_track › on_track › on_track › on_track › on_track | 0, 0, 0, 0, 0 |
+| Metabolismo più lento del 10% | 62 → 70.7 kg | 0.41 kg/sett. | too_fast › on_track › on_track › on_track › too_fast | -100, -100, -100, -100, -200 |
+| Metabolismo più veloce del 10% | 62 → 66.7 kg | 0.22 kg/sett. | plateau › too_slow › on_track › on_track › on_track | 150, 250, 250, 250, 250 |
+| Segue il piano a metà (mangia il 20% in più, salta metà degli allenamenti) | 62 → 78.8 kg | 0.78 kg/sett. | low_adherence › low_adherence › low_adherence › low_adherence › low_adherence | 0, 0, 0, 0, 0 |
+
+### Giulia, 24 anni — vuole dimagrire qualche kg
+
+| Scenario | Peso (inizio → fine) | Ritmo medio | Verdetti mensili | Regolazione kcal |
+|---|---|---|---|---|
+| Modello accurato, piano seguito | 62 → 56.5 kg | -0.32 kg/sett. | on_track › on_track › on_track › on_track | 0, 0, 0, 0 |
+| Metabolismo più lento del 10% | 62 → 58.2 kg | -0.22 kg/sett. | too_slow › on_track › on_track › on_track | -100, -100, -100, -100 |
+| Metabolismo più veloce del 10% | 62 → 54.6 kg | -0.43 kg/sett. | on_track › too_fast › on_track › on_track | 0, 100, 100, 100 |
+| Segue il piano a metà (mangia il 20% in più, salta metà degli allenamenti) | 62 → 61.6 kg | -0.03 kg/sett. | low_adherence › low_adherence › low_adherence › low_adherence | 0, 0, 0, 0 |
+
+### Luca, 22 anni — massa muscolare, esperto
+
+| Scenario | Peso (inizio → fine) | Ritmo medio | Verdetti mensili | Regolazione kcal |
+|---|---|---|---|---|
+| Modello accurato, piano seguito | 68 → 73.1 kg | 0.20 kg/sett. | on_track › on_track › on_track › on_track › on_track › on_track | 0, 0, 0, 0, 0, 0 |
+| Metabolismo più lento del 10% | 68 → 74.7 kg | 0.26 kg/sett. | too_fast › too_fast › too_fast › on_track › on_track › too_slow | -100, -200, -300, -300, -300, -200 |
+| Metabolismo più veloce del 10% | 68 → 71.4 kg | 0.13 kg/sett. | wrong_direction › on_track › on_track › plateau › on_track › on_track | 150, 150, 150, 300, 300, 300 |
+| Segue il piano a metà (mangia il 20% in più, salta metà degli allenamenti) | 68 → 89.2 kg | 0.82 kg/sett. | low_adherence › low_adherence › low_adherence › low_adherence › low_adherence › low_adherence | 0, 0, 0, 0, 0, 0 |
+
+### Alessandro, 29 anni — molto attivo, anni di esperienza
+
+| Scenario | Peso (inizio → fine) | Ritmo medio | Verdetti mensili | Regolazione kcal |
+|---|---|---|---|---|
+| Modello accurato, piano seguito | 80 → 80.2 kg | 0.01 kg/sett. | on_track › on_track › on_track › on_track | 0, 0, 0, 0 |
+| Metabolismo più lento del 10% | 80 → 84.1 kg | 0.24 kg/sett. | too_fast › on_track › too_fast › on_track | -100, -100, -200, -200 |
+| Metabolismo più veloce del 10% | 80 → 76.7 kg | -0.19 kg/sett. | too_slow › on_track › on_track › on_track | 100, 100, 100, 100 |
+| Segue il piano a metà (mangia il 20% in più, salta metà degli allenamenti) | 80 → 93.7 kg | 0.80 kg/sett. | low_adherence › low_adherence › low_adherence › low_adherence | 0, 0, 0, 0 |
+
+### Marco, 32 anni — dimagrimento, sedentario
+
+| Scenario | Peso (inizio → fine) | Ritmo medio | Verdetti mensili | Regolazione kcal |
+|---|---|---|---|---|
+| Modello accurato, piano seguito | 92 → 82 kg | -0.39 kg/sett. | on_track › on_track › on_track › on_track › on_track › on_track | 0, 0, 0, 0, 0, 0 |
+| Metabolismo più lento del 10% | 92 → 84 kg | -0.31 kg/sett. | too_slow › on_track › too_slow › on_track › on_track › on_track | -100, -100, -200, -200, -200, -200 |
+| Metabolismo più veloce del 10% | 92 → 76.7 kg | -0.59 kg/sett. | on_track › on_track › on_track › on_track › on_track › on_track | 0, 0, 0, 0, 0, 0 |
+| Segue il piano a metà (mangia il 20% in più, salta metà degli allenamenti) | 92 → 91.3 kg | -0.02 kg/sett. | low_adherence › low_adherence › low_adherence › low_adherence › low_adherence › low_adherence | 0, 0, 0, 0, 0, 0 |
+
+### Chiara, 25 anni — palestra + corsa con 4 giorni disponibili
+
+| Scenario | Peso (inizio → fine) | Ritmo medio | Verdetti mensili | Regolazione kcal |
+|---|---|---|---|---|
+| Modello accurato, piano seguito | 60 → 55.8 kg | -0.33 kg/sett. | on_track › on_track › on_track | 0, 0, 0 |
+| Metabolismo più lento del 10% | 60 → 56.8 kg | -0.25 kg/sett. | too_slow › too_slow › on_track | -100, -200, -200 |
+| Metabolismo più veloce del 10% | 60 → 53.6 kg | -0.50 kg/sett. | on_track › on_track › on_track | 0, 0, 0 |
+| Segue il piano a metà (mangia il 20% in più, salta metà degli allenamenti) | 60 → 60.1 kg | 0.01 kg/sett. | low_adherence › low_adherence › low_adherence | 0, 0, 0 |
+
+### Paolo, 38 anni — solo corsa, resistenza
+
+| Scenario | Peso (inizio → fine) | Ritmo medio | Verdetti mensili | Regolazione kcal |
+|---|---|---|---|---|
+| Modello accurato, piano seguito | 72 → 72.8 kg | 0.05 kg/sett. | on_track › on_track › on_track › on_track | 0, 0, 0, 0 |
+| Metabolismo più lento del 10% | 72 → 75.7 kg | 0.22 kg/sett. | on_track › too_fast › on_track › on_track | 0, -100, -100, -100 |
+| Metabolismo più veloce del 10% | 72 → 68.6 kg | -0.20 kg/sett. | on_track › on_track › on_track › too_slow | 0, 0, 0, 100 |
+| Segue il piano a metà (mangia il 20% in più, salta metà degli allenamenti) | 72 → 83 kg | 0.64 kg/sett. | low_adherence › low_adherence › low_adherence › low_adherence | 0, 0, 0, 0 |
+
+### Andrea, 40 anni — solo dieta
+
+| Scenario | Peso (inizio → fine) | Ritmo medio | Verdetti mensili | Regolazione kcal |
+|---|---|---|---|---|
+| Modello accurato, piano seguito | 80 → 75.2 kg | -0.37 kg/sett. | on_track › on_track › on_track | 0, 0, 0 |
+| Metabolismo più lento del 10% | 80 → 77 kg | -0.23 kg/sett. | on_track › too_slow › on_track | 0, -100, -100 |
+| Metabolismo più veloce del 10% | 80 → 73.4 kg | -0.51 kg/sett. | too_fast › on_track › on_track | 100, 100, 100 |
+| Segue il piano a metà (mangia il 20% in più, salta metà degli allenamenti) | 80 → 79 kg | -0.07 kg/sett. | low_adherence › low_adherence › low_adherence | 0, 0, 0 |
+
+### Anna, 52 anni — dimagrimento, sedentaria, fastidio al ginocchio
+
+| Scenario | Peso (inizio → fine) | Ritmo medio | Verdetti mensili | Regolazione kcal |
+|---|---|---|---|---|
+| Modello accurato, piano seguito | 70 → 64.4 kg | -0.26 kg/sett. | on_track › on_track › on_track › on_track › on_track | 0, 0, 0, 0, 0 |
+| Metabolismo più lento del 10% | 70 → 66.8 kg | -0.15 kg/sett. | too_slow › plateau › on_track › too_slow › too_slow | -38, -38, -38, -38, -38 |
+| Metabolismo più veloce del 10% | 70 → 62.3 kg | -0.36 kg/sett. | on_track › on_track › too_fast › on_track › on_track | 0, 0, 100, 100, 100 |
+| Segue il piano a metà (mangia il 20% in più, salta metà degli allenamenti) | 70 → 69.4 kg | -0.03 kg/sett. | low_adherence › low_adherence › low_adherence › low_adherence › low_adherence | 0, 0, 0, 0, 0 |
+
+### Roberto, 58 anni — salute generale, lavoro in piedi
+
+| Scenario | Peso (inizio → fine) | Ritmo medio | Verdetti mensili | Regolazione kcal |
+|---|---|---|---|---|
+| Modello accurato, piano seguito | 82 → 82.1 kg | 0.00 kg/sett. | on_track › on_track › on_track › on_track | 0, 0, 0, 0 |
+| Metabolismo più lento del 10% | 82 → 85.4 kg | 0.20 kg/sett. | on_track › on_track › on_track › on_track | 0, 0, 0, 0 |
+| Metabolismo più veloce del 10% | 82 → 78.6 kg | -0.20 kg/sett. | on_track › on_track › too_slow › on_track | 0, 0, 100, 100 |
+| Segue il piano a metà (mangia il 20% in più, salta metà degli allenamenti) | 82 → 90 kg | 0.46 kg/sett. | low_adherence › low_adherence › low_adherence › low_adherence | 0, 0, 0, 0 |
+
+### Franco, 60 anni — pensionato, un solo giorno
+
+| Scenario | Peso (inizio → fine) | Ritmo medio | Verdetti mensili | Regolazione kcal |
+|---|---|---|---|---|
+| Modello accurato, piano seguito | 78 → 78 kg | 0.00 kg/sett. | on_track › on_track › on_track › on_track | 0, 0, 0, 0 |
+| Metabolismo più lento del 10% | 78 → 81.1 kg | 0.18 kg/sett. | on_track › on_track › on_track › too_fast | 0, 0, 0, -100 |
+| Metabolismo più veloce del 10% | 78 → 75.3 kg | -0.15 kg/sett. | on_track › on_track › on_track › on_track | 0, 0, 0, 0 |
+| Segue il piano a metà (mangia il 20% in più, salta metà degli allenamenti) | 78 → 84.1 kg | 0.35 kg/sett. | low_adherence › low_adherence › low_adherence › low_adherence | 0, 0, 0, 0 |
+
+### Tommaso, 35 anni — si allena una volta ogni due settimane
+
+| Scenario | Peso (inizio → fine) | Ritmo medio | Verdetti mensili | Regolazione kcal |
+|---|---|---|---|---|
+| Modello accurato, piano seguito | 80 → 80.1 kg | 0.01 kg/sett. | on_track › on_track › on_track › on_track | 0, 0, 0, 0 |
+| Metabolismo più lento del 10% | 80 → 83 kg | 0.17 kg/sett. | on_track › on_track › too_fast › on_track | 0, 0, -100, -100 |
+| Metabolismo più veloce del 10% | 80 → 76.7 kg | -0.20 kg/sett. | on_track › on_track › on_track › too_slow | 0, 0, 0, 100 |
+| Segue il piano a metà (mangia il 20% in più, salta metà degli allenamenti) | 80 → 87.1 kg | 0.41 kg/sett. | low_adherence › low_adherence › low_adherence › low_adherence | 0, 0, 0, 0 |
+
+### Nina, 33 anni — dimagrimento senza peso obiettivo
+
+| Scenario | Peso (inizio → fine) | Ritmo medio | Verdetti mensili | Regolazione kcal |
+|---|---|---|---|---|
+| Modello accurato, piano seguito | 70 → 64.3 kg | -0.33 kg/sett. | on_track › on_track › on_track › on_track | 0, 0, 0, 0 |
+| Metabolismo più lento del 10% | 70 → 66 kg | -0.23 kg/sett. | too_slow › on_track › on_track › on_track | -100, -100, -100, -100 |
+| Metabolismo più veloce del 10% | 70 → 62.6 kg | -0.43 kg/sett. | too_fast › on_track › on_track › on_track | 100, 100, 100, 100 |
+| Segue il piano a metà (mangia il 20% in più, salta metà degli allenamenti) | 70 → 69.7 kg | -0.02 kg/sett. | low_adherence › low_adherence › low_adherence › low_adherence | 0, 0, 0, 0 |
+
+### Omar, 41 anni — ora solo dieta, ma rimaste vecchie risposte di allenamento
+
+| Scenario | Peso (inizio → fine) | Ritmo medio | Verdetti mensili | Regolazione kcal |
+|---|---|---|---|---|
+| Modello accurato, piano seguito | 85 → 77.1 kg | -0.37 kg/sett. | on_track › on_track › on_track › on_track › on_track | 0, 0, 0, 0, 0 |
+| Metabolismo più lento del 10% | 85 → 79.6 kg | -0.25 kg/sett. | on_track › too_slow › on_track › on_track › on_track | 0, -100, -100, -100, -100 |
+| Metabolismo più veloce del 10% | 85 → 74.3 kg | -0.50 kg/sett. | too_fast › on_track › on_track › on_track › on_track | 100, 100, 100, 100, 100 |
+| Segue il piano a metà (mangia il 20% in più, salta metà degli allenamenti) | 85 → 83.3 kg | -0.08 kg/sett. | low_adherence › low_adherence › low_adherence › low_adherence › low_adherence | 0, 0, 0, 0, 0 |
+
+---
+
+## Sofia, 16 anni — studentessa, vuole tonificarsi
+
+**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 1 note)
+
+- **Chi è:** Ragazza di 16 anni, 55 kg per 165 cm, vita da studente (sedentaria), mai fatto palestra. 2 allenamenti a settimana.
+- **Cosa ci aspettiamo:** Sotto i 18 anni nessun deficit: calorie di mantenimento, proteine moderate, scheda principiante con 2 sedute full body.
 
 | Dati | Valore |
 |---|---|
-| Profilo | male · 32 anni · 178 cm · 92 kg → 82 kg · obiettivo `loseFat` |
-| Metabolismo basale / fabbisogno | 1878 / 2422 kcal |
-| Target calorico | **1938 kcal** (-20% sul fabbisogno) |
-| Macro | P 202 g (2.2 g/kg) · C 161 g · G 54 g |
-| Idratazione | 3220 ml |
-| Durata piano | 5 mesi |
+| Profilo | female · 16 anni · 165 cm · 55 kg → 55 kg · obiettivo `maintainImprove` |
+| Metabolismo basale / fabbisogno | 1340 / 1703 kcal |
+| Target calorico | **1703 kcal** (0% sul fabbisogno) |
+| Macro | P 88 g (1.6 g/kg) · C 209 g · G 57 g |
+| Idratazione | 1925 ml |
+| Durata piano | 4 mesi |
 
-**Piano alimentare** — mesi: 1·2088 kcal → 2·1938 kcal → 3·1938 kcal → 4·1938 kcal → 5·1938 kcal
+**Piano alimentare** — mesi: 1·1703 kcal → 2·1703 kcal → 3·1703 kcal → 4·1703 kcal
 
 Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Uova intere 3 uova, Fiocchi d’avena 60g, Banana 1 banana | 604 |
-| Pranzo 13:00 | Petto di tacchino 260g, Pane integrale 125g, Olio EVO 10g, Noci 20g, Spinaci 150g | 914 |
-| Cena 20:00 | Uova intere 4 uova, Riso basmati (cotto) 170g, Olio EVO 10g, Mandorle 30g, Zucchine 150g | 796 |
+| Colazione 07:30 | Banana 1 banana, Uova intere 2 uova, Fiocchi d’avena 55g | 476 |
+| Pranzo 13:00 | Spinaci 150g, Olio EVO 5g, Salmone 105g, Patate (bollite) 350g, Riso basmati (cotto) 60g | 675 |
+| Cena 20:00 | Zucchine 150g, Olio EVO 5g, Yogurt greco 250g, Patate dolci 325g | 593 |
 
-Totale Lun: **2313 kcal** · P 171 g · C 184 g · G 103 g
+Totale Lun: **1742 kcal** · P 87 g · C 234 g · G 53 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Yogurt greco 230g, Pane integrale 80g, Banana 1 banana | 528 |
-| Pranzo 13:00 | Uova intere 4 uova, Pasta (cotta) 140g, Olio EVO 10g, Mandorle 25g, Broccoli 150g | 800 |
-| Cena 20:00 | _pasto libero_ | 647 |
+| Colazione 07:30 | Banana 1 banana, Uova intere 3 uova, Fiocchi d’avena 40g | 496 |
+| Pranzo 13:00 | Broccoli 150g, Olio EVO 5g, Salmone 120g, Patate dolci 320g | 620 |
+| Cena 20:00 | _pasto libero_ | 557 |
 
-Totale Sab: **1327 kcal** · P 75 g · C 130 g · G 60 g
+Totale Sab: **1115 kcal** · P 61 g · C 130 g · G 41 g
+
+**Mese 1 — Mese 1 · Adattamento e tecnica**
+
+| Giorno | Seduta | Dettaglio |
+|---|---|---|
+| Lun | Upper | Panca piana 3×10 @13kg; Trazioni alla sbarra 3×10; Military press 3×10 @9kg; Curl bicipiti 3×10 @4kg; Chest press macchina 3×10 |
+| Mar | Riposo | |
+| Mer | Riposo | |
+| Gio | Lower | Back squat 3×10 @19kg; Romanian deadlift 3×10 @15kg; Leg press 3×10 @25kg; Affondi 3×10 @4kg; Hip thrust 3×10 @13kg |
+| Ven | Riposo | |
+| Sab | Riposo | |
+| Dom | Riposo | |
+
+**Mese 4 — Mese 4 · Consolidamento**
+
+| Giorno | Seduta | Dettaglio |
+|---|---|---|
+| Lun | Upper | Panca piana 3×10 @16kg; Trazioni alla sbarra 3×10; Military press 3×10 @11kg; Curl bicipiti 3×10 @4.5kg; Chest press macchina 3×10 |
+| Mar | Riposo | |
+| Mer | Riposo | |
+| Gio | Lower | Back squat 3×10 @22.5kg; Romanian deadlift 3×10 @19kg; Leg press 3×10 @30kg; Affondi 3×10 @4.5kg; Hip thrust 3×10 @16kg |
+| Ven | Riposo | |
+| Sab | Riposo | |
+| Dom | Riposo | |
+
+**Controlli**
+
+- ℹ️ `D14` Dal mese 2 in poi il target è identico (1703 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
+
+---
+
+## Matteo, 17 anni — magro, vuole mettere massa
+
+**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 1 note)
+
+- **Chi è:** Ragazzo di 17 anni, 62 kg per 176 cm, vuole arrivare a 67 kg. Principiante, 3 allenamenti a settimana.
+- **Cosa ci aspettiamo:** Surplus lieve e sostenuto, proteine ~1,9 g/kg, split full body per principianti, mese di adattamento.
+
+| Dati | Valore |
+|---|---|
+| Profilo | male · 17 anni · 176 cm · 62 kg → 67 kg · obiettivo `gainMuscle` |
+| Metabolismo basale / fabbisogno | 1640 / 2322 kcal |
+| Target calorico | **2601 kcal** (12% sul fabbisogno) |
+| Macro | P 118 g (1.9 g/kg) · C 337 g · G 87 g |
+| Idratazione | 2170 ml |
+| Durata piano | 5 mesi |
+
+**Piano alimentare** — mesi: 1·2601 kcal → 2·2601 kcal → 3·2601 kcal → 4·2601 kcal → 5·2601 kcal
+
+Esempio giorno di allenamento (Lun) e pasto libero (Sab):
+
+| Pasto | Alimenti | kcal |
+|---|---|---|
+| Colazione 07:30 | Banana 1 banana, Uova intere 1 uovo, Fiocchi d’avena 85g, Yogurt greco 100g, Mela 1 mela, Mandorle 10g | 749 |
+| Pranzo 13:00 | Spinaci 150g, Olio EVO 10g, Salmone 140g, Patate (bollite) 350g, Riso basmati (cotto) 245g | 1015 |
+| Cena 20:00 | Zucchine 150g, Olio EVO 10g, Salmone 145g, Patate dolci 350g, Riso basmati (cotto) 150g | 899 |
+
+Totale Lun: **2661 kcal** · P 120 g · C 360 g · G 82 g
+
+| Pasto | Alimenti | kcal |
+|---|---|---|
+| Colazione 07:30 | Banana 1 banana, Uova intere 2 uova, Fiocchi d’avena 90g, Mandorle 10g | 670 |
+| Pranzo 13:00 | Broccoli 150g, Olio EVO 10g, Salmone 160g, Patate dolci 350g, Riso basmati (cotto) 160g | 967 |
+| Cena 20:00 | _pasto libero_ | 849 |
+
+Totale Sab: **1637 kcal** · P 78 g · C 211 g · G 55 g
+
+**Mese 1 — Mese 1 · Adattamento e tecnica**
+
+| Giorno | Seduta | Dettaglio |
+|---|---|---|
+| Lun | Full Body | Back squat 3×12 @30kg; Panca piana 3×12 @20kg; Rematore con bilanciere 3×12 @16kg; Plank 3×12; Leg press 3×12 @40kg |
+| Mar | Riposo | |
+| Mer | Full Body | Back squat 3×12 @30kg; Panca piana 3×12 @20kg; Rematore con bilanciere 3×12 @16kg; Plank 3×12; Leg press 3×12 @40kg |
+| Gio | Riposo | |
+| Ven | Full Body | Back squat 3×12 @30kg; Panca piana 3×12 @20kg; Rematore con bilanciere 3×12 @16kg; Plank 3×12; Leg press 3×12 @40kg |
+| Sab | Riposo | |
+| Dom | Riposo | |
+
+**Mese 5 — Mese 5 · Consolidamento**
+
+| Giorno | Seduta | Dettaglio |
+|---|---|---|
+| Lun | Full Body | Back squat 5×8-12 @37.5kg; Panca piana 5×8-12 @25kg; Plank 5×8-12; Leg press 5×8-12 @52.5kg; Chest press macchina 5×8-12 |
+| Mar | Riposo | |
+| Mer | Full Body | Back squat 5×8-12 @37.5kg; Panca piana 5×8-12 @25kg; Plank 5×8-12; Leg press 5×8-12 @52.5kg; Chest press macchina 5×8-12 |
+| Gio | Riposo | |
+| Ven | Full Body | Back squat 5×8-12 @37.5kg; Panca piana 5×8-12 @25kg; Plank 5×8-12; Leg press 5×8-12 @52.5kg; Chest press macchina 5×8-12 |
+| Sab | Riposo | |
+| Dom | Riposo | |
+
+**Controlli**
+
+- ℹ️ `D14` Dal mese 2 in poi il target è identico (2601 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
+
+---
+
+## Giulia, 24 anni — vuole dimagrire qualche kg
+
+**Esito:** ⚠️ SUPERATO CON AVVISI (0 errori, 1 avvisi, 1 note)
+
+- **Chi è:** Studentessa universitaria, 62 kg per 166 cm, vuole scendere a 57 kg. Poco attiva, principiante, 3 allenamenti.
+- **Cosa ci aspettiamo:** Deficit moderato, proteine alte, durata ~5-6 mesi, scheda full body principiante.
+
+| Dati | Valore |
+|---|---|
+| Profilo | female · 24 anni · 166 cm · 62 kg → 57 kg · obiettivo `loseFat` |
+| Metabolismo basale / fabbisogno | 1377 / 1882 kcal |
+| Target calorico | **1506 kcal** (-20% sul fabbisogno) |
+| Macro | P 112 g (1.8 g/kg) · C 152 g · G 50 g |
+| Idratazione | 2170 ml |
+| Durata piano | 4 mesi |
+
+**Piano alimentare** — mesi: 1·1506 kcal → 2·1506 kcal → 3·1506 kcal → 4·1506 kcal
+
+Esempio giorno di allenamento (Lun) e pasto libero (Sab):
+
+| Pasto | Alimenti | kcal |
+|---|---|---|
+| Colazione 07:30 | Banana 1 banana, Fiocchi di latte 225g, Pane integrale 45g | 439 |
+| Pranzo 13:00 | Spinaci 150g, Olio EVO 5g, Fiocchi di latte 185g, Ceci (cotti) 205g | 596 |
+| Cena 20:00 | Zucchine 150g, Ricotta 120g, Lenticchie (cotte) 250g | 491 |
+
+Totale Lun: **1525 kcal** · P 110 g · C 179 g · G 45 g
+
+| Pasto | Alimenti | kcal |
+|---|---|---|
+| Colazione 07:30 | Banana 1 banana, Uova intere 3 uova, Yogurt greco 125g | 461 |
+| Pranzo 13:00 | Broccoli 150g, Yogurt greco 300g, Ceci (cotti) 110g | 522 |
+| Cena 20:00 | _pasto libero_ | 484 |
+
+Totale Sab: **983 kcal** · P 73 g · C 85 g · G 42 g
+
+**Mese 1 — Mese 1 · Adattamento e tecnica**
+
+| Giorno | Seduta | Dettaglio |
+|---|---|---|
+| Lun | Full Body | Back squat 3×15 @22.5kg; Panca piana 3×15 @14kg; Rematore con bilanciere 3×15 @12kg; Plank 3×15; Leg press 3×15 @30kg |
+| Mar | Riposo | |
+| Mer | Full Body | Back squat 3×15 @22.5kg; Panca piana 3×15 @14kg; Rematore con bilanciere 3×15 @12kg; Plank 3×15; Leg press 3×15 @30kg |
+| Gio | Riposo | |
+| Ven | Full Body | Back squat 3×15 @22.5kg; Panca piana 3×15 @14kg; Rematore con bilanciere 3×15 @12kg; Plank 3×15; Leg press 3×15 @30kg |
+| Sab | Riposo | |
+| Dom | Riposo | |
+
+**Mese 4 — Mese 4 · Consolidamento**
+
+| Giorno | Seduta | Dettaglio |
+|---|---|---|
+| Lun | Full Body | Back squat 3×12-15 @25kg; Panca piana 3×12-15 @18kg; Rematore con bilanciere 3×12-15 @15kg; Plank 3×12-15; Leg press 3×12-15 @37.5kg |
+| Mar | Riposo | |
+| Mer | Full Body | Back squat 3×12-15 @25kg; Panca piana 3×12-15 @18kg; Rematore con bilanciere 3×12-15 @15kg; Plank 3×12-15; Leg press 3×12-15 @37.5kg |
+| Gio | Riposo | |
+| Ven | Full Body | Back squat 3×12-15 @25kg; Panca piana 3×12-15 @18kg; Rematore con bilanciere 3×12-15 @15kg; Plank 3×12-15; Leg press 3×12-15 @37.5kg |
+| Sab | Riposo | |
+| Dom | Riposo | |
+
+**Controlli**
+
+- ⚠️ `D5` Carboidrati: i pasti danno in media il 106% del target (giorno peggiore: 32% di scarto)
+- ℹ️ `D14` Dal mese 2 in poi il target è identico (1506 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
+
+---
+
+## Luca, 22 anni — massa muscolare, esperto
+
+**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 1 note)
+
+- **Chi è:** Studente magro (68 kg per 180 cm), vuole arrivare a 75 kg. Esperto, 5 allenamenti a settimana da 60-90 min, 5 pasti.
+- **Cosa ci aspettiamo:** Surplus controllato, proteine ~1,9 g/kg, split a 5 giorni senza mese di adattamento, progressione di carichi mese dopo mese.
+
+| Dati | Valore |
+|---|---|
+| Profilo | male · 22 anni · 180 cm · 68 kg → 75 kg · obiettivo `gainMuscle` |
+| Metabolismo basale / fabbisogno | 1700 / 2555 kcal |
+| Target calorico | **2759 kcal** (8% sul fabbisogno) |
+| Macro | P 129 g (1.9 g/kg) · C 353 g · G 92 g |
+| Idratazione | 2730 ml |
+| Durata piano | 9 mesi |
+
+**Piano alimentare** — mesi: 1·2759 kcal → 2·2759 kcal → 3·2759 kcal → 4·2759 kcal → 5·2759 kcal → 6·2759 kcal → 7·2759 kcal → 8·2759 kcal → 9·2759 kcal
+
+Esempio giorno di allenamento (Lun) e pasto libero (Sab):
+
+| Pasto | Alimenti | kcal |
+|---|---|---|
+| Colazione 07:30 | Banana 1 banana, Uova intere 1 uovo, Pane integrale 120g, Fiocchi d’avena 25g, Mandorle 15g | 665 |
+| Spuntino mattina 10:30 | Mela 1 mela, Uova intere 1 uovo, Pane integrale 35g | 232 |
+| Pranzo 13:00 | Zucchine 150g, Olio EVO 10g, Yogurt greco 300g, Patate dolci 350g, Riso basmati (cotto) 155g | 894 |
+| Spuntino pomeriggio 17:00 | Mirtilli 100g, Proteine whey (polvere) 5g, Pane integrale 45g, Mandorle 10g | 245 |
+| Cena 20:00 | Fagiolini 150g, Olio EVO 10g, Yogurt greco 280g, Riso basmati (cotto) 310g | 782 |
+
+Totale Lun: **2816 kcal** · P 130 g · C 388 g · G 85 g
+
+| Pasto | Alimenti | kcal |
+|---|---|---|
+| Colazione 07:30 | Banana 1 banana, Uova intere 2 uova, Fiocchi d’avena 100g | 651 |
+| Spuntino mattina 10:30 | Mela 1 mela, Uova intere 1 uovo, Pane integrale 35g | 232 |
+| Pranzo 13:00 | Spinaci 150g, Olio EVO 10g, Manzo magro 95g, Patate dolci 350g, Riso basmati (cotto) 175g, Mandorle 15g | 901 |
+| Spuntino pomeriggio 17:00 | Mirtilli 100g, Proteine whey (polvere) 5g, Pane integrale 45g, Mandorle 10g | 245 |
+| Cena 20:00 | _pasto libero_ | 789 |
+
+Totale Sab: **2028 kcal** · P 99 g · C 285 g · G 59 g
+
+**Mese 1 — Mese 1 · Sovraccarico progressivo**
+
+| Giorno | Seduta | Dettaglio |
+|---|---|---|
+| Lun | Push | Panca piana 4×8-12 @40kg; Military press 4×8-12 @27.5kg; Dip alle parallele 4×8-12; Alzate laterali 4×8-12 @4kg; Chest press macchina 4×8-12; Push-up 4×8-12 |
+| Mar | Pull | Stacco da terra 4×8-12 @70kg; Trazioni zavorrate 4×8-12; Rematore con bilanciere 4×8-12 @32.5kg; Curl bicipiti 4×8-12 @12kg; Lat machine 4×8-12; Rematore con manubrio 4×8-12 @9kg |
+| Mer | Riposo | |
+| Gio | Legs | Back squat 4×8-12 @57.5kg; Romanian deadlift 4×8-12 @47.5kg; Leg press 4×8-12 @77.5kg; Affondi 4×8-12 @12kg; Hip thrust 4×8-12 @40kg; Leg curl machine 4×8-12 |
+| Ven | Upper | Panca piana 4×8-12 @40kg; Trazioni alla sbarra 4×8-12; Military press 4×8-12 @27.5kg; Curl bicipiti 4×8-12 @12kg; Chest press macchina 4×8-12; Lat machine 4×8-12 |
+| Sab | Lower | Back squat 4×8-12 @57.5kg; Romanian deadlift 4×8-12 @47.5kg; Leg press 4×8-12 @77.5kg; Affondi 4×8-12 @12kg; Hip thrust 4×8-12 @40kg; Leg curl machine 4×8-12 |
+| Dom | Riposo | |
+
+**Mese 9 — Mese 9 · Consolidamento**
+
+| Giorno | Seduta | Dettaglio |
+|---|---|---|
+| Lun | Push | Panca piana 5×8-12 @47.5kg; Military press 5×8-12 @32.5kg; Push-up 5×8-12; Dip alle parallele 5×8-12; Alzate laterali 5×8-12 @5kg; Chest press macchina 5×8-12 |
+| Mar | Pull | Stacco da terra 5×8-12 @85kg; Trazioni zavorrate 5×8-12; Rematore con manubrio 5×8-12 @11kg; Rematore con bilanciere 5×8-12 @40kg; Curl bicipiti 5×8-12 @14kg; Lat machine 5×8-12 |
+| Mer | Riposo | |
+| Gio | Legs | Back squat 5×8-12 @70kg; Romanian deadlift 5×8-12 @57.5kg; Leg curl machine 5×8-12; Abductor machine 5×8-12; Polpacci alla macchina 5×8-12; Leg press 5×8-12 @92.5kg |
+| Ven | Upper | Panca piana 5×8-12 @47.5kg; Trazioni alla sbarra 5×8-12; Lat machine 5×8-12; Military press 5×8-12 @32.5kg; Curl bicipiti 5×8-12 @14kg; Chest press macchina 5×8-12 |
+| Sab | Lower | Back squat 5×8-12 @70kg; Romanian deadlift 5×8-12 @57.5kg; Leg curl machine 5×8-12; Abductor machine 5×8-12; Polpacci alla macchina 5×8-12; Leg press 5×8-12 @92.5kg |
+| Dom | Riposo | |
+
+**Controlli**
+
+- ℹ️ `D14` Dal mese 2 in poi il target è identico (2759 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
+
+---
+
+## Alessandro, 29 anni — molto attivo, anni di esperienza
+
+**Esito:** ⚠️ SUPERATO CON AVVISI (0 errori, 1 avvisi, 2 note)
+
+- **Chi è:** Idraulico (lavoro fisico), 80 kg per 182 cm, 12.000+ passi al giorno. Palestra 4 volte + corsa 2 volte, esperto, vuole restare in forma.
+- **Cosa ci aspettiamo:** Fabbisogno alto (lavoro fisico + 6 sedute), calorie di mantenimento, alternanza sensata palestra/corsa su 6 giorni con almeno un riposo.
+
+| Dati | Valore |
+|---|---|
+| Profilo | male · 29 anni · 182 cm · 80 kg → 80 kg · obiettivo `maintainImprove` |
+| Metabolismo basale / fabbisogno | 1798 / 3370 kcal |
+| Target calorico | **3370 kcal** (0% sul fabbisogno) |
+| Macro | P 128 g (1.6 g/kg) · C 463 g · G 112 g |
+| Idratazione | 3150 ml |
+| Durata piano | 4 mesi |
+
+**Piano alimentare** — mesi: 1·3370 kcal → 2·3370 kcal → 3·3370 kcal → 4·3370 kcal
+
+Esempio giorno di allenamento (Lun) e pasto libero (Sab):
+
+| Pasto | Alimenti | kcal |
+|---|---|---|
+| Colazione 07:30 | Banana 1 banana, Uova intere 3 uova, Fiocchi d’avena 100g, Mela 2 mele, Olio EVO 10g | 947 |
+| Pranzo 13:00 | Spinaci 150g, Olio EVO 25g, Salmone 125g, Patate (bollite) 350g, Tonno al naturale 50g, Riso basmati (cotto) 350g | 1303 |
+| Cena 20:00 | Zucchine 150g, Olio EVO 10g, Salmone 135g, Patate dolci 350g, Yogurt greco 90g, Riso basmati (cotto) 300g | 1146 |
+
+Totale Lun: **3394 kcal** · P 148 g · C 446 g · G 113 g
+
+| Pasto | Alimenti | kcal |
+|---|---|---|
+| Colazione 07:30 | Banana 1 banana, Uova intere 3 uova, Fiocchi d’avena 100g, Mela 2 mele, Olio EVO 10g | 947 |
+| Pranzo 13:00 | Broccoli 150g, Olio EVO 20g, Salmone 145g, Patate dolci 350g, Tonno al naturale 40g, Riso basmati (cotto) 350g | 1301 |
+| Cena 20:00 | _pasto libero_ | 1138 |
+
+Totale Sab: **2247 kcal** · P 97 g · C 298 g · G 76 g
+
+**Mese 1 — Mese 1 · Sovraccarico progressivo**
+
+| Giorno | Seduta | Dettaglio |
+|---|---|---|
+| Lun | Push | Panca piana 5×3-5 @45kg; Military press 5×3-5 @32.5kg; Dip alle parallele 5×3-5; Alzate laterali 5×3-5 @4.5kg; Chest press macchina 5×3-5; Push-up 5×3-5 |
+| Mar | Pull | Stacco da terra 5×3-5 @82.5kg; Trazioni zavorrate 5×3-5; Rematore con bilanciere 5×3-5 @37.5kg; Curl bicipiti 5×3-5 @14kg; Lat machine 5×3-5; Rematore con manubrio 5×3-5 @11kg |
+| Mer | Legs | Back squat 5×3-5 @70kg; Romanian deadlift 5×3-5 @55kg; Leg press 5×3-5 @92.5kg; Affondi 5×3-5 @14kg; Hip thrust 5×3-5 @45kg; Leg curl machine 5×3-5 |
+| Gio | Riposo | |
+| Ven | Upper | Panca piana 5×3-5 @45kg; Trazioni alla sbarra 5×3-5; Military press 5×3-5 @32.5kg; Curl bicipiti 5×3-5 @14kg; Chest press macchina 5×3-5; Lat machine 5×3-5 |
+| Sab | Corsa | Corsa facile 35-40 min |
+| Dom | Corsa | Corsa a ritmo medio 30 min |
+
+**Mese 4 — Mese 4 · Consolidamento**
+
+| Giorno | Seduta | Dettaglio |
+|---|---|---|
+| Lun | Push | Panca piana 5×3-5 @47.5kg; Military press 5×3-5 @35kg; Alzate laterali 5×3-5 @5kg; Chest press macchina 5×3-5; Push-up 5×3-5; Dip alle parallele 5×3-5 |
+| Mar | Pull | Stacco da terra 5×3-5 @90kg; Trazioni zavorrate 5×3-5; Curl bicipiti 5×3-5 @15kg; Lat machine 5×3-5; Rematore con manubrio 5×3-5 @12kg; Rematore con bilanciere 5×3-5 @40kg |
+| Mer | Legs | Back squat 5×3-5 @75kg; Romanian deadlift 5×3-5 @60kg; Affondi 5×3-5 @15kg; Hip thrust 5×3-5 @47.5kg; Leg curl machine 5×3-5; Abductor machine 5×3-5 |
+| Gio | Riposo | |
+| Ven | Upper | Panca piana 5×3-5 @47.5kg; Trazioni alla sbarra 5×3-5; Curl bicipiti 5×3-5 @15kg; Chest press macchina 5×3-5; Lat machine 5×3-5; Military press 5×3-5 @35kg |
+| Sab | Corsa | Corsa facile 35-40 min |
+| Dom | Corsa | Corsa a ritmo medio 30 min |
+
+**Controlli**
+
+- ⚠️ `D5` Proteine: i pasti danno in media il 116% del target (giorno peggiore: 24% di scarto)
+- ℹ️ `D14` Dal mese 2 in poi il target è identico (3370 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
+- ℹ️ `S2` 2 sedute di corsa a settimana (es. "Corsa facile 35-40 min")
+
+---
+
+## Marco, 32 anni — dimagrimento, sedentario
+
+**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 1 note)
+
+- **Chi è:** Impiegato sedentario, 92 kg per 178 cm, vuole scendere a 82 kg. Mai fatto palestra, 3 giorni a settimana, 45-60 min.
+- **Cosa ci aspettiamo:** Deficit moderato (non estremo), proteine alte ma non esagerate, durata di circa 6-9 mesi, scheda full body principiante.
+
+| Dati | Valore |
+|---|---|
+| Profilo | male · 32 anni · 178 cm · 92 kg → 82 kg · obiettivo `loseFat` |
+| Metabolismo basale / fabbisogno | 1878 / 2391 kcal |
+| Target calorico | **1913 kcal** (-20% sul fabbisogno) |
+| Macro | P 143 g (1.6 g/kg) · C 192 g · G 64 g |
+| Idratazione | 3220 ml |
+| Durata piano | 6 mesi |
+
+**Piano alimentare** — mesi: 1·1913 kcal → 2·1913 kcal → 3·1913 kcal → 4·1913 kcal → 5·1913 kcal → 6·1913 kcal
+
+Esempio giorno di allenamento (Lun) e pasto libero (Sab):
+
+| Pasto | Alimenti | kcal |
+|---|---|---|
+| Colazione 07:30 | Banana 1 banana, Yogurt greco 300g, Fiocchi d’avena 15g, Uova intere 2 uova | 611 |
+| Pranzo 13:00 | Spinaci 150g, Olio EVO 5g, Yogurt greco 300g, Pane integrale 120g, Riso basmati (cotto) 80g | 763 |
+| Cena 20:00 | Zucchine 150g, Olio EVO 5g, Petto di pollo 120g, Riso basmati (cotto) 260g, Mandorle 15g | 670 |
+
+Totale Lun: **2043 kcal** · P 142 g · C 208 g · G 71 g
+
+| Pasto | Alimenti | kcal |
+|---|---|---|
+| Colazione 07:30 | Banana 1 banana, Uova intere 3 uova, Yogurt greco 225g | 558 |
+| Pranzo 13:00 | Broccoli 150g, Olio EVO 5g, Petto di tacchino 120g, Pasta (cotta) 180g, Mandorle 25g | 686 |
+| Cena 20:00 | _pasto libero_ | 610 |
+
+Totale Sab: **1244 kcal** · P 96 g · C 109 g · G 50 g
 
 **Mese 1 — Mese 1 · Adattamento e tecnica**
 
@@ -83,270 +562,95 @@ Totale Sab: **1327 kcal** · P 75 g · C 130 g · G 60 g
 | Sab | Riposo | |
 | Dom | Riposo | |
 
-**Mese 5 — Mese 5 · Consolidamento**
-
-| Giorno | Seduta | Dettaglio |
-|---|---|---|
-| Lun | Full Body | Back squat 3×12-15 @37.5kg; Panca piana 3×12-15 @25kg; Rematore con bilanciere 3×12-15 @20kg; Plank 3×12-15; Leg press 3×12-15 @50kg |
-| Mar | Riposo | |
-| Mer | Full Body | Back squat 3×12-15 @37.5kg; Panca piana 3×12-15 @25kg; Rematore con bilanciere 3×12-15 @20kg; Plank 3×12-15; Leg press 3×12-15 @50kg |
-| Gio | Riposo | |
-| Ven | Full Body | Back squat 3×12-15 @37.5kg; Panca piana 3×12-15 @25kg; Rematore con bilanciere 3×12-15 @20kg; Plank 3×12-15; Leg press 3×12-15 @50kg |
-| Sab | Riposo | |
-| Dom | Riposo | |
-
-**Controlli**
-
-- ❌ `D5` Proteine: i pasti danno in media 150 g contro un target di 218 g (69%)
-- ❌ `D5` Grassi: i pasti danno in media 95 g contro un target di 58 g (164%)
-- ⚠️ `D9` Troppe uova in un solo pasto (fino a 4) in 4 pasti della settimana
-- ⚠️ `D9` Lun: 7 uova in un giorno
-- ⚠️ `D15` La scheda profilo dell’onboarding mostra 1938 kcal ma il piano (mese 1) ne prescrive 2088 (+150): l’utente vede due numeri diversi
-- ⚠️ `R14` I mesi "Mese 2 · Sovraccarico progressivo" (2, 3, 4) sono identici: stessi esercizi, serie, ripetizioni e carichi — nel piano non c’è un vero sovraccarico progressivo
-- ⚠️ `N1` La tab Nutrizione mostra sempre 6 pasti (con orari fissi) ma l’utente ne fa 3 (colazione, pranzo, cena): compaiono schede di pasti che non fa
-- ⚠️ `N3` Sab: con "Segui il piano" il giorno si riempie con 1328 kcal (64% del target): la cena libera non aggiunge nulla e l’anello calorie resta sotto
-- ℹ️ `D14` Dal mese 2 in poi il target è identico (1938 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
-- ℹ️ `Q4` Risposte raccolte ma non usate da nessuna parte: generalActivityLevel, bedTime, wakeTime, sleepQuality
-
----
-
-## Giulia, 27 anni — mantenimento, vegetariana
-
-**Esito:** ❌ NON SUPERATO (1 errori, 5 avvisi, 2 note)
-
-- **Chi è:** Donna, 62 kg per 165 cm, vuole mantenere il peso e migliorare la forma. Intermedia, 4 allenamenti a settimana. Vegetariana.
-- **Cosa ci aspettiamo:** Calorie vicine al mantenimento, nessuna carne né pesce nella dieta, split upper/lower a 4 giorni.
-
-| Dati | Valore |
-|---|---|
-| Profilo | female · 27 anni · 165 cm · 62 kg → 62 kg · obiettivo `maintainImprove` |
-| Metabolismo basale / fabbisogno | 1355 / 2006 kcal |
-| Target calorico | **2006 kcal** (0% sul fabbisogno) |
-| Macro | P 112 g (1.8 g/kg) · C 264 g · G 56 g |
-| Idratazione | 2520 ml |
-| Durata piano | 4 mesi |
-
-**Piano alimentare** — mesi: 1·2006 kcal → 2·2006 kcal → 3·2006 kcal → 4·2006 kcal
-
-Esempio giorno di allenamento (Lun) e pasto libero (Sab):
-
-| Pasto | Alimenti | kcal |
-|---|---|---|
-| Colazione 07:30 | Uova intere 3 uova, Pane integrale 80g, Banana 1 banana | 522 |
-| Spuntino mattina 10:30 | Yogurt greco 75g, Pane integrale 25g, Mela 1 mela | 213 |
-| Pranzo 13:00 | Fiocchi di latte 300g, Lenticchie (cotte) 220g, Olio EVO 10g, Mandorle 15g, Zucchine 150g | 750 |
-| Cena 20:00 | Ricotta 175g, Riso basmati (cotto) 145g, Olio EVO 10g, Noci 20g, Insalata mista 150g | 680 |
-
-Totale Lun: **2164 kcal** · P 123 g · C 208 g · G 98 g
-
-| Pasto | Alimenti | kcal |
-|---|---|---|
-| Colazione 07:30 | Yogurt greco 200g, Fiocchi d’avena 45g, Banana 1 banana | 476 |
-| Spuntino mattina 10:30 | Fiocchi di latte 65g, Pane integrale 25g, Mela 1 mela | 204 |
-| Pranzo 13:00 | Tofu 340g, Riso basmati (cotto) 160g, Olio EVO 10g, Noci 15g, Spinaci 150g | 673 |
-| Cena 20:00 | _pasto libero_ | 568 |
-
-Totale Sab: **1352 kcal** · P 76 g · C 152 g · G 55 g
-
-**Mese 1 — Mese 1 · Sovraccarico progressivo**
-
-| Giorno | Seduta | Dettaglio |
-|---|---|---|
-| Lun | Push | Panca piana 4×8-12 @30kg; Military press 4×8-12 @22.5kg; Dip alle parallele 4×8-12; Alzate laterali 4×8-12 @3kg; Chest press macchina 4×8-12 |
-| Mar | Pull | Stacco da terra 4×8-12 @55kg; Trazioni zavorrate 4×8-12; Rematore con bilanciere 4×8-12 @25kg; Curl bicipiti 4×8-12 @9kg; Lat machine 4×8-12 |
-| Mer | Riposo | |
-| Gio | Legs | Back squat 4×8-12 @47.5kg; Romanian deadlift 4×8-12 @37.5kg; Leg press 4×8-12 @62.5kg; Affondi 4×8-12 @9kg; Hip thrust 4×8-12 @30kg |
-| Ven | Upper | Panca piana 4×8-12 @30kg; Trazioni alla sbarra 4×8-12; Military press 4×8-12 @22.5kg; Curl bicipiti 4×8-12 @9kg; Chest press macchina 4×8-12 |
-| Sab | Riposo | |
-| Dom | Riposo | |
-
-**Mese 4 — Mese 4 · Consolidamento**
-
-| Giorno | Seduta | Dettaglio |
-|---|---|---|
-| Lun | Push | Panca piana 4×8-12 @30kg; Military press 4×8-12 @22.5kg; Dip alle parallele 4×8-12; Alzate laterali 4×8-12 @3kg; Chest press macchina 4×8-12 |
-| Mar | Pull | Stacco da terra 4×8-12 @55kg; Trazioni zavorrate 4×8-12; Rematore con bilanciere 4×8-12 @25kg; Curl bicipiti 4×8-12 @9kg; Lat machine 4×8-12 |
-| Mer | Riposo | |
-| Gio | Legs | Back squat 4×8-12 @47.5kg; Romanian deadlift 4×8-12 @37.5kg; Leg press 4×8-12 @62.5kg; Affondi 4×8-12 @9kg; Hip thrust 4×8-12 @30kg |
-| Ven | Upper | Panca piana 4×8-12 @30kg; Trazioni alla sbarra 4×8-12; Military press 4×8-12 @22.5kg; Curl bicipiti 4×8-12 @9kg; Chest press macchina 4×8-12 |
-| Sab | Riposo | |
-| Dom | Riposo | |
-
-**Controlli**
-
-- ❌ `D5` Grassi: i pasti danno in media 85 g contro un target di 56 g (152%)
-- ⚠️ `D5` Carboidrati: i pasti danno in media 233 g contro un target di 264 g (88%)
-- ⚠️ `D9` Porzioni molto abbondanti in 2 pasti (es. Ven cena: Tofu 340 g)
-- ⚠️ `R14` I mesi "Mese 1 · Sovraccarico progressivo" (1, 2, 3) sono identici: stessi esercizi, serie, ripetizioni e carichi — nel piano non c’è un vero sovraccarico progressivo
-- ⚠️ `N1` La tab Nutrizione mostra sempre 6 pasti (con orari fissi) ma l’utente ne fa 4 (colazione, spuntinoMattina, pranzo, cena): compaiono schede di pasti che non fa
-- ⚠️ `N3` Sab: con "Segui il piano" il giorno si riempie con 1353 kcal (67% del target): la cena libera non aggiunge nulla e l’anello calorie resta sotto
-- ℹ️ `D14` Dal mese 2 in poi il target è identico (2006 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
-- ℹ️ `Q4` Risposte raccolte ma non usate da nessuna parte: generalActivityLevel, bedTime, wakeTime, sleepQuality
-
----
-
-## Luca, 22 anni — massa muscolare, esperto
-
-**Esito:** ❌ NON SUPERATO (2 errori, 9 avvisi, 2 note)
-
-- **Chi è:** Studente magro (68 kg per 180 cm), vuole arrivare a 75 kg. Esperto, 5 allenamenti a settimana da 60-90 min, 5 pasti.
-- **Cosa ci aspettiamo:** Surplus controllato, proteine ~2 g/kg, durata piano ~7 mesi (7 kg a 0,25 kg/sett.), split a 5 giorni senza mese di adattamento.
-
-| Dati | Valore |
-|---|---|
-| Profilo | male · 22 anni · 180 cm · 68 kg → 75 kg · obiettivo `gainMuscle` |
-| Metabolismo basale / fabbisogno | 1700 / 2567 kcal |
-| Target calorico | **2875 kcal** (12% sul fabbisogno) |
-| Macro | P 136 g (2.0 g/kg) · C 403 g · G 80 g |
-| Idratazione | 2730 ml |
-| Durata piano | 7 mesi |
-
-**Piano alimentare** — mesi: 1·2725 kcal → 2·2875 kcal → 3·2875 kcal → 4·2875 kcal → 5·2875 kcal → 6·2875 kcal → 7·2875 kcal
-
-Esempio giorno di allenamento (Lun) e pasto libero (Sab):
-
-| Pasto | Alimenti | kcal |
-|---|---|---|
-| Colazione 07:30 | Uova intere 4 uova, Pane integrale 95g, Banana 1 banana | 613 |
-| Spuntino mattina 10:30 | Proteine whey (polvere) 25g, Pane integrale 30g, Mela 1 mela | 247 |
-| Pranzo 13:00 | Uova intere 5 uova, Patate dolci 365g, Olio EVO 10g, Avocado 85g, Zucchine 150g | 921 |
-| Spuntino pomeriggio 17:00 | Uova intere 1 uovo, Pane integrale 30g, Mirtilli 100g | 224 |
-| Cena 20:00 | Yogurt greco 325g, Riso basmati (cotto) 175g, Olio EVO 10g, Noci 25g, Fagiolini 150g | 826 |
-
-Totale Lun: **2830 kcal** · P 152 g · C 288 g · G 126 g
-
-| Pasto | Alimenti | kcal |
-|---|---|---|
-| Colazione 07:30 | Yogurt greco 275g, Fiocchi d’avena 60g, Banana 1 banana | 607 |
-| Spuntino mattina 10:30 | Uova intere 1 uovo, Pane integrale 30g, Mela 1 mela | 245 |
-| Pranzo 13:00 | Uova intere 5 uova, Patate dolci 365g, Olio EVO 10g, Noci 20g, Spinaci 150g | 925 |
-| Spuntino pomeriggio 17:00 | Yogurt greco 90g, Pane integrale 30g, Mirtilli 100g | 218 |
-| Cena 20:00 | _pasto libero_ | 784 |
-
-Totale Sab: **1995 kcal** · P 104 g · C 224 g · G 81 g
-
-**Mese 1 — Mese 1 · Sovraccarico progressivo**
-
-| Giorno | Seduta | Dettaglio |
-|---|---|---|
-| Lun | Push | Panca piana 4×8-12 @40kg; Military press 4×8-12 @27.5kg; Dip alle parallele 4×8-12; Alzate laterali 4×8-12 @4kg; Chest press macchina 4×8-12; Push-up 4×8-12 |
-| Mar | Pull | Stacco da terra 4×8-12 @70kg; Trazioni zavorrate 4×8-12; Rematore con bilanciere 4×8-12 @32.5kg; Curl bicipiti 4×8-12 @12kg; Lat machine 4×8-12; Rematore con manubrio 4×8-12 @9kg |
-| Mer | Legs | Back squat 4×8-12 @57.5kg; Romanian deadlift 4×8-12 @47.5kg; Leg press 4×8-12 @77.5kg; Affondi 4×8-12 @12kg; Hip thrust 4×8-12 @40kg; Leg curl machine 4×8-12 |
-| Gio | Riposo | |
-| Ven | Upper | Panca piana 4×8-12 @40kg; Trazioni alla sbarra 4×8-12; Military press 4×8-12 @27.5kg; Curl bicipiti 4×8-12 @12kg; Chest press macchina 4×8-12; Lat machine 4×8-12 |
-| Sab | Lower | Back squat 4×8-12 @57.5kg; Romanian deadlift 4×8-12 @47.5kg; Leg press 4×8-12 @77.5kg; Affondi 4×8-12 @12kg; Hip thrust 4×8-12 @40kg; Leg curl machine 4×8-12 |
-| Dom | Riposo | |
-
-**Mese 7 — Mese 7 · Consolidamento**
-
-| Giorno | Seduta | Dettaglio |
-|---|---|---|
-| Lun | Push | Panca piana 4×8-12 @40kg; Military press 4×8-12 @27.5kg; Dip alle parallele 4×8-12; Alzate laterali 4×8-12 @4kg; Chest press macchina 4×8-12; Push-up 4×8-12 |
-| Mar | Pull | Stacco da terra 4×8-12 @70kg; Trazioni zavorrate 4×8-12; Rematore con bilanciere 4×8-12 @32.5kg; Curl bicipiti 4×8-12 @12kg; Lat machine 4×8-12; Rematore con manubrio 4×8-12 @9kg |
-| Mer | Legs | Back squat 4×8-12 @57.5kg; Romanian deadlift 4×8-12 @47.5kg; Leg press 4×8-12 @77.5kg; Affondi 4×8-12 @12kg; Hip thrust 4×8-12 @40kg; Leg curl machine 4×8-12 |
-| Gio | Riposo | |
-| Ven | Upper | Panca piana 4×8-12 @40kg; Trazioni alla sbarra 4×8-12; Military press 4×8-12 @27.5kg; Curl bicipiti 4×8-12 @12kg; Chest press macchina 4×8-12; Lat machine 4×8-12 |
-| Sab | Lower | Back squat 4×8-12 @57.5kg; Romanian deadlift 4×8-12 @47.5kg; Leg press 4×8-12 @77.5kg; Affondi 4×8-12 @12kg; Hip thrust 4×8-12 @40kg; Leg curl machine 4×8-12 |
-| Dom | Riposo | |
-
-**Controlli**
-
-- ❌ `D5` Proteine: i pasti danno in media 203 g contro un target di 129 g (157%)
-- ❌ `D5` Carboidrati: i pasti danno in media 264 g contro un target di 382 g (69%)
-- ⚠️ `D5` Grassi: i pasti danno in media 104 g contro un target di 76 g (137%)
-- ⚠️ `D9` Porzione eccessiva: Avocado 85 g (Lun, pranzo)
-- ⚠️ `D9` Troppe uova in un solo pasto (fino a 5) in 3 pasti della settimana
-- ⚠️ `D9` Lun: 9 uova in un giorno
-- ⚠️ `D9` Porzioni molto abbondanti in 3 pasti (es. Lun pranzo: Patate dolci 365 g)
-- ⚠️ `D15` La scheda profilo dell’onboarding mostra 2875 kcal ma il piano (mese 1) ne prescrive 2725 (-150): l’utente vede due numeri diversi
-- ⚠️ `R14` I mesi "Mese 1 · Sovraccarico progressivo" (1, 2, 3, 4, 5, 6) sono identici: stessi esercizi, serie, ripetizioni e carichi — nel piano non c’è un vero sovraccarico progressivo
-- ⚠️ `N1` La tab Nutrizione mostra sempre 6 pasti (con orari fissi) ma l’utente ne fa 5 (colazione, spuntinoMattina, pranzo, spuntinoPomeriggio, cena): compaiono schede di pasti che non fa
-- ⚠️ `N3` Sab: con "Segui il piano" il giorno si riempie con 1995 kcal (73% del target): la cena libera non aggiunge nulla e l’anello calorie resta sotto
-- ℹ️ `D14` Dal mese 2 in poi il target è identico (2875 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
-- ℹ️ `Q4` Risposte raccolte ma non usate da nessuna parte: generalActivityLevel, bedTime, wakeTime, sleepQuality
-
----
-
-## Anna, 45 anni — dimagrimento con dolore al ginocchio e intolleranza al lattosio
-
-**Esito:** ❌ NON SUPERATO (2 errori, 8 avvisi, 2 note)
-
-- **Chi è:** Donna, 78 kg per 162 cm, vuole scendere a 65 kg. Sedentaria, principiante, 2 allenamenti. Dolore al ginocchio, intollerante al lattosio.
-- **Cosa ci aspettiamo:** Nessun esercizio che carichi il ginocchio, nessun latticino, deficit prudente, durata lunga (13 kg → massimo del range), pochi esercizi per seduta.
-
-| Dati | Valore |
-|---|---|
-| Profilo | female · 45 anni · 162 cm · 78 kg → 65 kg · obiettivo `loseFat` |
-| Metabolismo basale / fabbisogno | 1407 / 1716 kcal |
-| Target calorico | **1373 kcal** (-20% sul fabbisogno) |
-| Macro | P 172 g (2.2 g/kg) · C 86 g · G 38 g |
-| Idratazione | 2730 ml |
-| Durata piano | 6 mesi |
-
-**Piano alimentare** — mesi: 1·1523 kcal → 2·1373 kcal → 3·1373 kcal → 4·1373 kcal → 5·1373 kcal → 6·1373 kcal
-
-Esempio giorno di allenamento (Lun) e pasto libero (Sab):
-
-| Pasto | Alimenti | kcal |
-|---|---|---|
-| Colazione 07:30 | Uova intere 3 uova, Fiocchi d’avena 45g, Banana 1 banana | 484 |
-| Pranzo 13:00 | Uova intere 4 uova, Patate (bollite) 275g, Olio EVO 10g, Noci 15g, Spinaci 150g | 731 |
-| Cena 20:00 | Salmone 115g, Patate dolci 185g, Olio EVO 10g, Mandorle 20g, Zucchine 150g | 628 |
-
-Totale Lun: **1843 kcal** · P 92 g · C 169 g · G 93 g
-
-| Pasto | Alimenti | kcal |
-|---|---|---|
-| Colazione 07:30 | Uova intere 2 uova, Fiocchi d’avena 35g, Banana 1 banana | 406 |
-| Pranzo 13:00 | Salmone 105g, Patate dolci 190g, Olio EVO 10g, Mandorle 15g, Broccoli 150g | 607 |
-| Cena 20:00 | _pasto libero_ | 472 |
-
-Totale Sab: **1014 kcal** · P 52 g · C 104 g · G 46 g
-
-**Mese 1 — Mese 1 · Adattamento e tecnica**
-
-| Giorno | Seduta | Dettaglio |
-|---|---|---|
-| Lun | Upper | Panca piana 3×15 @18kg; Trazioni alla sbarra 3×15; Military press 3×15 @13kg; Curl bicipiti 3×15 @5kg |
-| Mar | Riposo | |
-| Mer | Riposo | |
-| Gio | Lower | Romanian deadlift 3×15 @22.5kg; Hip thrust 3×15 @18kg; Abductor machine 3×15; Polpacci alla macchina 3×15 |
-| Ven | Riposo | |
-| Sab | Riposo | |
-| Dom | Riposo | |
-
 **Mese 6 — Mese 6 · Consolidamento**
 
 | Giorno | Seduta | Dettaglio |
 |---|---|---|
-| Lun | Upper | Panca piana 3×12-15 @22.5kg; Trazioni alla sbarra 3×12-15; Military press 3×12-15 @15kg; Curl bicipiti 3×12-15 @6kg |
+| Lun | Full Body | Back squat 4×12-15 @42.5kg; Panca piana 4×12-15 @27.5kg; Plank 4×12-15; Leg press 4×12-15 @55kg; Chest press macchina 4×12-15 |
 | Mar | Riposo | |
-| Mer | Riposo | |
-| Gio | Lower | Romanian deadlift 3×12-15 @25kg; Hip thrust 3×12-15 @22.5kg; Abductor machine 3×12-15; Polpacci alla macchina 3×12-15 |
-| Ven | Riposo | |
+| Mer | Full Body | Back squat 4×12-15 @42.5kg; Panca piana 4×12-15 @27.5kg; Plank 4×12-15; Leg press 4×12-15 @55kg; Chest press macchina 4×12-15 |
+| Gio | Riposo | |
+| Ven | Full Body | Back squat 4×12-15 @42.5kg; Panca piana 4×12-15 @27.5kg; Plank 4×12-15; Leg press 4×12-15 @55kg; Chest press macchina 4×12-15 |
 | Sab | Riposo | |
 | Dom | Riposo | |
 
 **Controlli**
 
-- ❌ `D5` Proteine: i pasti danno in media 104 g contro un target di 191 g (55%)
-- ❌ `D5` Grassi: i pasti danno in media 72 g contro un target di 42 g (171%)
-- ⚠️ `T9` Carboidrati molto bassi (86 g)
-- ⚠️ `D3` Lun: 1843 kcal, 21% rispetto al target
-- ⚠️ `D5` Carboidrati: i pasti danno in media 135 g contro un target di 95 g (143%)
-- ⚠️ `D9` Lun: 6 uova in un giorno
-- ⚠️ `D15` La scheda profilo dell’onboarding mostra 1373 kcal ma il piano (mese 1) ne prescrive 1523 (+150): l’utente vede due numeri diversi
-- ⚠️ `R14` I mesi "Mese 2 · Sovraccarico progressivo" (2, 3, 4, 5) sono identici: stessi esercizi, serie, ripetizioni e carichi — nel piano non c’è un vero sovraccarico progressivo
-- ⚠️ `N1` La tab Nutrizione mostra sempre 6 pasti (con orari fissi) ma l’utente ne fa 3 (colazione, pranzo, cena): compaiono schede di pasti che non fa
-- ⚠️ `N3` Sab: con "Segui il piano" il giorno si riempie con 1013 kcal (67% del target): la cena libera non aggiunge nulla e l’anello calorie resta sotto
-- ℹ️ `D14` Dal mese 2 in poi il target è identico (1373 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
-- ℹ️ `Q4` Risposte raccolte ma non usate da nessuna parte: generalActivityLevel, bedTime, wakeTime, sleepQuality
+- ℹ️ `D14` Dal mese 2 in poi il target è identico (1913 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
+
+---
+
+## Chiara, 25 anni — palestra + corsa con 4 giorni disponibili
+
+**Esito:** ⚠️ SUPERATO CON AVVISI (0 errori, 1 avvisi, 2 note)
+
+- **Chi è:** Donna, 60 kg per 168 cm. Vorrebbe 3 palestra + 3 corsa ma ha solo 4 giorni disponibili. Obiettivo dimagrimento (−4 kg).
+- **Cosa ci aspettiamo:** Il piano rispetta i 4 giorni disponibili, bilancia palestra e corsa, e le calorie contano l’allenamento realmente programmato.
+
+| Dati | Valore |
+|---|---|
+| Profilo | female · 25 anni · 168 cm · 60 kg → 56 kg · obiettivo `loseFat` |
+| Metabolismo basale / fabbisogno | 1364 / 1989 kcal |
+| Target calorico | **1591 kcal** (-20% sul fabbisogno) |
+| Macro | P 119 g (2.0 g/kg) · C 160 g · G 53 g |
+| Idratazione | 2450 ml |
+| Durata piano | 3 mesi |
+
+**Piano alimentare** — mesi: 1·1591 kcal → 2·1591 kcal → 3·1591 kcal
+
+Esempio giorno di allenamento (Lun) e pasto libero (Sab):
+
+| Pasto | Alimenti | kcal |
+|---|---|---|
+| Colazione 07:30 | Banana 1 banana, Yogurt greco 300g, Fiocchi d’avena 15g | 456 |
+| Pranzo 13:00 | Spinaci 150g, Salmone 185g, Patate (bollite) 230g | 620 |
+| Cena 20:00 | Zucchine 150g, Salmone 175g, Patate dolci 175g | 541 |
+
+Totale Lun: **1616 kcal** · P 116 g · C 139 g · G 65 g
+
+| Pasto | Alimenti | kcal |
+|---|---|---|
+| Colazione 07:30 | Banana 1 banana, Uova intere 3 uova, Yogurt greco 145g | 481 |
+| Pranzo 13:00 | Broccoli 150g, Salmone 195g, Patate dolci 120g | 560 |
+| Cena 20:00 | _pasto libero_ | 504 |
+
+Totale Sab: **1040 kcal** · P 79 g · C 69 g · G 50 g
+
+**Mese 1 — Mese 1 · Sovraccarico progressivo**
+
+| Giorno | Seduta | Dettaglio |
+|---|---|---|
+| Lun | Upper | Panca piana 3×12-15 @30kg; Trazioni alla sbarra 3×12-15; Military press 3×12-15 @20kg; Curl bicipiti 3×12-15 @9kg; Chest press macchina 3×12-15 |
+| Mar | Lower | Back squat 3×12-15 @45kg; Romanian deadlift 3×12-15 @35kg; Leg press 3×12-15 @60kg; Affondi 3×12-15 @9kg; Hip thrust 3×12-15 @30kg |
+| Mer | Riposo | |
+| Gio | Corsa | Corsa facile 35 min |
+| Ven | Corsa | Corsa a ritmo medio 30 min |
+| Sab | Riposo | |
+| Dom | Riposo | |
+
+**Mese 3 — Mese 3 · Consolidamento**
+
+| Giorno | Seduta | Dettaglio |
+|---|---|---|
+| Lun | Upper | Panca piana 3×12-15 @30kg; Trazioni alla sbarra 3×12-15; Military press 3×12-15 @20kg; Curl bicipiti 3×12-15 @9kg; Chest press macchina 3×12-15 |
+| Mar | Lower | Back squat 3×12-15 @47.5kg; Romanian deadlift 3×12-15 @37.5kg; Leg press 3×12-15 @62.5kg; Affondi 3×12-15 @9kg; Hip thrust 3×12-15 @30kg |
+| Mer | Riposo | |
+| Gio | Corsa | Corsa facile 35 min |
+| Ven | Corsa | Corsa a ritmo medio 30 min |
+| Sab | Riposo | |
+| Dom | Riposo | |
+
+**Controlli**
+
+- ⚠️ `D5` Carboidrati: i pasti danno in media il 89% del target (giorno peggiore: 19% di scarto)
+- ℹ️ `D14` Dal mese 2 in poi il target è identico (1591 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
+- ℹ️ `S2` 2 sedute di corsa a settimana (es. "Corsa facile 35 min")
 
 ---
 
 ## Paolo, 38 anni — solo corsa, resistenza
 
-**Esito:** ❌ NON SUPERATO (3 errori, 7 avvisi, 3 note)
+**Esito:** ⚠️ SUPERATO CON AVVISI (0 errori, 1 avvisi, 2 note)
 
 - **Chi è:** Runner amatoriale, 72 kg per 176 cm. Corre 4 volte a settimana, nessuna palestra, vuole migliorare la resistenza.
 - **Cosa ci aspettiamo:** Nessuna seduta di palestra, 4 uscite di corsa varie (facili, medio, lungo), carboidrati abbondanti, calorie di mantenimento.
@@ -354,31 +658,31 @@ Totale Sab: **1014 kcal** · P 52 g · C 104 g · G 46 g
 | Dati | Valore |
 |---|---|
 | Profilo | male · 38 anni · 176 cm · 72 kg → 72 kg · obiettivo `improveEndurance` |
-| Metabolismo basale / fabbisogno | 1635 / 2583 kcal |
-| Target calorico | **2583 kcal** (0% sul fabbisogno) |
-| Macro | P 115 g (1.6 g/kg) · C 369 g · G 72 g |
+| Metabolismo basale / fabbisogno | 1635 / 2579 kcal |
+| Target calorico | **2579 kcal** (0% sul fabbisogno) |
+| Macro | P 108 g (1.5 g/kg) · C 344 g · G 86 g |
 | Idratazione | 2870 ml |
 | Durata piano | 4 mesi |
 
-**Piano alimentare** — mesi: 1·2583 kcal → 2·2583 kcal → 3·2583 kcal → 4·2583 kcal
+**Piano alimentare** — mesi: 1·2579 kcal → 2·2622 kcal → 3·2622 kcal → 4·2622 kcal
 
 Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Uova intere 4 uova, Fiocchi d’avena 70g, Banana 1 banana | 689 |
-| Pranzo 13:00 | Uova intere 5 uova, Patate (bollite) 415g, Olio EVO 10g, Noci 25g, Spinaci 150g | 1059 |
-| Cena 20:00 | Salmone 175g, Patate dolci 285g, Olio EVO 10g, Mandorle 35g, Zucchine 150g | 926 |
+| Colazione 07:30 | Banana 1 banana, Uova intere 1 uovo, Fiocchi d’avena 75g, Mela 2 mele, Mandorle 20g | 723 |
+| Pranzo 13:00 | Spinaci 150g, Olio EVO 10g, Salmone 115g, Patate (bollite) 350g, Riso basmati (cotto) 275g | 1000 |
+| Cena 20:00 | Zucchine 150g, Olio EVO 10g, Salmone 125g, Patate dolci 350g, Riso basmati (cotto) 170g | 881 |
 
-Totale Lun: **2673 kcal** · P 138 g · C 240 g · G 135 g
+Totale Lun: **2602 kcal** · P 104 g · C 378 g · G 76 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Yogurt greco 285g, Fiocchi d’avena 60g, Banana 1 banana | 616 |
-| Pranzo 13:00 | Uova intere 5 uova, Patate dolci 320g, Olio EVO 10g, Mandorle 30g, Broccoli 150g | 952 |
-| Cena 20:00 | _pasto libero_ | 801 |
+| Colazione 07:30 | Banana 1 banana, Uova intere 1 uovo, Fiocchi d’avena 75g, Mela 1 mela, Mandorle 20g | 705 |
+| Pranzo 13:00 | Broccoli 150g, Olio EVO 10g, Salmone 140g, Patate dolci 350g, Riso basmati (cotto) 170g | 937 |
+| Cena 20:00 | _pasto libero_ | 821 |
 
-Totale Sab: **1569 kcal** · P 83 g · C 161 g · G 71 g
+Totale Sab: **1641 kcal** · P 68 g · C 235 g · G 51 g
 
 **Mese 1 — Mese 1 · Adattamento e tecnica**
 
@@ -406,474 +710,74 @@ Totale Sab: **1569 kcal** · P 83 g · C 161 g · G 71 g
 
 **Controlli**
 
-- ❌ `D5` Proteine: i pasti danno in media 172 g contro un target di 115 g (149%)
-- ❌ `D5` Carboidrati: i pasti danno in media 222 g contro un target di 369 g (60%)
-- ❌ `D5` Grassi: i pasti danno in media 113 g contro un target di 72 g (157%)
-- ⚠️ `D9` Porzione eccessiva: Patate (bollite) 415 g (Lun, pranzo)
-- ⚠️ `D9` Troppe uova in un solo pasto (fino a 5) in 5 pasti della settimana
-- ⚠️ `D9` Lun: 9 uova in un giorno
-- ⚠️ `D9` Porzioni molto abbondanti in 5 pasti (es. Lun pranzo: Patate (bollite) 415 g)
-- ⚠️ `H1` Obiettivo settimanale mostrato in Home 2058 kcal contro 0 kcal/sett. voluti dal piano: due modelli energetici diversi
-- ⚠️ `N1` La tab Nutrizione mostra sempre 6 pasti (con orari fissi) ma l’utente ne fa 3 (colazione, pranzo, cena): compaiono schede di pasti che non fa
-- ⚠️ `N3` Sab: con "Segui il piano" il giorno si riempie con 1568 kcal (61% del target): la cena libera non aggiunge nulla e l’anello calorie resta sotto
-- ℹ️ `D14` Dal mese 2 in poi il target è identico (2583 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
-- ℹ️ `S2` 4 sedute di corsa a settimana: nell’app compaiono come testo ("Corsa facile 30 min"), senza dettaglio, senza spunta e senza calorie previste; contano come "svolte" solo se registri un’attività quel giorno
-- ℹ️ `Q4` Risposte raccolte ma non usate da nessuna parte: generalActivityLevel, bedTime, wakeTime, sleepQuality
-
----
-
-## Sara, 30 anni — massa, vegana, allena a casa
-
-**Esito:** ⚠️ SUPERATO CON AVVISI (0 errori, 8 avvisi, 2 note)
-
-- **Chi è:** Donna, 58 kg per 168 cm, vuole mettere massa fino a 62 kg. Vegana, si allena a casa con manubri ed elastici, 3 volte a settimana.
-- **Cosa ci aspettiamo:** Dieta senza alcun prodotto animale, proteine vegetali (tofu, legumi), solo esercizi eseguibili con manubri/elastici/corpo libero.
-
-| Dati | Valore |
-|---|---|
-| Profilo | female · 30 anni · 168 cm · 58 kg → 62 kg · obiettivo `gainMuscle` |
-| Metabolismo basale / fabbisogno | 1319 / 1873 kcal |
-| Target calorico | **2098 kcal** (12% sul fabbisogno) |
-| Macro | P 116 g (2.0 g/kg) · C 278 g · G 58 g |
-| Idratazione | 2030 ml |
-| Durata piano | 4 mesi |
-
-**Piano alimentare** — mesi: 1·1948 kcal → 2·2098 kcal → 3·2098 kcal → 4·2098 kcal
-
-Esempio giorno di allenamento (Lun) e pasto libero (Sab):
-
-| Pasto | Alimenti | kcal |
-|---|---|---|
-| Colazione 07:30 | Ceci (cotti) 150g, Fiocchi d’avena 55g, Banana 1 banana | 567 |
-| Pranzo 13:00 | Lenticchie (cotte) 280g, Ceci (cotti) 175g, Olio EVO 10g, Noci 20g, Spinaci 150g | 866 |
-| Cena 20:00 | Fagioli neri (cotti) 215g, Lenticchie (cotte) 165g, Olio EVO 10g, Avocado 90g, Zucchine 150g | 733 |
-
-Totale Lun: **2165 kcal** · P 110 g · C 313 g · G 63 g
-
-| Pasto | Alimenti | kcal |
-|---|---|---|
-| Colazione 07:30 | Lenticchie (cotte) 180g, Fiocchi d’avena 45g, Banana 1 banana | 491 |
-| Pranzo 13:00 | Fagioli neri (cotti) 210g, Lenticchie (cotte) 180g, Olio EVO 10g, Mandorle 20g, Broccoli 150g | 741 |
-| Cena 20:00 | _pasto libero_ | 604 |
-
-Totale Sab: **1232 kcal** · P 68 g · C 195 g · G 27 g
-
-**Mese 1 — Mese 1 · Adattamento e tecnica**
-
-| Giorno | Seduta | Dettaglio |
-|---|---|---|
-| Lun | Full Body | Squat con manubri 3×12 @6kg; Push-up 3×12; Rematore con manubrio 3×12 @4.5kg; Plank 3×12; Hip thrust 3×12 @11kg |
-| Mar | Riposo | |
-| Mer | Full Body | Squat con manubri 3×12 @6kg; Push-up 3×12; Rematore con manubrio 3×12 @4.5kg; Plank 3×12; Hip thrust 3×12 @11kg |
-| Gio | Riposo | |
-| Ven | Full Body | Squat con manubri 3×12 @6kg; Push-up 3×12; Rematore con manubrio 3×12 @4.5kg; Plank 3×12; Hip thrust 3×12 @11kg |
-| Sab | Riposo | |
-| Dom | Riposo | |
-
-**Mese 4 — Mese 4 · Consolidamento**
-
-| Giorno | Seduta | Dettaglio |
-|---|---|---|
-| Lun | Full Body | Squat con manubri 4×8-12 @7kg; Push-up 4×8-12; Rematore con manubrio 4×8-12 @5kg; Plank 4×8-12; Hip thrust 4×8-12 @13kg |
-| Mar | Riposo | |
-| Mer | Full Body | Squat con manubri 4×8-12 @7kg; Push-up 4×8-12; Rematore con manubrio 4×8-12 @5kg; Plank 4×8-12; Hip thrust 4×8-12 @13kg |
-| Gio | Riposo | |
-| Ven | Full Body | Squat con manubri 4×8-12 @7kg; Push-up 4×8-12; Rematore con manubrio 4×8-12 @5kg; Plank 4×8-12; Hip thrust 4×8-12 @13kg |
-| Sab | Riposo | |
-| Dom | Riposo | |
-
-**Controlli**
-
-- ⚠️ `D5` Grassi: i pasti danno in media 68 g contro un target di 54 g (127%)
-- ⚠️ `D8` Colazione con cibi da pasto principale: Ceci (cotti), Lenticchie (cotte), Fagioli neri (cotti)
-- ⚠️ `D9` Porzione eccessiva: Avocado 90 g (Lun, cena)
-- ⚠️ `D9` Porzioni molto abbondanti in 3 pasti (es. Mar cena: Tofu 320 g)
-- ⚠️ `D15` La scheda profilo dell’onboarding mostra 2098 kcal ma il piano (mese 1) ne prescrive 1948 (-150): l’utente vede due numeri diversi
-- ⚠️ `R14` I mesi "Mese 2 · Sovraccarico progressivo" (2, 3) sono identici: stessi esercizi, serie, ripetizioni e carichi — nel piano non c’è un vero sovraccarico progressivo
-- ⚠️ `N1` La tab Nutrizione mostra sempre 6 pasti (con orari fissi) ma l’utente ne fa 3 (colazione, pranzo, cena): compaiono schede di pasti che non fa
-- ⚠️ `N3` Sab: con "Segui il piano" il giorno si riempie con 1232 kcal (63% del target): la cena libera non aggiunge nulla e l’anello calorie resta sotto
-- ℹ️ `D14` Dal mese 2 in poi il target è identico (2098 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
-- ℹ️ `Q4` Risposte raccolte ma non usate da nessuna parte: generalActivityLevel, bedTime, wakeTime, sleepQuality
-
----
-
-## Roberto, 58 anni — salute generale, mal di schiena
-
-**Esito:** ❌ NON SUPERATO (2 errori, 7 avvisi, 2 note)
-
-- **Chi è:** Uomo, 90 kg per 175 cm, lavoro in piedi. Vuole stare meglio. Principiante, 2 allenamenti. Mal di schiena lombare.
-- **Cosa ci aspettiamo:** Nessun esercizio che carichi la zona lombare (stacchi, rematori, squat pesanti), carichi prudenti, calorie vicine al mantenimento.
-
-| Dati | Valore |
-|---|---|
-| Profilo | male · 58 anni · 175 cm · 90 kg → 85 kg · obiettivo `generalHealth` |
-| Metabolismo basale / fabbisogno | 1709 / 2546 kcal |
-| Target calorico | **2546 kcal** (0% sul fabbisogno) |
-| Macro | P 144 g (1.6 g/kg) · C 333 g · G 71 g |
-| Idratazione | 3150 ml |
-| Durata piano | 4 mesi |
-
-**Piano alimentare** — mesi: 1·2546 kcal → 2·2546 kcal → 3·2546 kcal → 4·2546 kcal
-
-Esempio giorno di allenamento (Lun) e pasto libero (Sab):
-
-| Pasto | Alimenti | kcal |
-|---|---|---|
-| Colazione 07:30 | Uova intere 4 uova, Fiocchi d’avena 75g, Banana 1 banana | 740 |
-| Pranzo 13:00 | Uova intere 6 uova, Patate (bollite) 460g, Olio EVO 10g, Noci 30g, Spinaci 150g | 1176 |
-| Cena 20:00 | Salmone 190g, Patate dolci 315g, Olio EVO 10g, Mandorle 40g, Zucchine 150g | 1012 |
-
-Totale Lun: **2928 kcal** · P 152 g · C 261 g · G 148 g
-
-| Pasto | Alimenti | kcal |
-|---|---|---|
-| Colazione 07:30 | Yogurt greco 280g, Fiocchi d’avena 60g, Banana 1 banana | 612 |
-| Pranzo 13:00 | Uova intere 5 uova, Patate dolci 315g, Olio EVO 10g, Mandorle 30g, Broccoli 150g | 948 |
-| Cena 20:00 | _pasto libero_ | 789 |
-
-Totale Sab: **1560 kcal** · P 83 g · C 160 g · G 70 g
-
-**Mese 1 — Mese 1 · Adattamento e tecnica**
-
-| Giorno | Seduta | Dettaglio |
-|---|---|---|
-| Lun | Upper | Panca piana 3×10 @20kg; Trazioni alla sbarra 3×10; Military press 3×10 @15kg; Curl bicipiti 3×10 @6kg |
-| Mar | Riposo | |
-| Mer | Riposo | |
-| Gio | Lower | Leg press 3×10 @42.5kg; Affondi 3×10 @6kg; Hip thrust 3×10 @20kg; Leg curl machine 3×10 |
-| Ven | Riposo | |
-| Sab | Riposo | |
-| Dom | Riposo | |
-
-**Mese 4 — Mese 4 · Consolidamento**
-
-| Giorno | Seduta | Dettaglio |
-|---|---|---|
-| Lun | Upper | Panca piana 3×10 @25kg; Trazioni alla sbarra 3×10; Military press 3×10 @17kg; Curl bicipiti 3×10 @7kg |
-| Mar | Riposo | |
-| Mer | Riposo | |
-| Gio | Lower | Leg press 3×10 @50kg; Affondi 3×10 @7kg; Hip thrust 3×10 @25kg; Leg curl machine 3×10 |
-| Ven | Riposo | |
-| Sab | Riposo | |
-| Dom | Riposo | |
-
-**Controlli**
-
-- ❌ `D5` Carboidrati: i pasti danno in media 214 g contro un target di 333 g (64%)
-- ❌ `D5` Grassi: i pasti danno in media 115 g contro un target di 71 g (162%)
-- ⚠️ `D9` Porzione eccessiva: Patate (bollite) 460 g (Lun, pranzo)
-- ⚠️ `D9` Troppe uova in un solo pasto (fino a 6) in 4 pasti della settimana
-- ⚠️ `D9` Lun: 10 uova in un giorno
-- ⚠️ `D9` Porzioni molto abbondanti in 2 pasti (es. Lun pranzo: Patate (bollite) 460 g)
-- ⚠️ `R14` I mesi "Mese 2 · Sovraccarico progressivo" (2, 3) sono identici: stessi esercizi, serie, ripetizioni e carichi — nel piano non c’è un vero sovraccarico progressivo
-- ⚠️ `N1` La tab Nutrizione mostra sempre 6 pasti (con orari fissi) ma l’utente ne fa 3 (colazione, pranzo, cena): compaiono schede di pasti che non fa
-- ⚠️ `N3` Sab: con "Segui il piano" il giorno si riempie con 1560 kcal (61% del target): la cena libera non aggiunge nulla e l’anello calorie resta sotto
-- ℹ️ `D14` Dal mese 2 in poi il target è identico (2546 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
-- ℹ️ `Q4` Risposte raccolte ma non usate da nessuna parte: generalActivityLevel, bedTime, wakeTime, sleepQuality
-
----
-
-## Elena, 35 anni — dimagrimento, corporatura piccola
-
-**Esito:** ❌ NON SUPERATO (2 errori, 5 avvisi, 2 note)
-
-- **Chi è:** Donna, 50 kg per 155 cm, vuole scendere a 47 kg. Sedentaria, 3 allenamenti.
-- **Cosa ci aspettiamo:** Il target calorico non deve mai scendere sotto il minimo di sicurezza (1200 kcal) e il deficit non deve essere aggressivo.
-
-| Dati | Valore |
-|---|---|
-| Profilo | female · 35 anni · 155 cm · 50 kg → 47 kg · obiettivo `loseFat` |
-| Metabolismo basale / fabbisogno | 1133 / 1427 kcal |
-| Target calorico | **1200 kcal** (-16% sul fabbisogno) |
-| Macro | P 110 g (2.2 g/kg) · C 116 g · G 33 g |
-| Idratazione | 1750 ml |
-| Durata piano | 2 mesi |
-
-**Piano alimentare** — mesi: 1·1350 kcal → 2·1200 kcal
-
-Esempio giorno di allenamento (Lun) e pasto libero (Sab):
-
-| Pasto | Alimenti | kcal |
-|---|---|---|
-| Colazione 07:30 | Uova intere 2 uova, Fiocchi d’avena 40g, Banana 1 banana | 434 |
-| Pranzo 13:00 | Uova intere 3 uova, Patate (bollite) 225g, Olio EVO 10g, Noci 10g, Spinaci 150g | 609 |
-| Cena 20:00 | Salmone 95g, Patate dolci 155g, Olio EVO 10g, Mandorle 15g, Zucchine 150g | 532 |
-
-Totale Lun: **1573 kcal** · P 78 g · C 148 g · G 79 g
-
-| Pasto | Alimenti | kcal |
-|---|---|---|
-| Colazione 07:30 | Yogurt greco 150g, Fiocchi d’avena 30g, Banana 1 banana | 370 |
-| Pranzo 13:00 | Uova intere 3 uova, Patate dolci 165g, Olio EVO 10g, Mandorle 10g, Broccoli 150g | 533 |
-| Cena 20:00 | _pasto libero_ | 419 |
-
-Totale Sab: **902 kcal** · P 45 g · C 100 g · G 39 g
-
-**Mese 1 — Mese 1 · Adattamento e tecnica**
-
-| Giorno | Seduta | Dettaglio |
-|---|---|---|
-| Lun | Full Body | Back squat 3×15 @25kg; Panca piana 3×15 @16kg; Rematore con bilanciere 3×15 @13kg; Plank 3×15; Leg press 3×15 @32.5kg |
-| Mar | Riposo | |
-| Mer | Full Body | Back squat 3×15 @25kg; Panca piana 3×15 @16kg; Rematore con bilanciere 3×15 @13kg; Plank 3×15; Leg press 3×15 @32.5kg |
-| Gio | Riposo | |
-| Ven | Full Body | Back squat 3×15 @25kg; Panca piana 3×15 @16kg; Rematore con bilanciere 3×15 @13kg; Plank 3×15; Leg press 3×15 @32.5kg |
-| Sab | Riposo | |
-| Dom | Riposo | |
-
-**Mese 2 — Mese 2 · Consolidamento**
-
-| Giorno | Seduta | Dettaglio |
-|---|---|---|
-| Lun | Full Body | Back squat 3×12-15 @27.5kg; Panca piana 3×12-15 @19kg; Rematore con bilanciere 3×12-15 @15kg; Plank 3×12-15; Leg press 3×12-15 @37.5kg |
-| Mar | Riposo | |
-| Mer | Full Body | Back squat 3×12-15 @27.5kg; Panca piana 3×12-15 @19kg; Rematore con bilanciere 3×12-15 @15kg; Plank 3×12-15; Leg press 3×12-15 @37.5kg |
-| Gio | Riposo | |
-| Ven | Full Body | Back squat 3×12-15 @27.5kg; Panca piana 3×12-15 @19kg; Rematore con bilanciere 3×12-15 @15kg; Plank 3×12-15; Leg press 3×12-15 @37.5kg |
-| Sab | Riposo | |
-| Dom | Riposo | |
-
-**Controlli**
-
-- ❌ `D5` Proteine: i pasti danno in media 91 g contro un target di 124 g (73%)
-- ❌ `D5` Grassi: i pasti danno in media 64 g contro un target di 37 g (173%)
-- ⚠️ `D3` Le calorie reali dei pasti (media 1434) si discostano del 6% dal target del mese (1350)
-- ⚠️ `D9` Lun: 5 uova in un giorno
-- ⚠️ `D15` La scheda profilo dell’onboarding mostra 1200 kcal ma il piano (mese 1) ne prescrive 1350 (+150): l’utente vede due numeri diversi
-- ⚠️ `N1` La tab Nutrizione mostra sempre 6 pasti (con orari fissi) ma l’utente ne fa 3 (colazione, pranzo, cena): compaiono schede di pasti che non fa
-- ⚠️ `N3` Sab: con "Segui il piano" il giorno si riempie con 903 kcal (67% del target): la cena libera non aggiunge nulla e l’anello calorie resta sotto
-- ℹ️ `T5` Il target è stato forzato al minimo di sicurezza (1200 kcal): il deficit reale è inferiore a quello voluto
-- ℹ️ `Q4` Risposte raccolte ma non usate da nessuna parte: generalActivityLevel, bedTime, wakeTime, sleepQuality
-
----
-
-## Davide, 28 anni — obesità, obiettivo molto lontano
-
-**Esito:** ❌ NON SUPERATO (1 errori, 12 avvisi, 2 note)
-
-- **Chi è:** Uomo, 125 kg per 185 cm, lavoro fisico, vuole arrivare a 95 kg (−30 kg). Principiante, 4 allenamenti.
-- **Cosa ci aspettiamo:** Piano al massimo della durata (12 mesi), deficit sostenibile, proteine calcolate in modo non eccessivo rispetto al peso reale, nessuna scheda estrema.
-
-| Dati | Valore |
-|---|---|
-| Profilo | male · 28 anni · 185 cm · 125 kg → 95 kg · obiettivo `loseFat` |
-| Metabolismo basale / fabbisogno | 2271 / 4043 kcal |
-| Target calorico | **3234 kcal** (-20% sul fabbisogno) |
-| Macro | P 275 g (2.2 g/kg) · C 331 g · G 90 g |
-| Idratazione | 4725 ml |
-| Durata piano | 12 mesi |
-
-**Piano alimentare** — mesi: 1·3384 kcal → 2·3234 kcal → 3·3234 kcal → 4·3234 kcal → 5·3234 kcal → 6·3234 kcal → 7·3234 kcal → 8·3234 kcal → 9·3234 kcal → 10·3234 kcal → 11·3234 kcal → 12·3234 kcal
-
-Esempio giorno di allenamento (Lun) e pasto libero (Sab):
-
-| Pasto | Alimenti | kcal |
-|---|---|---|
-| Colazione 07:30 | Uova intere 5 uova, Fiocchi d’avena 90g, Banana 1 banana | 868 |
-| Pranzo 13:00 | Uova intere 7 uova, Patate (bollite) 545g, Olio EVO 10g, Noci 40g, Spinaci 150g | 1402 |
-| Cena 20:00 | Salmone 230g, Patate dolci 375g, Olio EVO 10g, Mandorle 50g, Zucchine 150g | 1205 |
-
-Totale Lun: **3473 kcal** · P 182 g · C 304 g · G 177 g
-
-| Pasto | Alimenti | kcal |
-|---|---|---|
-| Colazione 07:30 | Yogurt greco 370g, Fiocchi d’avena 80g, Banana 1 banana | 777 |
-| Pranzo 13:00 | Uova intere 6 uova, Patate dolci 420g, Olio EVO 10g, Mandorle 45g, Broccoli 150g | 1242 |
-| Cena 20:00 | _pasto libero_ | 1049 |
-
-Totale Sab: **2019 kcal** · P 109 g · C 202 g · G 92 g
-
-**Mese 1 — Mese 1 · Adattamento e tecnica**
-
-| Giorno | Seduta | Dettaglio |
-|---|---|---|
-| Lun | Upper | Panca piana 3×15 @30kg; Trazioni alla sbarra 3×15; Military press 3×15 @20kg; Curl bicipiti 3×15 @9kg; Chest press macchina 3×15 |
-| Mar | Lower | Back squat 3×15 @45kg; Romanian deadlift 3×15 @35kg; Leg press 3×15 @57.5kg; Affondi 3×15 @9kg; Hip thrust 3×15 @30kg |
-| Mer | Riposo | |
-| Gio | Upper | Panca piana 3×15 @30kg; Trazioni alla sbarra 3×15; Military press 3×15 @20kg; Curl bicipiti 3×15 @9kg; Chest press macchina 3×15 |
-| Ven | Lower | Back squat 3×15 @45kg; Romanian deadlift 3×15 @35kg; Leg press 3×15 @57.5kg; Affondi 3×15 @9kg; Hip thrust 3×15 @30kg |
-| Sab | Riposo | |
-| Dom | Riposo | |
-
-**Mese 12 — Mese 12 · Consolidamento**
-
-| Giorno | Seduta | Dettaglio |
-|---|---|---|
-| Lun | Upper | Panca piana 3×12-15 @35kg; Trazioni alla sbarra 3×12-15; Military press 3×12-15 @25kg; Curl bicipiti 3×12-15 @10kg; Chest press macchina 3×12-15 |
-| Mar | Lower | Back squat 3×12-15 @52.5kg; Romanian deadlift 3×12-15 @42.5kg; Leg press 3×12-15 @70kg; Affondi 3×12-15 @10kg; Hip thrust 3×12-15 @35kg |
-| Mer | Riposo | |
-| Gio | Upper | Panca piana 3×12-15 @35kg; Trazioni alla sbarra 3×12-15; Military press 3×12-15 @25kg; Curl bicipiti 3×12-15 @10kg; Chest press macchina 3×12-15 |
-| Ven | Lower | Back squat 3×12-15 @52.5kg; Romanian deadlift 3×12-15 @42.5kg; Leg press 3×12-15 @70kg; Affondi 3×12-15 @10kg; Hip thrust 3×12-15 @35kg |
-| Sab | Riposo | |
-| Dom | Riposo | |
-
-**Controlli**
-
-- ❌ `D5` Grassi: i pasti danno in media 148 g contro un target di 94 g (157%)
-- ⚠️ `T7` Proteine 275 g (2.2 g/kg) calcolate sul peso reale con BMI 37: eccessive, andrebbero calcolate sul peso obiettivo/massa magra
-- ⚠️ `D5` Proteine: i pasti danno in media 226 g contro un target di 288 g (78%)
-- ⚠️ `D5` Carboidrati: i pasti danno in media 282 g contro un target di 346 g (81%)
-- ⚠️ `D9` Porzione eccessiva: Patate (bollite) 545 g (Lun, pranzo)
-- ⚠️ `D9` Troppe uova in un solo pasto (fino a 7) in 7 pasti della settimana
-- ⚠️ `D9` Lun: 12 uova in un giorno
-- ⚠️ `D9` Porzioni molto abbondanti in 10 pasti (es. Lun pranzo: Patate (bollite) 545 g)
-- ⚠️ `D15` La scheda profilo dell’onboarding mostra 3234 kcal ma il piano (mese 1) ne prescrive 3384 (+150): l’utente vede due numeri diversi
-- ⚠️ `R14` I mesi "Mese 2 · Sovraccarico progressivo" (2, 3, 4, 5, 6, 7, 8, 9, 10, 11) sono identici: stessi esercizi, serie, ripetizioni e carichi — nel piano non c’è un vero sovraccarico progressivo
-- ⚠️ `H1` Obiettivo settimanale mostrato in Home -3918 kcal contro -5663 kcal/sett. voluti dal piano: due modelli energetici diversi
-- ⚠️ `N1` La tab Nutrizione mostra sempre 6 pasti (con orari fissi) ma l’utente ne fa 3 (colazione, pranzo, cena): compaiono schede di pasti che non fa
-- ⚠️ `N3` Sab: con "Segui il piano" il giorno si riempie con 2019 kcal (60% del target): la cena libera non aggiunge nulla e l’anello calorie resta sotto
-- ℹ️ `D14` Dal mese 2 in poi il target è identico (3234 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
-- ℹ️ `Q4` Risposte raccolte ma non usate da nessuna parte: generalActivityLevel, bedTime, wakeTime, sleepQuality
-
----
-
-## Chiara, 25 anni — palestra + corsa, giorni insufficienti
-
-**Esito:** ❌ NON SUPERATO (1 errori, 9 avvisi, 2 note)
-
-- **Chi è:** Donna, 60 kg per 168 cm. Vorrebbe 3 palestra + 3 corsa ma ha solo 4 giorni disponibili. Obiettivo dimagrimento.
-- **Cosa ci aspettiamo:** Il piano deve rispettare i 4 giorni disponibili (non 6 sedute), bilanciando palestra e corsa, senza mettere due sedute lo stesso giorno.
-
-| Dati | Valore |
-|---|---|
-| Profilo | female · 25 anni · 168 cm · 60 kg → 56 kg · obiettivo `loseFat` |
-| Metabolismo basale / fabbisogno | 1364 / 2101 kcal |
-| Target calorico | **1680 kcal** (-20% sul fabbisogno) |
-| Macro | P 132 g (2.2 g/kg) · C 182 g · G 47 g |
-| Idratazione | 2450 ml |
-| Durata piano | 2 mesi |
-
-**Piano alimentare** — mesi: 1·1830 kcal → 2·1680 kcal
-
-Esempio giorno di allenamento (Lun) e pasto libero (Sab):
-
-| Pasto | Alimenti | kcal |
-|---|---|---|
-| Colazione 07:30 | Uova intere 3 uova, Fiocchi d’avena 50g, Banana 1 banana | 519 |
-| Pranzo 13:00 | Uova intere 4 uova, Patate (bollite) 295g, Olio EVO 10g, Noci 15g, Spinaci 150g | 773 |
-| Cena 20:00 | Salmone 125g, Patate dolci 200g, Olio EVO 10g, Mandorle 20g, Zucchine 150g | 662 |
-
-Totale Lun: **1952 kcal** · P 99 g · C 180 g · G 98 g
-
-| Pasto | Alimenti | kcal |
-|---|---|---|
-| Colazione 07:30 | Yogurt greco 200g, Fiocchi d’avena 45g, Banana 1 banana | 476 |
-| Pranzo 13:00 | Uova intere 3 uova, Patate dolci 225g, Olio EVO 10g, Mandorle 20g, Broccoli 150g | 705 |
-| Cena 20:00 | _pasto libero_ | 567 |
-
-Totale Sab: **1180 kcal** · P 60 g · C 126 g · G 52 g
-
-**Mese 1 — Mese 1 · Sovraccarico progressivo**
-
-| Giorno | Seduta | Dettaglio |
-|---|---|---|
-| Lun | Upper | Panca piana 3×12-15 @30kg; Trazioni alla sbarra 3×12-15; Military press 3×12-15 @20kg; Curl bicipiti 3×12-15 @9kg; Chest press macchina 3×12-15 |
-| Mar | Lower | Back squat 3×12-15 @45kg; Romanian deadlift 3×12-15 @35kg; Leg press 3×12-15 @60kg; Affondi 3×12-15 @9kg; Hip thrust 3×12-15 @30kg |
-| Mer | Riposo | |
-| Gio | Corsa | Corsa facile 35 min |
-| Ven | Corsa | Corsa a ritmo medio 30 min |
-| Sab | Riposo | |
-| Dom | Riposo | |
-
-**Mese 2 — Mese 2 · Consolidamento**
-
-| Giorno | Seduta | Dettaglio |
-|---|---|---|
-| Lun | Upper | Panca piana 3×12-15 @30kg; Trazioni alla sbarra 3×12-15; Military press 3×12-15 @20kg; Curl bicipiti 3×12-15 @9kg; Chest press macchina 3×12-15 |
-| Mar | Lower | Back squat 3×12-15 @45kg; Romanian deadlift 3×12-15 @35kg; Leg press 3×12-15 @60kg; Affondi 3×12-15 @9kg; Hip thrust 3×12-15 @30kg |
-| Mer | Riposo | |
-| Gio | Corsa | Corsa facile 35 min |
-| Ven | Corsa | Corsa a ritmo medio 30 min |
-| Sab | Riposo | |
-| Dom | Riposo | |
-
-**Controlli**
-
-- ❌ `D5` Grassi: i pasti danno in media 82 g contro un target di 51 g (160%)
-- ⚠️ `D5` Proteine: i pasti danno in media 122 g contro un target di 144 g (85%)
-- ⚠️ `D5` Carboidrati: i pasti danno in media 167 g contro un target di 198 g (84%)
-- ⚠️ `D9` Troppe uova in un solo pasto (fino a 4) in 1 pasti della settimana
-- ⚠️ `D9` Lun: 7 uova in un giorno
-- ⚠️ `D15` La scheda profilo dell’onboarding mostra 1680 kcal ma il piano (mese 1) ne prescrive 1830 (+150): l’utente vede due numeri diversi
-- ⚠️ `C3` Il fabbisogno calorico assume 6 allenamenti a settimana (risposte freq_*) ma il piano ne programma 4
-- ⚠️ `H1` Obiettivo settimanale mostrato in Home -121 kcal contro -2947 kcal/sett. voluti dal piano: due modelli energetici diversi
-- ⚠️ `N1` La tab Nutrizione mostra sempre 6 pasti (con orari fissi) ma l’utente ne fa 3 (colazione, pranzo, cena): compaiono schede di pasti che non fa
-- ⚠️ `N3` Sab: con "Segui il piano" il giorno si riempie con 1181 kcal (65% del target): la cena libera non aggiunge nulla e l’anello calorie resta sotto
-- ℹ️ `S2` 2 sedute di corsa a settimana: nell’app compaiono come testo ("Corsa facile 35 min"), senza dettaglio, senza spunta e senza calorie previste; contano come "svolte" solo se registri un’attività quel giorno
-- ℹ️ `Q4` Risposte raccolte ma non usate da nessuna parte: generalActivityLevel, bedTime, wakeTime, sleepQuality
+- ⚠️ `D5` Grassi: i pasti danno in media il 88% del target (giorno peggiore: 13% di scarto)
+- ℹ️ `D14` Dal mese 2 in poi il target è identico (2622 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
+- ℹ️ `S2` 4 sedute di corsa a settimana (es. "Corsa facile 30 min")
 
 ---
 
 ## Andrea, 40 anni — solo dieta
 
-**Esito:** ❌ NON SUPERATO (2 errori, 6 avvisi, 4 note)
+**Esito:** ⚠️ SUPERATO CON AVVISI (0 errori, 2 avvisi, 2 note)
 
 - **Chi è:** Uomo, 80 kg per 180 cm, vuole solo un piano alimentare per dimagrire a 75 kg. Non usa la parte allenamento.
-- **Cosa ci aspettiamo:** Il piano di allenamento non deve esistere, la dieta deve essere completa; le schermate di allenamento devono gestire l’assenza del piano.
+- **Cosa ci aspettiamo:** Il piano di allenamento non deve esistere, la dieta deve essere completa e basata su attività quotidiana.
 
 | Dati | Valore |
 |---|---|
 | Profilo | male · 40 anni · 180 cm · 80 kg → 75 kg · obiettivo `loseFat` |
 | Metabolismo basale / fabbisogno | 1730 / 2128 kcal |
 | Target calorico | **1702 kcal** (-20% sul fabbisogno) |
-| Macro | P 176 g (2.2 g/kg) · C 144 g · G 47 g |
+| Macro | P 127 g (1.6 g/kg) · C 170 g · G 57 g |
 | Idratazione | 2800 ml |
 | Durata piano | 3 mesi |
 
-**Piano alimentare** — mesi: 1·1852 kcal → 2·1702 kcal → 3·1702 kcal
+**Piano alimentare** — mesi: 1·1702 kcal → 2·1702 kcal → 3·1702 kcal
 
 Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Uova intere 3 uova, Fiocchi d’avena 50g, Banana 1 banana | 511 |
-| Pranzo 13:00 | Uova intere 4 uova, Patate (bollite) 245g, Olio EVO 10g, Noci 20g, Spinaci 150g | 746 |
-| Cena 20:00 | Salmone 120g, Patate dolci 160g, Olio EVO 10g, Mandorle 25g, Zucchine 150g | 647 |
+| Colazione 07:30 | Banana 1 banana, Yogurt greco 300g, Fiocchi d’avena 20g | 476 |
+| Pranzo 13:00 | Spinaci 150g, Salmone 200g, Patate (bollite) 215g | 638 |
+| Cena 20:00 | Zucchine 150g, Salmone 190g, Patate dolci 165g | 563 |
 
-Totale Lun: **1902 kcal** · P 96 g · C 163 g · G 101 g
+Totale Lun: **1676 kcal** · P 123 g · C 138 g · G 69 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Yogurt greco 220g, Fiocchi d’avena 50g, Banana 1 banana | 515 |
-| Pranzo 13:00 | Uova intere 4 uova, Patate dolci 245g, Olio EVO 10g, Mandorle 20g, Broccoli 150g | 745 |
-| Cena 20:00 | _pasto libero_ | 617 |
+| Colazione 07:30 | Banana 1 banana, Uova intere 3 uova, Yogurt greco 170g | 505 |
+| Pranzo 13:00 | Broccoli 150g, Salmone 205g, Patate dolci 180g | 632 |
+| Cena 20:00 | _pasto libero_ | 567 |
 
-Totale Sab: **1260 kcal** · P 65 g · C 134 g · G 56 g
+Totale Sab: **1136 kcal** · P 84 g · C 82 g · G 53 g
 
 _Nessun piano di allenamento generato._
 
 **Controlli**
 
-- ❌ `D5` Proteine: i pasti danno in media 124 g contro un target di 192 g (64%)
-- ❌ `D5` Grassi: i pasti danno in media 86 g contro un target di 51 g (169%)
-- ⚠️ `D9` Troppe uova in un solo pasto (fino a 4) in 2 pasti della settimana
-- ⚠️ `D9` Lun: 6 uova in un giorno
-- ⚠️ `D15` La scheda profilo dell’onboarding mostra 1702 kcal ma il piano (mese 1) ne prescrive 1852 (+150): l’utente vede due numeri diversi
-- ⚠️ `P1` Utente solo dieta: il profilo salva sport "gym" per default (compare in Profilo come "Sala pesi")
-- ⚠️ `N1` La tab Nutrizione mostra sempre 6 pasti (con orari fissi) ma l’utente ne fa 3 (colazione, pranzo, cena): compaiono schede di pasti che non fa
-- ⚠️ `N3` Sab: con "Segui il piano" il giorno si riempie con 1260 kcal (68% del target): la cena libera non aggiunge nulla e l’anello calorie resta sotto
+- ⚠️ `D5` Carboidrati: i pasti danno in media il 86% del target (giorno peggiore: 22% di scarto)
+- ⚠️ `D5` Grassi: i pasti danno in media il 111% del target (giorno peggiore: 21% di scarto)
 - ℹ️ `D14` Dal mese 2 in poi il target è identico (1702 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
-- ℹ️ `C3` Utente solo dieta: nessun allenamento nel calcolo del fabbisogno (corretto), ma la Home mostrerà comunque tasti di registrazione allenamento
-- ℹ️ `S3` Utente solo dieta: la tab Allenamento resta visibile e mostra "Nessun programma generato… scegliendo sala pesi o corsa", frase fuorviante perché la domanda non è mai stata posta
-- ℹ️ `Q4` Risposte raccolte ma non usate da nessuna parte: generalActivityLevel, bedTime, wakeTime, sleepQuality
+- ℹ️ `S3` Utente solo dieta: la tab Allenamento deve mostrare che il piano non è stato richiesto
 
 ---
 
 ## Ilaria, 29 anni — solo allenamento, forza
 
-**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 2 note)
+**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 1 note)
 
 - **Chi è:** Donna, 64 kg per 170 cm, vuole solo la scheda per aumentare la forza. 4 giorni, esperta.
-- **Cosa ci aspettiamo:** Il piano alimentare non deve esistere, la scheda deve avere schemi di forza (poche ripetizioni, recuperi lunghi).
+- **Cosa ci aspettiamo:** Il piano alimentare non deve esistere, la scheda ha schemi di forza (poche ripetizioni, recuperi lunghi).
 
 | Dati | Valore |
 |---|---|
 | Profilo | female · 29 anni · 170 cm · 64 kg → 66 kg · obiettivo `gainStrength` |
-| Metabolismo basale / fabbisogno | 1397 / 2025 kcal |
-| Target calorico | **2126 kcal** (5% sul fabbisogno) |
-| Macro | P 128 g (2.0 g/kg) · C 271 g · G 59 g |
+| Metabolismo basale / fabbisogno | 1397 / 2041 kcal |
+| Target calorico | **2143 kcal** (5% sul fabbisogno) |
+| Macro | P 122 g (1.9 g/kg) · C 254 g · G 71 g |
 | Idratazione | 2590 ml |
-| Durata piano | 2 mesi |
+| Durata piano | 5 mesi |
 
 _Nessun piano alimentare generato._
 
@@ -889,70 +793,135 @@ _Nessun piano alimentare generato._
 | Sab | Riposo | |
 | Dom | Riposo | |
 
-**Mese 2 — Mese 2 · Consolidamento**
+**Mese 5 — Mese 5 · Consolidamento**
 
 | Giorno | Seduta | Dettaglio |
 |---|---|---|
-| Lun | Push | Panca piana 5×3-5 @37.5kg; Military press 5×3-5 @25kg; Dip alle parallele 5×3-5; Alzate laterali 5×3-5 @3.5kg; Chest press macchina 5×3-5; Push-up 5×3-5 |
-| Mar | Pull | Stacco da terra 5×3-5 @65kg; Trazioni zavorrate 5×3-5; Rematore con bilanciere 5×3-5 @30kg; Curl bicipiti 5×3-5 @11kg; Lat machine 5×3-5; Rematore con manubrio 5×3-5 @9kg |
+| Lun | Push | Panca piana 5×3-5 @42.5kg; Military press 5×3-5 @27.5kg; Alzate laterali 5×3-5 @4kg; Chest press macchina 5×3-5; Push-up 5×3-5; Dip alle parallele 5×3-5 |
+| Mar | Pull | Stacco da terra 5×3-5 @72.5kg; Trazioni zavorrate 5×3-5; Curl bicipiti 5×3-5 @12kg; Lat machine 5×3-5; Rematore con manubrio 5×3-5 @10kg; Rematore con bilanciere 5×3-5 @32.5kg |
 | Mer | Riposo | |
-| Gio | Legs | Back squat 5×3-5 @55kg; Romanian deadlift 5×3-5 @45kg; Leg press 5×3-5 @72.5kg; Affondi 5×3-5 @11kg; Hip thrust 5×3-5 @37.5kg; Leg curl machine 5×3-5 |
-| Ven | Upper | Panca piana 5×3-5 @37.5kg; Trazioni alla sbarra 5×3-5; Military press 5×3-5 @25kg; Curl bicipiti 5×3-5 @11kg; Chest press macchina 5×3-5; Lat machine 5×3-5 |
+| Gio | Legs | Back squat 5×3-5 @62.5kg; Romanian deadlift 5×3-5 @50kg; Affondi 5×3-5 @12kg; Hip thrust 5×3-5 @42.5kg; Leg curl machine 5×3-5; Abductor machine 5×3-5 |
+| Ven | Upper | Panca piana 5×3-5 @42.5kg; Trazioni alla sbarra 5×3-5; Curl bicipiti 5×3-5 @12kg; Chest press macchina 5×3-5; Lat machine 5×3-5; Military press 5×3-5 @27.5kg |
 | Sab | Riposo | |
 | Dom | Riposo | |
 
 **Controlli**
 
-- ℹ️ `S4` Utente solo allenamento: Home e Nutrizione mostrano comunque target calorici e macro del profilo (nessun piano alimentare dietro) e la tab Nutrizione mostra tutti e 6 i pasti
-- ℹ️ `Q4` Risposte raccolte ma non usate da nessuna parte: generalActivityLevel, bedTime, wakeTime, sleepQuality
+- ℹ️ `S4` Utente solo allenamento: la tab Nutrizione deve mostrare che il piano non è stato richiesto
 
 ---
 
-## Giorgio, 34 anni — celiaco e allergico alla frutta secca
+## Anna, 52 anni — dimagrimento, sedentaria, fastidio al ginocchio
 
-**Esito:** ❌ NON SUPERATO (1 errori, 11 avvisi, 2 note)
+**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 1 note)
 
-- **Chi è:** Uomo, 82 kg per 181 cm, mantenimento. Celiaco (niente glutine) e allergico alla frutta secca e alle noci. 3 allenamenti.
-- **Cosa ci aspettiamo:** Nessuna fonte di glutine (pasta, pane, couscous…) e nessuna frutta secca in nessun pasto del piano.
+- **Chi è:** Donna, 70 kg per 162 cm, vuole scendere a 64 kg. Sedentaria, principiante, 2 allenamenti. Fastidio al ginocchio quando sale le scale.
+- **Cosa ci aspettiamo:** Deficit prudente, nessun esercizio che carichi il ginocchio, sedute brevi con pochi esercizi.
 
 | Dati | Valore |
 |---|---|
-| Profilo | male · 34 anni · 181 cm · 82 kg → 82 kg · obiettivo `maintainImprove` |
-| Metabolismo basale / fabbisogno | 1786 / 2358 kcal |
-| Target calorico | **2358 kcal** (0% sul fabbisogno) |
-| Macro | P 148 g (1.8 g/kg) · C 293 g · G 66 g |
-| Idratazione | 2870 ml |
-| Durata piano | 4 mesi |
+| Profilo | female · 52 anni · 162 cm · 70 kg → 64 kg · obiettivo `loseFat` |
+| Metabolismo basale / fabbisogno | 1292 / 1548 kcal |
+| Target calorico | **1238 kcal** (-20% sul fabbisogno) |
+| Macro | P 92 g (1.3 g/kg) · C 107 g · G 49 g |
+| Idratazione | 2450 ml |
+| Durata piano | 5 mesi |
 
-**Piano alimentare** — mesi: 1·2358 kcal → 2·2358 kcal → 3·2358 kcal → 4·2358 kcal
+**Piano alimentare** — mesi: 1·1238 kcal → 2·1238 kcal → 3·1238 kcal → 4·1238 kcal → 5·1238 kcal
 
 Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Uova intere 4 uova, Fiocchi d’avena 65g, Banana 1 banana | 655 |
-| Pranzo 13:00 | Uova intere 5 uova, Patate dolci 400g, Olio EVO 10g, Spinaci 150g | 862 |
-| Cena 20:00 | Salmone 165g, Riso basmati (cotto) 190g, Olio EVO 10g, Zucchine 150g | 687 |
+| Colazione 07:30 | Banana 1 banana, Yogurt greco 275g | 374 |
+| Pranzo 13:00 | Spinaci 150g, Salmone 135g, Patate (bollite) 205g | 494 |
+| Cena 20:00 | Zucchine 150g, Yogurt greco 295g, Patate dolci 140g | 432 |
 
-Totale Lun: **2203 kcal** · P 121 g · C 213 g · G 98 g
+Totale Lun: **1299 kcal** · P 92 g · C 127 g · G 48 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Yogurt greco 260g, Fiocchi d’avena 55g, Banana 1 banana | 573 |
-| Pranzo 13:00 | Uova intere 4 uova, Patate (bollite) 290g, Olio EVO 10g, Broccoli 150g | 724 |
-| Cena 20:00 | _pasto libero_ | 731 |
+| Colazione 07:30 | Banana 1 banana, Uova intere 3 uova | 335 |
+| Pranzo 13:00 | Broccoli 150g, Salmone 145g, Patate dolci 110g | 448 |
+| Cena 20:00 | _pasto libero_ | 403 |
 
-Totale Sab: **1298 kcal** · P 72 g · C 144 g · G 52 g
+Totale Sab: **782 kcal** · P 56 g · C 61 g · G 36 g
 
-**Mese 1 — Mese 1 · Sovraccarico progressivo**
+**Mese 1 — Mese 1 · Adattamento e tecnica**
 
 | Giorno | Seduta | Dettaglio |
 |---|---|---|
-| Lun | Push | Panca piana 4×8-12 @40kg; Military press 4×8-12 @27.5kg; Dip alle parallele 4×8-12; Alzate laterali 4×8-12 @4kg; Chest press macchina 4×8-12 |
+| Lun | Upper | Panca piana 3×15 @16kg; Trazioni alla sbarra 3×15; Military press 3×15 @11kg; Curl bicipiti 3×15 @5kg |
 | Mar | Riposo | |
-| Mer | Pull | Stacco da terra 4×8-12 @75kg; Trazioni zavorrate 4×8-12; Rematore con bilanciere 4×8-12 @32.5kg; Curl bicipiti 4×8-12 @12kg; Lat machine 4×8-12 |
-| Gio | Riposo | |
-| Ven | Legs | Back squat 4×8-12 @62.5kg; Romanian deadlift 4×8-12 @50kg; Leg press 4×8-12 @82.5kg; Affondi 4×8-12 @12kg; Hip thrust 4×8-12 @40kg |
+| Mer | Riposo | |
+| Gio | Lower | Romanian deadlift 3×15 @20kg; Hip thrust 3×15 @16kg; Abductor machine 3×15; Polpacci alla macchina 3×15 |
+| Ven | Riposo | |
+| Sab | Riposo | |
+| Dom | Riposo | |
+
+**Mese 5 — Mese 5 · Consolidamento**
+
+| Giorno | Seduta | Dettaglio |
+|---|---|---|
+| Lun | Upper | Panca piana 4×12-15 @20kg; Trazioni alla sbarra 4×12-15; Curl bicipiti 4×12-15 @6kg; Chest press macchina 4×12-15 |
+| Mar | Riposo | |
+| Mer | Riposo | |
+| Gio | Lower | Romanian deadlift 4×12-15 @25kg; Hip thrust 4×12-15 @20kg; Abductor machine 4×12-15; Polpacci alla macchina 4×12-15 |
+| Ven | Riposo | |
+| Sab | Riposo | |
+| Dom | Riposo | |
+
+**Controlli**
+
+- ℹ️ `D14` Dal mese 2 in poi il target è identico (1238 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
+
+---
+
+## Roberto, 58 anni — salute generale, lavoro in piedi
+
+**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 1 note)
+
+- **Chi è:** Uomo, 82 kg per 175 cm, lavoro in piedi tutto il giorno. Vuole stare meglio. Principiante, 2 allenamenti.
+- **Cosa ci aspettiamo:** Calorie di mantenimento, scheda semplice con carichi prudenti, 2 sedute.
+
+| Dati | Valore |
+|---|---|
+| Profilo | male · 58 anni · 175 cm · 82 kg → 80 kg · obiettivo `generalHealth` |
+| Metabolismo basale / fabbisogno | 1629 / 2387 kcal |
+| Target calorico | **2387 kcal** (0% sul fabbisogno) |
+| Macro | P 115 g (1.4 g/kg) · C 302 g · G 80 g |
+| Idratazione | 2870 ml |
+| Durata piano | 4 mesi |
+
+**Piano alimentare** — mesi: 1·2387 kcal → 2·2387 kcal → 3·2387 kcal → 4·2387 kcal
+
+Esempio giorno di allenamento (Lun) e pasto libero (Sab):
+
+| Pasto | Alimenti | kcal |
+|---|---|---|
+| Colazione 07:30 | Banana 1 banana, Uova intere 2 uova, Fiocchi d’avena 100g | 651 |
+| Pranzo 13:00 | Spinaci 150g, Olio EVO 10g, Salmone 140g, Patate (bollite) 350g, Riso basmati (cotto) 185g | 943 |
+| Cena 20:00 | Zucchine 150g, Olio EVO 10g, Yogurt greco 300g, Patate dolci 350g, Riso basmati (cotto) 95g | 821 |
+
+Totale Lun: **2414 kcal** · P 112 g · C 326 g · G 74 g
+
+| Pasto | Alimenti | kcal |
+|---|---|---|
+| Colazione 07:30 | Banana 1 banana, Uova intere 2 uova, Fiocchi d’avena 85g, Mandorle 5g | 622 |
+| Pranzo 13:00 | Broccoli 150g, Olio EVO 10g, Salmone 160g, Patate dolci 350g, Riso basmati (cotto) 100g | 894 |
+| Cena 20:00 | _pasto libero_ | 784 |
+
+Totale Sab: **1516 kcal** · P 74 g · C 191 g · G 52 g
+
+**Mese 1 — Mese 1 · Adattamento e tecnica**
+
+| Giorno | Seduta | Dettaglio |
+|---|---|---|
+| Lun | Upper | Panca piana 3×10 @19kg; Trazioni alla sbarra 3×10; Military press 3×10 @13kg; Curl bicipiti 3×10 @6kg |
+| Mar | Riposo | |
+| Mer | Riposo | |
+| Gio | Lower | Back squat 3×10 @30kg; Romanian deadlift 3×10 @22.5kg; Leg press 3×10 @37.5kg; Affondi 3×10 @6kg |
+| Ven | Riposo | |
 | Sab | Riposo | |
 | Dom | Riposo | |
 
@@ -960,143 +929,55 @@ Totale Sab: **1298 kcal** · P 72 g · C 144 g · G 52 g
 
 | Giorno | Seduta | Dettaglio |
 |---|---|---|
-| Lun | Push | Panca piana 4×8-12 @40kg; Military press 4×8-12 @27.5kg; Dip alle parallele 4×8-12; Alzate laterali 4×8-12 @4kg; Chest press macchina 4×8-12 |
+| Lun | Upper | Panca piana 3×10 @22.5kg; Trazioni alla sbarra 3×10; Military press 3×10 @17kg; Curl bicipiti 3×10 @7kg |
 | Mar | Riposo | |
-| Mer | Pull | Stacco da terra 4×8-12 @75kg; Trazioni zavorrate 4×8-12; Rematore con bilanciere 4×8-12 @32.5kg; Curl bicipiti 4×8-12 @12kg; Lat machine 4×8-12 |
-| Gio | Riposo | |
-| Ven | Legs | Back squat 4×8-12 @62.5kg; Romanian deadlift 4×8-12 @50kg; Leg press 4×8-12 @82.5kg; Affondi 4×8-12 @12kg; Hip thrust 4×8-12 @40kg |
+| Mer | Riposo | |
+| Gio | Lower | Back squat 3×10 @37.5kg; Romanian deadlift 3×10 @27.5kg; Leg press 3×10 @47.5kg; Affondi 3×10 @7kg |
+| Ven | Riposo | |
 | Sab | Riposo | |
 | Dom | Riposo | |
 
 **Controlli**
 
-- ❌ `D3` Le calorie reali dei pasti (media 2011) si discostano del -15% dal target del mese (2358)
-- ⚠️ `D3` Mar: 1808 kcal, -23% rispetto al target
-- ⚠️ `D3` Gio: 1844 kcal, -22% rispetto al target
-- ⚠️ `D3` Dom: 1812 kcal, -23% rispetto al target
-- ⚠️ `D5` Carboidrati: i pasti danno in media 194 g contro un target di 293 g (66%)
-- ⚠️ `D5` Grassi: i pasti danno in media 73 g contro un target di 66 g (111%)
-- ⚠️ `D9` Troppe uova in un solo pasto (fino a 5) in 6 pasti della settimana
-- ⚠️ `D9` Lun: 9 uova in un giorno
-- ⚠️ `D9` Porzioni molto abbondanti in 2 pasti (es. Lun pranzo: Patate dolci 400 g)
-- ⚠️ `R14` I mesi "Mese 1 · Sovraccarico progressivo" (1, 2, 3) sono identici: stessi esercizi, serie, ripetizioni e carichi — nel piano non c’è un vero sovraccarico progressivo
-- ⚠️ `N1` La tab Nutrizione mostra sempre 6 pasti (con orari fissi) ma l’utente ne fa 3 (colazione, pranzo, cena): compaiono schede di pasti che non fa
-- ⚠️ `N3` Sab: con "Segui il piano" il giorno si riempie con 1297 kcal (55% del target): la cena libera non aggiunge nulla e l’anello calorie resta sotto
-- ℹ️ `D14` Dal mese 2 in poi il target è identico (2358 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
-- ℹ️ `Q4` Risposte raccolte ma non usate da nessuna parte: generalActivityLevel, bedTime, wakeTime, sleepQuality
+- ℹ️ `D14` Dal mese 2 in poi il target è identico (2387 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
 
 ---
 
-## Valentina, 31 anni — spalla infortunata, preferisce Push/Pull/Legs
+## Franco, 60 anni — pensionato, un solo giorno
 
-**Esito:** ❌ NON SUPERATO (2 errori, 6 avvisi, 2 note)
-
-- **Chi è:** Donna, 66 kg per 172 cm, ipertrofia. Esperta, 5 giorni, vuole Push/Pull/Legs. Infortunio recente alla spalla sinistra.
-- **Cosa ci aspettiamo:** Nessun esercizio che sovraccarichi la spalla (panca, military press, dip, alzate…), anche se la preferenza è PPL: la sicurezza prevale.
-
-| Dati | Valore |
-|---|---|
-| Profilo | female · 31 anni · 172 cm · 66 kg → 69 kg · obiettivo `gainMuscle` |
-| Metabolismo basale / fabbisogno | 1419 / 1958 kcal |
-| Target calorico | **2193 kcal** (12% sul fabbisogno) |
-| Macro | P 132 g (2.0 g/kg) · C 279 g · G 61 g |
-| Idratazione | 2660 ml |
-| Durata piano | 3 mesi |
-
-**Piano alimentare** — mesi: 1·2043 kcal → 2·2193 kcal → 3·2193 kcal
-
-Esempio giorno di allenamento (Lun) e pasto libero (Sab):
-
-| Pasto | Alimenti | kcal |
-|---|---|---|
-| Colazione 07:30 | Uova intere 3 uova, Fiocchi d’avena 55g, Banana 1 banana | 561 |
-| Pranzo 13:00 | Uova intere 4 uova, Patate (bollite) 320g, Olio EVO 10g, Noci 15g, Spinaci 150g | 817 |
-| Cena 20:00 | Salmone 135g, Patate dolci 220g, Olio EVO 10g, Mandorle 25g, Zucchine 150g | 729 |
-
-Totale Lun: **2107 kcal** · P 108 g · C 194 g · G 105 g
-
-| Pasto | Alimenti | kcal |
-|---|---|---|
-| Colazione 07:30 | Yogurt greco 245g, Fiocchi d’avena 55g, Banana 1 banana | 559 |
-| Pranzo 13:00 | Uova intere 4 uova, Patate dolci 325g, Olio EVO 10g, Mandorle 20g, Broccoli 150g | 853 |
-| Cena 20:00 | _pasto libero_ | 700 |
-
-Totale Sab: **1411 kcal** · P 73 g · C 155 g · G 60 g
-
-**Mese 1 — Mese 1 · Sovraccarico progressivo**
-
-| Giorno | Seduta | Dettaglio |
-|---|---|---|
-| Lun | Push | Back squat 4×8-12 @57.5kg; Rematore con bilanciere 4×8-12 @30kg; Plank 4×8-12; Leg press 4×8-12 @75kg; Curl bicipiti 4×8-12 @11kg; Lat machine 4×8-12 |
-| Mar | Pull | Stacco da terra 4×8-12 @67.5kg; Rematore con bilanciere 4×8-12 @30kg; Curl bicipiti 4×8-12 @11kg; Lat machine 4×8-12; Rematore con manubrio 4×8-12 @9kg |
-| Mer | Legs | Back squat 4×8-12 @57.5kg; Romanian deadlift 4×8-12 @45kg; Leg press 4×8-12 @75kg; Affondi 4×8-12 @11kg; Hip thrust 4×8-12 @37.5kg; Leg curl machine 4×8-12 |
-| Gio | Riposo | |
-| Ven | Push | Back squat 4×8-12 @57.5kg; Rematore con bilanciere 4×8-12 @30kg; Plank 4×8-12; Leg press 4×8-12 @75kg; Curl bicipiti 4×8-12 @11kg; Lat machine 4×8-12 |
-| Sab | Pull | Stacco da terra 4×8-12 @67.5kg; Rematore con bilanciere 4×8-12 @30kg; Curl bicipiti 4×8-12 @11kg; Lat machine 4×8-12; Rematore con manubrio 4×8-12 @9kg |
-| Dom | Riposo | |
-
-**Mese 3 — Mese 3 · Consolidamento**
-
-| Giorno | Seduta | Dettaglio |
-|---|---|---|
-| Lun | Push | Back squat 4×8-12 @57.5kg; Rematore con bilanciere 4×8-12 @30kg; Plank 4×8-12; Leg press 4×8-12 @75kg; Curl bicipiti 4×8-12 @11kg; Lat machine 4×8-12 |
-| Mar | Pull | Stacco da terra 4×8-12 @67.5kg; Rematore con bilanciere 4×8-12 @30kg; Curl bicipiti 4×8-12 @11kg; Lat machine 4×8-12; Rematore con manubrio 4×8-12 @9kg |
-| Mer | Legs | Back squat 4×8-12 @57.5kg; Romanian deadlift 4×8-12 @45kg; Leg press 4×8-12 @75kg; Affondi 4×8-12 @11kg; Hip thrust 4×8-12 @37.5kg; Leg curl machine 4×8-12 |
-| Gio | Riposo | |
-| Ven | Push | Back squat 4×8-12 @57.5kg; Rematore con bilanciere 4×8-12 @30kg; Plank 4×8-12; Leg press 4×8-12 @75kg; Curl bicipiti 4×8-12 @11kg; Lat machine 4×8-12 |
-| Sab | Pull | Stacco da terra 4×8-12 @67.5kg; Rematore con bilanciere 4×8-12 @30kg; Curl bicipiti 4×8-12 @11kg; Lat machine 4×8-12; Rematore con manubrio 4×8-12 @9kg |
-| Dom | Riposo | |
-
-**Controlli**
-
-- ❌ `D5` Carboidrati: i pasti danno in media 180 g contro un target di 260 g (69%)
-- ❌ `D5` Grassi: i pasti danno in media 89 g contro un target di 57 g (157%)
-- ⚠️ `D9` Troppe uova in un solo pasto (fino a 4) in 3 pasti della settimana
-- ⚠️ `D9` Lun: 7 uova in un giorno
-- ⚠️ `D15` La scheda profilo dell’onboarding mostra 2193 kcal ma il piano (mese 1) ne prescrive 2043 (-150): l’utente vede due numeri diversi
-- ⚠️ `R14` I mesi "Mese 1 · Sovraccarico progressivo" (1, 2) sono identici: stessi esercizi, serie, ripetizioni e carichi — nel piano non c’è un vero sovraccarico progressivo
-- ⚠️ `N1` La tab Nutrizione mostra sempre 6 pasti (con orari fissi) ma l’utente ne fa 3 (colazione, pranzo, cena): compaiono schede di pasti che non fa
-- ⚠️ `N3` Sab: con "Segui il piano" il giorno si riempie con 1412 kcal (69% del target): la cena libera non aggiunge nulla e l’anello calorie resta sotto
-- ℹ️ `D14` Dal mese 2 in poi il target è identico (2193 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
-- ℹ️ `Q4` Risposte raccolte ma non usate da nessuna parte: generalActivityLevel, bedTime, wakeTime, sleepQuality
-
----
-
-## Franco, 67 anni — salute, sedentario, un solo giorno
-
-**Esito:** ❌ NON SUPERATO (1 errori, 9 avvisi, 2 note)
+**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 1 note)
 
 - **Chi è:** Uomo, 78 kg per 170 cm, pensionato. Può allenarsi 1 volta a settimana, 30 minuti, principiante.
 - **Cosa ci aspettiamo:** Una sola seduta a settimana (full body, 3 esercizi), piano non invasivo, calorie di mantenimento.
 
 | Dati | Valore |
 |---|---|
-| Profilo | male · 67 anni · 170 cm · 78 kg → 76 kg · obiettivo `generalHealth` |
-| Metabolismo basale / fabbisogno | 1513 / 1876 kcal |
-| Target calorico | **1876 kcal** (0% sul fabbisogno) |
-| Macro | P 125 g (1.6 g/kg) · C 227 g · G 52 g |
+| Profilo | male · 60 anni · 170 cm · 78 kg → 76 kg · obiettivo `generalHealth` |
+| Metabolismo basale / fabbisogno | 1548 / 1892 kcal |
+| Target calorico | **1892 kcal** (0% sul fabbisogno) |
+| Macro | P 109 g (1.4 g/kg) · C 223 g · G 63 g |
 | Idratazione | 2730 ml |
 | Durata piano | 4 mesi |
 
-**Piano alimentare** — mesi: 1·1876 kcal → 2·1876 kcal → 3·1876 kcal → 4·1876 kcal
+**Piano alimentare** — mesi: 1·1892 kcal → 2·1892 kcal → 3·1892 kcal → 4·1892 kcal
 
 Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Uova intere 4 uova, Fiocchi d’avena 70g, Banana 1 banana | 681 |
-| Pranzo 13:00 | Uova intere 5 uova, Patate (bollite) 410g, Olio EVO 10g, Noci 25g, Spinaci 150g | 1047 |
-| Cena 20:00 | Salmone 170g, Patate dolci 280g, Olio EVO 10g, Mandorle 35g, Zucchine 150g | 912 |
+| Colazione 07:30 | Banana 1 banana, Yogurt greco 220g, Fiocchi d’avena 60g | 553 |
+| Pranzo 13:00 | Spinaci 150g, Olio EVO 5g, Salmone 150g, Patate (bollite) 350g | 696 |
+| Cena 20:00 | Zucchine 150g, Olio EVO 5g, Salmone 145g, Patate dolci 315g | 643 |
 
-Totale Lun: **2638 kcal** · P 136 g · C 238 g · G 133 g
+Totale Lun: **1891 kcal** · P 108 g · C 218 g · G 66 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Yogurt greco 205g, Fiocchi d’avena 45g, Banana 1 banana | 481 |
-| Pranzo 13:00 | Uova intere 3 uova, Patate dolci 230g, Olio EVO 10g, Mandorle 20g, Broccoli 150g | 717 |
-| Cena 20:00 | _pasto libero_ | 582 |
+| Colazione 07:30 | Banana 1 banana, Uova intere 3 uova, Fiocchi d’avena 35g | 476 |
+| Pranzo 13:00 | Broccoli 150g, Olio EVO 5g, Salmone 160g, Patate dolci 315g | 699 |
+| Cena 20:00 | _pasto libero_ | 627 |
 
-Totale Sab: **1197 kcal** · P 62 g · C 127 g · G 53 g
+Totale Sab: **1174 kcal** · P 68 g · C 126 g · G 46 g
 
 **Mese 1 — Mese 1 · Adattamento e tecnica**
 
@@ -1114,7 +995,7 @@ Totale Sab: **1197 kcal** · P 62 g · C 127 g · G 53 g
 
 | Giorno | Seduta | Dettaglio |
 |---|---|---|
-| Lun | Full Body | Back squat 3×10 @32.5kg; Panca piana 3×10 @22.5kg; Rematore con bilanciere 3×10 @17kg |
+| Lun | Full Body | Back squat 3×10 @35kg; Panca piana 3×10 @22.5kg; Rematore con bilanciere 3×10 @18kg |
 | Mar | Riposo | |
 | Mer | Riposo | |
 | Gio | Riposo | |
@@ -1124,66 +1005,55 @@ Totale Sab: **1197 kcal** · P 62 g · C 127 g · G 53 g
 
 **Controlli**
 
-- ❌ `D5` Grassi: i pasti danno in media 88 g contro un target di 52 g (169%)
-- ⚠️ `D3` Lun: 2638 kcal, 41% rispetto al target
-- ⚠️ `D5` Carboidrati: i pasti danno in media 164 g contro un target di 227 g (72%)
-- ⚠️ `D9` Porzione eccessiva: Patate (bollite) 410 g (Lun, pranzo)
-- ⚠️ `D9` Troppe uova in un solo pasto (fino a 5) in 2 pasti della settimana
-- ⚠️ `D9` Lun: 9 uova in un giorno
-- ⚠️ `D9` Porzioni molto abbondanti in 1 pasti (es. Lun pranzo: Patate (bollite) 410 g)
-- ⚠️ `R14` I mesi "Mese 2 · Sovraccarico progressivo" (2, 3) sono identici: stessi esercizi, serie, ripetizioni e carichi — nel piano non c’è un vero sovraccarico progressivo
-- ⚠️ `N1` La tab Nutrizione mostra sempre 6 pasti (con orari fissi) ma l’utente ne fa 3 (colazione, pranzo, cena): compaiono schede di pasti che non fa
-- ⚠️ `N3` Sab: con "Segui il piano" il giorno si riempie con 1198 kcal (64% del target): la cena libera non aggiunge nulla e l’anello calorie resta sotto
-- ℹ️ `D14` Dal mese 2 in poi il target è identico (1876 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
-- ℹ️ `Q4` Risposte raccolte ma non usate da nessuna parte: generalActivityLevel, bedTime, wakeTime, sleepQuality
+- ℹ️ `D14` Dal mese 2 in poi il target è identico (1892 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
 
 ---
 
 ## Tommaso, 35 anni — si allena una volta ogni due settimane
 
-**Esito:** ❌ NON SUPERATO (2 errori, 8 avvisi, 2 note)
+**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 1 note)
 
 - **Chi è:** Uomo, 80 kg per 178 cm, mantenimento. In palestra va "una volta ogni 2 settimane" e ha 3 giorni disponibili.
-- **Cosa ci aspettiamo:** Il piano non deve inventare 3 sedute a settimana per chi ne fa meno di una; il fabbisogno e il piano devono contare lo stesso numero di allenamenti.
+- **Cosa ci aspettiamo:** Il piano programma 1 seduta a settimana (dose minima efficace) e il fabbisogno conta esattamente quella seduta.
 
 | Dati | Valore |
 |---|---|
 | Profilo | male · 35 anni · 178 cm · 80 kg → 80 kg · obiettivo `maintainImprove` |
-| Metabolismo basale / fabbisogno | 1743 / 2143 kcal |
-| Target calorico | **2143 kcal** (0% sul fabbisogno) |
-| Macro | P 144 g (1.8 g/kg) · C 257 g · G 60 g |
+| Metabolismo basale / fabbisogno | 1743 / 2184 kcal |
+| Target calorico | **2184 kcal** (0% sul fabbisogno) |
+| Macro | P 128 g (1.6 g/kg) · C 254 g · G 73 g |
 | Idratazione | 2800 ml |
 | Durata piano | 4 mesi |
 
-**Piano alimentare** — mesi: 1·2143 kcal → 2·2143 kcal → 3·2143 kcal → 4·2143 kcal
+**Piano alimentare** — mesi: 1·2184 kcal → 2·2184 kcal → 3·2184 kcal → 4·2184 kcal
 
 Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Uova intere 4 uova, Fiocchi d’avena 60g, Banana 1 banana | 611 |
-| Pranzo 13:00 | Uova intere 5 uova, Patate (bollite) 360g, Olio EVO 10g, Noci 20g, Spinaci 150g | 924 |
-| Cena 20:00 | Salmone 150g, Patate dolci 245g, Olio EVO 10g, Mandorle 30g, Zucchine 150g | 811 |
+| Colazione 07:30 | Banana 1 banana, Yogurt greco 240g, Fiocchi d’avena 80g | 651 |
+| Pranzo 13:00 | Spinaci 150g, Olio EVO 10g, Salmone 180g, Patate (bollite) 350g, Riso basmati (cotto) 70g | 887 |
+| Cena 20:00 | Zucchine 150g, Salmone 165g, Patate dolci 350g, Riso basmati (cotto) 95g | 785 |
 
-Totale Lun: **2345 kcal** · P 120 g · C 212 g · G 118 g
+Totale Lun: **2322 kcal** · P 128 g · C 280 g · G 75 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Yogurt greco 235g, Fiocchi d’avena 50g, Banana 1 banana | 530 |
-| Pranzo 13:00 | Uova intere 4 uova, Patate dolci 265g, Olio EVO 10g, Mandorle 25g, Broccoli 150g | 814 |
-| Cena 20:00 | _pasto libero_ | 664 |
+| Colazione 07:30 | Banana 1 banana, Yogurt greco 285g, Fiocchi d’avena 60g | 616 |
+| Pranzo 13:00 | Broccoli 150g, Salmone 190g, Patate dolci 350g, Riso basmati (cotto) 65g | 826 |
+| Cena 20:00 | _pasto libero_ | 720 |
 
-Totale Sab: **1344 kcal** · P 70 g · C 140 g · G 60 g
+Totale Sab: **1443 kcal** · P 87 g · C 174 g · G 45 g
 
 **Mese 1 — Mese 1 · Sovraccarico progressivo**
 
 | Giorno | Seduta | Dettaglio |
 |---|---|---|
-| Lun | Push | Panca piana 4×8-12 @40kg; Military press 4×8-12 @27.5kg; Dip alle parallele 4×8-12; Alzate laterali 4×8-12 @4kg; Chest press macchina 4×8-12 |
+| Lun | Full Body | Back squat 4×8-12 @60kg; Panca piana 4×8-12 @40kg; Rematore con bilanciere 4×8-12 @32.5kg; Plank 4×8-12; Leg press 4×8-12 @80kg |
 | Mar | Riposo | |
-| Mer | Pull | Stacco da terra 4×8-12 @72.5kg; Trazioni zavorrate 4×8-12; Rematore con bilanciere 4×8-12 @32.5kg; Curl bicipiti 4×8-12 @12kg; Lat machine 4×8-12 |
+| Mer | Riposo | |
 | Gio | Riposo | |
-| Ven | Legs | Back squat 4×8-12 @60kg; Romanian deadlift 4×8-12 @47.5kg; Leg press 4×8-12 @80kg; Affondi 4×8-12 @12kg; Hip thrust 4×8-12 @40kg |
+| Ven | Riposo | |
 | Sab | Riposo | |
 | Dom | Riposo | |
 
@@ -1191,66 +1061,55 @@ Totale Sab: **1344 kcal** · P 70 g · C 140 g · G 60 g
 
 | Giorno | Seduta | Dettaglio |
 |---|---|---|
-| Lun | Push | Panca piana 4×8-12 @40kg; Military press 4×8-12 @27.5kg; Dip alle parallele 4×8-12; Alzate laterali 4×8-12 @4kg; Chest press macchina 4×8-12 |
+| Lun | Full Body | Back squat 5×8-12 @65kg; Panca piana 5×8-12 @42.5kg; Plank 5×8-12; Leg press 5×8-12 @87.5kg; Chest press macchina 5×8-12 |
 | Mar | Riposo | |
-| Mer | Pull | Stacco da terra 4×8-12 @72.5kg; Trazioni zavorrate 4×8-12; Rematore con bilanciere 4×8-12 @32.5kg; Curl bicipiti 4×8-12 @12kg; Lat machine 4×8-12 |
+| Mer | Riposo | |
 | Gio | Riposo | |
-| Ven | Legs | Back squat 4×8-12 @60kg; Romanian deadlift 4×8-12 @47.5kg; Leg press 4×8-12 @80kg; Affondi 4×8-12 @12kg; Hip thrust 4×8-12 @40kg |
+| Ven | Riposo | |
 | Sab | Riposo | |
 | Dom | Riposo | |
 
 **Controlli**
 
-- ❌ `D5` Grassi: i pasti danno in media 97 g contro un target di 60 g (162%)
-- ❌ `P4` freq_gym="biweekly" (meno di una volta a settimana): il piano programma 3 sedute settimanali, il fabbisogno calorico ne conta 0
-- ⚠️ `D5` Carboidrati: i pasti danno in media 188 g contro un target di 257 g (73%)
-- ⚠️ `D9` Troppe uova in un solo pasto (fino a 5) in 3 pasti della settimana
-- ⚠️ `D9` Lun: 8 uova in un giorno
-- ⚠️ `D9` Porzioni molto abbondanti in 3 pasti (es. Lun pranzo: Patate (bollite) 360 g)
-- ⚠️ `R14` I mesi "Mese 1 · Sovraccarico progressivo" (1, 2, 3) sono identici: stessi esercizi, serie, ripetizioni e carichi — nel piano non c’è un vero sovraccarico progressivo
-- ⚠️ `C3` Il fabbisogno calorico assume 0 allenamenti a settimana (risposte freq_*) ma il piano ne programma 3
-- ⚠️ `N1` La tab Nutrizione mostra sempre 6 pasti (con orari fissi) ma l’utente ne fa 3 (colazione, pranzo, cena): compaiono schede di pasti che non fa
-- ⚠️ `N3` Sab: con "Segui il piano" il giorno si riempie con 1344 kcal (63% del target): la cena libera non aggiunge nulla e l’anello calorie resta sotto
-- ℹ️ `D14` Dal mese 2 in poi il target è identico (2143 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
-- ℹ️ `Q4` Risposte raccolte ma non usate da nessuna parte: generalActivityLevel, bedTime, wakeTime, sleepQuality
+- ℹ️ `D14` Dal mese 2 in poi il target è identico (2184 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
 
 ---
 
 ## Nina, 33 anni — dimagrimento senza peso obiettivo
 
-**Esito:** ❌ NON SUPERATO (3 errori, 6 avvisi, 2 note)
+**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 1 note)
 
 - **Chi è:** Donna, 70 kg per 166 cm, vuole dimagrire ma lascia vuoto il peso obiettivo (domanda facoltativa).
-- **Cosa ci aspettiamo:** Il profilo e le schermate non devono usare un peso obiettivo inventato; la durata del piano deve avere senso anche senza obiettivo.
+- **Cosa ci aspettiamo:** Nessun peso obiettivo inventato: durata standard del piano e nessun traguardo falso nelle schermate.
 
 | Dati | Valore |
 |---|---|
 | Profilo | female · 33 anni · 166 cm · 70 kg → undefined kg · obiettivo `loseFat` |
-| Metabolismo basale / fabbisogno | 1412 / 2004 kcal |
-| Target calorico | **1603 kcal** (-20% sul fabbisogno) |
-| Macro | P 154 g (2.2 g/kg) · C 146 g · G 45 g |
+| Metabolismo basale / fabbisogno | 1412 / 1982 kcal |
+| Target calorico | **1586 kcal** (-20% sul fabbisogno) |
+| Macro | P 118 g (1.7 g/kg) · C 159 g · G 53 g |
 | Idratazione | 2450 ml |
 | Durata piano | 4 mesi |
 
-**Piano alimentare** — mesi: 1·1753 kcal → 2·1603 kcal → 3·1603 kcal → 4·1603 kcal
+**Piano alimentare** — mesi: 1·1586 kcal → 2·1586 kcal → 3·1586 kcal → 4·1586 kcal
 
 Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Uova intere 3 uova, Fiocchi d’avena 50g, Banana 1 banana | 519 |
-| Pranzo 13:00 | Uova intere 4 uova, Patate (bollite) 295g, Olio EVO 10g, Noci 15g, Spinaci 150g | 773 |
-| Cena 20:00 | Salmone 125g, Patate dolci 200g, Olio EVO 10g, Mandorle 20g, Zucchine 150g | 662 |
+| Colazione 07:30 | Banana 1 banana, Yogurt greco 300g, Fiocchi d’avena 20g | 476 |
+| Pranzo 13:00 | Spinaci 150g, Salmone 180g, Patate (bollite) 250g | 627 |
+| Cena 20:00 | Zucchine 150g, Salmone 170g, Patate dolci 195g | 548 |
 
-Totale Lun: **1952 kcal** · P 99 g · C 180 g · G 98 g
+Totale Lun: **1649 kcal** · P 116 g · C 151 g · G 64 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Yogurt greco 190g, Fiocchi d’avena 40g, Banana 1 banana | 447 |
-| Pranzo 13:00 | Uova intere 3 uova, Patate dolci 215g, Olio EVO 10g, Mandorle 15g, Broccoli 150g | 659 |
-| Cena 20:00 | _pasto libero_ | 543 |
+| Colazione 07:30 | Banana 1 banana, Uova intere 3 uova, Yogurt greco 145g | 481 |
+| Pranzo 13:00 | Broccoli 150g, Olio EVO 5g, Petto di pollo 115g, Patate dolci 220g, Mandorle 15g | 561 |
+| Cena 20:00 | _pasto libero_ | 508 |
 
-Totale Sab: **1106 kcal** · P 57 g · C 119 g · G 49 g
+Totale Sab: **1041 kcal** · P 80 g · C 92 g · G 42 g
 
 **Mese 1 — Mese 1 · Adattamento e tecnica**
 
@@ -1268,83 +1127,63 @@ Totale Sab: **1106 kcal** · P 57 g · C 119 g · G 49 g
 
 | Giorno | Seduta | Dettaglio |
 |---|---|---|
-| Lun | Full Body | Back squat 3×12-15 @40kg; Panca piana 3×12-15 @27.5kg; Rematore con bilanciere 3×12-15 @20kg; Plank 3×12-15; Leg press 3×12-15 @52.5kg |
+| Lun | Full Body | Back squat 3×12-15 @42.5kg; Panca piana 3×12-15 @27.5kg; Rematore con bilanciere 3×12-15 @20kg; Plank 3×12-15; Leg press 3×12-15 @55kg |
 | Mar | Riposo | |
-| Mer | Full Body | Back squat 3×12-15 @40kg; Panca piana 3×12-15 @27.5kg; Rematore con bilanciere 3×12-15 @20kg; Plank 3×12-15; Leg press 3×12-15 @52.5kg |
+| Mer | Full Body | Back squat 3×12-15 @42.5kg; Panca piana 3×12-15 @27.5kg; Rematore con bilanciere 3×12-15 @20kg; Plank 3×12-15; Leg press 3×12-15 @55kg |
 | Gio | Riposo | |
-| Ven | Full Body | Back squat 3×12-15 @40kg; Panca piana 3×12-15 @27.5kg; Rematore con bilanciere 3×12-15 @20kg; Plank 3×12-15; Leg press 3×12-15 @52.5kg |
+| Ven | Full Body | Back squat 3×12-15 @42.5kg; Panca piana 3×12-15 @27.5kg; Rematore con bilanciere 3×12-15 @20kg; Plank 3×12-15; Leg press 3×12-15 @55kg |
 | Sab | Riposo | |
 | Dom | Riposo | |
 
 **Controlli**
 
-- ❌ `D5` Proteine: i pasti danno in media 117 g contro un target di 168 g (69%)
-- ❌ `D5` Grassi: i pasti danno in media 80 g contro un target di 49 g (163%)
-- ❌ `P2` Peso obiettivo non indicato: il profilo (Progressi, grafico del peso, Profilo) usa un valore inventato di 75 kg, nella direzione sbagliata rispetto all’obiettivo (peso attuale 70 kg), mentre il piano usa la durata standard di 4 mesi
-- ⚠️ `D9` Troppe uova in un solo pasto (fino a 4) in 1 pasti della settimana
-- ⚠️ `D9` Lun: 7 uova in un giorno
-- ⚠️ `D15` La scheda profilo dell’onboarding mostra 1603 kcal ma il piano (mese 1) ne prescrive 1753 (+150): l’utente vede due numeri diversi
-- ⚠️ `R14` I mesi "Mese 2 · Sovraccarico progressivo" (2, 3) sono identici: stessi esercizi, serie, ripetizioni e carichi — nel piano non c’è un vero sovraccarico progressivo
-- ⚠️ `N1` La tab Nutrizione mostra sempre 6 pasti (con orari fissi) ma l’utente ne fa 3 (colazione, pranzo, cena): compaiono schede di pasti che non fa
-- ⚠️ `N3` Sab: con "Segui il piano" il giorno si riempie con 1106 kcal (63% del target): la cena libera non aggiunge nulla e l’anello calorie resta sotto
-- ℹ️ `D14` Dal mese 2 in poi il target è identico (1603 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
-- ℹ️ `Q4` Risposte raccolte ma non usate da nessuna parte: generalActivityLevel, bedTime, wakeTime, sleepQuality
+- ℹ️ `D14` Dal mese 2 in poi il target è identico (1586 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
 
 ---
 
-## Omar, 41 anni — ora solo dieta, ma aveva già fatto il questionario con allenamento
+## Omar, 41 anni — ora solo dieta, ma rimaste vecchie risposte di allenamento
 
-**Esito:** ❌ NON SUPERATO (4 errori, 6 avvisi, 4 note)
+**Esito:** ⚠️ SUPERATO CON AVVISI (0 errori, 2 avvisi, 2 note)
 
 - **Chi è:** Uomo, 85 kg per 180 cm. Rifà il questionario scegliendo solo dieta; nelle risposte restano i dati di allenamento di prima (4 allenamenti di palestra).
-- **Cosa ci aspettiamo:** Con modalità "solo dieta" le vecchie risposte di allenamento non devono influenzare né il fabbisogno né l’alternanza giorni allenamento/riposo.
+- **Cosa ci aspettiamo:** Con modalità "solo dieta" le vecchie risposte di allenamento non influenzano né il fabbisogno né la dieta.
 
 | Dati | Valore |
 |---|---|
 | Profilo | male · 41 anni · 178 cm · 85 kg → 78 kg · obiettivo `loseFat` |
-| Metabolismo basale / fabbisogno | 1763 / 2379 kcal |
-| Target calorico | **1903 kcal** (-20% sul fabbisogno) |
-| Macro | P 187 g (2.2 g/kg) · C 170 g · G 53 g |
-| Idratazione | 3325 ml |
-| Durata piano | 4 mesi |
+| Metabolismo basale / fabbisogno | 1763 / 2168 kcal |
+| Target calorico | **1734 kcal** (-20% sul fabbisogno) |
+| Macro | P 130 g (1.5 g/kg) · C 171 g · G 59 g |
+| Idratazione | 2975 ml |
+| Durata piano | 5 mesi |
 
-**Piano alimentare** — mesi: 1·2053 kcal → 2·1903 kcal → 3·1903 kcal → 4·1903 kcal
+**Piano alimentare** — mesi: 1·1734 kcal → 2·1734 kcal → 3·1734 kcal → 4·1734 kcal → 5·1734 kcal
 
 Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Uova intere 3 uova, Fiocchi d’avena 55g, Banana 1 banana | 569 |
-| Pranzo 13:00 | Uova intere 4 uova, Patate (bollite) 330g, Olio EVO 10g, Noci 20g, Spinaci 150g | 867 |
-| Cena 20:00 | Salmone 140g, Patate dolci 225g, Olio EVO 10g, Mandorle 25g, Zucchine 150g | 744 |
+| Colazione 07:30 | Banana 1 banana, Yogurt greco 300g, Uova intere 1 uovo | 476 |
+| Pranzo 13:00 | Spinaci 150g, Salmone 205g, Patate (bollite) 220g | 652 |
+| Cena 20:00 | Zucchine 150g, Salmone 195g, Patate dolci 170g | 578 |
 
-Totale Lun: **2178 kcal** · P 111 g · C 197 g · G 110 g
+Totale Lun: **1705 kcal** · P 128 g · C 127 g · G 74 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Yogurt greco 225g, Fiocchi d’avena 50g, Banana 1 banana | 520 |
-| Pranzo 13:00 | Uova intere 4 uova, Patate dolci 255g, Olio EVO 10g, Mandorle 20g, Broccoli 150g | 769 |
-| Cena 20:00 | _pasto libero_ | 636 |
+| Colazione 07:30 | Banana 1 banana, Uova intere 3 uova, Yogurt greco 180g | 515 |
+| Pranzo 13:00 | Broccoli 150g, Salmone 210g, Patate dolci 180g | 643 |
+| Cena 20:00 | _pasto libero_ | 578 |
 
-Totale Sab: **1289 kcal** · P 67 g · C 137 g · G 57 g
+Totale Sab: **1157 kcal** · P 86 g · C 82 g · G 54 g
 
 _Nessun piano di allenamento generato._
 
 **Controlli**
 
-- ❌ `D5` Proteine: i pasti danno in media 137 g contro un target di 202 g (68%)
-- ❌ `D5` Grassi: i pasti danno in media 92 g contro un target di 57 g (162%)
-- ❌ `P3` Utente solo dieta con risposte di allenamento rimaste da un questionario precedente: il fabbisogno conta 4 allenamenti/sett.
-- ❌ `P3` Utente solo dieta: la dieta alterna giorni di allenamento/riposo in base a risposte vecchie
-- ⚠️ `D9` Troppe uova in un solo pasto (fino a 4) in 3 pasti della settimana
-- ⚠️ `D9` Lun: 7 uova in un giorno
-- ⚠️ `D15` La scheda profilo dell’onboarding mostra 1903 kcal ma il piano (mese 1) ne prescrive 2053 (+150): l’utente vede due numeri diversi
-- ⚠️ `H1` Obiettivo settimanale mostrato in Home -434 kcal contro -3332 kcal/sett. voluti dal piano: due modelli energetici diversi
-- ⚠️ `N1` La tab Nutrizione mostra sempre 6 pasti (con orari fissi) ma l’utente ne fa 3 (colazione, pranzo, cena): compaiono schede di pasti che non fa
-- ⚠️ `N3` Sab: con "Segui il piano" il giorno si riempie con 1289 kcal (63% del target): la cena libera non aggiunge nulla e l’anello calorie resta sotto
-- ℹ️ `D14` Dal mese 2 in poi il target è identico (1903 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
-- ℹ️ `C3` Utente solo dieta: il fabbisogno assume 4 allenamenti/sett.
-- ℹ️ `S3` Utente solo dieta: la tab Allenamento resta visibile e mostra "Nessun programma generato… scegliendo sala pesi o corsa", frase fuorviante perché la domanda non è mai stata posta
-- ℹ️ `Q4` Risposte raccolte ma non usate da nessuna parte: generalActivityLevel, bedTime, wakeTime, sleepQuality
+- ⚠️ `D5` Carboidrati: i pasti danno in media il 87% del target (giorno peggiore: 26% di scarto)
+- ⚠️ `D5` Grassi: i pasti danno in media il 113% del target (giorno peggiore: 26% di scarto)
+- ℹ️ `D14` Dal mese 2 in poi il target è identico (1734 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
+- ℹ️ `S3` Utente solo dieta: la tab Allenamento deve mostrare che il piano non è stato richiesto
 
 ---

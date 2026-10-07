@@ -1,3 +1,4 @@
+import type { PlanCalibration, RecalibrationRecord } from '@/domain/recalibration';
 import type { Goal } from '@/lib/mock/types';
 
 export type PlanPhaseKind = 'adattamento' | 'progressione' | 'consolidamento';
@@ -29,6 +30,8 @@ export type PlanMeal = {
   time: string;
   items: PlanMealItem[];
   totalKcal: number;
+  /** Macros delivered by the items (grams). Absent on a free meal. */
+  macros?: { protein: number; carbs: number; fats: number };
   /** True for the one weekly unprescribed meal ("pasto libero") — items is
    * empty and totalKcal is only the reference budget, not a real total. */
   isFreeMeal?: boolean;
@@ -37,6 +40,10 @@ export type PlanMeal = {
 export type DietDayPlan = {
   weekday: string;
   meals: PlanMeal[];
+  /** The day's own target: it follows that day's training (more on training days, less on rest days). */
+  calorieTarget?: number;
+  macroTargetsG?: { protein: number; carbs: number; fats: number };
+  isTrainingDay?: boolean;
 };
 
 export type DietMonthPlan = {
@@ -54,6 +61,9 @@ export type DietPlan = {
   durationMonths: number;
   goal: Goal;
   months: DietMonthPlan[];
+  /** Monthly recalibration state and history (see domain/recalibration.ts). */
+  calibration?: PlanCalibration;
+  recalibrations?: RecalibrationRecord[];
 };
 
 export type TrainingExerciseEntry = {
@@ -94,6 +104,8 @@ export type TrainingPlan = {
   generatedAt: string;
   durationMonths: number;
   months: TrainingMonthPlan[];
+  calibration?: PlanCalibration;
+  recalibrations?: RecalibrationRecord[];
   /** True if any exercise anywhere in the plan needed the safe-fallback
    * substitution (see TrainingExerciseEntry.needsManualReview) — surfaced
    * as a plan-level banner rather than requiring the UI to scan every day. */
