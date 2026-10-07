@@ -83,3 +83,9 @@ non vanno aggiunti ai test.
 - **Cache per profilo simile** (`plan_strategy_cache`, migrazione `0019`): la chiave è una firma grossolana (obiettivo, attività, esperienza, fascia d'età, vincoli…). Se un profilo uguale ha già una strategia, la funzione risponde subito senza chiamare né il modello né gli embedding. La firma coincide con tutto ciò che il modello vede, quindi nel testo condiviso non finiscono peso, altezza, età esatta o pasti abituali. Se la tabella manca la cache si disattiva e la funzione funziona comunque.
 - Se cambi prompt o schema, incrementa `CACHE_VERSION` nella funzione.
 - Il test `npm run agents:test -- --ai` richiede `--persona <id>` (o `--all`) per non spendere per sbaglio.
+
+## Coach senza AI (default)
+
+Chat e consigli della Home rispondono **senza chiamare Claude**: `src/lib/assistant/local-coach.ts` (funzioni pure) li scrive dai dati già presenti nell'app (peso e tendenza, piano del mese, allenamento di oggi, pasti, aderenza, check-in dovuto). `coach-facts.ts` raccoglie i dati dagli store. Su dolori, farmaci e integratori rimanda a un professionista.
+
+Per riattivare il coach AI (chat, insight, analisi foto) imposta `EXPO_PUBLIC_AI_COACH=true` in `.env` e tieni deployate le funzioni; se la chiamata fallisce risponde comunque il coach locale. Il banco di prova `npm run agents:test` controlla il coach locale (C1–C5) senza spendere crediti.

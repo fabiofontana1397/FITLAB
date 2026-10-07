@@ -1,6 +1,9 @@
 import { create } from 'zustand';
 
+import { AI_COACH_ENABLED } from '@/lib/assistant/ai-config';
 import { buildClientContext } from '@/lib/assistant/build-client-context';
+import { buildCoachFacts } from '@/lib/assistant/coach-facts';
+import { localReply } from '@/lib/assistant/local-coach';
 import { supabase } from '@/lib/supabase/client';
 
 export type ChatMessage = {
@@ -32,6 +35,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   loadHistory: async () => {
     if (get().historyLoaded) return;
+    // the local coach keeps the conversation in memory only: nothing to fetch
+    if (!AI_COACH_ENABLED) {
+      set({ historyLoaded: true });
+      return;
+    }
     const { data, error } = await supabase.from('chat_messages').select('id, role, content, created_at').order('created_at');
     if (error || !data || data.length === 0) {
       set({ historyLoaded: true });
@@ -52,6 +60,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const userMessage: ChatMessage = { id: `u-${Date.now()}`, role: 'user', text: trimmed };
     set((state) => ({ messages: [...state.messages, userMessage], isTyping: true, error: null }));
 
+    // Default: answer from the data the app already has — no AI call, no credits.
+    if (!AI_COACH_ENABLED) {
+      const reply: ChatMessage = { id: `a-${Date.now()}`, role: 'assistant', text: localReply(trimmed, buildCoachFacts()) };
+      set((state) => ({ messages: [...state.messages, reply], isTyping: false }));
+      return;
+    }
+
     try {
       const clientContext = buildClientContext();
       const { data, error } = await supabase.functions.invoke('chat', { body: { message: trimmed, clientContext } });
@@ -60,8 +75,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const assistantMessage: ChatMessage = { id: data.id, role: 'assistant', text: data.text };
       set((state) => ({ messages: [...state.messages, assistantMessage], isTyping: false }));
     } catch (err) {
-      console.warn('chat send failed', err);
-      set({ isTyping: false, error: 'Non sono riuscito a rispondere. Riprova tra poco.' });
+      // the AI is unavailable (no credit, network…): the local coach still answers
+      console.warn('chat send failed, answering locally', err);
+      const reply: ChatMessage = { id: `a-${Date.now()}`, role: 'assistant', text: localReply(trimmed, buildCoachFacts()) };
+      set((state) => ({ messages: [...state.messages, reply], isTyping: false }));
     }
   },
 }));

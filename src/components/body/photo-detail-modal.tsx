@@ -8,6 +8,7 @@ import { PrimaryButton } from '@/components/ui/primary-button';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { analyzePhoto } from '@/lib/api/photo-analysis';
+import { AI_COACH_ENABLED } from '@/lib/assistant/ai-config';
 import { generatePhotoDetailInsight } from '@/lib/assistant/photo-insight';
 import type { BodyMetricSnapshot } from '@/lib/mock/types';
 import { formatFullDay } from '@/lib/mock/dates';
@@ -99,7 +100,7 @@ export function PhotoDetailModal({ photo, allPhotos, entries, onClose }: PhotoDe
               ) : null}
             </ScrollView>
 
-            {!aiObservation ? (
+            {AI_COACH_ENABLED && !aiObservation ? (
               <PrimaryButton
                 label={aiState === 'loading' ? 'Analisi in corso…' : 'Analizza con AI'}
                 icon="sparkle"

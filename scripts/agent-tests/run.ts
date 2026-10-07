@@ -19,6 +19,7 @@ import { fileURLToPath } from 'node:url';
 import type { PlanStrategy } from '@/lib/planning/strategy-types';
 
 import { checkStrategy, openAiSession } from './ai';
+import { checkCoach } from './coach';
 import { checkFlow, checkGlobal } from './flow';
 import { SCENARIOS, simulate, type SimulationResult } from './simulate';
 import { buildPlans, buildUserContext, macrosOf, runChecks, toNutritionTargets, type Finding, type PersonaRun } from './checks';
@@ -221,7 +222,7 @@ async function main() {
     console.log('\nSimulazione della ricalibrazione mensile');
     for (const sim of sims) for (const f of sim.findings) console.log(`     ${ICON[f.level]} ${f.code} ${sim.persona.id}: ${f.message}`);
   } else console.log(`\nSimulazione della ricalibrazione mensile: ${sims.length} scenari ok`);
-  const globals = checkGlobal();
+  const globals = [...checkGlobal(), ...checkCoach()];
   if (globals.length) {
     console.log('\nControlli generali dell’app');
     for (const g of globals) console.log(`     ${ICON[g.level]} ${g.code} ${g.message}`);

@@ -1,3 +1,4 @@
+import { AI_COACH_ENABLED } from '@/lib/assistant/ai-config';
 import { supabase } from '@/lib/supabase/client';
 
 /** Calls the analyze-photo Edge Function — real Claude vision looking at the
@@ -8,6 +9,7 @@ import { supabase } from '@/lib/supabase/client';
  * deterministic quick tip in lib/assistant/photo-insight.ts. Returns null on
  * any failure — callers must fall back to the deterministic insight. */
 export async function analyzePhoto(photoId: string, previousPhotoId?: string): Promise<string | null> {
+  if (!AI_COACH_ENABLED) return null; // vision costs credits: off unless the AI coach is on
   try {
     const { data, error } = await supabase.functions.invoke('analyze-photo', {
       body: { photoId, previousPhotoId },

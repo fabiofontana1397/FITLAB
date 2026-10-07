@@ -18,7 +18,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
 import { BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { SUGGESTED_PROMPTS } from '@/lib/assistant/mock-assistant';
+import { SUGGESTED_PROMPTS } from '@/lib/assistant/local-coach';
 import { goBackOr } from '@/lib/navigation/go-back';
 import { useChatStore, type ChatMessage } from '@/store/chat-store';
 
