@@ -22,7 +22,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useWeightSeries, weightDateGranularity, type WeightRange } from '@/hooks/use-weight-series';
 import { generatePhotoInsight } from '@/lib/assistant/photo-insight';
 import { latestSnapshot, seriesOf } from '@/lib/mock/body';
-import { formatFullDay } from '@/lib/mock/dates';
+import { addDaysISO, daysAgoISO, formatFullDay } from '@/lib/mock/dates';
 import { POSE_LABELS, useBodyStore, type BodyPhoto, type BodyPhotoPose } from '@/store/body-store';
 import { useUserStore } from '@/store/user-store';
 
@@ -66,11 +66,18 @@ export default function ProgressScreen() {
   const [posePickerOpen, setPosePickerOpen] = useState(false);
   const [detailPhoto, setDetailPhoto] = useState<BodyPhoto | null>(null);
   const [weightRange, setWeightRange] = useState<WeightRange>('settimana');
+  const [tab, setTab] = useState<'peso' | 'misure' | 'foto'>('peso');
   const weightSeries = useWeightSeries(entries, weightRange);
 
   const latest = useMemo(() => latestSnapshot(entries), [entries]);
   const startBody = entries[0] ?? latest;
   const photoInsight = generatePhotoInsight(photos, entries);
+
+  // Change against the last weigh-in at least a week old (falls back to the
+  // very first entry).
+  const weekAgo = addDaysISO(daysAgoISO(0), -7);
+  const lastWeekBody = [...entries].reverse().find((e) => e.date <= weekAgo) ?? startBody;
+  const weekDelta = latest.weightKg - lastWeekBody.weightKg;
 
   const sinceStart = latest.weightKg - startBody.weightKg;
   const totalToGo = startBody.weightKg - currentUser.targetWeightKg;
@@ -109,14 +116,36 @@ export default function ProgressScreen() {
         </Pressable>
       </View>
 
-      <ThemedText style={[styles.sectionTitle, { marginTop: 22 }]}>Peso</ThemedText>
+      <View style={styles.tabs}>
+        <SegmentedControl
+          options={[
+            { value: 'peso', label: 'Peso' },
+            { value: 'misure', label: 'Misure' },
+            { value: 'foto', label: 'Foto' },
+          ]}
+          value={tab}
+          onChange={(v) => setTab(v as 'peso' | 'misure' | 'foto')}
+        />
+      </View>
+
+      {tab === 'peso' ? (
+        <>
       <FlatCard radius={CARD_RADIUS} style={styles.weightCard}>
         <View style={styles.weightTop}>
-          <View style={styles.bigRow}>
-            <ThemedText style={styles.bigNumber}>{latest.weightKg.toFixed(1)}</ThemedText>
-            <ThemedText style={styles.bigUnit} themeColor="textSecondary">
-              kg
-            </ThemedText>
+          <View>
+            <View style={styles.bigRow}>
+              <ThemedText style={styles.bigNumber}>{latest.weightKg.toFixed(1)}</ThemedText>
+              <ThemedText style={styles.bigUnit} themeColor="textSecondary">
+                kg
+              </ThemedText>
+            </View>
+            <View style={styles.deltaRow}>
+              <Icon name={weekDelta <= 0 ? 'trendDown' : 'trendUp'} size={14} color={deltaColor(weekDelta)} />
+              <ThemedText style={[styles.deltaText, { color: deltaColor(weekDelta) }]}>{signedKg(weekDelta)} kg</ThemedText>
+              <ThemedText style={styles.deltaText} themeColor="textTertiary">
+                vs. settimana scorsa
+              </ThemedText>
+            </View>
           </View>
           <Pressable
             onPress={() => {
@@ -125,7 +154,7 @@ export default function ProgressScreen() {
             }}
             accessibilityLabel="Registra peso"
             style={[styles.addWeight, { backgroundColor: theme.accent }]}>
-            <Icon name="plus" size={28} color={theme.onAccent} />
+            <Icon name="plus" size={20} color={theme.onAccent} />
           </Pressable>
         </View>
 
@@ -235,7 +264,10 @@ export default function ProgressScreen() {
         ) : null}
       </FlatCard>
 
-      <ThemedText style={[styles.sectionTitle, { marginTop: 24 }]}>Misure</ThemedText>
+        </>
+      ) : null}
+
+      {tab === 'misure' ? (
       <View style={styles.measureList}>
         {MEASUREMENTS.map((m) => {
           // Entries logged before this zone existed (or never recorded) carry
@@ -272,7 +304,10 @@ export default function ProgressScreen() {
         })}
       </View>
 
-      <ThemedText style={[styles.sectionTitle, { marginTop: 24 }]}>Foto progressi</ThemedText>
+      ) : null}
+
+      {tab === 'foto' ? (
+        <>
       <View style={{ gap: 14 }}>
         <InsightCard
           icon="camera"
@@ -322,10 +357,14 @@ export default function ProgressScreen() {
         ) : null}
       </View>
 
+        </>
+      ) : null}
+
       <WeightEntryModal
         visible={weightModalOpen}
         initialWeightKg={(editDate ? entries.find((e) => e.date === editDate)?.weightKg : undefined) ?? latest.weightKg}
         date={editDate}
+        markedDates={entries.map((e) => e.date)}
         onClose={() => setWeightModalOpen(false)}
         onSave={(weightKg, date) => addWeightEntry(weightKg, date)}
       />
@@ -404,14 +443,14 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   bigNumber: {
-    fontSize: 32,
-    lineHeight: 39,
+    fontSize: 56,
+    lineHeight: 64,
     fontWeight: '800',
     letterSpacing: -0.8,
   },
   bigUnit: {
-    fontSize: 13,
-    lineHeight: 16,
+    fontSize: 18,
+    lineHeight: 24,
     fontWeight: '500',
   },
   deltaRow: {
@@ -426,9 +465,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   addWeight: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -436,6 +475,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 18,
     fontWeight: '700',
+  },
+  tabs: {
+    marginTop: 16,
+    marginBottom: 14,
   },
   progressBlock: {
     gap: 6,

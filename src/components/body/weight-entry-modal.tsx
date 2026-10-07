@@ -3,8 +3,10 @@ import { Platform, Pressable, ScrollView, StyleSheet, View, type LayoutChangeEve
 
 import { GlassPopup } from '@/components/glass/glass-popup';
 import { ThemedText } from '@/components/themed-text';
+import { DayCalendarModal } from '@/components/ui/day-calendar-modal';
 import { Icon } from '@/components/ui/icon';
 import { useTheme } from '@/hooks/use-theme';
+import { daysAgoISO } from '@/lib/mock/dates';
 
 const STEP_PX = 9; // width of one 0.1 kg tick
 const RANGE_KG = 15; // how far either side of the starting weight the wheel reaches
@@ -16,6 +18,8 @@ export type WeightEntryModalProps = {
   initialWeightKg: number;
   /** ISO day being recorded — defaults to today. A past day edits that entry. */
   date?: string;
+  /** Days that already have a weigh-in, marked with a dot in the date picker. */
+  markedDates?: string[];
   onClose: () => void;
   onSave: (weightKg: number, date?: string) => void;
 };
@@ -23,10 +27,10 @@ export type WeightEntryModalProps = {
 /** "Nuova misurazione" popup: a horizontal ruler wheel (drag it, or tap − / +
  * for 0.1 kg steps) in a centered glass card with the rest of the screen
  * blurred. The date and time default to the moment the popup opens. */
-export function WeightEntryModal({ visible, initialWeightKg, date, onClose, onSave }: WeightEntryModalProps) {
+export function WeightEntryModal({ visible, initialWeightKg, date, markedDates, onClose, onSave }: WeightEntryModalProps) {
   return (
     <GlassPopup visible={visible} onClose={onClose}>
-      <WeightEntryForm initialWeightKg={initialWeightKg} date={date} onClose={onClose} onSave={onSave} />
+      <WeightEntryForm initialWeightKg={initialWeightKg} date={date} markedDates={markedDates} onClose={onClose} onSave={onSave} />
     </GlassPopup>
   );
 }
@@ -34,16 +38,21 @@ export function WeightEntryModal({ visible, initialWeightKg, date, onClose, onSa
 function WeightEntryForm({
   initialWeightKg,
   date,
+  markedDates,
   onClose,
   onSave,
 }: {
   initialWeightKg: number;
   date?: string;
+  markedDates?: string[];
   onClose: () => void;
   onSave: (weightKg: number, date?: string) => void;
 }) {
   const theme = useTheme();
   const [openedAt] = useState(() => new Date());
+  const today = daysAgoISO(0);
+  const [selectedDate, setSelectedDate] = useState(date ?? today);
+  const [calendarOpen, setCalendarOpen] = useState(false);
   const start = Math.max(MIN_KG, Math.round(initialWeightKg) - RANGE_KG);
   const tickCount = (Math.round(initialWeightKg) + RANGE_KG - start) * 10 + 1;
   const initialIndex = Math.min(Math.max(Math.round((initialWeightKg - start) * 10), 0), tickCount - 1);
@@ -94,7 +103,7 @@ function WeightEntryForm({
     scrollToIndex(next, true);
   };
 
-  const dateLabel = (date ? new Date(date + 'T12:00:00') : openedAt).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' });
+  const dateLabel = new Date(selectedDate + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' });
   const timeLabel = openedAt.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
 
   const padding = Math.max(viewport / 2 - STEP_PX / 2, 0);
@@ -169,7 +178,7 @@ function WeightEntryForm({
         </View>
       </View>
 
-      <View style={[styles.dateRow, { backgroundColor: theme.backgroundElement }]}>
+      <Pressable onPress={() => setCalendarOpen(true)} accessibilityLabel="Cambia data" style={[styles.dateRow, { backgroundColor: theme.backgroundElement }]}>
         <Icon name="calendar" size={22} color={theme.text} />
         <View style={{ flex: 1 }}>
           <ThemedText style={styles.dateTitle}>Data e ora</ThemedText>
@@ -177,11 +186,20 @@ function WeightEntryForm({
             {dateLabel}, {timeLabel}
           </ThemedText>
         </View>
-      </View>
+        <Icon name="chevronRight" size={18} color={theme.textTertiary} />
+      </Pressable>
+
+      <DayCalendarModal
+        visible={calendarOpen}
+        selectedDate={selectedDate}
+        isDayMarked={(d) => markedDates?.includes(d) ?? false}
+        onSelectDate={(d) => setSelectedDate(d > today ? today : d)}
+        onClose={() => setCalendarOpen(false)}
+      />
 
       <Pressable
         onPress={() => {
-          onSave(Math.round(weight * 10) / 10, date);
+          onSave(Math.round(weight * 10) / 10, selectedDate);
           onClose();
         }}
         style={[styles.save, { backgroundColor: theme.accent }]}>
