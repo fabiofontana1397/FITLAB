@@ -55,10 +55,16 @@ export async function openAiSession(): Promise<AiSession | { error: string }> {
           headers: { apikey: anon, Authorization: `Bearer ${access_token}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ answers: persona.answers, dailyCalorieTarget: targets.dailyCalorieTarget, macroTargetsG: targets.macroTargetsG, durationMonths }),
         });
-        if (!r.ok) return null;
+        if (!r.ok) {
+          const body = (await r.text()).slice(0, 300).replace(/\s+/g, ' ');
+          process.stdout.write(`[HTTP ${r.status}: ${body}] `);
+          return null;
+        }
         const json = (await r.json()) as { strategy?: PlanStrategy | null };
+        if (!json.strategy) process.stdout.write('[risposta senza strategia] ');
         return json.strategy ?? null;
-      } catch {
+      } catch (err) {
+        process.stdout.write(`[errore di rete: ${err instanceof Error ? err.message : String(err)}] `);
         return null;
       }
     },
