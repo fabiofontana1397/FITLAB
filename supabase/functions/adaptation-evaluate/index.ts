@@ -1,3 +1,7 @@
+// DEPRECATED — no longer called by the app. Calorie targets are now owned by the
+// domain engine (src/domain) and revised together with the training plan by the
+// monthly check-in (recalibrate); this function adjusted only the profile's
+// calories, which would drift away from the plans. Kept for reference.
 // POST /adaptation/evaluate (spec §14, "API di dominio") — the concrete,
 // scoped piece of "move critical domain logic off the client" this pass
 // ships: the Adaptive Nutrition Engine (spec §4.1 bis) now runs here,

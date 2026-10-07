@@ -24,11 +24,12 @@ import {
   type OnboardingStep,
   type Question,
 } from '@/lib/questionnaire/schema';
-import { computeNutritionTargets, deriveWeeklyTrainingDays } from '@/lib/nutrition/targets';
+import { initialTargets } from '@/domain/plan-engine';
+import { profileFromContext } from '@/domain/profile';
+import { buildUserContext, cleanAnswersForMode } from '@/domain/user-context';
 import { daysAgoISO } from '@/lib/mock/dates';
 import { parseNumericAnswer } from '@/lib/questionnaire/parse-answer';
 import { sportIcon } from '@/lib/mock/training';
-import type { Goal, Sex, Sport } from '@/lib/mock/types';
 import { useBodyStore } from '@/store/body-store';
 import { useOnboardingStore, type AnswerValue } from '@/store/onboarding-store';
 import { usePlanStore } from '@/store/plan-store';
@@ -48,6 +49,12 @@ function isAnswered(question: Question, value: AnswerValue): boolean {
   if (Array.isArray(value)) return value.length > 0;
   if (value === undefined || value === null || value === '') return false;
   if (question.type === 'time') return TIME_REGEX.test(String(value).trim());
+  if (question.type === 'number' && (question.min != null || question.max != null)) {
+    const n = parseNumericAnswer(value);
+    if (n == null) return false;
+    if (question.min != null && n < question.min) return false;
+    if (question.max != null && n > question.max) return false;
+  }
   return true;
 }
 
@@ -59,15 +66,11 @@ function getStepQuestions(step: OnboardingStep, answers: Record<string, AnswerVa
   return questions.filter((q) => isQuestionVisible(q, answers));
 }
 
-function sportsFromAnswers(answers: Record<string, AnswerValue>): Sport[] {
-  const activitiesPracticed = (answers.activitiesPracticed as string[]) ?? [];
-  return [...new Set(activitiesPracticed.map((a) => ACTIVITY_TO_SPORT[a]).filter(Boolean))] as Sport[];
-}
-
 export default function OnboardingScreen() {
   const theme = useTheme();
   const answers = useOnboardingStore((s) => s.answers);
   const setAnswer = useOnboardingStore((s) => s.setAnswer);
+  const replaceAnswers = useOnboardingStore((s) => s.replaceAnswers);
   const finalizeOnboarding = useUserStore((s) => s.finalizeOnboarding);
   const resetStartingWeight = useBodyStore((s) => s.resetStartingWeight);
   const generatePlans = usePlanStore((s) => s.generatePlans);
@@ -88,7 +91,6 @@ export default function OnboardingScreen() {
   const isResultsScreen = mode != null && screenIndex === activeSteps.length + 1;
   const step = !isIntroScreen && !isResultsScreen ? activeSteps[screenIndex - 1] : null;
   const stepQuestions = useMemo(() => (step ? getStepQuestions(step, answers) : []), [step, answers]);
-  const sports = useMemo(() => sportsFromAnswers(answers), [answers]);
   const activitiesPracticed = useMemo(() => (answers.activitiesPracticed as string[]) ?? [], [answers.activitiesPracticed]);
   const activityQuestions = useMemo(() => buildActivityQuestions(activitiesPracticed), [activitiesPracticed]);
 
@@ -101,24 +103,16 @@ export default function OnboardingScreen() {
     // real gate on the action that actually submits the profile and starts
     // generating plans, not just a chain of per-step gates that happens to
     // add up to the same thing today.
-    if (isResultsScreen) return mode != null && activeSteps.every((s) => getStepQuestions(s, answers).every((q) => q.optional || isAnswered(q, answers[q.id])));
+    if (isResultsScreen) return mode != null && activeSteps.every((s) => getStepQuestions(s, answers).every((q) => q.optional || isAnswered(q, answers[q.id]))) && !buildUserContext(cleanAnswersForMode(answers)).issues.some((i) => i.severity === 'error');
     if (!step) return true;
     return stepQuestions.every((q) => q.optional || isAnswered(q, answers[q.id]));
   }, [isIntroScreen, isResultsScreen, mode, activeSteps, step, stepQuestions, answers]);
 
+  // The single place the questionnaire becomes numbers: the same context and engine the plans will use.
   const results = useMemo(() => {
     if (!isResultsScreen) return null;
-    return computeNutritionTargets({
-      sex: (answers.sex as Sex) ?? 'unspecified',
-      age: parseNumericAnswer(answers.age) ?? 30,
-      heightCm: parseNumericAnswer(answers.heightCm) ?? 180,
-      currentWeightKg: parseNumericAnswer(answers.currentWeightKg) ?? 80,
-      goal: (answers.goal as Goal) ?? 'generalHealth',
-      jobActivity: answers.jobActivity as string,
-      weeklyTrainingDays: deriveWeeklyTrainingDays(answers),
-      dailyStepsBucket: answers.dailySteps as string | undefined,
-      sleepHoursBucket: answers.sleepHoursRange as string | undefined,
-    });
+    const ctx = buildUserContext(cleanAnswersForMode(answers));
+    return { ctx, targets: initialTargets(ctx) };
   }, [isResultsScreen, answers]);
 
   const selectMode = (value: OnboardingMode) => {
@@ -142,24 +136,15 @@ export default function OnboardingScreen() {
     // accidentally submit an incomplete profile.
     if (!results || !canContinue) return;
 
-    finalizeOnboarding({
-      goal: (answers.goal as Goal) ?? 'generalHealth',
-      sports: sports.length > 0 ? sports : ['gym'],
-      sex: (answers.sex as Sex) ?? 'unspecified',
-      age: parseNumericAnswer(answers.age) ?? 30,
-      heightCm: parseNumericAnswer(answers.heightCm) ?? 180,
-      targetWeightKg: parseNumericAnswer(answers.targetWeightKg) ?? 75,
-      dailyCalorieTarget: results.dailyCalorieTarget,
-      macroTargetsG: results.macroTargetsG,
-      hydrationTargetMl: results.hydrationTargetMl,
-    });
-    resetStartingWeight(parseNumericAnswer(answers.currentWeightKg) ?? 80, daysAgoISO(0));
-    // Fire-and-forget, same as before this became AI-assisted: the
-    // congratulations/roadmap screens don't need the plan immediately, and
-    // the AI strategy call (web search + RAG) can take a few seconds —
-    // onboarding should never block on it. `fetchPlanStrategy` never
-    // throws (falls back to null on any failure), so this is safe.
-    void generatePlans(answers, { dailyCalorieTarget: results.dailyCalorieTarget, macroTargetsG: results.macroTargetsG }, 'onboarding');
+    // Stale answers from an earlier questionnaire (other mode) are dropped before anything is computed.
+    const cleaned = cleanAnswersForMode(answers);
+    replaceAnswers(cleaned as Record<string, AnswerValue>);
+    finalizeOnboarding(profileFromContext(results.ctx, results.targets));
+    resetStartingWeight(results.ctx.weightKg, daysAgoISO(0));
+    // Fire-and-forget: the congratulations/roadmap screens don't need the plan
+    // immediately, and the AI strategy call can take a few seconds — onboarding
+    // never blocks on it (generatePlans handles every failure itself).
+    void generatePlans(cleaned, { trigger: 'onboarding' });
     router.push('/onboarding-created');
   };
 

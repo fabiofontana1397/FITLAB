@@ -233,7 +233,6 @@ export function checkDiet(persona: Persona, targets: NutritionTargets, diet: Die
     .filter((d) => !d.free)
     .map((d) => ({ i: d.i, kcal: d.mac.kcal, dev: d.mac.kcal / (days[d.i].calorieTarget ?? month1.calorieTarget) - 1 }));
   const avgDev = dayDeviations.reduce((x, d) => x + d.dev, 0) / Math.max(dayDeviations.length, 1);
-  const avgKcal = dayDeviations.reduce((x, d) => x + d.kcal, 0) / Math.max(dayDeviations.length, 1);
   if (Math.abs(avgDev) > 0.05) f.push({ level: 'FAIL', area: 'dieta', code: 'D3', message: `Le calorie reali dei pasti si discostano in media del ${(avgDev * 100).toFixed(0)}% dai target giornalieri` });
   for (const d of dayDeviations) {
     if (Math.abs(d.dev) > 0.08) f.push({ level: Math.abs(d.dev) > 0.15 ? 'FAIL' : 'WARN', area: 'dieta', code: 'D3', message: `${WEEKDAYS[d.i]}: ${d.kcal.toFixed(0)} kcal, ${(d.dev * 100).toFixed(0)}% rispetto al target del giorno (${days[d.i].calorieTarget})` });

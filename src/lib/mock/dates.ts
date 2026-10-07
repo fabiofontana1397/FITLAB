@@ -26,6 +26,12 @@ export function mondayIndex(date: Date): number {
   return (date.getDay() + 6) % 7;
 }
 
+/** Same as mondayIndex for an ISO date string ("2026-10-07"). ISO dates parse as UTC midnight, so the weekday is read in UTC —
+ * `new Date(iso).getDay()` is wrong by a day for anyone west of Greenwich. */
+export function isoMondayIndex(iso: string): number {
+  return (new Date(`${iso.slice(0, 10)}T00:00:00Z`).getUTCDay() + 6) % 7;
+}
+
 export function startOfWeek(date: Date = new Date()): Date {
   const d = new Date(date);
   d.setHours(12, 0, 0, 0);

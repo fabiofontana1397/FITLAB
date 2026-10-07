@@ -15,6 +15,7 @@
  * the test harness (scripts/agent-tests) and, later, inside Edge Functions.
  */
 import { parseNumericAnswer } from '@/lib/questionnaire/parse-answer';
+import { ONBOARDING_STEPS, stepsForMode } from '@/lib/questionnaire/schema';
 
 export type Answers = Record<string, unknown>;
 
@@ -194,22 +195,23 @@ export function buildUserContext(answers: Answers): UserContext {
   };
 }
 
-/** Questionnaire answers that only make sense for one mode — used to
- * drop stale answers when the person redoes the questionnaire in another mode. */
-export const TRAINING_ONLY_ANSWER_PREFIXES = ['freq_', 'focus_'];
-export const TRAINING_ONLY_ANSWER_IDS = [
-  'activitiesPracticed',
-  'gymExperience',
-  'gymSkillLevel',
-  'gymSplitPreference',
-  'availableDays',
-  'sessionDuration',
-  'trainingLocation',
-  'equipment',
-  'hasPain',
-  'painDetails',
-  'cannotDoExercises',
-  'cannotDoDetails',
-  'recentInjuries',
-  'recentInjuriesDetails',
-];
+/**
+ * Drops the answers that do not belong to the chosen mode — e.g. the training
+ * answers left over from an earlier questionnaire when the person now asks for a
+ * diet only. Called when the questionnaire is confirmed so stale answers can
+ * never leak into targets, plans or the AI.
+ */
+export function cleanAnswersForMode(answers: Record<string, unknown>): Record<string, unknown> {
+  const mode = oneOf<Mode>(answers.mode, ['diet', 'training', 'both'], 'both');
+  const allowed = new Set<string>(['mode']);
+  for (const step of stepsForMode(mode)) for (const q of step.questions) allowed.add(q.id);
+  const all = new Set(ONBOARDING_STEPS.flatMap((st) => st.questions.map((q) => q.id)));
+  const keepTrainingDynamic = mode !== 'diet';
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(answers)) {
+    if (value === undefined) continue;
+    const dynamic = key.startsWith('freq_') || key.startsWith('focus_');
+    if (dynamic ? keepTrainingDynamic : allowed.has(key) || !all.has(key)) out[key] = value;
+  }
+  return out;
+}

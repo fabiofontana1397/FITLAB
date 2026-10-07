@@ -1,6 +1,6 @@
 // Repository module for monthly_checkins (spec §0.4, punto 2) — one row per
 // user per plan month, gating that month's unlock and feeding the next
-// month's regeneration (see lib/planning/monthly-adjustment.ts).
+// month's regeneration (see domain/recalibration.ts).
 import { supabase } from '@/lib/supabase/client';
 
 export type MonthlyCheckin = {

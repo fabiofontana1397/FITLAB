@@ -1,6 +1,6 @@
 import { SPECIALIST_MODEL } from '../anthropic-client.ts';
 import { formatChunksForPrompt, retrieveKnowledge } from './rag.ts';
-import type { AgentRunContext } from './types.ts';
+import { describePlan, type AgentRunContext } from './types.ts';
 
 const SYSTEM_PROMPT = `Sei il personal trainer AI di FITLAB. Rispondi in italiano, in modo breve, motivante e concreto,
 basandoti SOLO sui dati forniti sull'utente. Se un dato non è disponibile, dillo onestamente invece di inventarlo.
@@ -28,7 +28,7 @@ export async function runTrainingAgent(ctx: AgentRunContext, question: string): 
     model: SPECIALIST_MODEL,
     max_tokens: 600,
     system: SYSTEM_PROMPT,
-    messages: [{ role: 'user', content: `${todayBlock}\n${adherenceBlock}\n\n${knowledgeBlock}\n\nDomanda: ${question}` }],
+    messages: [{ role: 'user', content: `${todayBlock}\n${adherenceBlock}\n${describePlan(ctx.clientContext.plan)}\n\n${knowledgeBlock}\n\nDomanda: ${question}` }],
   });
 
   const textBlock = response.content.find((b) => b.type === 'text');

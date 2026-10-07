@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ScreenScroll } from '@/components/screen-scroll';
@@ -13,18 +13,16 @@ import { TrainingHeroCard } from '@/components/training/training-hero-card';
 import { TrainingWeekCard } from '@/components/training/training-week-card';
 import { TrainingWeekStats } from '@/components/training/training-week-stats';
 import { levelLabel, WorkoutSummaryCard } from '@/components/training/workout-summary-card';
-import { useStoreHydrated } from '@/hooks/use-store-hydrated';
+import { useEnsurePlan } from '@/hooks/use-ensure-plan';
+import { useUserContext } from '@/hooks/use-user-context';
 import { useTheme } from '@/hooks/use-theme';
-import { latestSnapshot } from '@/lib/mock/body';
-import { addDaysISO, currentWeekDates, daysAgoISO, mondayIndex } from '@/lib/mock/dates';
-import { estimateTrainingContributionKcal, sessionDurationMinutes } from '@/lib/nutrition/targets';
+import { addDaysISO, currentWeekDates, daysAgoISO, isoMondayIndex } from '@/lib/mock/dates';
+import { sessionKcal as plannedSessionKcal, sessionMinutes as plannedSessionMinutes } from '@/domain/energy';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
 import type { Goal } from '@/lib/mock/types';
 import type { TrainingDayPlan } from '@/lib/planning/types';
 import { useActivityLogStore } from '@/store/activity-log-store';
-import { useBodyStore } from '@/store/body-store';
-import { useOnboardingStore } from '@/store/onboarding-store';
-import { isValidTrainingPlan, usePlanStore } from '@/store/plan-store';
+import { usePlanStore } from '@/store/plan-store';
 import { isExerciseCompleted, useTrainingProgressStore } from '@/store/training-progress-store';
 import { useUserStore } from '@/store/user-store';
 
@@ -45,12 +43,10 @@ const BLUE = '#2E6BEA';
 export default function TrainingScreen() {
   const theme = useTheme();
   const trainingPlan = usePlanStore((s) => s.trainingPlan);
-  const generatePlans = usePlanStore((s) => s.generatePlans);
-  const onboardingAnswers = useOnboardingStore((s) => s.answers);
   const currentUser = useUserStore();
+  const ctx = useUserContext();
   const completedExercises = useTrainingProgressStore((s) => s.completed);
   const toggleCompleted = useTrainingProgressStore((s) => s.toggleCompleted);
-  const bodyEntries = useBodyStore((s) => s.entries);
   const addActivityEntry = useActivityLogStore((s) => s.addEntry);
   const activityEntries = useActivityLogStore((s) => s.entries);
   const [isLogActivityVisible, setLogActivityVisible] = useState(false);
@@ -62,33 +58,15 @@ export default function TrainingScreen() {
 
   const viewedWeekDates = useMemo(() => currentWeekDates(new Date(addDaysISO(today, weekOffset * 7))), [today, weekOffset]);
 
-  const planStoreHydrated = useStoreHydrated(usePlanStore);
-  const onboardingHydrated = useStoreHydrated(useOnboardingStore);
-  const userStoreHydrated = useStoreHydrated(useUserStore);
-
-  useEffect(() => {
-    // Persisted stores rehydrate from AsyncStorage asynchronously. Without
-    // this gate, a returning user's plan/onboarding answers/profile could
-    // still be at their in-memory defaults on first render, generating (and
-    // permanently caching) a plan from empty/default data — the trainingPlan
-    // dependency below would then never change to retrigger it.
-    if (!planStoreHydrated || !onboardingHydrated || !userStoreHydrated) return;
-    if (isValidTrainingPlan(trainingPlan) || onboardingAnswers.mode === 'diet') return;
-    generatePlans(onboardingAnswers, {
-      dailyCalorieTarget: currentUser.dailyCalorieTarget,
-      macroTargetsG: currentUser.macroTargetsG,
-    });
-    // Only needs to run once per missing/invalid-plan case, not on every keystroke of onboardingAnswers/currentUser.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [trainingPlan, planStoreHydrated, onboardingHydrated, userStoreHydrated]);
+  useEnsurePlan('training');
 
   const monthIndex = trainingPlan ? currentMonthIndex(trainingPlan) : 1;
   const currentMonth = trainingPlan?.months.find((m) => m.monthIndex === monthIndex);
   const weeklySplit = currentMonth?.weeklySplit ?? [];
-  const selectedDay: TrainingDayPlan | undefined = weeklySplit[mondayIndex(new Date(selectedDate))];
+  const selectedDay: TrainingDayPlan | undefined = weeklySplit[isoMondayIndex(selectedDate)];
 
   const isDayComplete = (date: string): boolean => {
-    const day = weeklySplit[mondayIndex(new Date(date))];
+    const day = weeklySplit[isoMondayIndex(date)];
     if (day?.type !== 'workout') return false;
     const exercises = day.exercises ?? [];
     if (exercises.length === 0) return false;
@@ -101,7 +79,7 @@ export default function TrainingScreen() {
   // still in the future (can't have trained yet).
   const toggleDayComplete = (date: string) => {
     if (date > today) return;
-    const day = weeklySplit[mondayIndex(new Date(date))];
+    const day = weeklySplit[isoMondayIndex(date)];
     if (day?.type !== 'workout') return;
     const exercises = day.exercises ?? [];
     if (exercises.length === 0) return;
@@ -118,37 +96,30 @@ export default function TrainingScreen() {
   // even contain the picked date.
   const selectDateFromCalendar = (date: string) => {
     setSelectedDate(date);
-    const dateMonday = addDaysISO(date, -mondayIndex(new Date(date)));
-    const todayMonday = addDaysISO(today, -mondayIndex(new Date(today)));
+    const dateMonday = addDaysISO(date, -isoMondayIndex(date));
+    const todayMonday = addDaysISO(today, -isoMondayIndex(today));
     setWeekOffset(Math.round((new Date(dateMonday).getTime() - new Date(todayMonday).getTime()) / (7 * 86400000)));
   };
 
-  const weightKg = latestSnapshot(bodyEntries).weightKg;
-  const sessionBucket = onboardingAnswers.sessionDuration as string | undefined;
-  const sessionKcal = estimateTrainingContributionKcal({
-    sex: currentUser.sex,
-    age: currentUser.age,
-    heightCm: currentUser.heightCm,
-    weightKg,
-    sessionDurationBucket: sessionBucket,
-    completionFraction: 1,
-  });
+  const weightKg = ctx.weightKg;
+  // What the day's planned session takes and burns — the same model the diet's calorie targets use.
+  const sessionKcal = plannedSessionKcal(selectedDay, ctx);
+  const sessionMinutes = plannedSessionMinutes(selectedDay, ctx);
 
   // Totals for the week shown in the strip: a session counts when the day's
   // workout is fully ticked or any activity was logged that day.
-  const sessionMinutes = sessionDurationMinutes(sessionBucket);
   let sessionsDone = 0;
   let sessionsPlanned = 0;
   let weekKcal = 0;
   let weekMinutes = 0;
   viewedWeekDates.forEach((date) => {
-    const day = weeklySplit[mondayIndex(new Date(date))];
+    const day = weeklySplit[isoMondayIndex(date)];
     const logged = activityEntries.filter((e) => e.date === date);
     if (day && day.type !== 'rest') sessionsPlanned++;
     const planDone = day?.type === 'workout' && isDayComplete(date);
     if (planDone) {
-      weekKcal += sessionKcal;
-      weekMinutes += sessionMinutes;
+      weekKcal += plannedSessionKcal(day, ctx);
+      weekMinutes += plannedSessionMinutes(day, ctx);
     }
     weekKcal += logged.reduce((sum, e) => sum + e.estimatedKcal, 0);
     weekMinutes += logged.reduce((sum, e) => sum + e.durationMinutes, 0);
@@ -208,9 +179,11 @@ export default function TrainingScreen() {
 
       {!trainingPlan ? (
         <FlatCard radius={20} style={styles.messageCard}>
-          <ThemedText style={styles.cardTitle}>Nessun programma generato</ThemedText>
+          <ThemedText style={styles.cardTitle}>{ctx.mode === 'diet' ? 'Programma di allenamento non richiesto' : 'Nessun programma generato'}</ThemedText>
           <ThemedText style={styles.cardBody} themeColor="textSecondary">
-            Rifai il questionario scegliendo sala pesi o corsa tra le attività per generarne uno.
+            {ctx.mode === 'diet'
+              ? 'Hai scelto un piano solo alimentare. Per aggiungere l’allenamento rifai il questionario dal Profilo.'
+              : 'Rifai il questionario scegliendo sala pesi o corsa tra le attività per generarne uno.'}
           </ThemedText>
         </FlatCard>
       ) : selectedDay?.type === 'workout' ? (

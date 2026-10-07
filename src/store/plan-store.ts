@@ -1,43 +1,57 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+import { buildPlans } from '@/domain/plan-engine';
+import { NEUTRAL_CALIBRATION, recalibrate, type Adherence, type CheckinSignals, type RecalibrationRecord, type RecalibrationResult, type WeightPoint } from '@/domain/recalibration';
+import { computeTargets } from '@/domain/targets';
+import { buildUserContext } from '@/domain/user-context';
 import { deleteDietPlan, deleteTrainingPlan, fetchDietPlan, fetchTrainingPlan, insertPlanVersion, type PlanVersionTrigger, upsertDietPlan, upsertTrainingPlan } from '@/lib/api/plans';
 import { fetchPlanStrategy } from '@/lib/api/plan-strategy';
-import { generateDietPlan } from '@/lib/planning/diet-planner';
-import { computePlanDurationMonths } from '@/lib/planning/plan-duration';
-import { generateTrainingPlan } from '@/lib/planning/training-planner';
+import { daysAgoISO } from '@/lib/mock/dates';
 import type { DietPlan, TrainingPlan } from '@/lib/planning/types';
 import { withAuthRetry } from '@/lib/supabase/retry';
 import { useAuthStore } from '@/store/auth-store';
 import { appJsonStorage } from '@/store/storage';
 
-// Bump whenever the deterministic planners' logic changes materially —
-// recorded on every plan_versions row (algorithm_version) so a stored plan
-// can always be traced back to the generation logic that produced it (spec
-// §12 bis, §4.2).
-const ALGORITHM_VERSION = 'planner-2026-09-19-p0';
+// Bump whenever the planning logic changes materially — recorded on every
+// plan_versions row (algorithm_version) so a stored plan can always be traced
+// back to the generation logic that produced it (spec §12 bis, §4.2).
+const ALGORITHM_VERSION = 'engine-2026-10-v2';
+
+type GenerateOptions = {
+  trigger?: PlanVersionTrigger;
+  /** Latest weight, when regenerating long after onboarding. Defaults to the questionnaire weight. */
+  currentWeightKg?: number;
+  /** Replace only this plan and leave the other untouched (the tabs' safety net). */
+  only?: 'diet' | 'training';
+  /** Skip the AI strategy call (slow): the plan is built from the deterministic defaults right away. */
+  skipAi?: boolean;
+};
+
+export type RecalibrateMonthInput = {
+  answers: Record<string, unknown>;
+  /** The month that just ended. */
+  monthIndex: number;
+  currentWeightKg: number;
+  weights: WeightPoint[];
+  adherence: Adherence;
+  checkin: CheckinSignals;
+};
 
 type PlanState = {
   dietPlan: DietPlan | null;
   trainingPlan: TrainingPlan | null;
   isGenerating: boolean;
-  generatePlans: (
-    answers: Record<string, unknown>,
-    targets: { dailyCalorieTarget: number; macroTargetsG: { protein: number; carbs: number; fats: number } },
-    trigger?: PlanVersionTrigger
-  ) => Promise<void>;
+  /** True once the server copy of the plans has been pulled this session (not persisted). Plans must never be built before it: a late sync would overwrite them with the stale server version. */
+  hasSynced: boolean;
+  /** Builds both plans together from the questionnaire answers (domain/plan-engine.ts). */
+  generatePlans: (answers: Record<string, unknown>, options?: GenerateOptions) => Promise<void>;
   /**
-   * Monthly check-in regeneration (spec §0.4, punto 2): rebuilds only the
-   * months from `fromMonthIndex` onward, using the ADJUSTED calorie/macro
-   * target but the SAME original questionnaire answers — months already
-   * lived through are copied verbatim (see DietPlanInput.preserveMonthsBefore),
-   * so this is never a from-scratch plan.
+   * Monthly recalibration (domain/recalibration.ts): looks at what really
+   * happened in the month that just ended and reworks BOTH plans from the next
+   * month on. Months already lived are never touched.
    */
-  regenerateFromMonth: (
-    fromMonthIndex: number,
-    answers: Record<string, unknown>,
-    adjustedTargets: { dailyCalorieTarget: number; macroTargetsG: { protein: number; carbs: number; fats: number } }
-  ) => Promise<void>;
+  recalibrateMonth: (input: RecalibrateMonthInput) => Promise<RecalibrationResult>;
   syncFromServer: () => Promise<void>;
   /** Local-only reset on logout — see user-store.ts's clearLocal for why. */
   clearLocal: () => void;
@@ -47,21 +61,33 @@ function currentUserId(): string | null {
   return useAuthStore.getState().user?.id ?? null;
 }
 
+function persistPlans(diet: DietPlan | null, training: TrainingPlan | null, trigger: PlanVersionTrigger, deleteMissing: boolean) {
+  const userId = currentUserId();
+  if (!userId) return;
+  if (diet) {
+    upsertDietPlan(userId, diet).catch((err) => console.warn('persist dietPlan failed', err));
+    insertPlanVersion(userId, 'diet', trigger, ALGORITHM_VERSION).catch((err) => console.warn('insertPlanVersion (diet) failed', err));
+  } else if (deleteMissing) {
+    deleteDietPlan(userId).catch((err) => console.warn('persist dietPlan failed', err));
+  }
+  if (training) {
+    upsertTrainingPlan(userId, training).catch((err) => console.warn('persist trainingPlan failed', err));
+    insertPlanVersion(userId, 'training', trigger, ALGORITHM_VERSION).catch((err) => console.warn('insertPlanVersion (training) failed', err));
+  } else if (deleteMissing) {
+    deleteTrainingPlan(userId).catch((err) => console.warn('persist trainingPlan failed', err));
+  }
+}
+
 /**
  * Holds the generated multi-month diet/training plans. Kept separate from
  * the day-to-day logging stores (nutrition-store, training-store) — this is
  * a prospective plan to view/export, not a log of what actually happened.
  *
- * generatePlans first tries to get a real AI-grounded strategy (split
- * choice, set/rep scheme, calorie/macro periodization — see
- * lib/planning/strategy-types.ts) from the generate-plan-strategy Edge
- * Function, which reasons from the two reference PDFs plus authoritative
- * web search. If that's unavailable for any reason (no Claude key
- * configured, network error, timeout), it falls back to the original
- * deterministic tables — onboarding never blocks on the AI call. Once
- * generated, both plans persist to Postgres (best-effort, background);
- * syncFromServer pulls them back down on sign-in/app start so a returning
- * user (or a different device) sees their real plan without regenerating.
+ * Plans always come from ONE place: domain/plan-engine.ts `buildPlans`. The
+ * AI strategy (generate-plan-strategy Edge Function) only contributes the
+ * split, set/rep scheme and the monthly focus texts; calories and macros come
+ * from the unified energy model, so the diet follows the training. If the AI
+ * call fails the deterministic defaults are used — onboarding never blocks on it.
  */
 export const usePlanStore = create<PlanState>()(
   persist(
@@ -69,73 +95,73 @@ export const usePlanStore = create<PlanState>()(
       dietPlan: null,
       trainingPlan: null,
       isGenerating: false,
-      generatePlans: async (answers, targets, trigger = 'regenerate') => {
-        const mode = answers.mode as string | undefined;
+      hasSynced: false,
+      generatePlans: async (answers, options = {}) => {
+        const { trigger = 'regenerate', currentWeightKg, only, skipAi = false } = options;
         set({ isGenerating: true });
-        const durationMonths = computePlanDurationMonths(answers);
-        const strategy = await fetchPlanStrategy(answers, targets.dailyCalorieTarget, targets.macroTargetsG, durationMonths);
+        try {
+          const base = buildUserContext(answers);
+          const ctx = currentWeightKg ? { ...base, weightKg: currentWeightKg } : base;
+          const deterministic = buildPlans(ctx);
+          const first = deterministic.monthTargets[0];
+          const strategy = skipAi ? null : await fetchPlanStrategy(answers, first.calories, first.macros, deterministic.durationMonths);
+          const bundle = strategy ? buildPlans(ctx, { strategy }) : deterministic;
 
-        const dietPlan = mode === 'training' ? null : generateDietPlan({ answers, ...targets, strategy: strategy?.diet });
-        const trainingPlan = mode === 'diet' ? null : generateTrainingPlan({ answers, strategy: strategy?.training });
-        set({ dietPlan, trainingPlan, isGenerating: false });
-
-        const userId = currentUserId();
-        if (userId) {
-          if (dietPlan) {
-            upsertDietPlan(userId, dietPlan).catch((err) => console.warn('persist dietPlan failed', err));
-            insertPlanVersion(userId, 'diet', trigger, ALGORITHM_VERSION).catch((err) => console.warn('insertPlanVersion (diet) failed', err));
-          } else {
-            deleteDietPlan(userId).catch((err) => console.warn('persist dietPlan failed', err));
-          }
-          if (trainingPlan) {
-            upsertTrainingPlan(userId, trainingPlan).catch((err) => console.warn('persist trainingPlan failed', err));
-            insertPlanVersion(userId, 'training', trigger, ALGORITHM_VERSION).catch((err) => console.warn('insertPlanVersion (training) failed', err));
-          } else {
-            deleteTrainingPlan(userId).catch((err) => console.warn('persist trainingPlan failed', err));
-          }
+          const { dietPlan: currentDiet, trainingPlan: currentTraining } = get();
+          const replaceDiet = !only || only === 'diet';
+          const replaceTraining = !only || only === 'training';
+          set({ dietPlan: replaceDiet ? bundle.diet : currentDiet, trainingPlan: replaceTraining ? bundle.training : currentTraining });
+          persistPlans(replaceDiet ? bundle.diet : null, replaceTraining ? bundle.training : null, trigger, !only);
+        } catch (err) {
+          console.warn('generatePlans failed', err);
+        } finally {
+          set({ isGenerating: false });
         }
       },
-      regenerateFromMonth: async (fromMonthIndex, answers, adjustedTargets) => {
+      recalibrateMonth: async (input) => {
         const { dietPlan, trainingPlan } = get();
-        const mode = answers.mode as string | undefined;
+        const plan = dietPlan ?? trainingPlan;
+        if (!plan) throw new Error('Nessun piano da ricalibrare');
+        const ctx = { ...buildUserContext(input.answers), weightKg: input.currentWeightKg };
+        const calibration = dietPlan?.calibration ?? trainingPlan?.calibration ?? NEUTRAL_CALIBRATION;
 
-        const nextDietPlan =
-          mode === 'training' || !dietPlan
-            ? dietPlan
-            : {
-                ...generateDietPlan({
-                  answers,
-                  ...adjustedTargets,
-                  strategy: null,
-                  preserveMonthsBefore: fromMonthIndex,
-                  existingMonths: dietPlan.months,
-                }),
-                // Regenerating must never reset the plan's own start date —
-                // currentMonthIndex()/monthProgress() (plan-progress.ts) anchor
-                // month-unlock timing on it, and this is a mid-plan update,
-                // not a new plan.
-                generatedAt: dietPlan.generatedAt,
-              };
-        const nextTrainingPlan =
-          mode === 'diet' || !trainingPlan
-            ? trainingPlan
-            : {
-                ...generateTrainingPlan({ answers, strategy: null, preserveMonthsBefore: fromMonthIndex, existingMonths: trainingPlan.months })!,
-                generatedAt: trainingPlan.generatedAt,
-              };
+        // The targets the person actually followed that month (calories as stored in the plan).
+        const followed = computeTargets(ctx, trainingPlan?.months[input.monthIndex - 1]?.weeklySplit ?? null, calibration);
+        const storedMonth = dietPlan?.months.find((m) => m.monthIndex === input.monthIndex);
+        const targets = storedMonth ? { ...followed, calories: storedMonth.calorieTarget, macros: storedMonth.macroTargetsG } : followed;
 
-        set({ dietPlan: nextDietPlan, trainingPlan: nextTrainingPlan });
+        const result = recalibrate({
+          ctx,
+          monthIndex: input.monthIndex,
+          durationMonths: plan.durationMonths,
+          targets,
+          weights: input.weights,
+          adherence: input.adherence,
+          checkin: input.checkin,
+          calibration,
+        });
 
-        const userId = currentUserId();
-        if (!userId) return;
-        if (nextDietPlan) {
-          upsertDietPlan(userId, nextDietPlan).catch((err) => console.warn('persist dietPlan (monthly regen) failed', err));
-          insertPlanVersion(userId, 'diet', 'monthly_checkin', ALGORITHM_VERSION).catch((err) => console.warn('insertPlanVersion (diet) failed', err));
-        }
-        if (nextTrainingPlan) {
-          upsertTrainingPlan(userId, nextTrainingPlan).catch((err) => console.warn('persist trainingPlan (monthly regen) failed', err));
-          insertPlanVersion(userId, 'training', 'monthly_checkin', ALGORITHM_VERSION).catch((err) => console.warn('insertPlanVersion (training) failed', err));
-        }
+        const bundle = buildPlans(ctx, {
+          calibration: result.calibration,
+          preserveMonthsBefore: input.monthIndex + 1,
+          existing: { diet: dietPlan, training: trainingPlan },
+        });
+        const record: RecalibrationRecord = {
+          monthIndex: input.monthIndex,
+          date: daysAgoISO(0),
+          verdict: result.verdict,
+          weeklyRateKg: result.weeklyRateKg,
+          expectedWeeklyKg: result.expectedWeeklyKg,
+          changes: result.changes,
+          calibration: result.calibration,
+        };
+        const history = [...(plan.recalibrations ?? []).filter((r) => r.monthIndex !== input.monthIndex), record];
+        if (bundle.diet) bundle.diet.recalibrations = history;
+        if (bundle.training) bundle.training.recalibrations = history;
+
+        set({ dietPlan: bundle.diet ?? dietPlan, trainingPlan: bundle.training ?? trainingPlan });
+        persistPlans(bundle.diet, bundle.training, 'monthly_checkin', false);
+        return result;
       },
       syncFromServer: async () => {
         const userId = currentUserId();
@@ -153,9 +179,11 @@ export const usePlanStore = create<PlanState>()(
           if (trainingPlan) set({ trainingPlan });
         } catch (err) {
           console.warn('plan-store syncFromServer failed', err);
+        } finally {
+          set({ hasSynced: true });
         }
       },
-      clearLocal: () => set({ dietPlan: null, trainingPlan: null, isGenerating: false }),
+      clearLocal: () => set({ dietPlan: null, trainingPlan: null, isGenerating: false, hasSynced: false }),
     }),
     { name: 'fitlab/plans', storage: appJsonStorage, partialize: (state) => ({ dietPlan: state.dietPlan, trainingPlan: state.trainingPlan }) }
   )
@@ -171,7 +199,7 @@ export const usePlanStore = create<PlanState>()(
  * an invalid plan the same as a missing one and regenerate it.
  */
 export function isValidTrainingPlan(plan: TrainingPlan | null): boolean {
-  if (!plan) return false;
+  if (!plan || !plan.calibration) return false;
   return plan.months.every((month) =>
     month.weeklySplit.every(
       (day) =>
@@ -191,6 +219,6 @@ export function isValidTrainingPlan(plan: TrainingPlan | null): boolean {
  * should treat an invalid plan the same as a missing one and regenerate it.
  */
 export function isValidDietPlan(plan: DietPlan | null): boolean {
-  if (!plan) return false;
+  if (!plan || !plan.calibration) return false;
   return plan.months.every((month) => Array.isArray(month.weeklySplit) && month.weeklySplit.length > 0);
 }

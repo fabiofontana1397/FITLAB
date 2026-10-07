@@ -1,6 +1,6 @@
 # Test dei piani generati dai questionari
 
-Generato il 2026-10-07 17:55 — 16 questionari finti, piani creati con i generatori reali dell’app.
+Generato il 2026-10-07 18:15 — 16 questionari finti, piani creati con i generatori reali dell’app.
 
 **Totale:** 0 errori · 8 avvisi · 21 note
 
@@ -22,19 +22,6 @@ Generato il 2026-10-07 17:55 — 16 questionari finti, piani creati con i genera
 | Tommaso, 35 anni | 2184 | 128/254/73 | 4 | 1/0 | 0 | 0 |
 | Nina, 33 anni | 1586 | 118/159/53 | 4 | 3/0 | 0 | 0 |
 | Omar, 41 anni | 1734 | 130/171/59 | 5 | –/– | 0 | 2 |
-
-## Controlli generali dell’app
-
-- ❌ `G1` Gli id dei pasti "Segui il piano" non contengono l’utente ma meal_entries.id è chiave primaria globale: due utenti nello stesso giorno si scontrano
-- ℹ️ `G2` Giorno della settimana calcolato da date ISO con getDay() locale: slitta di un giorno a ovest di Greenwich
-- ❌ `G3` Il peso obiettivo vuoto diventa 75 kg nel profilo
-- ❌ `G4` generatePlans senza try/catch: un errore lascia isGenerating a true per sempre
-- ❌ `G5` Risposte parziali sul server bastano per considerare l’onboarding completato
-- ❌ `G6` Il hook dell’energia settimanale non usa il modello energetico unico (src/domain/energy.ts)
-- ❌ `G6` Home usa ancora il vecchio modello energetico
-- ⚠️ `G8` La tab Nutrizione mostra sempre i 6 pasti fissi invece di quelli scelti dall’utente
-
----
 
 ## Simulazione: ricalibrazione mensile su 6 mesi
 

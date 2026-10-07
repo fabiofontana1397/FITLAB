@@ -1,6 +1,6 @@
 import { SPECIALIST_MODEL } from '../anthropic-client.ts';
 import { formatChunksForPrompt, retrieveKnowledge } from './rag.ts';
-import type { AgentRunContext } from './types.ts';
+import { describePlan, type AgentRunContext } from './types.ts';
 
 const SYSTEM_PROMPT = `Sei il nutrizionista AI di FITLAB. Rispondi in italiano, in modo breve, concreto e amichevole,
 basandoti SOLO sui dati forniti sull'utente. Se un dato non è disponibile, dillo onestamente invece di inventarlo.
@@ -20,11 +20,13 @@ export async function runNutritionAgent(ctx: AgentRunContext, question: string):
 - Giorni consecutivi di logging: ${nutrition.loggingStreakDays}`
     : `Nessun dato nutrizionale disponibile per oggi.`;
 
+  const planLine = describePlan(ctx.clientContext.plan);
+
   const response = await ctx.anthropic.messages.create({
     model: SPECIALIST_MODEL,
     max_tokens: 600,
     system: SYSTEM_PROMPT,
-    messages: [{ role: 'user', content: `${dataBlock}\n\n${knowledgeBlock}\n\nDomanda: ${question}` }],
+    messages: [{ role: 'user', content: `${dataBlock}\n${planLine}\n\n${knowledgeBlock}\n\nDomanda: ${question}` }],
   });
 
   const textBlock = response.content.find((b) => b.type === 'text');

@@ -1,6 +1,5 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { GlassSurface } from '@/components/glass/glass-surface';
 import { ScreenScroll } from '@/components/screen-scroll';
@@ -50,27 +49,6 @@ export default function ProfileScreen() {
   const handleLogout = async () => {
     await logout();
     router.replace('/welcome');
-  };
-
-  const reviewNutritionTarget = useUserStore((s) => s.reviewNutritionTarget);
-  const [isReviewingTarget, setIsReviewingTarget] = useState(false);
-
-  const handleReviewTarget = async () => {
-    setIsReviewingTarget(true);
-    try {
-      const decision = await reviewNutritionTarget();
-      if (decision.action === 'none') {
-        Alert.alert('Target invariato', decision.reason);
-      } else {
-        const verb = decision.action === 'increase' ? 'aumentate' : 'ridotte';
-        Alert.alert('Target aggiornato', `Calorie giornaliere ${verb} di ${decision.deltaKcal} kcal.\n\n${decision.reason}`);
-      }
-    } catch (err) {
-      console.warn('reviewNutritionTarget failed', err);
-      Alert.alert('Errore', 'Non è stato possibile rivedere il target ora. Riprova più tardi.');
-    } finally {
-      setIsReviewingTarget(false);
-    }
   };
 
   // "Keep-no-algoritmo" fields (spec §11/§13 point 4) — collected in the
@@ -128,8 +106,13 @@ export default function ProfileScreen() {
       </View>
 
       <View>
-        <SectionHeader title="Sport praticati" action="Modifica" onActionPress={() => router.push('/onboarding')} />
+        <SectionHeader title="Sport praticati" action="Modifica" onActionPress={restartOnboarding} />
         <View style={styles.sportsGrid}>
+          {currentUser.sports.length === 0 ? (
+            <ThemedText type="caption" themeColor="textSecondary">
+              Nessuno: hai scelto un piano solo alimentare.
+            </ThemedText>
+          ) : null}
           {currentUser.sports.map((sport) => (
             <View key={sport} style={[styles.sportChip, { backgroundColor: theme.backgroundElement }]}>
               <Icon name={sportIcon[sport] as IconName} size={16} color={theme.accent} />
@@ -143,7 +126,7 @@ export default function ProfileScreen() {
         <SectionHeader title="Dati di partenza" />
         <GlassSurface level="card" radius={Radius.large} style={{ padding: Spacing.three, gap: Spacing.two }}>
           <Row label="Altezza" value={`${currentUser.heightCm} cm`} />
-          <Row label="Peso obiettivo" value={`${currentUser.targetWeightKg} kg`} />
+          <Row label="Peso obiettivo" value={currentUser.targetWeightKg > 0 ? `${currentUser.targetWeightKg} kg` : 'Non impostato'} />
         </GlassSurface>
       </View>
 
@@ -158,17 +141,13 @@ export default function ProfileScreen() {
           <Row label="Carboidrati" value={`${currentUser.macroTargetsG.carbs} g`} />
           <Row label="Grassi" value={`${currentUser.macroTargetsG.fats} g`} />
           <Row label="Idratazione" value={`${(currentUser.hydrationTargetMl / 1000).toFixed(1)} L`} />
-          <Pressable onPress={handleReviewTarget} disabled={isReviewingTarget} hitSlop={8} style={styles.reviewTargetRow}>
-            {isReviewingTarget ? (
-              <ActivityIndicator size="small" color={theme.accent} />
-            ) : (
-              <ThemedText type="caption" style={{ color: theme.accent }}>
-                Rivedi il mio target (beta)
-              </ThemedText>
-            )}
+          <Pressable onPress={() => router.push('/monthly-checkin')} hitSlop={8} style={styles.reviewTargetRow}>
+            <ThemedText type="caption" style={{ color: theme.accent }}>
+              Check-in mensile
+            </ThemedText>
           </Pressable>
           <ThemedText type="caption" themeColor="textTertiary">
-            Confronta peso e calorie registrate negli ultimi giorni e propone una piccola correzione se il trend non è in linea con l'obiettivo — non sostituisce il consiglio di un professionista.
+            Alla fine di ogni mese confronti i progressi con il piano: calorie e allenamento vengono rivisti insieme per il mese successivo. Non sostituisce il consiglio di un professionista.
           </ThemedText>
         </GlassSurface>
       </View>

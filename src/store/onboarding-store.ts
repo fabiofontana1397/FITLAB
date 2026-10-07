@@ -3,7 +3,6 @@ import { persist } from 'zustand/middleware';
 
 import { deleteOnboardingAnswers, fetchOnboardingAnswers, upsertOnboardingAnswers } from '@/lib/api/onboarding';
 import { withAuthRetry } from '@/lib/supabase/retry';
-import { useAppStore } from '@/store/app-store';
 import { useAuthStore } from '@/store/auth-store';
 import { appJsonStorage } from '@/store/storage';
 
@@ -12,6 +11,8 @@ export type AnswerValue = string | string[] | number | undefined;
 type OnboardingAnswersState = {
   answers: Record<string, AnswerValue>;
   setAnswer: (id: string, value: AnswerValue) => void;
+  /** Replaces the whole blob (e.g. with the answers cleaned for the chosen mode). */
+  replaceAnswers: (answers: Record<string, AnswerValue>) => void;
   reset: () => void;
   syncFromServer: () => Promise<void>;
   /** Local-only reset on logout (no server call, unlike `reset`) — see
@@ -40,6 +41,11 @@ export const useOnboardingStore = create<OnboardingAnswersState>()(
         const userId = currentUserId();
         if (userId) upsertOnboardingAnswers(userId, answers).catch((err) => console.warn('upsertOnboardingAnswers failed', err));
       },
+      replaceAnswers: (answers) => {
+        set({ answers });
+        const userId = currentUserId();
+        if (userId) upsertOnboardingAnswers(userId, answers).catch((err) => console.warn('upsertOnboardingAnswers failed', err));
+      },
       reset: () => {
         set({ answers: {} });
         const userId = currentUserId();
@@ -52,12 +58,9 @@ export const useOnboardingStore = create<OnboardingAnswersState>()(
           const answers = await withAuthRetry(() => fetchOnboardingAnswers(userId));
           if (answers && Object.keys(answers).length > 0) {
             set({ answers });
-            // Multi-device gap: hasOnboarded is otherwise local-only
-            // (app-store.ts), so a second device with a real, already-
-            // onboarded account would wrongly redirect back into the
-            // questionnaire. The server having answers at all is proof
-            // onboarding was already completed somewhere.
-            if (!useAppStore.getState().hasOnboarded) useAppStore.getState().setHasOnboarded(true);
+            // Having answers on the server does NOT mean onboarding was completed (they
+            // are saved question by question): completion is decided by the profile — see
+            // user-store.ts syncFromServer.
           }
         } catch (err) {
           console.warn('onboarding-store syncFromServer failed', err);

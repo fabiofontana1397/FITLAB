@@ -88,10 +88,10 @@ export function checkGlobal(): Finding[] {
     f.push({ level: 'FAIL', area: 'coerenza', code: 'G1', message: 'Gli id dei pasti "Segui il piano" non contengono l’utente ma meal_entries.id è chiave primaria globale: due utenti nello stesso giorno si scontrano' });
   }
 
-  // G2: weekday lookups on ISO dates.
-  const dates = read('src/lib/mock/dates.ts');
-  if (/export function mondayIndex\(date: Date\): number \{\s*return \(date\.getDay\(\) \+ 6\) % 7;/.test(dates) && /new Date\(selectedDate\)/.test(read('src/app/(tabs)/nutrition.tsx'))) {
-    f.push({ level: 'INFO', area: 'coerenza', code: 'G2', message: 'Giorno della settimana calcolato da date ISO con getDay() locale: slitta di un giorno a ovest di Greenwich' });
+  // G2: weekday lookups on ISO dates must go through isoMondayIndex (new Date(iso).getDay() is off by a day west of Greenwich).
+  const offenders = walk(join(root, 'src')).filter((file) => !file.endsWith('dates.ts') && /new Date\([^)]*\)\.getDay\(\)/.test(readFileSync(file, 'utf8')));
+  if (offenders.length > 0) {
+    f.push({ level: 'FAIL', area: 'coerenza', code: 'G2', message: `Giorno della settimana da date ISO con getDay() locale (slitta di un giorno a ovest di Greenwich) in ${offenders.length} file` });
   }
 
   // G3: no invented goal weight.

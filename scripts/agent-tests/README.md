@@ -42,3 +42,14 @@ TEST_EMAIL=… TEST_PASSWORD=… npm run agents:test -- --ai
 
 Chiede la strategia all'agente Claude reale (funzione `generate-plan-strategy` sul progetto Supabase online, consuma token)
 e controlla anche la strategia restituita.
+
+## Simulazione della ricalibrazione mensile
+
+`simulate.ts` fa girare, per ogni persona, un ciclo chiuso su più mesi: un "corpo" simulato (metabolismo come previsto, più lento,
+più veloce, oppure aderenza dimezzata) segue il piano, pesa e fa il check-in; il motore (`domain/recalibration.ts`) ricalibra
+dieta e allenamento. Invarianti verificate (M1–M7): mai sotto il minimo calorico, passo mensile e tetto totale rispettati,
+nessun cambio sui mesi passati, bassa aderenza non cambia i numeri, peso che converge verso l'obiettivo, dieta e allenamento
+sempre coerenti. Il log mostra "60 scenari ok" quando tutto passa.
+
+Persone: solo persone comuni (16–60 anni, sedentarie o molto attive, principianti o esperte). Casi clinici (obesità, celiachia,
+veganismo stretto…) richiedono un dietologo e non fanno parte dei test.

@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Platform, Pressable, StyleSheet, Switch, View } from 'react-native';
 
 import { FoodSearchModal } from '@/components/nutrition/food-search-modal';
@@ -13,9 +13,10 @@ import { FlatCard } from '@/components/ui/flat-card';
 import { Icon } from '@/components/ui/icon';
 import { ProgressRing } from '@/components/ui/progress-ring';
 import { TickProgressBar } from '@/components/ui/tick-progress-bar';
-import { useStoreHydrated } from '@/hooks/use-store-hydrated';
+import { useEnsurePlan } from '@/hooks/use-ensure-plan';
+import { useUserContext } from '@/hooks/use-user-context';
 import { useTheme } from '@/hooks/use-theme';
-import { daysAgoISO, mondayIndex } from '@/lib/mock/dates';
+import { daysAgoISO, isoMondayIndex } from '@/lib/mock/dates';
 import { findFood } from '@/lib/mock/food-database';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
 import {
@@ -27,8 +28,7 @@ import {
   type MealFoodEntry,
   type MealSlot,
 } from '@/store/nutrition-store';
-import { useOnboardingStore } from '@/store/onboarding-store';
-import { isValidDietPlan, usePlanStore } from '@/store/plan-store';
+import { usePlanStore } from '@/store/plan-store';
 import { useUserStore } from '@/store/user-store';
 
 const SCREEN_PADDING = 20;
@@ -69,8 +69,6 @@ export default function NutritionScreen() {
   const seedDayFromPlan = useNutritionStore((s) => s.seedDayFromPlan);
   const unseedDay = useNutritionStore((s) => s.unseedDay);
   const dietPlan = usePlanStore((s) => s.dietPlan);
-  const generatePlans = usePlanStore((s) => s.generatePlans);
-  const onboardingAnswers = useOnboardingStore((s) => s.answers);
   const [activeSlot, setActiveSlot] = useState<MealSlot | null>(null);
   const [editingEntry, setEditingEntry] = useState<MealFoodEntry | null>(null);
   const today = daysAgoISO(0);
@@ -79,25 +77,8 @@ export default function NutritionScreen() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [expandedSlot, setExpandedSlot] = useState<MealSlot | null>('colazione');
 
-  const planStoreHydrated = useStoreHydrated(usePlanStore);
-  const onboardingHydrated = useStoreHydrated(useOnboardingStore);
-  const userStoreHydrated = useStoreHydrated(useUserStore);
-
-  useEffect(() => {
-    // Persisted stores rehydrate from AsyncStorage asynchronously. Without
-    // this gate, a returning user's plan/onboarding answers/profile could
-    // still be at their in-memory defaults on first render, generating (and
-    // permanently caching) a plan from empty/default data — the dietPlan
-    // dependency below would then never change to retrigger it.
-    if (!planStoreHydrated || !onboardingHydrated || !userStoreHydrated) return;
-    if (isValidDietPlan(dietPlan) || onboardingAnswers.mode === 'training') return;
-    generatePlans(onboardingAnswers, {
-      dailyCalorieTarget: currentUser.dailyCalorieTarget,
-      macroTargetsG: currentUser.macroTargetsG,
-    });
-    // Only needs to run once per missing/invalid-plan case, not on every keystroke of onboardingAnswers/currentUser.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dietPlan, planStoreHydrated, onboardingHydrated, userStoreHydrated]);
+  useEnsurePlan('diet');
+  const trainingOnly = useUserContext().mode === 'training';
 
   const monthIndex = dietPlan ? currentMonthIndex(dietPlan) : 1;
   const currentMonthData = dietPlan?.months.find((m) => m.monthIndex === monthIndex);
@@ -105,13 +86,22 @@ export default function NutritionScreen() {
   // The generated plan's own targets for the active month take priority
   // over the static profile defaults — same rule Home follows, so the two
   // screens never show different "obiettivo" numbers.
-  const calorieTarget = currentMonthData?.calorieTarget ?? currentUser.dailyCalorieTarget;
-  const macroTargets = currentMonthData?.macroTargetsG ?? currentUser.macroTargetsG;
-
   // Tracking is opt-in (spec request): a date's totals never populate
   // themselves just from opening it — the user explicitly approves "follow
   // the meal plan for this day" with the switch below.
-  const planDayForSelectedDate = currentMonthData?.weeklySplit[mondayIndex(new Date(selectedDate))];
+  const planDayForSelectedDate = currentMonthData?.weeklySplit[isoMondayIndex(selectedDate)];
+
+  // The day's own target (training days eat more than rest days), then the month's average, then the profile.
+  const calorieTarget = planDayForSelectedDate?.calorieTarget ?? currentMonthData?.calorieTarget ?? currentUser.dailyCalorieTarget;
+  const macroTargets = planDayForSelectedDate?.macroTargetsG ?? currentMonthData?.macroTargetsG ?? currentUser.macroTargetsG;
+
+  // The meals the person actually has (from the plan); only a user without a diet plan sees the six generic slots.
+  const mealSlots = planDayForSelectedDate
+    ? planDayForSelectedDate.meals.map((m) => {
+        const meta = MEAL_SLOTS.find((x) => x.id === m.slotId);
+        return { id: m.slotId as MealSlot, label: m.label, time: m.time, icon: meta?.icon ?? ('mealSnack' as const) };
+      })
+    : MEAL_SLOTS;
   const isFollowingPlan = seededDates.includes(selectedDate);
 
   const mealsHeading =
@@ -207,7 +197,7 @@ export default function NutritionScreen() {
       </View>
 
       <View style={styles.mealsList}>
-        {MEAL_SLOTS.map((meta) => {
+        {mealSlots.map((meta) => {
           const slotEntries = entriesForSlot(entries, meta.id, selectedDate);
           const slotTotals = sumMacros(slotEntries);
           const expanded = expandedSlot === meta.id;
@@ -287,7 +277,7 @@ export default function NutritionScreen() {
           <View style={{ flex: 1 }}>
             <ThemedText style={styles.mealName}>Piano alimentare</ThemedText>
             <ThemedText style={styles.mealTime} themeColor="textTertiary">
-              {currentMonthData ? `${dietPlan?.durationMonths} mesi • ${currentMonthData.title}` : 'Nessun piano generato'}
+              {currentMonthData ? `${dietPlan?.durationMonths} mesi • ${currentMonthData.title}` : trainingOnly ? 'Non richiesto: hai scelto solo l’allenamento' : 'Nessun piano generato'}
             </ThemedText>
           </View>
           <Icon name="chevronRight" size={16} color={theme.textTertiary} />

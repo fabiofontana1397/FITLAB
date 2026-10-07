@@ -1,6 +1,6 @@
 // The shape a "plan strategy" agent (supabase/functions/generate-plan-strategy)
 // produces: the METHODOLOGICAL decisions behind a plan — which split,
-// which set/rep scheme, how calories/macros periodize across months, and
+// which set/rep scheme, the focus of each month, and
 // why — grounded in the two reference PDFs plus authoritative web search.
 // Deliberately NOT the full meal-by-meal/exercise-by-exercise plan: that
 // stays assembled by the existing deterministic code in diet-planner.ts /
@@ -24,14 +24,8 @@ export type TrainingStrategy = {
   rationale: string;
 };
 
-export type MonthlyDietTarget = {
-  monthIndex: number;
-  calorieTarget: number;
-  macroTargetsG: { protein: number; carbs: number; fats: number };
-};
-
+/** Diet strategy: wording only. Calories and macros are owned by the energy model (src/domain). */
 export type DietStrategy = {
-  monthlyTargets: MonthlyDietTarget[];
   monthlyFocus: MonthlyFocus[];
   rationale: string;
 };

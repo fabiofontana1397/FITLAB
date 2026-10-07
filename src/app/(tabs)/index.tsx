@@ -18,14 +18,14 @@ import { LogActivityModal } from '@/components/training/log-activity-modal';
 import { sumActivityKcalForDate, useWeeklyEnergy } from '@/hooks/use-weekly-energy';
 import { useTheme } from '@/hooks/use-theme';
 import { latestSnapshot } from '@/lib/mock/body';
-import { currentWeekDates, dayOfMonth, daysAgoISO, mondayIndex } from '@/lib/mock/dates';
-import { estimateDailyEnergyExpenditure, estimateEnergyExpenditureBreakdown } from '@/lib/nutrition/targets';
+import { currentWeekDates, dayOfMonth, daysAgoISO, isoMondayIndex } from '@/lib/mock/dates';
+import { dayEnergy } from '@/domain/energy';
+import { useUserContext } from '@/hooks/use-user-context';
 import { WEEKDAY_LABELS } from '@/lib/planning/exercise-library';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
 import { useActivityLogStore } from '@/store/activity-log-store';
 import { useBodyStore } from '@/store/body-store';
 import { useNutritionStore, sumMacros, type MealSlot } from '@/store/nutrition-store';
-import { useOnboardingStore } from '@/store/onboarding-store';
 import { usePlanStore } from '@/store/plan-store';
 import { isExerciseCompleted, useTrainingProgressStore } from '@/store/training-progress-store';
 import { useUserStore } from '@/store/user-store';
@@ -67,11 +67,11 @@ type InfoTopic = 'burned' | 'eaten' | 'notifications';
 export default function HomeScreen() {
   const theme = useTheme();
   const currentUser = useUserStore();
+  const ctx = useUserContext();
   const today = daysAgoISO(0);
 
   const trainingPlan = usePlanStore((s) => s.trainingPlan);
   const dietPlan = usePlanStore((s) => s.dietPlan);
-  const onboardingAnswers = useOnboardingStore((s) => s.answers);
   const completedExercises = useTrainingProgressStore((s) => s.completed);
   const nutritionEntries = useNutritionStore((s) => s.entries);
   const bodyEntries = useBodyStore((s) => s.entries);
@@ -101,7 +101,7 @@ export default function HomeScreen() {
   const trainingMonth = trainingPlan?.months.find((m) => m.monthIndex === currentMonthIndex(trainingPlan));
   const weeklySplit = trainingMonth?.weeklySplit ?? [];
   const exercisesOn = (date: string) => {
-    const planDay = weeklySplit[mondayIndex(new Date(date))];
+    const planDay = weeklySplit[isoMondayIndex(date)];
     return planDay?.type === 'workout' ? (planDay.exercises ?? []) : [];
   };
   const todayExercises = exercisesOn(today);
@@ -117,52 +117,24 @@ export default function HomeScreen() {
   // The generated diet plan's own calorie target for the active month
   // (it can differ month to month) takes priority over the static profile.
   const dietMonth = dietPlan?.months.find((m) => m.monthIndex === currentMonthIndex(dietPlan));
-  const calorieTarget = dietMonth?.calorieTarget ?? currentUser.dailyCalorieTarget;
+  // That day's own target (training days eat more than rest days), then the month's average, then the profile.
+  const calorieTarget = dietMonth?.weeklySplit[isoMondayIndex(viewDate)]?.calorieTarget ?? dietMonth?.calorieTarget ?? currentUser.dailyCalorieTarget;
   const todaysTotals = sumMacros(nutritionEntries.filter((e) => e.date === viewDate));
 
-  // Today's real estimated-expenditure breakdown: BMR + baseline daily
-  // activity (everything that isn't training), plus today's workout and any
-  // manually logged activity.
-  const energy = estimateEnergyExpenditureBreakdown({
-    sex: currentUser.sex,
-    age: currentUser.age,
-    heightCm: currentUser.heightCm,
-    weightKg: latestBody.weightKg,
-    jobActivity: onboardingAnswers.jobActivity as string | undefined,
-    sessionDurationBucket: onboardingAnswers.sessionDuration as string | undefined,
-    completionFraction: viewExerciseCompletionFraction,
-    loggedActivitiesKcal: sumActivityKcalForDate(activityLogEntries, viewDate),
-  });
-  const basalKcal = energy.resting + energy.baselineActivity;
-  const trainingBurnKcal = energy.exercise + energy.loggedActivities;
+  // The shown day's estimated expenditure from the unified energy model: resting + everyday activity
+  // + the planned session scaled by how much was done + manually logged activities.
+  const energy = dayEnergy(ctx, weeklySplit[isoMondayIndex(viewDate)] ?? null, viewExerciseCompletionFraction, sumActivityKcalForDate(activityLogEntries, viewDate));
+  const basalKcal = energy.resting + energy.everyday;
+  const trainingBurnKcal = energy.exercise;
   const burnedKcal = energy.total;
   const eatenKcal = todaysTotals.kcal;
   const balanceKcal = eatenKcal - burnedKcal;
 
   // Current calendar week (Mon–Sun) from the shared pipeline, so Home,
   // Progressi and Nutrizione can never disagree on the numbers.
-  const { weekDaysWithActivity, weekEstimatedExpenditureSoFar, weeklyProgrammedKcal } = useWeeklyEnergy();
+  const { weekDaysWithActivity, weekEstimatedExpenditureSoFar, weeklyGoalKcal } = useWeeklyEnergy();
   const weekDates = currentWeekDates(new Date());
 
-  // Weekly balance goal: the full-adherence expenditure estimate ("if the
-  // plan is followed") minus the weekly intake target. Negative = a deficit
-  // goal, positive = a surplus goal.
-  const weeklyExpenditureFullAdherence = weekDates.reduce((sum, _date, i) => {
-    const dayPlan = weeklySplit[i];
-    return (
-      sum +
-      estimateDailyEnergyExpenditure({
-        sex: currentUser.sex,
-        age: currentUser.age,
-        heightCm: currentUser.heightCm,
-        weightKg: latestBody.weightKg,
-        jobActivity: onboardingAnswers.jobActivity as string | undefined,
-        sessionDurationBucket: onboardingAnswers.sessionDuration as string | undefined,
-        completionFraction: dayPlan?.type === 'workout' ? 1 : 0,
-      })
-    );
-  }, 0);
-  const weeklyGoalKcal = weeklyProgrammedKcal - weeklyExpenditureFullAdherence;
   const eatenSoFarThisWeek = weekDaysWithActivity.filter((d) => d.hasHappened).reduce((sum, d) => sum + d.eatenKcal, 0);
   const weeklySoFarKcal = eatenSoFarThisWeek - weekEstimatedExpenditureSoFar;
   const weeklyProgress = weeklyGoalKcal !== 0 ? clamp01(weeklySoFarKcal / weeklyGoalKcal) : 0;

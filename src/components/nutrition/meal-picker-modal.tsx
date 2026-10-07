@@ -4,7 +4,7 @@ import { GlassPopup } from '@/components/glass/glass-popup';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
 import { useTheme } from '@/hooks/use-theme';
-import { mondayIndex } from '@/lib/mock/dates';
+import { isoMondayIndex } from '@/lib/mock/dates';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
 import { entriesForSlot, MEAL_SLOTS, sumMacros, useNutritionStore, type MealSlot } from '@/store/nutrition-store';
 import { usePlanStore } from '@/store/plan-store';
@@ -43,7 +43,7 @@ export function MealPickerModal({ visible, date, onClose, onPick }: MealPickerMo
   const dietPlan = usePlanStore((s) => s.dietPlan);
 
   const month = dietPlan?.months.find((m) => m.monthIndex === currentMonthIndex(dietPlan));
-  const plannedIds = month?.weeklySplit[mondayIndex(new Date(date))]?.meals.map((m) => m.slotId) ?? [];
+  const plannedIds = month?.weeklySplit[isoMondayIndex(date)]?.meals.map((m) => m.slotId) ?? [];
   const known = MEAL_SLOTS.filter((slot) => plannedIds.includes(slot.id));
   const slots = known.length > 0 ? known : MEAL_SLOTS;
 

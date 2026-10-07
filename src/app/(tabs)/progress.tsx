@@ -80,11 +80,13 @@ export default function ProgressScreen() {
   const weekDelta = latest.weightKg - lastWeekBody.weightKg;
 
   const sinceStart = latest.weightKg - startBody.weightKg;
+  // 0 = the person gave no goal weight: nothing about a goal is shown (never an invented one).
+  const hasGoal = currentUser.targetWeightKg > 0;
   const totalToGo = startBody.weightKg - currentUser.targetWeightKg;
-  const goalProgress = totalToGo !== 0 ? Math.min(Math.max((startBody.weightKg - latest.weightKg) / totalToGo, 0), 1) : 0;
+  const goalProgress = hasGoal && totalToGo !== 0 ? Math.min(Math.max((startBody.weightKg - latest.weightKg) / totalToGo, 0), 1) : 0;
 
   // Down is "good" green only when the goal is to lose weight.
-  const wantsLoss = currentUser.targetWeightKg < startBody.weightKg;
+  const wantsLoss = hasGoal ? currentUser.targetWeightKg < startBody.weightKg : currentUser.goal === 'loseFat';
   const deltaColor = (delta: number) => (delta === 0 ? theme.textTertiary : (delta < 0) === wantsLoss ? theme.brandGreen : theme.danger);
 
   // Every photo taken on the same day grouped into its own box, most recent
@@ -158,6 +160,7 @@ export default function ProgressScreen() {
           </Pressable>
         </View>
 
+        {hasGoal ? (
         <View style={styles.progressBlock}>
           <View style={[styles.goalTrack, { backgroundColor: theme.backgroundElement }]}>
             <View style={[styles.goalFill, { width: `${Math.round(goalProgress * 100)}%`, backgroundColor: theme.accent }]} />
@@ -172,6 +175,7 @@ export default function ProgressScreen() {
             </ThemedText>
           </View>
         </View>
+        ) : null}
 
         <View style={styles.miniRow}>
           <View style={[styles.miniBox, { backgroundColor: theme.backgroundElement }]}>
@@ -190,9 +194,9 @@ export default function ProgressScreen() {
               <Icon name="target" size={20} color={theme.brandGreen} />
             </View>
             <View>
-              <ThemedText style={styles.miniValue}>{currentUser.targetWeightKg} kg</ThemedText>
+              <ThemedText style={styles.miniValue}>{hasGoal ? `${currentUser.targetWeightKg} kg` : '—'}</ThemedText>
               <ThemedText style={styles.miniLabel} themeColor="textTertiary">
-                obiettivo
+                {hasGoal ? 'obiettivo' : 'nessun peso obiettivo'}
               </ThemedText>
             </View>
           </View>
@@ -212,7 +216,7 @@ export default function ProgressScreen() {
         />
         <GoalTrendChart
           points={weightSeries}
-          target={currentUser.targetWeightKg}
+          target={hasGoal ? currentUser.targetWeightKg : null}
           dateGranularity={weightDateGranularity(weightRange)}
           height={200}
           color={theme.accent}

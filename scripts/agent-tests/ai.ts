@@ -68,7 +68,7 @@ export async function openAiSession(): Promise<AiSession | { error: string }> {
 const VALID_SPLITS = new Set(['Full Body', 'Upper', 'Lower', 'Push', 'Pull', 'Legs']);
 
 /** Checks on the strategy the AI returned (before the planners use it). */
-export function checkStrategy(persona: Persona, strategy: PlanStrategy | null, targetCalories: number, durationMonths: number): Finding[] {
+export function checkStrategy(persona: Persona, strategy: PlanStrategy | null, durationMonths: number): Finding[] {
   const f: Finding[] = [];
   if (!strategy) {
     f.push({ level: 'WARN', area: 'coerenza', code: 'A1', message: 'L’agente AI non ha restituito una strategia: il piano usa solo le tabelle deterministiche' });
@@ -82,15 +82,9 @@ export function checkStrategy(persona: Persona, strategy: PlanStrategy | null, t
     if (t.monthlyFocus.length < durationMonths) f.push({ level: 'INFO', area: 'allenamento', code: 'A3', message: `La strategia AI descrive ${t.monthlyFocus.length} mesi su ${durationMonths}` });
   }
   const d = strategy.diet;
-  if (d) {
-    if (d.monthlyTargets.length < durationMonths) f.push({ level: 'WARN', area: 'dieta', code: 'A4', message: `La strategia AI fissa i target per ${d.monthlyTargets.length} mesi su ${durationMonths}: gli altri mesi tornano al calcolo deterministico` });
-    for (const m of d.monthlyTargets) {
-      const kcal = m.macroTargetsG.protein * 4 + m.macroTargetsG.carbs * 4 + m.macroTargetsG.fats * 9;
-      if (m.calorieTarget < 1200) f.push({ level: 'FAIL', area: 'dieta', code: 'A5', message: `Mese ${m.monthIndex}: l’AI propone ${m.calorieTarget} kcal, sotto il minimo di sicurezza` });
-      if (Math.abs(m.calorieTarget / targetCalories - 1) > 0.25) f.push({ level: 'WARN', area: 'dieta', code: 'A5', message: `Mese ${m.monthIndex}: ${m.calorieTarget} kcal si discosta del ${Math.round((m.calorieTarget / targetCalories - 1) * 100)}% dal target calcolato (${targetCalories})` });
-      if (Math.abs(kcal - m.calorieTarget) / m.calorieTarget > 0.05) f.push({ level: 'WARN', area: 'dieta', code: 'A6', message: `Mese ${m.monthIndex}: i macro dell’AI (${kcal} kcal) non tornano con le calorie (${m.calorieTarget})` });
-    }
-  }
+  if (d && d.monthlyFocus.length < durationMonths) f.push({ level: 'INFO', area: 'dieta', code: 'A4', message: `La strategia AI descrive ${d.monthlyFocus.length} mesi di dieta su ${durationMonths}` });
+  // calories and macros are owned by the engine: the strategy must not carry any
+  if ((d as unknown as { monthlyTargets?: unknown } | null)?.monthlyTargets) f.push({ level: 'WARN', area: 'dieta', code: 'A5', message: 'La strategia AI contiene target calorici: vengono ignorati, le calorie le decide il motore' });
   void persona;
   return f;
 }

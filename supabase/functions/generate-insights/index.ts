@@ -5,7 +5,7 @@
 // cannot invent an untracked metric the way the old static copy did.
 import { createAnthropicClient, INSIGHTS_MODEL } from '../_shared/anthropic-client.ts';
 import { getBodyContext } from '../_shared/agents/body-data.ts';
-import type { ClientContext } from '../_shared/agents/types.ts';
+import { describePlan, type ClientContext } from '../_shared/agents/types.ts';
 import { CORS_HEADERS, handlePreflight, jsonResponse } from '../_shared/cors.ts';
 import { createUserScopedClient, getAuthenticatedUser } from '../_shared/supabase-client.ts';
 
@@ -32,6 +32,7 @@ function buildDataBlock(body: Awaited<ReturnType<typeof getBodyContext>>, client
       `Nutrizione oggi: ${n.kcalEaten}/${n.kcalTarget} kcal, proteine ${n.proteinEatenG}/${n.proteinTargetG} g, streak di logging ${n.loggingStreakDays} giorni.`
     );
   }
+  if (clientContext.plan) parts.push(describePlan(clientContext.plan));
   if (clientContext.trainingAdherence14d) {
     const t = clientContext.trainingAdherence14d;
     parts.push(`Allenamento: ${t.done}/${t.planned} sessioni pianificate completate negli ultimi 14 giorni.`);

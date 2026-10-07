@@ -16,7 +16,8 @@ export type WeightPoint = { xLabel: string; value: number | null; date: string }
 
 export type GoalTrendChartProps = {
   points: WeightPoint[];
-  target: number;
+  /** Goal weight; null/undefined = the person has none: no reference line. */
+  target?: number | null;
   /** Whether each point represents a single day or a whole month — changes
    * how the period caption below the chart is worded. */
   dateGranularity: 'day' | 'month';
@@ -58,18 +59,18 @@ function buildSegments(xy: (XY | null)[], height: number) {
   return [{ path, area }];
 }
 
-function buildChart(points: WeightPoint[], target: number, plotWidth: number, height: number) {
+function buildChart(points: WeightPoint[], target: number | null | undefined, plotWidth: number, height: number) {
   const empty = {
     segments: [] as { path: string; area: string }[],
     xy: [] as XY[],
-    targetY: height / 2,
+    targetY: null as number | null,
     xTicks: [] as { x: number; label: string }[],
     yTicks: [] as { y: number; label: string }[],
   };
   if (points.length === 0 || plotWidth <= 0) return empty;
 
   const values = points.map((p) => p.value).filter((v): v is number => v != null);
-  const rawValues = [...values, target];
+  const rawValues = target != null ? [...values, target] : values.length > 0 ? values : [70];
   const rawMin = Math.min(...rawValues);
   const rawMax = Math.max(...rawValues);
   // A little headroom above/below so dots and their value labels near the
@@ -100,7 +101,7 @@ function buildChart(points: WeightPoint[], target: number, plotWidth: number, he
     return { y: toY(value), label: value.toFixed(1) };
   }).reverse();
 
-  return { segments, xy: xy.filter((p): p is XY => p != null), targetY: toY(target), xTicks, yTicks };
+  return { segments, xy: xy.filter((p): p is XY => p != null), targetY: target != null ? toY(target) : null, xTicks, yTicks };
 }
 
 /** i -> the slot's fractional x position, inverted back to a slot index —
@@ -180,11 +181,16 @@ export function GoalTrendChart({ points, target, dateGranularity, width, height 
   // rather than keeping whatever offset/caption was left from the previous
   // range's plot.
   const scrollRef = useRef<ScrollView>(null);
+  const resetKey = `${points.length}|${points[0]?.date}|${points[points.length - 1]?.date}|${plotWidth}|${visibleWidth}`;
+  const [appliedKey, setAppliedKey] = useState(resetKey);
+  if (appliedKey !== resetKey) {
+    // "Adjust state during render" (React's replacement for a setState-in-effect): new slots mean the caption restarts at the beginning.
+    setAppliedKey(resetKey);
+    setVisibleRange({ first: slotIndexAt(0, points.length, innerWidth), last: slotIndexAt(visibleWidth, points.length, innerWidth) });
+  }
   useEffect(() => {
     scrollRef.current?.scrollTo({ x: 0, animated: false });
-    updateVisibleRange(0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [points, plotWidth, visibleWidth]);
+  }, [resetKey]);
 
   const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => updateVisibleRange(e.nativeEvent.contentOffset.x);
 
@@ -252,7 +258,7 @@ export function GoalTrendChart({ points, target, dateGranularity, width, height 
                   ))}
 
                   {/* Target reference line */}
-                  <Line x1={0} y1={targetY} x2={plotWidth} y2={targetY} stroke={targetColor} strokeWidth={1.5} />
+                  {targetY != null ? <Line x1={0} y1={targetY} x2={plotWidth} y2={targetY} stroke={targetColor} strokeWidth={1.5} /> : null}
 
                   {segments.map((seg, i) => (seg.area ? <Path key={`area${i}`} d={seg.area} fill="url(#goalTrendFill)" /> : null))}
                   {segments.map((seg, i) => (
@@ -304,17 +310,19 @@ export function GoalTrendChart({ points, target, dateGranularity, width, height 
             {/* Target label — fixed at the right edge of the visible plot
                 (not the scrollable content), so it stays on screen no
                 matter how far the chart is scrolled. */}
-            <Text
-              style={{
-                position: 'absolute',
-                right: 4,
-                top: Math.max(targetY - 16, 0),
-                fontSize: 10,
-                fontWeight: '700',
-                color: targetColor,
-              }}>
-              Obiettivo {target}kg
-            </Text>
+            {targetY != null && target != null ? (
+              <Text
+                style={{
+                  position: 'absolute',
+                  right: 4,
+                  top: Math.max(targetY - 16, 0),
+                  fontSize: 10,
+                  fontWeight: '700',
+                  color: targetColor,
+                }}>
+                Obiettivo {target}kg
+              </Text>
+            ) : null}
           </View>
 
           {/* Period caption — tracks whichever slots are currently scrolled

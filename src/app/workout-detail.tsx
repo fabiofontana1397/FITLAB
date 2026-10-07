@@ -8,13 +8,11 @@ import { Icon } from '@/components/ui/icon';
 import { PlanExerciseRow } from '@/components/training/plan-exercise-row';
 import { difficultyLabel, WorkoutBadge } from '@/components/training/workout-summary-card';
 import { useTheme } from '@/hooks/use-theme';
-import { latestSnapshot } from '@/lib/mock/body';
-import { daysAgoISO, mondayIndex } from '@/lib/mock/dates';
+import { daysAgoISO, isoMondayIndex } from '@/lib/mock/dates';
 import { goBackOr } from '@/lib/navigation/go-back';
-import { estimateTrainingContributionKcal, sessionDurationMinutes } from '@/lib/nutrition/targets';
+import { sessionKcal, sessionMinutes } from '@/domain/energy';
+import { useUserContext } from '@/hooks/use-user-context';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
-import { useBodyStore } from '@/store/body-store';
-import { useOnboardingStore } from '@/store/onboarding-store';
 import { usePlanStore } from '@/store/plan-store';
 import {
   historyForExercise,
@@ -22,7 +20,6 @@ import {
   latestWeightForExercise,
   useTrainingProgressStore,
 } from '@/store/training-progress-store';
-import { useUserStore } from '@/store/user-store';
 
 /** The Figma "Dettaglio allenamento": back chevron + title, the session
  * summary card (name, day + duration, kcal / minutes / difficulty) and the
@@ -33,28 +30,18 @@ export default function WorkoutDetailScreen() {
   const date = dateParam ?? daysAgoISO(0);
 
   const trainingPlan = usePlanStore((s) => s.trainingPlan);
-  const onboardingAnswers = useOnboardingStore((s) => s.answers);
-  const currentUser = useUserStore();
-  const bodyEntries = useBodyStore((s) => s.entries);
   const progressSets = useTrainingProgressStore((s) => s.sets);
   const completedExercises = useTrainingProgressStore((s) => s.completed);
   const logSet = useTrainingProgressStore((s) => s.logSet);
   const toggleCompleted = useTrainingProgressStore((s) => s.toggleCompleted);
 
   const month = trainingPlan?.months.find((m) => m.monthIndex === currentMonthIndex(trainingPlan));
-  const day = month?.weeklySplit[mondayIndex(new Date(date))];
+  const day = month?.weeklySplit[isoMondayIndex(date)];
   const exercises = day?.type === 'workout' ? (day.exercises ?? []) : [];
 
-  const sessionBucket = onboardingAnswers.sessionDuration as string | undefined;
-  const minutes = sessionDurationMinutes(sessionBucket);
-  const kcal = estimateTrainingContributionKcal({
-    sex: currentUser.sex,
-    age: currentUser.age,
-    heightCm: currentUser.heightCm,
-    weightKg: latestSnapshot(bodyEntries).weightKg,
-    sessionDurationBucket: sessionBucket,
-    completionFraction: 1,
-  });
+  const ctx = useUserContext();
+  const minutes = sessionMinutes(day, ctx);
+  const kcal = sessionKcal(day, ctx);
 
   const dayLabel =
     date === daysAgoISO(0) ? 'Oggi' : new Date(date).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });

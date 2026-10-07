@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 import { fetchStaticTemplateLogs, insertStaticTemplateLog } from '@/lib/api/training';
-import { daysAgoISO } from '@/lib/mock/dates';
+import { daysAgoISO, isoMondayIndex } from '@/lib/mock/dates';
 import type { Sport } from '@/lib/mock/types';
 import { withAuthRetry } from '@/lib/supabase/retry';
 import { useAuthStore } from '@/store/auth-store';
@@ -179,8 +179,7 @@ export function planAdherence(plan: WeeklyPlan, logs: ExerciseSetLog[], days = 1
   let done = 0;
   for (let i = 0; i < days; i++) {
     const date = daysAgoISO(i);
-    const weekday = new Date(date).getDay();
-    const planIndex = (weekday + 6) % 7;
+    const planIndex = isoMondayIndex(date);
     const planDay = plan[planIndex];
     if (planDay.type === 'rest') continue;
     planned += 1;

@@ -3,14 +3,13 @@ import { persist } from 'zustand/middleware';
 
 import { daysAgoISO } from '@/lib/mock/dates';
 import {
-  evaluateNutritionAdaptation,
   fetchLatestInitialEstimate,
   insertNutritionTargetHistory,
-  type AdaptationDecision,
 } from '@/lib/api/nutrition-targets';
 import { fetchProfile, upsertProfile } from '@/lib/api/profile';
 import type { Goal, Sex, Sport, UserProfile } from '@/lib/mock/types';
 import { withAuthRetry } from '@/lib/supabase/retry';
+import { useAppStore } from '@/store/app-store';
 import { useAuthStore } from '@/store/auth-store';
 import { appJsonStorage } from '@/store/storage';
 
@@ -85,7 +84,6 @@ type UserState = UserProfile & {
    * applies whatever profile update comes back and returns the decision so
    * the UI can show why something did or didn't change.
    */
-  reviewNutritionTarget: () => Promise<AdaptationDecision>;
 };
 
 export const useUserStore = create<UserState>()(
@@ -125,7 +123,12 @@ export const useUserStore = create<UserState>()(
             withAuthRetry(() => fetchProfile(userId)),
             withAuthRetry(() => fetchLatestInitialEstimate(userId)),
           ]);
-          if (profile) set(profile);
+          if (profile) {
+            set(profile);
+            // The profile is only written when the questionnaire is CONFIRMED (finalizeOnboarding),
+            // so a calorie target means onboarding was completed — on this or another device.
+            if (profile.dailyCalorieTarget > 0 && !useAppStore.getState().hasOnboarded) useAppStore.getState().setHasOnboarded(true);
+          }
           if (initialEstimateRow) {
             set({
               initialEstimate: {
@@ -140,13 +143,6 @@ export const useUserStore = create<UserState>()(
         }
       },
       clearLocal: () => set({ ...DEFAULT_PROFILE, initialEstimate: null }),
-      reviewNutritionTarget: async () => {
-        const { decision, updatedProfile } = await evaluateNutritionAdaptation();
-        if (updatedProfile) {
-          set({ dailyCalorieTarget: updatedProfile.dailyCalorieTarget, macroTargetsG: updatedProfile.macroTargetsG });
-        }
-        return decision;
-      },
     }),
     { name: 'fitlab/user', storage: appJsonStorage }
   )

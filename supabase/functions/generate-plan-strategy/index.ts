@@ -6,7 +6,9 @@
 // meal-by-meal/exercise-by-exercise plan: src/lib/planning/{diet,training}-planner.ts
 // still assembles that mechanically from the app's own food-database/
 // exercise-library, so a hallucinated food or exercise id can never reach
-// the plan. Every field here is optional from the client's point of view —
+// the plan. It does NOT decide calories or macros either: those come from the
+// energy model in src/domain (training and nutrition are coupled there and
+// recalibrated monthly), so the AI only writes the methodology and the wording. Every field here is optional from the client's point of view —
 // src/store/plan-store.ts falls back to today's deterministic tables
 // per-field when a field (or the whole call) is missing, so this is purely
 // additive, never a hard dependency for onboarding to complete.
@@ -17,6 +19,7 @@ import { createUserScopedClient, getAuthenticatedUser } from '../_shared/supabas
 
 type RequestBody = {
   answers: Record<string, unknown>;
+  /** Computed by the client's energy model — context for the AI, never to be changed by it. */
   dailyCalorieTarget: number;
   macroTargetsG: { protein: number; carbs: number; fats: number };
   durationMonths: number;
@@ -49,7 +52,10 @@ reale) per un utente specifico, basandoti SOLO su:
 Nella "rationale" cita in 2-3 frasi le fonti/studi reali su cui ti sei basato — non un saggio. Nei campi
 "focusNote" sii specifico e concreto (volume, intensità, motivazione fisiologica) ma stringato: massimo 2 frasi
 brevi per mese, non un paragrafo. Se il profilo non prevede allenamento in palestra/corsa imposta "training" a
-null; se non serve un piano alimentare imposta "diet" a null. "splitLabels" deve usare ESCLUSIVAMENTE i valori
+null; se non serve un piano alimentare imposta "diet" a null. NON decidi tu calorie e macro: le calcola l'app
+dal fabbisogno energetico e dal programma di allenamento, e vengono ricalibrate ogni mese in base ai progressi.
+Le persone che usano l'app sono persone comuni (dai 16 ai 60 anni, sedentarie o molto attive, principianti o
+esperte): adatta volume e progressione all'età e all'esperienza reale, con prudenza per principianti e minorenni. "splitLabels" deve usare ESCLUSIVAMENTE i valori
 "Full Body", "Upper", "Lower", "Push", "Pull", "Legs" (uno per ogni giorno di allenamento in ordine, ripetuti se
 necessario) — sono gli unici tipi di scheda presenti nel catalogo esercizi dell'app.
 
@@ -129,28 +135,10 @@ const STRATEGY_SCHEMA = {
         {
           type: 'object',
           properties: {
-            monthlyTargets: {
-              type: 'array',
-              items: {
-                type: 'object',
-                properties: {
-                  monthIndex: { type: 'integer' },
-                  calorieTarget: { type: 'integer' },
-                  macroTargetsG: {
-                    type: 'object',
-                    properties: { protein: { type: 'integer' }, carbs: { type: 'integer' }, fats: { type: 'integer' } },
-                    required: ['protein', 'carbs', 'fats'],
-                    additionalProperties: false,
-                  },
-                },
-                required: ['monthIndex', 'calorieTarget', 'macroTargetsG'],
-                additionalProperties: false,
-              },
-            },
             monthlyFocus: MONTHLY_FOCUS_SCHEMA,
             rationale: { type: 'string' },
           },
-          required: ['monthlyTargets', 'monthlyFocus', 'rationale'],
+          required: ['monthlyFocus', 'rationale'],
           additionalProperties: false,
         },
       ],
@@ -170,10 +158,6 @@ const STRATEGY_SCHEMA = {
 // existing "AI is purely additive, never a hard dependency" guarantee
 // while adding a real safety net around the values it's allowed to affect.
 const VALID_SPLIT_LABELS = new Set(['Full Body', 'Upper', 'Lower', 'Push', 'Pull', 'Legs']);
-const MIN_SAFE_CALORIE_TARGET = 1200;
-const MAX_SANE_CALORIE_TARGET = 6000;
-const MAX_CALORIE_DEVIATION_FROM_REQUESTED = 0.25; // a monthly target more than 25% off the client's own computed target is untrusted, not "aggressive periodization"
-
 function isSaneSetScheme(scheme: unknown): scheme is { sets: number; reps: string; restSec: number; tempo: string } {
   if (!scheme || typeof scheme !== 'object') return false;
   const s = scheme as Record<string, unknown>;
@@ -192,7 +176,7 @@ function isSaneSetScheme(scheme: unknown): scheme is { sets: number; reps: strin
 }
 
 // deno-lint-ignore no-explicit-any
-function validateStrategy(raw: any, requestedDailyCalorieTarget: number): any {
+function validateStrategy(raw: any): any {
   const strategy = raw && typeof raw === 'object' ? raw : { training: null, diet: null };
 
   if (strategy.training) {
@@ -206,20 +190,9 @@ function validateStrategy(raw: any, requestedDailyCalorieTarget: number): any {
   }
 
   if (strategy.diet) {
-    const d = strategy.diet;
-    const monthlyTargets = Array.isArray(d.monthlyTargets)
-      ? d.monthlyTargets.filter((m: Record<string, unknown>) => {
-          const cal = m?.calorieTarget;
-          if (typeof cal !== 'number' || cal < MIN_SAFE_CALORIE_TARGET || cal > MAX_SANE_CALORIE_TARGET) return false;
-          if (requestedDailyCalorieTarget > 0) {
-            const deviation = Math.abs(cal - requestedDailyCalorieTarget) / requestedDailyCalorieTarget;
-            if (deviation > MAX_CALORIE_DEVIATION_FROM_REQUESTED) return false;
-          }
-          const macros = m?.macroTargetsG as Record<string, unknown> | undefined;
-          return macros && typeof macros.protein === 'number' && typeof macros.carbs === 'number' && typeof macros.fats === 'number';
-        })
-      : [];
-    strategy.diet = monthlyTargets.length > 0 ? { ...d, monthlyTargets } : null;
+    // wording only: keep the focus notes, never any numeric target
+    const focus = Array.isArray(strategy.diet.monthlyFocus) ? strategy.diet.monthlyFocus : [];
+    strategy.diet = { monthlyFocus: focus, rationale: String(strategy.diet.rationale ?? '') };
   }
 
   return strategy;
@@ -257,15 +230,34 @@ function buildProfileSummary(body: RequestBody): string {
     gymBackground.push(`preferenza di split (vincolante, non proporre uno split diverso): ${answers.gymSplitPreference}`);
   }
 
+  const person = [
+    answers.age ? `età ${answers.age} anni` : null,
+    answers.sex ? `sesso ${answers.sex}` : null,
+    answers.heightCm ? `altezza ${answers.heightCm} cm` : null,
+    answers.currentWeightKg ? `peso ${answers.currentWeightKg} kg` : null,
+    answers.targetWeightKg ? `peso obiettivo ${answers.targetWeightKg} kg` : null,
+  ].filter(Boolean).join(', ');
+  const lifestyle = [
+    answers.jobActivity ? `lavoro: ${answers.jobActivity}` : null,
+    answers.dailySteps ? `passi al giorno: ${answers.dailySteps}` : null,
+    answers.sleepHoursRange ? `sonno: ${answers.sleepHoursRange}` : null,
+  ].filter(Boolean).join(', ');
+  const preferred = [answers.preferredProteins, answers.preferredCarbs, answers.preferredFats]
+    .flatMap((v) => (Array.isArray(v) ? v : []))
+    .join(', ');
+
   return `Profilo utente:
-- Obiettivo: ${answers.goal ?? 'sconosciuto'}
+- Persona: ${person || 'n/d'}
+- Stile di vita: ${lifestyle || 'n/d'}
+- Attrezzatura disponibile: ${JSON.stringify(answers.equipment ?? 'n/d')}
+${preferred ? `- Alimenti preferiti: ${preferred}\n` : ''}- Obiettivo: ${answers.goal ?? 'sconosciuto'}
 - Attività praticate: ${JSON.stringify(answers.activitiesPracticed ?? [])}
 - Focus palestra: ${answers.focus_gym ?? 'n/d'}, Focus corsa: ${answers.focus_running ?? 'n/d'}
 ${gymBackground.length > 0 ? `- Esperienza in palestra: ${gymBackground.join(', ')}\n` : ''}- Giorni disponibili: ${answers.availableDays ?? 'n/d'}, Durata sessione: ${answers.sessionDuration ?? 'n/d'}, Frequenza palestra: ${answers.freq_gym ?? 'n/d'}, Frequenza corsa: ${answers.freq_running ?? 'n/d'}
 - Luogo allenamento: ${answers.trainingLocation ?? 'palestra'}
 ${limitations.length > 0 ? `- LIMITAZIONI FISICHE (vincolanti, non contraddire mai nella rationale/focusNote): ${limitations.join('; ')}\n` : ''}- Pattern alimentare: ${answers.dietaryPattern ?? 'onnivoro'}
 - Pasti selezionati: ${JSON.stringify(answers.mealsSelected ?? [])}, orari: colazione ${answers.breakfastTime ?? 'n/d'} / pranzo ${answers.lunchTime ?? 'n/d'} / cena ${answers.dinnerTime ?? 'n/d'}
-${usualMeals.length > 0 ? `- Cosa mangia di solito (contesto, non vincolante): ${usualMeals.join('; ')}\n` : ''}${foodConstraints.length > 0 ? `- VINCOLI ALIMENTARI (vincolanti, non contraddire mai nella rationale/focusNote): ${foodConstraints.join('; ')}\n` : ''}- Target calorico finale: ${dailyCalorieTarget} kcal, macro finali: ${JSON.stringify(macroTargetsG)}
+${usualMeals.length > 0 ? `- Cosa mangia di solito (contesto, non vincolante): ${usualMeals.join('; ')}\n` : ''}${foodConstraints.length > 0 ? `- VINCOLI ALIMENTARI (vincolanti, non contraddire mai nella rationale/focusNote): ${foodConstraints.join('; ')}\n` : ''}- Target calorico calcolato dall'app (informativo, non modificabile): ${dailyCalorieTarget} kcal, macro: ${JSON.stringify(macroTargetsG)}
 - Durata piano: ${durationMonths} mesi (mese 1 = adattamento, ultimo = consolidamento, gli intermedi = progressione)`;
 }
 
@@ -320,7 +312,7 @@ Deno.serve(async (req: Request) => {
       throw new Error(`No text response (stop_reason: ${response.stop_reason})`);
     }
     const parsed = JSON.parse(textBlock.text);
-    const strategy = validateStrategy(parsed, body.dailyCalorieTarget);
+    const strategy = validateStrategy(parsed);
 
     return jsonResponse({ strategy });
   } catch (err) {

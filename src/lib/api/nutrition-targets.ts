@@ -1,10 +1,5 @@
-// Repository module for nutrition_target_history (read) and the
-// adaptation-evaluate Edge Function (the Adaptive Nutrition Engine's real
-// entry point, spec §4.1 bis/§14 "POST /adaptation/evaluate"). The
-// evaluation itself — reading body_metrics/meal_entries, deciding whether
-// to nudge the target, persisting the new profile/history/plan_versions
-// rows — all happens server-side now; this module just invokes it and
-// exposes read access to the resulting history.
+// Repository module for nutrition_target_history (read/insert): the log of
+// calorie/macro targets over time (initial estimate and monthly recalibrations).
 import { supabase } from '@/lib/supabase/client';
 
 export type NutritionTargetSource = 'initial_estimate' | 'adaptation';
@@ -88,25 +83,4 @@ export async function insertNutritionTargetHistory(
     reason: record.reason ?? null,
   });
   if (error) throw error;
-}
-
-export type AdaptationAction = 'none' | 'increase' | 'decrease';
-
-export type AdaptationDecision = {
-  action: AdaptationAction;
-  deltaKcal: number;
-  reason: string;
-  weeklyRateKg: number | null;
-  loggedDaysInWindow: number;
-};
-
-export type AdaptationEvaluateResponse = {
-  decision: AdaptationDecision;
-  updatedProfile: { dailyCalorieTarget: number; macroTargetsG: { protein: number; carbs: number; fats: number } } | null;
-};
-
-export async function evaluateNutritionAdaptation(): Promise<AdaptationEvaluateResponse> {
-  const { data, error } = await supabase.functions.invoke('adaptation-evaluate');
-  if (error) throw error;
-  return data as AdaptationEvaluateResponse;
 }
