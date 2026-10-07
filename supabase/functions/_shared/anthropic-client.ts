@@ -18,6 +18,9 @@ export function createAnthropicClient(): Anthropic {
 export const ORCHESTRATOR_MODEL = 'claude-sonnet-5';
 export const SPECIALIST_MODEL = 'claude-haiku-4-5';
 export const INSIGHTS_MODEL = 'claude-sonnet-5';
+// Plan strategy: structured JSON from a fixed schema, grounded in the retrieved
+// guides, and cached per similar profile — Haiku is enough and ~10x cheaper.
+export const STRATEGY_MODEL = 'claude-haiku-4-5';
 // Vision analysis of progress photos: low-frequency, on-demand, and quality
 // (not cost) is what matters for a comment the user actually reads.
 export const PHOTO_ANALYSIS_MODEL = 'claude-sonnet-5';

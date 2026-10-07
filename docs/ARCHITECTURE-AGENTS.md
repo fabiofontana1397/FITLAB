@@ -73,3 +73,13 @@ stessa forma è in `supabase/functions/_shared/agents/types.ts` (`describePlan` 
 Il progetto è per persone comuni (16–60 anni, sedentarie o molto attive, principianti o esperte). Casi
 clinici (obesità, celiachia, diete vegane stretta…) richiedono un dietologo e restano fuori dal perimetro:
 non vanno aggiunti ai test.
+
+## Costi dell'AI (strategia del piano)
+
+`generate-plan-strategy` è pensata per costare il minimo:
+
+- **Nessuna ricerca web**: usa solo le due guide interne (RAG).
+- **Modello economico** (`STRATEGY_MODEL`, Haiku) con uscita a schema fisso.
+- **Cache per profilo simile** (`plan_strategy_cache`, migrazione `0019`): la chiave è una firma grossolana (obiettivo, attività, esperienza, fascia d'età, vincoli…). Se un profilo uguale ha già una strategia, la funzione risponde subito senza chiamare né il modello né gli embedding. La firma coincide con tutto ciò che il modello vede, quindi nel testo condiviso non finiscono peso, altezza, età esatta o pasti abituali. Se la tabella manca la cache si disattiva e la funzione funziona comunque.
+- Se cambi prompt o schema, incrementa `CACHE_VERSION` nella funzione.
+- Il test `npm run agents:test -- --ai` richiede `--persona <id>` (o `--all`) per non spendere per sbaglio.
