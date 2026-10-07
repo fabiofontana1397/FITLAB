@@ -291,11 +291,11 @@ Deno.serve(async (req: Request) => {
     const anthropic = createAnthropicClient();
     const response = await anthropic.messages.create({
       model: ORCHESTRATOR_MODEL,
-      max_tokens: 16000,
+      max_tokens: 8000,
       system: SYSTEM_PROMPT,
       // deno-lint-ignore no-explicit-any
       tools: [
-        { type: 'web_search_20260209', name: 'web_search', max_uses: 5, allowed_domains: AUTHORITATIVE_DOMAINS },
+        { type: 'web_search_20260209', name: 'web_search', max_uses: 3, allowed_domains: AUTHORITATIVE_DOMAINS },
       ] as any,
       // Schema-constrained output — guarantees the final text block is
       // valid JSON matching STRATEGY_SCHEMA exactly, even with web_search

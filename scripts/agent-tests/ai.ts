@@ -49,24 +49,27 @@ export async function openAiSession(): Promise<AiSession | { error: string }> {
 
   return {
     call: async (persona, targets, durationMonths) => {
-      try {
-        const r = await fetch(`${url}/functions/v1/generate-plan-strategy`, {
-          method: 'POST',
-          headers: { apikey: anon, Authorization: `Bearer ${access_token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ answers: persona.answers, dailyCalorieTarget: targets.dailyCalorieTarget, macroTargetsG: targets.macroTargetsG, durationMonths }),
-        });
-        if (!r.ok) {
-          const body = (await r.text()).slice(0, 300).replace(/\s+/g, ' ');
-          process.stdout.write(`[HTTP ${r.status}: ${body}] `);
-          return null;
+      // one retry: the hosted function occasionally hits its resource limit (HTTP 546)
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const r = await fetch(`${url}/functions/v1/generate-plan-strategy`, {
+            method: 'POST',
+            headers: { apikey: anon, Authorization: `Bearer ${access_token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ answers: persona.answers, dailyCalorieTarget: targets.dailyCalorieTarget, macroTargetsG: targets.macroTargetsG, durationMonths }),
+          });
+          if (!r.ok) {
+            const body = (await r.text()).slice(0, 300).replace(/\s+/g, ' ');
+            process.stdout.write(`[HTTP ${r.status}: ${body}] `);
+            continue;
+          }
+          const json = (await r.json()) as { strategy?: PlanStrategy | null };
+          if (json.strategy) return json.strategy;
+          process.stdout.write('[risposta senza strategia] ');
+        } catch (err) {
+          process.stdout.write(`[errore di rete: ${err instanceof Error ? err.message : String(err)}] `);
         }
-        const json = (await r.json()) as { strategy?: PlanStrategy | null };
-        if (!json.strategy) process.stdout.write('[risposta senza strategia] ');
-        return json.strategy ?? null;
-      } catch (err) {
-        process.stdout.write(`[errore di rete: ${err instanceof Error ? err.message : String(err)}] `);
-        return null;
       }
+      return null;
     },
   };
 }
