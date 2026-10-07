@@ -67,7 +67,8 @@
     "supabase:types": "supabase gen types typescript --local > src/lib/supabase/database.types.ts",
     "supabase:seed:food": "tsx scripts/seed-food-database.ts",
     "functions:serve": "supabase functions serve --env-file supabase/.env.local",
-    "knowledge:ingest": "tsx scripts/ingest-knowledge.ts"
+    "knowledge:ingest": "tsx scripts/ingest-knowledge.ts",
+    "agents:test": "tsx scripts/agent-tests/run.ts"
   },
   "private": true
 }
