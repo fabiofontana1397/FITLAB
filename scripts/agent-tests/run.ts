@@ -19,22 +19,26 @@ import { generateDietPlan } from '@/lib/planning/diet-planner';
 import { generateTrainingPlan } from '@/lib/planning/training-planner';
 import { computePlanDurationMonths } from '@/lib/planning/plan-duration';
 
+import type { PlanStrategy } from '@/lib/planning/strategy-types';
+
+import { checkStrategy, openAiSession } from './ai';
 import { computeTargetsForAnswers, macrosOf, runChecks, type Finding, type PersonaRun } from './checks';
 import { PERSONAS, type Persona } from './personas';
 
 const WEEKDAYS = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
 
-export function generateForPersona(persona: Persona): PersonaRun {
+export function generateForPersona(persona: Persona, strategy: PlanStrategy | null = null, aiMode = false): PersonaRun {
   const answers = persona.answers;
   const mode = answers.mode as string | undefined;
   const targets = computeTargetsForAnswers(answers);
   const durationMonths = computePlanDurationMonths(answers);
 
-  // Mirrors usePlanStore.generatePlans (strategy = null: no AI).
-  const diet = mode === 'training' ? null : generateDietPlan({ answers, dailyCalorieTarget: targets.dailyCalorieTarget, macroTargetsG: targets.macroTargetsG, strategy: null });
-  const training = mode === 'diet' ? null : generateTrainingPlan({ answers, strategy: null });
+  // Mirrors usePlanStore.generatePlans (strategy = null unless --ai).
+  const diet = mode === 'training' ? null : generateDietPlan({ answers, dailyCalorieTarget: targets.dailyCalorieTarget, macroTargetsG: targets.macroTargetsG, strategy: strategy?.diet ?? null });
+  const training = mode === 'diet' ? null : generateTrainingPlan({ answers, strategy: strategy?.training ?? null });
 
   const findings = runChecks(persona, targets, durationMonths, diet, training);
+  if (aiMode) findings.push(...checkStrategy(persona, strategy, targets.dailyCalorieTarget, durationMonths));
   return { persona, targets, durationMonths, diet, training, findings };
 }
 
@@ -124,7 +128,7 @@ function buildReport(runs: PersonaRun[]): string {
   const total = counts(runs.flatMap((r) => r.findings));
   const lines: string[] = [];
   lines.push('# Test dei piani generati dai questionari', '');
-  lines.push(`Generato il ${new Date().toISOString().slice(0, 16).replace('T', ' ')} — ${runs.length} questionari finti, piani creati con i generatori reali dell’app (senza strategia AI).`, '');
+  lines.push(`Generato il ${new Date().toISOString().slice(0, 16).replace('T', ' ')} — ${runs.length} questionari finti, piani creati con i generatori reali dell’app.`, '');
   lines.push(`**Totale:** ${total.fail} errori · ${total.warn} avvisi · ${total.info} note`, '');
   lines.push('| Persona | Target kcal | P/C/G (g) | Mesi | Palestra/Corsa a sett. | Errori | Avvisi |', '|---|---|---|---|---|---|---|');
   for (const r of runs) {
@@ -143,7 +147,7 @@ function buildReport(runs: PersonaRun[]): string {
 
 // -------------------------------------------------------------------- main --
 
-function main() {
+async function main() {
   const args = process.argv.slice(2);
   const only = args.includes('--persona') ? args[args.indexOf('--persona') + 1] : null;
   const verbose = args.includes('--verbose');
@@ -153,7 +157,25 @@ function main() {
     process.exit(2);
   }
 
-  const runs = personas.map(generateForPersona);
+  const useAi = args.includes('--ai');
+  let runs: PersonaRun[];
+  if (useAi) {
+    const session = await openAiSession();
+    if ('error' in session) {
+      console.error(`--ai non disponibile: ${session.error}`);
+      process.exit(2);
+    }
+    runs = [];
+    for (const persona of personas) {
+      const targets = computeTargetsForAnswers(persona.answers);
+      process.stdout.write(`Chiedo la strategia all'agente AI per ${persona.id}… `);
+      const strategy = await session.call(persona, targets, computePlanDurationMonths(persona.answers));
+      console.log(strategy ? 'ok' : 'nessuna strategia');
+      runs.push(generateForPersona(persona, strategy, true));
+    }
+  } else {
+    runs = personas.map((p) => generateForPersona(p));
+  }
   for (const r of runs) {
     const c = counts(r.findings);
     const mark = c.fail > 0 ? '❌' : c.warn > 0 ? '⚠️ ' : '✅';
@@ -175,4 +197,4 @@ function main() {
   process.exit(total.fail > 0 ? 1 : 0);
 }
 
-main();
+void main();
