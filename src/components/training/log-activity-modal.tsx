@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+
+import { AppTextInput } from '@/components/ui/app-text';
 
 import { GlassPopup } from '@/components/glass/glass-popup';
 import { ThemedText } from '@/components/themed-text';
@@ -132,7 +134,7 @@ function LogActivityForm({
         <ThemedText type="label" themeColor="textSecondary">
           Durata (minuti)
         </ThemedText>
-        <TextInput
+        <AppTextInput
           value={duration}
           onChangeText={setDuration}
           keyboardType="number-pad"

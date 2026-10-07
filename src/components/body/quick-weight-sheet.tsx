@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, View } from 'react-native';
+
+import { AppTextInput } from '@/components/ui/app-text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { GlassSurface } from '@/components/glass/glass-surface';
@@ -44,7 +46,7 @@ export function QuickWeightSheet({ visible, currentWeightKg, onClose, onSave }: 
             </Pressable>
           </View>
           <View style={styles.inputRow}>
-            <TextInput
+            <AppTextInput
               value={value}
               onChangeText={setValue}
               keyboardType="decimal-pad"

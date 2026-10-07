@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react';
-import { FlatList, Modal, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { FlatList, Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
+
+import { AppTextInput } from '@/components/ui/app-text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -128,7 +130,7 @@ function FoodSearchForm({ slot, date, editEntry, onClose }: Omit<FoodSearchModal
       <View style={styles.searchRow}>
         <View style={[styles.searchField, { backgroundColor: theme.backgroundElevated, borderColor: theme.border }]}>
           <Icon name="search" size={20} color={theme.textTertiary} />
-          <TextInput
+          <AppTextInput
             value={query}
             onChangeText={(t) => {
               setQuery(t);
@@ -196,7 +198,7 @@ function FoodSearchForm({ slot, date, editEntry, onClose }: Omit<FoodSearchModal
                   </View>
                 </View>
                 <View style={styles.gramsRow}>
-                  <TextInput
+                  <AppTextInput
                     value={grams}
                     onChangeText={setGrams}
                     keyboardType="decimal-pad"

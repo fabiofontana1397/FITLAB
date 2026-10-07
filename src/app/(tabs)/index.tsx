@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Image, Platform, Pressable, StyleSheet, View } from 'react-native';
 
+import { EnergyDetailsPopup } from '@/components/home/energy-details-popup';
 import { OggiGauge } from '@/components/home/oggi-gauge';
 import { HomeCoachCard } from '@/components/home/home-coach-card';
 import { FoodSearchModal } from '@/components/nutrition/food-search-modal';
@@ -61,7 +62,7 @@ function glow(color: string, alpha: number) {
   });
 }
 
-type InfoTopic = 'burned' | 'balance' | 'eaten' | 'notifications';
+type InfoTopic = 'burned' | 'eaten' | 'notifications';
 
 export default function HomeScreen() {
   const theme = useTheme();
@@ -82,6 +83,7 @@ export default function HomeScreen() {
   const [registerWorkoutOpen, setRegisterWorkoutOpen] = useState(false);
   const [mealSlot, setMealSlot] = useState<MealSlot | null>(null);
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [detailsFocus, setDetailsFocus] = useState<'day' | 'week' | null>(null);
   const [viewDate, setViewDate] = useState(today);
 
   const latestBody = latestSnapshot(bodyEntries);
@@ -202,11 +204,6 @@ export default function HomeScreen() {
       title: 'Calorie bruciate',
       body: `Una stima delle calorie che il tuo corpo ha bruciato oggi: metabolismo basale (BMR) più attività quotidiana (${formatKcal(basalKcal)} kcal), a cui si aggiungono l'allenamento svolto e le attività registrate (${formatKcal(trainingBurnKcal)} kcal). Insieme alle calorie assunte determina il tuo bilancio energetico verso l'obiettivo.`,
     },
-    balance: {
-      icon: 'target',
-      title: balanceKcal >= 0 ? 'Surplus di oggi' : 'Deficit di oggi',
-      body: "La differenza tra le calorie assunte e quelle bruciate oggi: positiva è un surplus, negativa un deficit. Il giusto equilibrio dipende dal tuo obiettivo — surplus per mettere massa, deficit per perdere grasso. L'anello mostra quanto pesa ciascun lato sul totale.",
-    },
     eaten: {
       icon: 'utensils',
       title: 'Calorie assunte',
@@ -266,18 +263,18 @@ export default function HomeScreen() {
           <ThemedText style={styles.cardTitle}>
             {viewDate === today ? 'Calorie di oggi' : `Calorie del ${viewDateObj.getDate()} ${viewDateObj.toLocaleDateString('it-IT', { month: 'long' })}`}
           </ThemedText>
-          <Pressable onPress={() => setInfoTopic('balance')} hitSlop={8} style={styles.linkRow}>
+          <Pressable onPress={() => setDetailsFocus('day')} hitSlop={8} style={styles.linkRow}>
             <ThemedText style={[styles.linkText, { color: theme.accent }]}>Dettagli</ThemedText>
             <Icon name="chevronRight" size={13} color={theme.accent} />
           </Pressable>
         </View>
 
-        <Pressable onPress={() => setInfoTopic('balance')} style={styles.gaugeWrap}>
+        <Pressable onPress={() => setDetailsFocus('day')} style={styles.gaugeWrap}>
           <OggiGauge
             burnedKcal={burnedKcal}
             eatenKcal={eatenKcal}
             burnedColor={theme.accent}
-            eatenColor={withAlpha(theme.brandGreen, 0.4)}
+            eatenColor={theme.brandGreen}
             value={formatSignedKcal(balanceKcal)}
             caption={balanceKcal >= 0 ? 'in surplus' : 'in deficit'}
           />
@@ -292,7 +289,7 @@ export default function HomeScreen() {
             </ThemedText>
           </Pressable>
           <View style={[styles.sideDivider, { backgroundColor: theme.border }]} />
-          <Pressable onPress={() => setInfoTopic('balance')} style={styles.sideCol}>
+          <Pressable onPress={() => setDetailsFocus('day')} style={styles.sideCol}>
             <Icon name="target" size={22} color={theme.textSecondary} />
             <ThemedText style={styles.sideLabel} themeColor="textTertiary">
               Obiettivo
@@ -329,17 +326,17 @@ export default function HomeScreen() {
         />
       </View>
 
-      <View style={styles.sectionRow}>
-        <ThemedText style={styles.sectionTitle}>Questa settimana</ThemedText>
-        <Pressable onPress={() => router.push('/progress')} hitSlop={8} style={styles.linkRow}>
-          <ThemedText style={[styles.linkText, { color: BLUE }]}>Vedi dettagli</ThemedText>
-          <Icon name="chevronRight" size={13} color={BLUE} />
-        </Pressable>
-      </View>
+      <ThemedText style={[styles.sectionTitle, { marginTop: 24, marginBottom: 12 }]}>Questa settimana</ThemedText>
       <FlatCard radius={CARD_RADIUS} style={styles.weekCard}>
         <View style={styles.weekTitleRow}>
-          <Icon name="target" size={22} color={theme.accent} />
-          <ThemedText style={styles.weekTitle}>{weeklyGoalKcal >= 0 ? 'Surplus' : 'Deficit'} settimanale</ThemedText>
+          <View style={styles.weekTitleLeft}>
+            <Icon name="target" size={22} color={theme.accent} />
+            <ThemedText style={styles.weekTitle}>{weeklyGoalKcal >= 0 ? 'Surplus' : 'Deficit'} settimanale</ThemedText>
+          </View>
+          <Pressable onPress={() => setDetailsFocus('week')} hitSlop={8} style={styles.linkRow}>
+            <ThemedText style={[styles.linkText, { color: theme.accent }]}>Dettagli</ThemedText>
+            <Icon name="chevronRight" size={13} color={theme.accent} />
+          </Pressable>
         </View>
         <View style={styles.weekValueRow}>
           <View style={styles.weekValueLeft}>
@@ -390,34 +387,59 @@ export default function HomeScreen() {
         </ThemedText>
       </FlatCard>
 
-      <View style={styles.statsRow}>
-        <StatTile
+      <FlatCard radius={CARD_RADIUS} style={styles.statsCard}>
+        <StatColumn
           icon="barbell"
-          tint="#7C5CFA"
+          iconColor={theme.brandGreen}
           label="Allenamenti"
           value={`${workoutsDone}/${workoutsPlanned}`}
+          valueColor={theme.brandGreen}
           progress={workoutsPlanned > 0 ? workoutsDone / workoutsPlanned : 0}
-          barColor={theme.accent}
-        />
-        <StatTile
-          icon="utensils"
-          tint={theme.brandGreen}
-          label="Pasti tracciati"
-          value={`${trackedMealDays}/7`}
-          progress={trackedMealDays / 7}
           barColor={theme.brandGreen}
         />
-        <StatTile
-          icon="barChart"
-          tint="#3B82F6"
-          label={averageBalance >= 0 ? 'Surplus medio giornaliero' : 'Deficit medio giornaliero'}
-          value={formatSignedKcal(averageBalance)}
+        <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
+        <StatColumn
+          icon="utensils"
+          iconColor={theme.accent}
+          label="Pasti tracciati"
+          value={`${trackedMealDays}/7`}
+          valueColor={theme.accent}
+          progress={trackedMealDays / 7}
+          barColor={theme.accent}
         />
-      </View>
+        <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
+        <StatColumn
+          icon="barChart"
+          iconColor={theme.text}
+          label={weeklyGoalKcal >= 0 ? 'Surplus medio' : 'Deficit medio'}
+          value={`${formatSignedKcal(averageBalance)} kcal`}
+          valueColor={theme.text}
+          target={{ goal: dailyGoalKcal, actual: averageBalance }}
+        />
+      </FlatCard>
 
       <View style={styles.coachWrap}>
         <HomeCoachCard isWorkoutDayIncomplete={isWorkoutDayIncomplete} />
       </View>
+
+      <EnergyDetailsPopup
+        visible={detailsFocus != null}
+        focus={detailsFocus ?? 'day'}
+        onClose={() => setDetailsFocus(null)}
+        goal={currentUser.goal}
+        planPhaseTitle={dietMonth?.title}
+        calorieTarget={calorieTarget}
+        burnedKcal={burnedKcal}
+        eatenKcal={eatenKcal}
+        balanceKcal={balanceKcal}
+        weeklyGoalKcal={weeklyGoalKcal}
+        weeklySoFarKcal={weeklySoFarKcal}
+        weeklyProgress={weeklyProgress}
+        averageBalanceKcal={averageBalance}
+        trackedDays={trackedBalances.length}
+        daysLeft={weekDaysWithActivity.filter((d) => !d.hasHappened && !d.isToday).length}
+        isToday={viewDate === today}
+      />
 
       <InfoPopover
         visible={infoTopic != null}
@@ -483,46 +505,57 @@ function ActionTile({
   );
 }
 
-/** Small stat card: tinted icon tile + value, label and optional progress bar. */
-function StatTile({
+/** One column of the weekly stats card, as in the reference: icon, grey
+ * label, bold colored value and a bar underneath. The bar is either plain
+ * progress (workouts, tracked meals) or, for the average deficit, a track
+ * with the plan's daily target at its centre and a marker for where the
+ * actual average sits relative to it. */
+function StatColumn({
   icon,
-  tint,
+  iconColor,
   label,
   value,
+  valueColor,
   progress,
   barColor,
+  target,
 }: {
   icon: IconName;
-  tint: string;
+  iconColor: string;
   label: string;
   value: string;
+  valueColor: string;
   progress?: number;
   barColor?: string;
+  target?: { goal: number; actual: number };
 }) {
   const theme = useTheme();
+  // Half the track spans ±max(|goal|, 300) kcal around the target.
+  const markerPct = target ? 50 + Math.min(Math.max((target.actual - target.goal) / Math.max(Math.abs(target.goal), 300), -1), 1) * 50 : 50;
   return (
-    <FlatCard radius={18} style={styles.statTile}>
-      <View style={styles.statTop}>
-        <View style={[styles.statIcon, { backgroundColor: withAlpha(tint, 0.14) }]}>
-          <Icon name={icon} size={15} color={tint} />
-        </View>
-        <ThemedText style={[styles.statValue, value.length > 5 && { fontSize: 14.5 }]} numberOfLines={1}>
-          {value}
-        </ThemedText>
+    <View style={styles.statCol}>
+      <View style={styles.statIconBox}>
+        <Icon name={icon} size={20} color={iconColor} />
       </View>
-      <ThemedText style={styles.statLabel} themeColor="textTertiary" numberOfLines={2}>
+      <ThemedText style={styles.statLabel} themeColor="textTertiary" numberOfLines={1}>
         {label}
       </ThemedText>
-      {progress != null ? (
-        <View style={[styles.statTrack, { backgroundColor: theme.backgroundElement }]}>
-          <View style={[styles.statFill, { width: `${Math.round(Math.min(Math.max(progress, 0), 1) * 100)}%`, backgroundColor: barColor }]} />
-        </View>
-      ) : null}
-    </FlatCard>
+      <ThemedText style={[styles.statValue, { color: valueColor }, value.length > 7 && { fontSize: 15 }]} numberOfLines={1}>
+        {value}
+      </ThemedText>
+      <View style={[styles.statTrack, { backgroundColor: theme.backgroundElement }]}>
+        {target ? (
+          <>
+            <View style={[styles.targetTick, { backgroundColor: theme.textTertiary }]} />
+            <View style={[styles.actualMarker, { left: `${markerPct}%`, backgroundColor: theme.accent }]} />
+          </>
+        ) : (
+          <View style={[styles.statFill, { width: `${Math.round(Math.min(Math.max(progress ?? 0, 0), 1) * 100)}%`, backgroundColor: barColor }]} />
+        )}
+      </View>
+    </View>
   );
 }
-
-const BLUE = '#2E6BEA';
 
 const styles = StyleSheet.create({
   page: {
@@ -698,6 +731,11 @@ const styles = StyleSheet.create({
   weekTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  weekTitleLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 9,
   },
   weekTitle: {
@@ -788,48 +826,64 @@ const styles = StyleSheet.create({
     lineHeight: 13,
     fontWeight: '500',
   },
-  statsRow: {
+  statsCard: {
     marginTop: 12,
     flexDirection: 'row',
-    gap: 10,
+    alignItems: 'flex-start',
+    paddingVertical: 16,
+    paddingHorizontal: 6,
   },
-  statTile: {
+  statCol: {
     flex: 1,
-    padding: 10,
-    gap: 8,
-  },
-  statTop: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
+    paddingHorizontal: 8,
   },
-  statIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 9,
-    alignItems: 'center',
+  statDivider: {
+    width: 1,
+    alignSelf: 'stretch',
+    marginVertical: 4,
+  },
+  statIconBox: {
+    height: 24,
     justifyContent: 'center',
   },
+  statLabel: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '500',
+  },
   statValue: {
-    flex: 1,
-    fontSize: 17,
-    lineHeight: 21,
+    fontSize: 18,
+    lineHeight: 23,
     fontWeight: '800',
     letterSpacing: -0.3,
   },
-  statLabel: {
-    fontSize: 11,
-    lineHeight: 14,
-    fontWeight: '500',
-    minHeight: 28,
-  },
   statTrack: {
+    alignSelf: 'stretch',
     height: 5,
     borderRadius: 3,
     overflow: 'hidden',
+    marginTop: 3,
   },
   statFill: {
     height: '100%',
+    borderRadius: 3,
+  },
+  targetTick: {
+    position: 'absolute',
+    left: '50%',
+    top: 0,
+    bottom: 0,
+    width: 2,
+    marginLeft: -1,
+  },
+  actualMarker: {
+    position: 'absolute',
+    top: -1,
+    bottom: -1,
+    width: 5,
+    marginLeft: -2.5,
     borderRadius: 3,
   },
   coachWrap: {

@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+
+import { AppTextInput } from '@/components/ui/app-text';
 
 import { GlassSurface } from '@/components/glass/glass-surface';
 import { ThemedText } from '@/components/themed-text';
@@ -80,7 +82,7 @@ export function ExerciseLogRow({ exercise, setsToday, history, onAddSet }: Exerc
               <ThemedText type="label" themeColor="textSecondary">
                 Rep
               </ThemedText>
-              <TextInput
+              <AppTextInput
                 value={reps}
                 onChangeText={setReps}
                 keyboardType="number-pad"
@@ -92,7 +94,7 @@ export function ExerciseLogRow({ exercise, setsToday, history, onAddSet }: Exerc
               <ThemedText type="label" themeColor="textSecondary">
                 Kg
               </ThemedText>
-              <TextInput
+              <AppTextInput
                 value={weight}
                 onChangeText={setWeight}
                 keyboardType="decimal-pad"

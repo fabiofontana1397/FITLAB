@@ -1,4 +1,6 @@
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+
+import { AppTextInput } from '@/components/ui/app-text';
 
 import { GlassSurface } from '@/components/glass/glass-surface';
 import { ThemedText } from '@/components/themed-text';
@@ -99,7 +101,7 @@ export function QuestionField({ question, value, onChange }: QuestionFieldProps)
   if (question.type === 'number') {
     return (
       <View style={styles.numberRow}>
-        <TextInput
+        <AppTextInput
           value={value != null ? String(value) : ''}
           onChangeText={(text) => onChange(text === '' ? undefined : text)}
           keyboardType="decimal-pad"
@@ -122,7 +124,7 @@ export function QuestionField({ question, value, onChange }: QuestionFieldProps)
     const isInvalid = text.length === 5 && !TIME_REGEX.test(text);
     return (
       <View style={{ gap: Spacing.one }}>
-        <TextInput
+        <AppTextInput
           value={text}
           onChangeText={(raw) => {
             const formatted = formatTimeInput(raw);
@@ -148,7 +150,7 @@ export function QuestionField({ question, value, onChange }: QuestionFieldProps)
 
   // text / longtext
   return (
-    <TextInput
+    <AppTextInput
       value={(value as string) ?? ''}
       onChangeText={(text) => onChange(text === '' ? undefined : text)}
       placeholder={question.placeholder}

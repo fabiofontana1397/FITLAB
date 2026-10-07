@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, View } from 'react-native';
+
+import { AppTextInput } from '@/components/ui/app-text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { GlassSurface } from '@/components/glass/glass-surface';
@@ -103,7 +105,7 @@ function NewLoadForm({
           <ThemedText type="label" themeColor="textSecondary">
             Rep
           </ThemedText>
-          <TextInput
+          <AppTextInput
             value={reps}
             onChangeText={setReps}
             keyboardType="number-pad"
@@ -116,7 +118,7 @@ function NewLoadForm({
           <ThemedText type="label" themeColor="textSecondary">
             Kg
           </ThemedText>
-          <TextInput
+          <AppTextInput
             value={weight}
             onChangeText={setWeight}
             keyboardType="decimal-pad"

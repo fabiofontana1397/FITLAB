@@ -1,15 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  FlatList,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-  View,
-  useWindowDimensions,
-} from 'react-native';
+import { FlatList, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+
+import { AppTextInput } from '@/components/ui/app-text';
 import Animated, {
   Easing,
   interpolate,
@@ -140,7 +132,7 @@ export default function ChatScreen() {
           ) : null}
 
           <View style={[styles.inputBar, { paddingBottom: insets.bottom + Spacing.two, borderTopColor: theme.border }]}>
-            <TextInput
+            <AppTextInput
               value={draft}
               onChangeText={setDraft}
               placeholder="Scrivi al tuo coach…"

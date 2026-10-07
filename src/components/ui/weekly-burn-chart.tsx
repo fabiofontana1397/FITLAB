@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Text, View, type LayoutChangeEvent } from 'react-native';
+import { View, type LayoutChangeEvent } from 'react-native';
+import { AppText as Text } from '@/components/ui/app-text';
 import Svg, { Line, Rect } from 'react-native-svg';
 
 import { ProgressRing } from '@/components/ui/progress-ring';

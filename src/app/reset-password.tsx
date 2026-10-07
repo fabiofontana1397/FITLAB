@@ -1,6 +1,8 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, TextInput, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+
+import { AppTextInput } from '@/components/ui/app-text';
 
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
@@ -51,7 +53,7 @@ export default function ResetPasswordScreen() {
           <ThemedText type="label" themeColor="textSecondary">
             Nuova password
           </ThemedText>
-          <TextInput
+          <AppTextInput
             value={password}
             onChangeText={(t) => {
               setPassword(t);
@@ -67,7 +69,7 @@ export default function ResetPasswordScreen() {
           <ThemedText type="label" themeColor="textSecondary">
             Conferma password
           </ThemedText>
-          <TextInput
+          <AppTextInput
             value={confirmPassword}
             onChangeText={(t) => {
               setConfirmPassword(t);

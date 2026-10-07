@@ -1,6 +1,8 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+
+import { AppTextInput } from '@/components/ui/app-text';
 
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
@@ -52,7 +54,7 @@ export default function LoginScreen() {
           <ThemedText type="label" themeColor="textSecondary">
             Email
           </ThemedText>
-          <TextInput
+          <AppTextInput
             value={email}
             onChangeText={(t) => {
               setEmail(t);
@@ -69,7 +71,7 @@ export default function LoginScreen() {
           <ThemedText type="label" themeColor="textSecondary">
             Password
           </ThemedText>
-          <TextInput
+          <AppTextInput
             value={password}
             onChangeText={(t) => {
               setPassword(t);

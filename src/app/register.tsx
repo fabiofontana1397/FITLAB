@@ -1,6 +1,8 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+
+import { AppTextInput } from '@/components/ui/app-text';
 
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
@@ -129,7 +131,7 @@ function Field({
       <ThemedText type="label" themeColor="textSecondary">
         {label}
       </ThemedText>
-      <TextInput
+      <AppTextInput
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}

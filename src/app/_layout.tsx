@@ -1,7 +1,9 @@
 import { DarkTheme, DefaultTheme, Redirect, Stack, ThemeProvider, usePathname } from 'expo-router';
+import { useFonts } from 'expo-font';
 import { useEffect, useRef } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
 
+import { INTER_FONTS } from '@/constants/fonts';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useHandleAuthRedirect } from '@/hooks/use-handle-auth-redirect';
 import { useStoreHydrated } from '@/hooks/use-store-hydrated';
@@ -92,6 +94,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+  const [fontsLoaded, fontError] = useFonts(INTER_FONTS);
   useHandleAuthRedirect();
 
   useEffect(() => {
@@ -103,6 +106,10 @@ export default function RootLayout() {
       unsubscribeLifecycle();
     };
   }, []);
+
+  // Hold the first render until Inter is registered, so no screen flashes in
+  // the system font. A load error falls through to the system font.
+  if (!fontsLoaded && !fontError) return null;
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
