@@ -7,8 +7,8 @@ import { useTheme } from '@/hooks/use-theme';
 // Angles are clockwise from 12 o'clock. The Figma gauge leaves a wide open
 // gap at the bottom and a hairline one where orange meets green; these are
 // the *path* gaps (the round caps close the visible gap a bit further).
-const BOTTOM_GAP_DEG = 53;
-const MID_GAP_DEG = 17;
+const BOTTOM_GAP_DEG = 84;
+const MID_GAP_DEG = 10;
 const MIN_SWEEP_DEG = 10;
 const ARC_START_DEG = 180 + BOTTOM_GAP_DEG / 2;
 
@@ -39,7 +39,7 @@ export type OggiGaugeProps = {
  * eaten, each sized by its share of the two together — so the ring itself
  * shows at a glance which side of the balance the day is on, while the
  * centre spells out the exact surplus/deficit. */
-export function OggiGauge({ size = 134, strokeWidth = 13, burnedKcal, eatenKcal, burnedColor, eatenColor, value, caption }: OggiGaugeProps) {
+export function OggiGauge({ size = 176, strokeWidth = 15, burnedKcal, eatenKcal, burnedColor, eatenColor, value, caption }: OggiGaugeProps) {
   const theme = useTheme();
   const total = burnedKcal + eatenKcal;
   const available = 360 - BOTTOM_GAP_DEG - MID_GAP_DEG;
@@ -54,7 +54,7 @@ export function OggiGauge({ size = 134, strokeWidth = 13, burnedKcal, eatenKcal,
   const empty = total <= 0;
 
   return (
-    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center', marginBottom: -size * 0.14 }}>
       <Svg width={size} height={size} style={StyleSheet.absoluteFill}>
         <Path
           d={arcPath(c, c, r, burnedStart, burnedSweep)}
@@ -72,9 +72,7 @@ export function OggiGauge({ size = 134, strokeWidth = 13, burnedKcal, eatenKcal,
         />
       </Svg>
       <ThemedText style={styles.value}>{value}</ThemedText>
-      <ThemedText style={styles.unit} themeColor="textSecondary">
-        kcal
-      </ThemedText>
+      <ThemedText style={styles.unit}>kcal</ThemedText>
       <ThemedText style={styles.caption} themeColor="textTertiary">
         {caption}
       </ThemedText>
@@ -84,8 +82,8 @@ export function OggiGauge({ size = 134, strokeWidth = 13, burnedKcal, eatenKcal,
 
 const styles = StyleSheet.create({
   value: {
-    fontSize: 26,
-    lineHeight: 30,
+    fontSize: 28,
+    lineHeight: 32,
     fontWeight: '800',
     letterSpacing: -0.5,
   },

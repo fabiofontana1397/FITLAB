@@ -13,10 +13,8 @@ import { ThemedText } from '@/components/themed-text';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { InfoPopover } from '@/components/ui/info-popover';
-import { TickProgressBar } from '@/components/ui/tick-progress-bar';
 import { LogActivityModal } from '@/components/training/log-activity-modal';
 import { sumActivityKcalForDate, useWeeklyEnergy } from '@/hooks/use-weekly-energy';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { latestSnapshot } from '@/lib/mock/body';
 import { currentWeekDates, dayOfMonth, daysAgoISO, mondayIndex } from '@/lib/mock/dates';
@@ -55,13 +53,6 @@ function formatSignedKcal(n: number): string {
   return `${rounded < 0 ? '-' : '+'}${formatKcal(rounded)}`;
 }
 
-function weeklyMessage(progress: number): string {
-  if (progress >= 1) return 'Obiettivo settimanale raggiunto!';
-  if (progress >= 0.6) return 'Ci sei quasi, continua così!';
-  if (progress >= 0.25) return 'Stai andando bene, continua così!';
-  return 'Ogni giorno conta, continua così!';
-}
-
 /** Soft colored glow under a filled button, like the Figma's. */
 function glow(color: string, alpha: number) {
   return Platform.select({
@@ -70,11 +61,10 @@ function glow(color: string, alpha: number) {
   });
 }
 
-type InfoTopic = 'burned' | 'balance' | 'eaten';
+type InfoTopic = 'burned' | 'balance' | 'eaten' | 'notifications';
 
 export default function HomeScreen() {
   const theme = useTheme();
-  const scheme = useColorScheme();
   const currentUser = useUserStore();
   const today = daysAgoISO(0);
 
@@ -222,112 +212,168 @@ export default function HomeScreen() {
       title: 'Calorie assunte',
       body: `Il totale delle calorie registrate oggi tra i pasti, rispetto all'obiettivo di ${formatKcal(calorieTarget)} kcal del tuo piano alimentare. Restare vicino a questo obiettivo è ciò che determina se sei in deficit, surplus o mantenimento.`,
     },
+    notifications: {
+      icon: 'bell',
+      title: 'Notifiche',
+      body: 'Non hai nuove notifiche. Qui troverai promemoria su pasti, allenamenti e check-in.',
+    },
   };
+
+  const viewDateObj = new Date(viewDate);
+  const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+  const datePill = `${capitalize(viewDateObj.toLocaleDateString('it-IT', { weekday: 'short' }).replace('.', ''))} ${viewDateObj.getDate()} ${capitalize(
+    viewDateObj.toLocaleDateString('it-IT', { month: 'short' }).replace('.', '')
+  )}`;
+  const dailyGoalKcal = weeklyGoalKcal / 7;
+  const weekPill = weeklyProgress >= 1 ? 'Obiettivo raggiunto! 🎯' : weeklyProgress >= 0.6 ? 'Ci sei quasi!' : weeklyProgress >= 0.25 ? 'Stai andando bene' : 'Ogni giorno conta';
 
   return (
     <ScreenScroll contentContainerStyle={styles.page}>
       <View style={styles.headerRow}>
         <Image source={require('@/assets/images/logo-wordmark.png')} style={styles.logo} resizeMode="contain" />
-        <Pressable onPress={() => router.push('/profile')} hitSlop={8} style={[styles.avatar, { backgroundColor: theme.text }]}>
-          <Icon name="personFilled" size={22} color={theme.background} />
-        </Pressable>
-      </View>
-
-      <ThemedText style={styles.greeting}>Ciao {currentUser.name} 👋</ThemedText>
-      <ThemedText style={styles.subtitle} themeColor="textTertiary">
-        Oggi è un ottimo giorno per il tuo obiettivo.
-      </ThemedText>
-
-      <View style={styles.oggiHeader}>
-        <ThemedText style={styles.sectionTitle}>
-          {viewDate === today ? 'Oggi' : new Date(viewDate).toLocaleDateString('it-IT', { day: 'numeric', month: 'long' })}
-        </ThemedText>
-        <Pressable onPress={() => setCalendarOpen(true)} hitSlop={10} accessibilityLabel="Apri calendario">
-          <Icon name="calendar" size={22} color={theme.text} />
-        </Pressable>
-      </View>
-      <FlatCard radius={CARD_RADIUS} style={styles.oggiCard}>
-        <View style={styles.oggiRow}>
-          <Pressable onPress={() => setInfoTopic('burned')} style={styles.sideCol}>
-            <Icon name="flame" size={20} color={theme.accent} />
-            <ThemedText style={styles.sideValue}>{formatKcal(burnedKcal)}</ThemedText>
-            <ThemedText style={styles.sideLabel} themeColor="textTertiary">
-              kcal bruciate
-            </ThemedText>
+        <View style={styles.headerIcons}>
+          <Pressable
+            onPress={() => setInfoTopic('notifications')}
+            hitSlop={8}
+            accessibilityLabel="Notifiche"
+            style={[styles.bell, { backgroundColor: theme.backgroundElevated, borderColor: theme.border }]}>
+            <Icon name="bell" size={19} color={theme.text} />
           </Pressable>
-
-          <Pressable onPress={() => setInfoTopic('balance')}>
-            <OggiGauge
-              burnedKcal={burnedKcal}
-              eatenKcal={eatenKcal}
-              burnedColor={theme.accent}
-              eatenColor={theme.brandGreen}
-              value={formatSignedKcal(balanceKcal)}
-              caption={balanceKcal >= 0 ? 'surplus' : 'deficit'}
-            />
-          </Pressable>
-
-          <Pressable onPress={() => setInfoTopic('eaten')} style={styles.sideCol}>
-            <Icon name="utensils" size={20} color={theme.brandGreen} />
-            <ThemedText style={styles.sideValue}>{formatKcal(eatenKcal)}</ThemedText>
-            <ThemedText style={styles.sideLabel} themeColor="textTertiary">
-              kcal assunte
-            </ThemedText>
+          <Pressable onPress={() => router.push('/profile')} hitSlop={8} style={[styles.avatar, { backgroundColor: theme.text }]}>
+            <Icon name="personFilled" size={22} color={theme.background} />
           </Pressable>
         </View>
-        {scheme === 'light' ? (
-          <LinearGradient
-            pointerEvents="none"
-            colors={['rgba(60,60,70,0)', 'rgba(60,60,70,0.10)']}
-            style={styles.oggiFade}
-          />
-        ) : null}
-      </FlatCard>
+      </View>
 
-      <Pressable onPress={() => setRegisterMealOpen(true)} style={[styles.actionButton, styles.actionFirst, { backgroundColor: theme.accent }, glow('#FF6A13', 0.28)]}>
-        <Icon name="utensils" size={22} color="#FFFFFF" />
-        <ThemedText style={styles.actionLabel}>Registra pasto</ThemedText>
-        <Icon name="chevronRight" size={16} color="#FFFFFF" />
-      </Pressable>
-      <Pressable onPress={() => setRegisterWorkoutOpen(true)} style={[styles.actionButton, { backgroundColor: theme.brandGreen }, glow('#22B35E', 0.2)]}>
-        <Icon name="barbell" size={24} color="#FFFFFF" />
-        <ThemedText style={styles.actionLabel}>Registra allenamento</ThemedText>
-        <Icon name="chevronRight" size={16} color="#FFFFFF" />
-      </Pressable>
-
-      <ThemedText style={[styles.sectionTitle, { marginTop: 26 }]}>Questa settimana</ThemedText>
-      <FlatCard radius={CARD_RADIUS} style={styles.weekCard}>
-        <View style={styles.weekTitleRow}>
-          <Icon name="flame" size={17} color={theme.accent} />
-          <ThemedText style={styles.weekTitle}>{weeklyGoalKcal >= 0 ? 'Surplus' : 'Deficit'} di questa settimana</ThemedText>
-        </View>
-        <View style={styles.weekValueRow}>
-          <ThemedText style={styles.weekValue}>{formatSignedKcal(weeklySoFarKcal)}</ThemedText>
-          <ThemedText style={styles.weekGoal} themeColor="textTertiary">
-            /{formatSignedKcal(weeklyGoalKcal)} kcal
+      <View style={styles.greetingRow}>
+        <View style={{ flex: 1 }}>
+          <ThemedText style={styles.greeting}>Ciao {currentUser.name} 👋</ThemedText>
+          <ThemedText style={styles.subtitle} themeColor="textTertiary">
+            Sei sulla strada giusta!
           </ThemedText>
         </View>
-        <ThemedText style={[styles.weekMessage, { color: theme.brandGreen }]}>{weeklyMessage(weeklyProgress)}</ThemedText>
-        <View style={styles.weekBar}>
-          <TickProgressBar progress={weeklyProgress} />
+        <Pressable
+          onPress={() => setCalendarOpen(true)}
+          accessibilityLabel="Apri calendario"
+          style={[styles.datePill, { backgroundColor: theme.backgroundElevated, borderColor: theme.border }]}>
+          <Icon name="calendar" size={16} color={theme.text} />
+          <ThemedText style={styles.datePillText}>{datePill}</ThemedText>
+        </Pressable>
+      </View>
+
+      <FlatCard radius={CARD_RADIUS} style={styles.oggiCard}>
+        <View style={styles.cardTitleRow}>
+          <ThemedText style={styles.cardTitle}>
+            {viewDate === today ? 'Calorie di oggi' : `Calorie del ${viewDateObj.getDate()} ${viewDateObj.toLocaleDateString('it-IT', { month: 'long' })}`}
+          </ThemedText>
+          <Pressable onPress={() => setInfoTopic('balance')} hitSlop={8} style={styles.linkRow}>
+            <ThemedText style={[styles.linkText, { color: theme.accent }]}>Dettagli</ThemedText>
+            <Icon name="chevronRight" size={13} color={theme.accent} />
+          </Pressable>
+        </View>
+
+        <Pressable onPress={() => setInfoTopic('balance')} style={styles.gaugeWrap}>
+          <OggiGauge
+            burnedKcal={burnedKcal}
+            eatenKcal={eatenKcal}
+            burnedColor={theme.accent}
+            eatenColor={withAlpha(theme.brandGreen, 0.4)}
+            value={formatSignedKcal(balanceKcal)}
+            caption={balanceKcal >= 0 ? 'in surplus' : 'in deficit'}
+          />
+        </Pressable>
+
+        <View style={styles.oggiRow}>
+          <Pressable onPress={() => setInfoTopic('burned')} style={styles.sideCol}>
+            <Icon name="flame" size={22} color={theme.accent} />
+            <ThemedText style={styles.sideValue}>{formatKcal(burnedKcal)}</ThemedText>
+            <ThemedText style={styles.sideLabel} themeColor="textTertiary">
+              bruciate
+            </ThemedText>
+          </Pressable>
+          <View style={[styles.sideDivider, { backgroundColor: theme.border }]} />
+          <Pressable onPress={() => setInfoTopic('balance')} style={styles.sideCol}>
+            <Icon name="target" size={22} color={theme.textSecondary} />
+            <ThemedText style={styles.sideLabel} themeColor="textTertiary">
+              Obiettivo
+            </ThemedText>
+            <ThemedText style={styles.sideValue}>{formatSignedKcal(dailyGoalKcal)} kcal</ThemedText>
+          </Pressable>
+          <View style={[styles.sideDivider, { backgroundColor: theme.border }]} />
+          <Pressable onPress={() => setInfoTopic('eaten')} style={styles.sideCol}>
+            <Icon name="utensils" size={22} color={theme.brandGreen} />
+            <ThemedText style={styles.sideValue}>{formatKcal(eatenKcal)}</ThemedText>
+            <ThemedText style={styles.sideLabel} themeColor="textTertiary">
+              assunte
+            </ThemedText>
+          </Pressable>
+        </View>
+      </FlatCard>
+
+      <View style={styles.actionsRow}>
+        <ActionTile
+          colors={['#FF8A1F', '#FF5E00']}
+          glowColor="#FF6A13"
+          icon="utensils"
+          iconColor="#FF6A13"
+          label={'Registra\npasto'}
+          onPress={() => setRegisterMealOpen(true)}
+        />
+        <ActionTile
+          colors={['#34C77B', '#1FA85B']}
+          glowColor="#22B35E"
+          icon="barbell"
+          iconColor="#1FA85B"
+          label={'Registra\nallenamento'}
+          onPress={() => setRegisterWorkoutOpen(true)}
+        />
+      </View>
+
+      <View style={styles.sectionRow}>
+        <ThemedText style={styles.sectionTitle}>Questa settimana</ThemedText>
+        <Pressable onPress={() => router.push('/progress')} hitSlop={8} style={styles.linkRow}>
+          <ThemedText style={[styles.linkText, { color: BLUE }]}>Vedi dettagli</ThemedText>
+          <Icon name="chevronRight" size={13} color={BLUE} />
+        </Pressable>
+      </View>
+      <FlatCard radius={CARD_RADIUS} style={styles.weekCard}>
+        <View style={styles.weekTitleRow}>
+          <Icon name="target" size={22} color={theme.accent} />
+          <ThemedText style={styles.weekTitle}>{weeklyGoalKcal >= 0 ? 'Surplus' : 'Deficit'} settimanale</ThemedText>
+        </View>
+        <View style={styles.weekValueRow}>
+          <View style={styles.weekValueLeft}>
+            <ThemedText style={styles.weekValue}>{formatSignedKcal(weeklySoFarKcal)}</ThemedText>
+            <ThemedText style={styles.weekGoal} themeColor="textTertiary">
+              /{formatSignedKcal(weeklyGoalKcal)} kcal
+            </ThemedText>
+          </View>
+          <View style={[styles.weekPill, { backgroundColor: withAlpha(theme.brandGreen, 0.14) }]}>
+            <ThemedText style={[styles.weekPillText, { color: theme.brandGreen }]}>{weekPill}</ThemedText>
+          </View>
+        </View>
+        <View style={[styles.weekTrack, { backgroundColor: theme.accentSoft }]}>
+          <View style={[styles.weekFill, { width: `${Math.round(weeklyProgress * 100)}%`, backgroundColor: theme.accent }]} />
         </View>
 
         <View style={styles.chartRow}>
           {dayBalances.map((d) => {
-            const barHeight = d.balance == null ? 0 : Math.max(6, (Math.abs(d.balance) / maxAbsBalance) * 63);
+            const tracked = d.balance != null;
+            const barHeight = tracked ? Math.max(14, (Math.abs(d.balance as number) / maxAbsBalance) * 62) : 14;
             return (
               <View key={d.date} style={styles.chartCol}>
-                {d.balance != null ? (
-                  <>
-                    <ThemedText style={[styles.barValue, { color: theme.accent }]}>{formatSignedKcal(d.balance)}</ThemedText>
-                    <View
-                      style={[
-                        styles.bar,
-                        { height: barHeight, backgroundColor: d.isToday ? theme.accent : theme.accentSoft },
-                      ]}
-                    />
-                  </>
+                {tracked ? (
+                  <ThemedText style={[styles.barValue, { color: theme.accent }]}>{formatSignedKcal(d.balance as number)}</ThemedText>
                 ) : null}
+                <View
+                  style={[
+                    styles.bar,
+                    {
+                      height: barHeight,
+                      backgroundColor: !tracked ? theme.backgroundElement : d.isToday ? theme.accent : withAlpha(theme.accent, 0.22),
+                    },
+                  ]}
+                />
               </View>
             );
           })}
@@ -344,17 +390,30 @@ export default function HomeScreen() {
         </ThemedText>
       </FlatCard>
 
-      <FlatCard radius={CARD_RADIUS} style={styles.statsCard}>
-        <StatColumn icon="barbell" label="Allenamenti" value={`${workoutsDone}/${workoutsPlanned}`} />
-        <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
-        <StatColumn icon="utensils" label="Pasti tracciati" value={`${trackedMealDays}/7`} />
-        <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
-        <StatColumn
-          icon="barChart"
-          label={averageBalance >= 0 ? 'Surplus medio' : 'Deficit medio'}
-          value={`${formatSignedKcal(averageBalance)} kcal`}
+      <View style={styles.statsRow}>
+        <StatTile
+          icon="barbell"
+          tint="#7C5CFA"
+          label="Allenamenti"
+          value={`${workoutsDone}/${workoutsPlanned}`}
+          progress={workoutsPlanned > 0 ? workoutsDone / workoutsPlanned : 0}
+          barColor={theme.accent}
         />
-      </FlatCard>
+        <StatTile
+          icon="utensils"
+          tint={theme.brandGreen}
+          label="Pasti tracciati"
+          value={`${trackedMealDays}/7`}
+          progress={trackedMealDays / 7}
+          barColor={theme.brandGreen}
+        />
+        <StatTile
+          icon="barChart"
+          tint="#3B82F6"
+          label={averageBalance >= 0 ? 'Surplus medio giornaliero' : 'Deficit medio giornaliero'}
+          value={formatSignedKcal(averageBalance)}
+        />
+      </View>
 
       <View style={styles.coachWrap}>
         <HomeCoachCard isWorkoutDayIncomplete={isWorkoutDayIncomplete} />
@@ -389,20 +448,81 @@ export default function HomeScreen() {
   );
 }
 
-function StatColumn({ icon, label, value }: { icon: IconName; label: string; value: string }) {
-  const theme = useTheme();
+function withAlpha(hex: string, alpha: number): string {
+  if (!/^#([0-9a-f]{6})$/i.test(hex)) return hex;
+  return `${hex}${Math.round(Math.min(Math.max(alpha, 0), 1) * 255).toString(16).padStart(2, '0')}`;
+}
+
+/** One of the two big gradient buttons under the calorie card: white icon
+ * tile, two-line label, chevron. */
+function ActionTile({
+  colors,
+  glowColor,
+  icon,
+  iconColor,
+  label,
+  onPress,
+}: {
+  colors: readonly [string, string];
+  glowColor: string;
+  icon: IconName;
+  iconColor: string;
+  label: string;
+  onPress: () => void;
+}) {
   return (
-    <View style={styles.statCol}>
-      <Icon name={icon} size={17} color={theme.text} />
-      <ThemedText style={styles.statLabel} themeColor="textTertiary" numberOfLines={1}>
-        {label}
-      </ThemedText>
-      <ThemedText style={[styles.statValue, value.length > 9 && { fontSize: 15 }]} numberOfLines={1}>
-        {value}
-      </ThemedText>
-    </View>
+    <Pressable onPress={onPress} style={[styles.actionWrap, glow(glowColor, 0.28)]}>
+      <LinearGradient colors={colors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.actionTile}>
+        <View style={styles.actionIcon}>
+          <Icon name={icon} size={22} color={iconColor} />
+        </View>
+        <ThemedText style={styles.actionLabel}>{label}</ThemedText>
+        <Icon name="chevronRight" size={15} color="#FFFFFF" />
+      </LinearGradient>
+    </Pressable>
   );
 }
+
+/** Small stat card: tinted icon tile + value, label and optional progress bar. */
+function StatTile({
+  icon,
+  tint,
+  label,
+  value,
+  progress,
+  barColor,
+}: {
+  icon: IconName;
+  tint: string;
+  label: string;
+  value: string;
+  progress?: number;
+  barColor?: string;
+}) {
+  const theme = useTheme();
+  return (
+    <FlatCard radius={18} style={styles.statTile}>
+      <View style={styles.statTop}>
+        <View style={[styles.statIcon, { backgroundColor: withAlpha(tint, 0.14) }]}>
+          <Icon name={icon} size={15} color={tint} />
+        </View>
+        <ThemedText style={[styles.statValue, value.length > 5 && { fontSize: 14.5 }]} numberOfLines={1}>
+          {value}
+        </ThemedText>
+      </View>
+      <ThemedText style={styles.statLabel} themeColor="textTertiary" numberOfLines={2}>
+        {label}
+      </ThemedText>
+      {progress != null ? (
+        <View style={[styles.statTrack, { backgroundColor: theme.backgroundElement }]}>
+          <View style={[styles.statFill, { width: `${Math.round(Math.min(Math.max(progress, 0), 1) * 100)}%`, backgroundColor: barColor }]} />
+        </View>
+      ) : null}
+    </FlatCard>
+  );
+}
+
+const BLUE = '#2E6BEA';
 
 const styles = StyleSheet.create({
   page: {
@@ -418,28 +538,61 @@ const styles = StyleSheet.create({
     width: 132,
     height: 32,
   },
-  avatar: {
-    width: 37,
-    height: 37,
-    borderRadius: 19,
+  headerIcons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  bell: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: StyleSheet.hairlineWidth,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  avatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  greetingRow: {
+    marginTop: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
   greeting: {
-    marginTop: 8,
-    fontSize: 20,
-    lineHeight: 26,
-    fontWeight: '700',
-    letterSpacing: -0.3,
+    fontSize: 24,
+    lineHeight: 30,
+    fontWeight: '800',
+    letterSpacing: -0.4,
   },
   subtitle: {
-    marginTop: 3,
-    fontSize: 12,
-    lineHeight: 16,
+    marginTop: 1,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '500',
   },
-  oggiHeader: {
-    marginTop: 26,
+  datePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  datePillText: {
+    fontSize: 13,
+    lineHeight: 17,
+    fontWeight: '600',
+  },
+  sectionRow: {
+    marginTop: 24,
+    marginBottom: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -447,117 +600,166 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 22,
     lineHeight: 28,
-    fontWeight: '700',
-    letterSpacing: -0.3,
-    marginBottom: 10,
+    fontWeight: '800',
+    letterSpacing: -0.4,
+  },
+  linkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  linkText: {
+    fontSize: 13,
+    lineHeight: 17,
+    fontWeight: '600',
   },
   oggiCard: {
+    marginTop: 18,
     paddingTop: 14,
-    paddingBottom: 3,
-    paddingHorizontal: 0,
+    paddingBottom: 14,
+    paddingHorizontal: 14,
   },
-  oggiRow: {
+  cardTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  oggiFade: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: 44,
+  cardTitle: {
+    fontSize: 14,
+    lineHeight: 18,
+    fontWeight: '700',
+  },
+  gaugeWrap: {
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  oggiRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6,
   },
   sideCol: {
-    width: 90,
+    flex: 1,
     alignItems: 'center',
     gap: 3,
-    marginTop: 8,
+  },
+  sideDivider: {
+    width: 1,
+    height: 58,
   },
   sideValue: {
-    fontSize: 19,
-    lineHeight: 24,
+    fontSize: 17,
+    lineHeight: 21,
     fontWeight: '800',
     letterSpacing: -0.3,
   },
   sideLabel: {
-    fontSize: 10,
-    lineHeight: 13,
+    fontSize: 11.5,
+    lineHeight: 15,
     fontWeight: '500',
   },
-  actionButton: {
-    height: 52,
-    borderRadius: 18,
+  actionsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 18,
+  },
+  actionWrap: {
+    flex: 1,
+    borderRadius: 20,
+  },
+  actionTile: {
+    height: 76,
+    borderRadius: 20,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
-    paddingLeft: 20,
-    paddingRight: 22,
-    marginTop: 8,
+    gap: 8,
+    paddingHorizontal: 10,
   },
-  actionFirst: {
-    marginTop: 10,
+  actionIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   actionLabel: {
     flex: 1,
     color: '#FFFFFF',
-    fontSize: 16,
-    lineHeight: 20,
-    fontWeight: '600',
+    fontSize: 12.5,
+    lineHeight: 17,
+    fontWeight: '700',
   },
   weekCard: {
     paddingHorizontal: 14,
-    paddingTop: 10,
-    paddingBottom: 8,
+    paddingTop: 14,
+    paddingBottom: 10,
   },
   weekTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 9,
   },
   weekTitle: {
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 13.5,
+    lineHeight: 18,
     fontWeight: '700',
   },
   weekValueRow: {
     flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+    gap: 8,
+  },
+  weekValueLeft: {
+    flexDirection: 'row',
     alignItems: 'baseline',
     gap: 4,
-    marginTop: 6,
+    flexShrink: 1,
   },
   weekValue: {
-    fontSize: 22,
-    lineHeight: 28,
+    fontSize: 26,
+    lineHeight: 32,
     fontWeight: '800',
-    letterSpacing: -0.5,
+    letterSpacing: -0.6,
   },
   weekGoal: {
     fontSize: 12,
     lineHeight: 16,
     fontWeight: '500',
   },
-  weekMessage: {
-    marginTop: 1,
-    fontSize: 11.5,
-    lineHeight: 15,
+  weekPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+  },
+  weekPillText: {
+    fontSize: 10.5,
+    lineHeight: 14,
     fontWeight: '700',
   },
-  weekBar: {
+  weekTrack: {
     marginTop: 12,
+    height: 14,
+    borderRadius: 7,
+    overflow: 'hidden',
+  },
+  weekFill: {
+    height: '100%',
+    borderRadius: 7,
   },
   chartRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    height: 80,
-    marginTop: 17,
-    marginHorizontal: -6,
+    height: 96,
+    marginTop: 14,
   },
   chartCol: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'flex-end',
-    gap: 2,
+    gap: 3,
   },
   barValue: {
     fontSize: 11,
@@ -565,13 +767,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   bar: {
-    width: 22,
-    borderRadius: 5,
+    width: 26,
+    borderRadius: 6,
   },
   dayLabelsRow: {
     flexDirection: 'row',
-    marginHorizontal: -6,
-    marginTop: 3,
+    marginTop: 4,
   },
   dayLabel: {
     flex: 1,
@@ -581,39 +782,55 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   chartMonth: {
-    marginTop: 8,
+    marginTop: 6,
     textAlign: 'center',
     fontSize: 10,
     lineHeight: 13,
     fontWeight: '500',
   },
-  statsCard: {
-    marginTop: 8,
+  statsRow: {
+    marginTop: 12,
+    flexDirection: 'row',
+    gap: 10,
+  },
+  statTile: {
+    flex: 1,
+    padding: 10,
+    gap: 8,
+  },
+  statTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 15,
+    gap: 6,
   },
-  statCol: {
-    flex: 1,
+  statIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 9,
     alignItems: 'center',
-    gap: 3,
-    paddingHorizontal: 4,
-  },
-  statDivider: {
-    width: 1,
-    height: 64,
-  },
-  statLabel: {
-    marginTop: 4,
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: '500',
+    justifyContent: 'center',
   },
   statValue: {
-    fontSize: 18,
-    lineHeight: 22,
+    flex: 1,
+    fontSize: 17,
+    lineHeight: 21,
     fontWeight: '800',
     letterSpacing: -0.3,
+  },
+  statLabel: {
+    fontSize: 11,
+    lineHeight: 14,
+    fontWeight: '500',
+    minHeight: 28,
+  },
+  statTrack: {
+    height: 5,
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  statFill: {
+    height: '100%',
+    borderRadius: 3,
   },
   coachWrap: {
     marginTop: 20,

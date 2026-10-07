@@ -85,6 +85,7 @@ const ICONS = {
   star: { set: 'ion', name: 'star' },
   clock: { set: 'ion', name: 'time-outline' },
   personFilled: { set: 'ion', name: 'person' },
+  bell: { set: 'ion', name: 'notifications-outline' },
 } as const satisfies Record<string, { set: 'mci' | 'ion'; name: MCIName | IonName }>;
 
 export type IconName = keyof typeof ICONS;
