@@ -37,11 +37,12 @@ Personaggi pensati apposta per questa fase: `tommaso-saltuario`, `nina-senza-pes
 ## Modalità AI (facoltativa)
 
 ```bash
-TEST_EMAIL=… TEST_PASSWORD=… npm run agents:test -- --ai
+TEST_EMAIL=… TEST_PASSWORD=… npm run agents:test -- --ai --persona marco-32   # una persona
+# --all per tutte (16 richieste, costose)
 ```
 
 Chiede la strategia all'agente Claude reale (funzione `generate-plan-strategy` sul progetto Supabase online, consuma token)
-e controlla anche la strategia restituita.
+e controlla anche la strategia restituita. Consuma crediti: da usare solo quando cambia il prompt o la funzione, e su una persona alla volta.
 
 ## Simulazione della ricalibrazione mensile
 

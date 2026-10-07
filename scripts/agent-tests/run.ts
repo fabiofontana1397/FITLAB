@@ -178,6 +178,11 @@ async function main() {
   }
 
   const useAi = args.includes('--ai');
+  // --ai spends Claude credits (a request with web search per persona): require an explicit choice
+  if (useAi && !only && !args.includes('--all')) {
+    console.error('--ai consuma crediti: indica una persona con --persona <id>, oppure --all per tutte (16 richieste).');
+    process.exit(2);
+  }
   let runs: PersonaRun[];
   if (useAi) {
     const session = await openAiSession();
