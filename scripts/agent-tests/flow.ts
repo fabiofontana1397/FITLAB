@@ -125,5 +125,28 @@ export function checkGlobal(): Finding[] {
 
   // G9: monthly recalibration exists and is wired.
   if (!read('src/domain/recalibration.ts')) f.push({ level: 'FAIL', area: 'coerenza', code: 'G9', message: 'Manca il motore di ricalibrazione mensile' });
+
+  // G10: the domain layer stays pure (agents and tests run it outside the app).
+  const impure = walk(join(root, 'src/domain')).filter((file) => /from '(react-native|react|expo[^']*|@\/store\/[^']*)'/.test(readFileSync(file, 'utf8')));
+  if (impure.length > 0) f.push({ level: 'FAIL', area: 'coerenza', code: 'G10', message: `src/domain importa React Native, expo o gli store (${impure.length} file): il dominio deve restare puro` });
+
+  // G11: the client and Deno ClientContext keep the same top-level fields.
+  const topLevel = (src: string) => {
+    const start = src.indexOf('export type ClientContext');
+    const end = src.indexOf('\n};', start);
+    return (src.slice(start, end).match(/^ {2}(\w+)\??:/gm) ?? []).map((m) => m.trim()).sort().join(',');
+  };
+  if (topLevel(read('src/lib/assistant/build-client-context.ts')) !== topLevel(read('supabase/functions/_shared/agents/types.ts'))) {
+    f.push({ level: 'FAIL', area: 'coerenza', code: 'G11', message: 'ClientContext del client e quello delle funzioni Deno hanno campi diversi' });
+  }
+
+  // G12: the AI must not decide calories; the engine owns them.
+  if (/monthlyTargets/.test(read('src/lib/planning/strategy-types.ts')) || /monthlyTargets/.test(read('supabase/functions/generate-plan-strategy/index.ts'))) {
+    f.push({ level: 'FAIL', area: 'coerenza', code: 'G12', message: 'La strategia AI contiene ancora target calorici mensili' });
+  }
+
+  // G13: the old duplicate calculators stay gone.
+  const legacy = ['src/lib/nutrition/targets.ts', 'src/lib/planning/plan-duration.ts', 'src/lib/planning/monthly-adjustment.ts'].filter((p) => read(p));
+  if (legacy.length > 0) f.push({ level: 'FAIL', area: 'coerenza', code: 'G13', message: `Rimasti moduli di calcolo vecchi: ${legacy.join(', ')}` });
   return f;
 }
