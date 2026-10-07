@@ -443,14 +443,14 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   bigNumber: {
-    fontSize: 56,
-    lineHeight: 64,
+    fontSize: 46,
+    lineHeight: 54,
     fontWeight: '800',
     letterSpacing: -0.8,
   },
   bigUnit: {
-    fontSize: 18,
-    lineHeight: 24,
+    fontSize: 16,
+    lineHeight: 22,
     fontWeight: '500',
   },
   deltaRow: {
