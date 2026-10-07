@@ -25,3 +25,20 @@ Livelli: ❌ errore (il piano è sbagliato), ⚠️ avviso (discutibile), ℹ️
 
 Aggiungi un oggetto a `PERSONAS` in `personas.ts` (usa `base({...})` per partire da un questionario completo e cambiare solo
 ciò che serve) e, se vuoi, imposta `expect` per le regole specifiche (`calories`, `gymSessions`, `avoidAreas`, `forbiddenFoodIds`…).
+
+## Seconda fase: l'app viene popolata correttamente?
+
+`flow.ts` ricostruisce cosa leggono Home, Nutrizione, Allenamento, Progressi e Profilo dopo l'onboarding (stessi helper delle
+schermate) e cerca valori mancanti, incoerenti o fuorvianti. La mappa completa dei dati è in `docs/DATA-FLOW.md`.
+Include anche `checkGlobal`, controlli strutturali sul codice (id dei pasti, peso obiettivo di default, gestione errori…).
+
+Personaggi pensati apposta per questa fase: `tommaso-saltuario`, `nina-senza-peso-obiettivo`, `omar-ex-allenamento`.
+
+## Modalità AI (facoltativa)
+
+```bash
+TEST_EMAIL=… TEST_PASSWORD=… npm run agents:test -- --ai
+```
+
+Chiede la strategia all'agente Claude reale (funzione `generate-plan-strategy` sul progetto Supabase online, consuma token)
+e controlla anche la strategia restituita.

@@ -1,30 +1,43 @@
 # Test dei piani generati dai questionari
 
-Generato il 2026-10-07 17:22 — 15 questionari finti, piani creati con i generatori reali dell’app.
+Generato il 2026-10-07 17:29 — 18 questionari finti, piani creati con i generatori reali dell’app.
 
-**Totale:** 22 errori · 76 avvisi · 14 note
+**Totale:** 31 errori · 128 avvisi · 41 note
 
 | Persona | Target kcal | P/C/G (g) | Mesi | Palestra/Corsa a sett. | Errori | Avvisi |
 |---|---|---|---|---|---|---|
-| Marco, 32 anni | 1938 | 202/161/54 | 5 | 3/0 | 2 | 4 |
-| Giulia, 27 anni | 2006 | 112/264/56 | 4 | 4/0 | 1 | 3 |
-| Luca, 22 anni | 2875 | 136/403/80 | 7 | 5/0 | 2 | 7 |
-| Anna, 45 anni | 1373 | 172/86/38 | 6 | 2/0 | 2 | 6 |
-| Paolo, 38 anni | 2583 | 115/369/72 | 4 | 0/4 | 3 | 4 |
-| Sara, 30 anni | 2098 | 116/278/58 | 4 | 3/0 | 0 | 6 |
-| Roberto, 58 anni | 2546 | 144/333/71 | 4 | 2/0 | 2 | 5 |
-| Elena, 35 anni | 1200 | 110/116/33 | 2 | 3/0 | 2 | 3 |
-| Davide, 28 anni | 3234 | 275/331/90 | 12 | 4/0 | 1 | 9 |
-| Chiara, 25 anni | 1680 | 132/182/47 | 2 | 2/2 | 1 | 6 |
-| Andrea, 40 anni | 1702 | 176/144/47 | 3 | –/– | 2 | 3 |
+| Marco, 32 anni | 1938 | 202/161/54 | 5 | 3/0 | 2 | 6 |
+| Giulia, 27 anni | 2006 | 112/264/56 | 4 | 4/0 | 1 | 5 |
+| Luca, 22 anni | 2875 | 136/403/80 | 7 | 5/0 | 2 | 9 |
+| Anna, 45 anni | 1373 | 172/86/38 | 6 | 2/0 | 2 | 8 |
+| Paolo, 38 anni | 2583 | 115/369/72 | 4 | 0/4 | 3 | 7 |
+| Sara, 30 anni | 2098 | 116/278/58 | 4 | 3/0 | 0 | 8 |
+| Roberto, 58 anni | 2546 | 144/333/71 | 4 | 2/0 | 2 | 7 |
+| Elena, 35 anni | 1200 | 110/116/33 | 2 | 3/0 | 2 | 5 |
+| Davide, 28 anni | 3234 | 275/331/90 | 12 | 4/0 | 1 | 12 |
+| Chiara, 25 anni | 1680 | 132/182/47 | 2 | 2/2 | 1 | 9 |
+| Andrea, 40 anni | 1702 | 176/144/47 | 3 | –/– | 2 | 6 |
 | Ilaria, 29 anni | 2126 | 128/271/59 | 2 | 4/0 | 0 | 0 |
-| Giorgio, 34 anni | 2358 | 148/293/66 | 4 | 3/0 | 1 | 9 |
-| Valentina, 31 anni | 2193 | 132/279/61 | 3 | 5/0 | 2 | 4 |
-| Franco, 67 anni | 1876 | 125/227/52 | 4 | 1/0 | 1 | 7 |
+| Giorgio, 34 anni | 2358 | 148/293/66 | 4 | 3/0 | 1 | 11 |
+| Valentina, 31 anni | 2193 | 132/279/61 | 3 | 5/0 | 2 | 6 |
+| Franco, 67 anni | 1876 | 125/227/52 | 4 | 1/0 | 1 | 9 |
+| Tommaso, 35 anni | 2143 | 144/257/60 | 4 | 3/0 | 2 | 8 |
+| Nina, 33 anni | 1603 | 154/146/45 | 4 | 3/0 | 3 | 6 |
+| Omar, 41 anni | 1903 | 187/170/53 | 4 | –/– | 4 | 6 |
+
+## Controlli generali dell’app
+
+- ❌ `G1` Gli id dei pasti "Segui il piano" (plan-<data>-<pasto>-<n>) non contengono l’utente ma meal_entries.id è chiave primaria globale: due utenti che seguono il piano nello stesso giorno si scontrano e il salvataggio sul server del secondo fallisce in silenzio
+- ℹ️ `G2` Nei fusi orari a ovest di Greenwich il giorno della settimana del piano slitta di un giorno (mondayIndex su date ISO): corretto in Italia, sbagliato per utenti in America
+- ℹ️ `G3` Peso obiettivo facoltativo ma, se vuoto, il profilo salva 75 kg (valore inventato)
+- ⚠️ `G4` generatePlans non ha try/catch: se un generatore lancia un errore isGenerating resta true e la schermata "stiamo creando il tuo piano" non finisce mai
+- ❌ `G5` Le risposte vengono salvate sul server a ogni domanda e, al successivo avvio, bastano risposte parziali per considerare l’onboarding completato: chi abbandona il questionario a metà trova Home con profilo a zero e piani generati con target 0 kcal
+
+---
 
 ## Marco, 32 anni — dimagrimento, principiante
 
-**Esito:** ❌ NON SUPERATO (2 errori, 4 avvisi, 1 note)
+**Esito:** ❌ NON SUPERATO (2 errori, 6 avvisi, 2 note)
 
 - **Chi è:** Impiegato sedentario, 92 kg per 178 cm, vuole scendere a 82 kg. Mai fatto palestra, 3 giorni a settimana, 45-60 min.
 - **Cosa ci aspettiamo:** Deficit moderato (non estremo), proteine alte, durata del piano intorno ai 5 mesi (10 kg a 0,5 kg/sett.), scheda full body principiante con mese 1 di adattamento.
@@ -90,13 +103,16 @@ Totale Sab: **1327 kcal** · P 75 g · C 130 g · G 60 g
 - ⚠️ `D9` Lun: 7 uova in un giorno
 - ⚠️ `D15` La scheda profilo dell’onboarding mostra 1938 kcal ma il piano (mese 1) ne prescrive 2088 (+150): l’utente vede due numeri diversi
 - ⚠️ `R14` I mesi "Mese 2 · Sovraccarico progressivo" (2, 3, 4) sono identici: stessi esercizi, serie, ripetizioni e carichi — nel piano non c’è un vero sovraccarico progressivo
+- ⚠️ `N1` La tab Nutrizione mostra sempre 6 pasti (con orari fissi) ma l’utente ne fa 3 (colazione, pranzo, cena): compaiono schede di pasti che non fa
+- ⚠️ `N3` Sab: con "Segui il piano" il giorno si riempie con 1328 kcal (64% del target): la cena libera non aggiunge nulla e l’anello calorie resta sotto
 - ℹ️ `D14` Dal mese 2 in poi il target è identico (1938 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
+- ℹ️ `Q4` Risposte raccolte ma non usate da nessuna parte: generalActivityLevel, bedTime, wakeTime, sleepQuality
 
 ---
 
 ## Giulia, 27 anni — mantenimento, vegetariana
 
-**Esito:** ❌ NON SUPERATO (1 errori, 3 avvisi, 1 note)
+**Esito:** ❌ NON SUPERATO (1 errori, 5 avvisi, 2 note)
 
 - **Chi è:** Donna, 62 kg per 165 cm, vuole mantenere il peso e migliorare la forma. Intermedia, 4 allenamenti a settimana. Vegetariana.
 - **Cosa ci aspettiamo:** Calorie vicine al mantenimento, nessuna carne né pesce nella dieta, split upper/lower a 4 giorni.
@@ -162,13 +178,16 @@ Totale Sab: **1352 kcal** · P 76 g · C 152 g · G 55 g
 - ⚠️ `D5` Carboidrati: i pasti danno in media 233 g contro un target di 264 g (88%)
 - ⚠️ `D9` Porzioni molto abbondanti in 2 pasti (es. Ven cena: Tofu 340 g)
 - ⚠️ `R14` I mesi "Mese 1 · Sovraccarico progressivo" (1, 2, 3) sono identici: stessi esercizi, serie, ripetizioni e carichi — nel piano non c’è un vero sovraccarico progressivo
+- ⚠️ `N1` La tab Nutrizione mostra sempre 6 pasti (con orari fissi) ma l’utente ne fa 4 (colazione, spuntinoMattina, pranzo, cena): compaiono schede di pasti che non fa
+- ⚠️ `N3` Sab: con "Segui il piano" il giorno si riempie con 1353 kcal (67% del target): la cena libera non aggiunge nulla e l’anello calorie resta sotto
 - ℹ️ `D14` Dal mese 2 in poi il target è identico (2006 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
+- ℹ️ `Q4` Risposte raccolte ma non usate da nessuna parte: generalActivityLevel, bedTime, wakeTime, sleepQuality
 
 ---
 
 ## Luca, 22 anni — massa muscolare, esperto
 
-**Esito:** ❌ NON SUPERATO (2 errori, 7 avvisi, 1 note)
+**Esito:** ❌ NON SUPERATO (2 errori, 9 avvisi, 2 note)
 
 - **Chi è:** Studente magro (68 kg per 180 cm), vuole arrivare a 75 kg. Esperto, 5 allenamenti a settimana da 60-90 min, 5 pasti.
 - **Cosa ci aspettiamo:** Surplus controllato, proteine ~2 g/kg, durata piano ~7 mesi (7 kg a 0,25 kg/sett.), split a 5 giorni senza mese di adattamento.
@@ -241,13 +260,16 @@ Totale Sab: **1995 kcal** · P 104 g · C 224 g · G 81 g
 - ⚠️ `D9` Porzioni molto abbondanti in 3 pasti (es. Lun pranzo: Patate dolci 365 g)
 - ⚠️ `D15` La scheda profilo dell’onboarding mostra 2875 kcal ma il piano (mese 1) ne prescrive 2725 (-150): l’utente vede due numeri diversi
 - ⚠️ `R14` I mesi "Mese 1 · Sovraccarico progressivo" (1, 2, 3, 4, 5, 6) sono identici: stessi esercizi, serie, ripetizioni e carichi — nel piano non c’è un vero sovraccarico progressivo
+- ⚠️ `N1` La tab Nutrizione mostra sempre 6 pasti (con orari fissi) ma l’utente ne fa 5 (colazione, spuntinoMattina, pranzo, spuntinoPomeriggio, cena): compaiono schede di pasti che non fa
+- ⚠️ `N3` Sab: con "Segui il piano" il giorno si riempie con 1995 kcal (73% del target): la cena libera non aggiunge nulla e l’anello calorie resta sotto
 - ℹ️ `D14` Dal mese 2 in poi il target è identico (2875 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
+- ℹ️ `Q4` Risposte raccolte ma non usate da nessuna parte: generalActivityLevel, bedTime, wakeTime, sleepQuality
 
 ---
 
 ## Anna, 45 anni — dimagrimento con dolore al ginocchio e intolleranza al lattosio
 
-**Esito:** ❌ NON SUPERATO (2 errori, 6 avvisi, 1 note)
+**Esito:** ❌ NON SUPERATO (2 errori, 8 avvisi, 2 note)
 
 - **Chi è:** Donna, 78 kg per 162 cm, vuole scendere a 65 kg. Sedentaria, principiante, 2 allenamenti. Dolore al ginocchio, intollerante al lattosio.
 - **Cosa ci aspettiamo:** Nessun esercizio che carichi il ginocchio, nessun latticino, deficit prudente, durata lunga (13 kg → massimo del range), pochi esercizi per seduta.
@@ -315,13 +337,16 @@ Totale Sab: **1014 kcal** · P 52 g · C 104 g · G 46 g
 - ⚠️ `D9` Lun: 6 uova in un giorno
 - ⚠️ `D15` La scheda profilo dell’onboarding mostra 1373 kcal ma il piano (mese 1) ne prescrive 1523 (+150): l’utente vede due numeri diversi
 - ⚠️ `R14` I mesi "Mese 2 · Sovraccarico progressivo" (2, 3, 4, 5) sono identici: stessi esercizi, serie, ripetizioni e carichi — nel piano non c’è un vero sovraccarico progressivo
+- ⚠️ `N1` La tab Nutrizione mostra sempre 6 pasti (con orari fissi) ma l’utente ne fa 3 (colazione, pranzo, cena): compaiono schede di pasti che non fa
+- ⚠️ `N3` Sab: con "Segui il piano" il giorno si riempie con 1013 kcal (67% del target): la cena libera non aggiunge nulla e l’anello calorie resta sotto
 - ℹ️ `D14` Dal mese 2 in poi il target è identico (1373 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
+- ℹ️ `Q4` Risposte raccolte ma non usate da nessuna parte: generalActivityLevel, bedTime, wakeTime, sleepQuality
 
 ---
 
 ## Paolo, 38 anni — solo corsa, resistenza
 
-**Esito:** ❌ NON SUPERATO (3 errori, 4 avvisi, 1 note)
+**Esito:** ❌ NON SUPERATO (3 errori, 7 avvisi, 3 note)
 
 - **Chi è:** Runner amatoriale, 72 kg per 176 cm. Corre 4 volte a settimana, nessuna palestra, vuole migliorare la resistenza.
 - **Cosa ci aspettiamo:** Nessuna seduta di palestra, 4 uscite di corsa varie (facili, medio, lungo), carboidrati abbondanti, calorie di mantenimento.
@@ -388,13 +413,18 @@ Totale Sab: **1569 kcal** · P 83 g · C 161 g · G 71 g
 - ⚠️ `D9` Troppe uova in un solo pasto (fino a 5) in 5 pasti della settimana
 - ⚠️ `D9` Lun: 9 uova in un giorno
 - ⚠️ `D9` Porzioni molto abbondanti in 5 pasti (es. Lun pranzo: Patate (bollite) 415 g)
+- ⚠️ `H1` Obiettivo settimanale mostrato in Home 2058 kcal contro 0 kcal/sett. voluti dal piano: due modelli energetici diversi
+- ⚠️ `N1` La tab Nutrizione mostra sempre 6 pasti (con orari fissi) ma l’utente ne fa 3 (colazione, pranzo, cena): compaiono schede di pasti che non fa
+- ⚠️ `N3` Sab: con "Segui il piano" il giorno si riempie con 1568 kcal (61% del target): la cena libera non aggiunge nulla e l’anello calorie resta sotto
 - ℹ️ `D14` Dal mese 2 in poi il target è identico (2583 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
+- ℹ️ `S2` 4 sedute di corsa a settimana: nell’app compaiono come testo ("Corsa facile 30 min"), senza dettaglio, senza spunta e senza calorie previste; contano come "svolte" solo se registri un’attività quel giorno
+- ℹ️ `Q4` Risposte raccolte ma non usate da nessuna parte: generalActivityLevel, bedTime, wakeTime, sleepQuality
 
 ---
 
 ## Sara, 30 anni — massa, vegana, allena a casa
 
-**Esito:** ⚠️ SUPERATO CON AVVISI (0 errori, 6 avvisi, 1 note)
+**Esito:** ⚠️ SUPERATO CON AVVISI (0 errori, 8 avvisi, 2 note)
 
 - **Chi è:** Donna, 58 kg per 168 cm, vuole mettere massa fino a 62 kg. Vegana, si allena a casa con manubri ed elastici, 3 volte a settimana.
 - **Cosa ci aspettiamo:** Dieta senza alcun prodotto animale, proteine vegetali (tofu, legumi), solo esercizi eseguibili con manubri/elastici/corpo libero.
@@ -460,13 +490,16 @@ Totale Sab: **1232 kcal** · P 68 g · C 195 g · G 27 g
 - ⚠️ `D9` Porzioni molto abbondanti in 3 pasti (es. Mar cena: Tofu 320 g)
 - ⚠️ `D15` La scheda profilo dell’onboarding mostra 2098 kcal ma il piano (mese 1) ne prescrive 1948 (-150): l’utente vede due numeri diversi
 - ⚠️ `R14` I mesi "Mese 2 · Sovraccarico progressivo" (2, 3) sono identici: stessi esercizi, serie, ripetizioni e carichi — nel piano non c’è un vero sovraccarico progressivo
+- ⚠️ `N1` La tab Nutrizione mostra sempre 6 pasti (con orari fissi) ma l’utente ne fa 3 (colazione, pranzo, cena): compaiono schede di pasti che non fa
+- ⚠️ `N3` Sab: con "Segui il piano" il giorno si riempie con 1232 kcal (63% del target): la cena libera non aggiunge nulla e l’anello calorie resta sotto
 - ℹ️ `D14` Dal mese 2 in poi il target è identico (2098 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
+- ℹ️ `Q4` Risposte raccolte ma non usate da nessuna parte: generalActivityLevel, bedTime, wakeTime, sleepQuality
 
 ---
 
 ## Roberto, 58 anni — salute generale, mal di schiena
 
-**Esito:** ❌ NON SUPERATO (2 errori, 5 avvisi, 1 note)
+**Esito:** ❌ NON SUPERATO (2 errori, 7 avvisi, 2 note)
 
 - **Chi è:** Uomo, 90 kg per 175 cm, lavoro in piedi. Vuole stare meglio. Principiante, 2 allenamenti. Mal di schiena lombare.
 - **Cosa ci aspettiamo:** Nessun esercizio che carichi la zona lombare (stacchi, rematori, squat pesanti), carichi prudenti, calorie vicine al mantenimento.
@@ -533,13 +566,16 @@ Totale Sab: **1560 kcal** · P 83 g · C 160 g · G 70 g
 - ⚠️ `D9` Lun: 10 uova in un giorno
 - ⚠️ `D9` Porzioni molto abbondanti in 2 pasti (es. Lun pranzo: Patate (bollite) 460 g)
 - ⚠️ `R14` I mesi "Mese 2 · Sovraccarico progressivo" (2, 3) sono identici: stessi esercizi, serie, ripetizioni e carichi — nel piano non c’è un vero sovraccarico progressivo
+- ⚠️ `N1` La tab Nutrizione mostra sempre 6 pasti (con orari fissi) ma l’utente ne fa 3 (colazione, pranzo, cena): compaiono schede di pasti che non fa
+- ⚠️ `N3` Sab: con "Segui il piano" il giorno si riempie con 1560 kcal (61% del target): la cena libera non aggiunge nulla e l’anello calorie resta sotto
 - ℹ️ `D14` Dal mese 2 in poi il target è identico (2546 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
+- ℹ️ `Q4` Risposte raccolte ma non usate da nessuna parte: generalActivityLevel, bedTime, wakeTime, sleepQuality
 
 ---
 
 ## Elena, 35 anni — dimagrimento, corporatura piccola
 
-**Esito:** ❌ NON SUPERATO (2 errori, 3 avvisi, 1 note)
+**Esito:** ❌ NON SUPERATO (2 errori, 5 avvisi, 2 note)
 
 - **Chi è:** Donna, 50 kg per 155 cm, vuole scendere a 47 kg. Sedentaria, 3 allenamenti.
 - **Cosa ci aspettiamo:** Il target calorico non deve mai scendere sotto il minimo di sicurezza (1200 kcal) e il deficit non deve essere aggressivo.
@@ -604,13 +640,16 @@ Totale Sab: **902 kcal** · P 45 g · C 100 g · G 39 g
 - ⚠️ `D3` Le calorie reali dei pasti (media 1434) si discostano del 6% dal target del mese (1350)
 - ⚠️ `D9` Lun: 5 uova in un giorno
 - ⚠️ `D15` La scheda profilo dell’onboarding mostra 1200 kcal ma il piano (mese 1) ne prescrive 1350 (+150): l’utente vede due numeri diversi
+- ⚠️ `N1` La tab Nutrizione mostra sempre 6 pasti (con orari fissi) ma l’utente ne fa 3 (colazione, pranzo, cena): compaiono schede di pasti che non fa
+- ⚠️ `N3` Sab: con "Segui il piano" il giorno si riempie con 903 kcal (67% del target): la cena libera non aggiunge nulla e l’anello calorie resta sotto
 - ℹ️ `T5` Il target è stato forzato al minimo di sicurezza (1200 kcal): il deficit reale è inferiore a quello voluto
+- ℹ️ `Q4` Risposte raccolte ma non usate da nessuna parte: generalActivityLevel, bedTime, wakeTime, sleepQuality
 
 ---
 
 ## Davide, 28 anni — obesità, obiettivo molto lontano
 
-**Esito:** ❌ NON SUPERATO (1 errori, 9 avvisi, 1 note)
+**Esito:** ❌ NON SUPERATO (1 errori, 12 avvisi, 2 note)
 
 - **Chi è:** Uomo, 125 kg per 185 cm, lavoro fisico, vuole arrivare a 95 kg (−30 kg). Principiante, 4 allenamenti.
 - **Cosa ci aspettiamo:** Piano al massimo della durata (12 mesi), deficit sostenibile, proteine calcolate in modo non eccessivo rispetto al peso reale, nessuna scheda estrema.
@@ -680,13 +719,17 @@ Totale Sab: **2019 kcal** · P 109 g · C 202 g · G 92 g
 - ⚠️ `D9` Porzioni molto abbondanti in 10 pasti (es. Lun pranzo: Patate (bollite) 545 g)
 - ⚠️ `D15` La scheda profilo dell’onboarding mostra 3234 kcal ma il piano (mese 1) ne prescrive 3384 (+150): l’utente vede due numeri diversi
 - ⚠️ `R14` I mesi "Mese 2 · Sovraccarico progressivo" (2, 3, 4, 5, 6, 7, 8, 9, 10, 11) sono identici: stessi esercizi, serie, ripetizioni e carichi — nel piano non c’è un vero sovraccarico progressivo
+- ⚠️ `H1` Obiettivo settimanale mostrato in Home -3918 kcal contro -5663 kcal/sett. voluti dal piano: due modelli energetici diversi
+- ⚠️ `N1` La tab Nutrizione mostra sempre 6 pasti (con orari fissi) ma l’utente ne fa 3 (colazione, pranzo, cena): compaiono schede di pasti che non fa
+- ⚠️ `N3` Sab: con "Segui il piano" il giorno si riempie con 2019 kcal (60% del target): la cena libera non aggiunge nulla e l’anello calorie resta sotto
 - ℹ️ `D14` Dal mese 2 in poi il target è identico (3234 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
+- ℹ️ `Q4` Risposte raccolte ma non usate da nessuna parte: generalActivityLevel, bedTime, wakeTime, sleepQuality
 
 ---
 
 ## Chiara, 25 anni — palestra + corsa, giorni insufficienti
 
-**Esito:** ❌ NON SUPERATO (1 errori, 6 avvisi, 0 note)
+**Esito:** ❌ NON SUPERATO (1 errori, 9 avvisi, 2 note)
 
 - **Chi è:** Donna, 60 kg per 168 cm. Vorrebbe 3 palestra + 3 corsa ma ha solo 4 giorni disponibili. Obiettivo dimagrimento.
 - **Cosa ci aspettiamo:** Il piano deve rispettare i 4 giorni disponibili (non 6 sedute), bilanciando palestra e corsa, senza mettere due sedute lo stesso giorno.
@@ -753,12 +796,17 @@ Totale Sab: **1180 kcal** · P 60 g · C 126 g · G 52 g
 - ⚠️ `D9` Lun: 7 uova in un giorno
 - ⚠️ `D15` La scheda profilo dell’onboarding mostra 1680 kcal ma il piano (mese 1) ne prescrive 1830 (+150): l’utente vede due numeri diversi
 - ⚠️ `C3` Il fabbisogno calorico assume 6 allenamenti a settimana (risposte freq_*) ma il piano ne programma 4
+- ⚠️ `H1` Obiettivo settimanale mostrato in Home -121 kcal contro -2947 kcal/sett. voluti dal piano: due modelli energetici diversi
+- ⚠️ `N1` La tab Nutrizione mostra sempre 6 pasti (con orari fissi) ma l’utente ne fa 3 (colazione, pranzo, cena): compaiono schede di pasti che non fa
+- ⚠️ `N3` Sab: con "Segui il piano" il giorno si riempie con 1181 kcal (65% del target): la cena libera non aggiunge nulla e l’anello calorie resta sotto
+- ℹ️ `S2` 2 sedute di corsa a settimana: nell’app compaiono come testo ("Corsa facile 35 min"), senza dettaglio, senza spunta e senza calorie previste; contano come "svolte" solo se registri un’attività quel giorno
+- ℹ️ `Q4` Risposte raccolte ma non usate da nessuna parte: generalActivityLevel, bedTime, wakeTime, sleepQuality
 
 ---
 
 ## Andrea, 40 anni — solo dieta
 
-**Esito:** ❌ NON SUPERATO (2 errori, 3 avvisi, 2 note)
+**Esito:** ❌ NON SUPERATO (2 errori, 6 avvisi, 4 note)
 
 - **Chi è:** Uomo, 80 kg per 180 cm, vuole solo un piano alimentare per dimagrire a 75 kg. Non usa la parte allenamento.
 - **Cosa ci aspettiamo:** Il piano di allenamento non deve esistere, la dieta deve essere completa; le schermate di allenamento devono gestire l’assenza del piano.
@@ -801,14 +849,19 @@ _Nessun piano di allenamento generato._
 - ⚠️ `D9` Troppe uova in un solo pasto (fino a 4) in 2 pasti della settimana
 - ⚠️ `D9` Lun: 6 uova in un giorno
 - ⚠️ `D15` La scheda profilo dell’onboarding mostra 1702 kcal ma il piano (mese 1) ne prescrive 1852 (+150): l’utente vede due numeri diversi
+- ⚠️ `P1` Utente solo dieta: il profilo salva sport "gym" per default (compare in Profilo come "Sala pesi")
+- ⚠️ `N1` La tab Nutrizione mostra sempre 6 pasti (con orari fissi) ma l’utente ne fa 3 (colazione, pranzo, cena): compaiono schede di pasti che non fa
+- ⚠️ `N3` Sab: con "Segui il piano" il giorno si riempie con 1260 kcal (68% del target): la cena libera non aggiunge nulla e l’anello calorie resta sotto
 - ℹ️ `D14` Dal mese 2 in poi il target è identico (1702 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
 - ℹ️ `C3` Utente solo dieta: nessun allenamento nel calcolo del fabbisogno (corretto), ma la Home mostrerà comunque tasti di registrazione allenamento
+- ℹ️ `S3` Utente solo dieta: la tab Allenamento resta visibile e mostra "Nessun programma generato… scegliendo sala pesi o corsa", frase fuorviante perché la domanda non è mai stata posta
+- ℹ️ `Q4` Risposte raccolte ma non usate da nessuna parte: generalActivityLevel, bedTime, wakeTime, sleepQuality
 
 ---
 
 ## Ilaria, 29 anni — solo allenamento, forza
 
-**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 0 note)
+**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 2 note)
 
 - **Chi è:** Donna, 64 kg per 170 cm, vuole solo la scheda per aumentare la forza. 4 giorni, esperta.
 - **Cosa ci aspettiamo:** Il piano alimentare non deve esistere, la scheda deve avere schemi di forza (poche ripetizioni, recuperi lunghi).
@@ -848,13 +901,16 @@ _Nessun piano alimentare generato._
 | Sab | Riposo | |
 | Dom | Riposo | |
 
-Nessun problema rilevato.
+**Controlli**
+
+- ℹ️ `S4` Utente solo allenamento: Home e Nutrizione mostrano comunque target calorici e macro del profilo (nessun piano alimentare dietro) e la tab Nutrizione mostra tutti e 6 i pasti
+- ℹ️ `Q4` Risposte raccolte ma non usate da nessuna parte: generalActivityLevel, bedTime, wakeTime, sleepQuality
 
 ---
 
 ## Giorgio, 34 anni — celiaco e allergico alla frutta secca
 
-**Esito:** ❌ NON SUPERATO (1 errori, 9 avvisi, 1 note)
+**Esito:** ❌ NON SUPERATO (1 errori, 11 avvisi, 2 note)
 
 - **Chi è:** Uomo, 82 kg per 181 cm, mantenimento. Celiaco (niente glutine) e allergico alla frutta secca e alle noci. 3 allenamenti.
 - **Cosa ci aspettiamo:** Nessuna fonte di glutine (pasta, pane, couscous…) e nessuna frutta secca in nessun pasto del piano.
@@ -924,13 +980,16 @@ Totale Sab: **1298 kcal** · P 72 g · C 144 g · G 52 g
 - ⚠️ `D9` Lun: 9 uova in un giorno
 - ⚠️ `D9` Porzioni molto abbondanti in 2 pasti (es. Lun pranzo: Patate dolci 400 g)
 - ⚠️ `R14` I mesi "Mese 1 · Sovraccarico progressivo" (1, 2, 3) sono identici: stessi esercizi, serie, ripetizioni e carichi — nel piano non c’è un vero sovraccarico progressivo
+- ⚠️ `N1` La tab Nutrizione mostra sempre 6 pasti (con orari fissi) ma l’utente ne fa 3 (colazione, pranzo, cena): compaiono schede di pasti che non fa
+- ⚠️ `N3` Sab: con "Segui il piano" il giorno si riempie con 1297 kcal (55% del target): la cena libera non aggiunge nulla e l’anello calorie resta sotto
 - ℹ️ `D14` Dal mese 2 in poi il target è identico (2358 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
+- ℹ️ `Q4` Risposte raccolte ma non usate da nessuna parte: generalActivityLevel, bedTime, wakeTime, sleepQuality
 
 ---
 
 ## Valentina, 31 anni — spalla infortunata, preferisce Push/Pull/Legs
 
-**Esito:** ❌ NON SUPERATO (2 errori, 4 avvisi, 1 note)
+**Esito:** ❌ NON SUPERATO (2 errori, 6 avvisi, 2 note)
 
 - **Chi è:** Donna, 66 kg per 172 cm, ipertrofia. Esperta, 5 giorni, vuole Push/Pull/Legs. Infortunio recente alla spalla sinistra.
 - **Cosa ci aspettiamo:** Nessun esercizio che sovraccarichi la spalla (panca, military press, dip, alzate…), anche se la preferenza è PPL: la sicurezza prevale.
@@ -996,13 +1055,16 @@ Totale Sab: **1411 kcal** · P 73 g · C 155 g · G 60 g
 - ⚠️ `D9` Lun: 7 uova in un giorno
 - ⚠️ `D15` La scheda profilo dell’onboarding mostra 2193 kcal ma il piano (mese 1) ne prescrive 2043 (-150): l’utente vede due numeri diversi
 - ⚠️ `R14` I mesi "Mese 1 · Sovraccarico progressivo" (1, 2) sono identici: stessi esercizi, serie, ripetizioni e carichi — nel piano non c’è un vero sovraccarico progressivo
+- ⚠️ `N1` La tab Nutrizione mostra sempre 6 pasti (con orari fissi) ma l’utente ne fa 3 (colazione, pranzo, cena): compaiono schede di pasti che non fa
+- ⚠️ `N3` Sab: con "Segui il piano" il giorno si riempie con 1412 kcal (69% del target): la cena libera non aggiunge nulla e l’anello calorie resta sotto
 - ℹ️ `D14` Dal mese 2 in poi il target è identico (2193 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
+- ℹ️ `Q4` Risposte raccolte ma non usate da nessuna parte: generalActivityLevel, bedTime, wakeTime, sleepQuality
 
 ---
 
 ## Franco, 67 anni — salute, sedentario, un solo giorno
 
-**Esito:** ❌ NON SUPERATO (1 errori, 7 avvisi, 1 note)
+**Esito:** ❌ NON SUPERATO (1 errori, 9 avvisi, 2 note)
 
 - **Chi è:** Uomo, 78 kg per 170 cm, pensionato. Può allenarsi 1 volta a settimana, 30 minuti, principiante.
 - **Cosa ci aspettiamo:** Una sola seduta a settimana (full body, 3 esercizi), piano non invasivo, calorie di mantenimento.
@@ -1070,6 +1132,219 @@ Totale Sab: **1197 kcal** · P 62 g · C 127 g · G 53 g
 - ⚠️ `D9` Lun: 9 uova in un giorno
 - ⚠️ `D9` Porzioni molto abbondanti in 1 pasti (es. Lun pranzo: Patate (bollite) 410 g)
 - ⚠️ `R14` I mesi "Mese 2 · Sovraccarico progressivo" (2, 3) sono identici: stessi esercizi, serie, ripetizioni e carichi — nel piano non c’è un vero sovraccarico progressivo
+- ⚠️ `N1` La tab Nutrizione mostra sempre 6 pasti (con orari fissi) ma l’utente ne fa 3 (colazione, pranzo, cena): compaiono schede di pasti che non fa
+- ⚠️ `N3` Sab: con "Segui il piano" il giorno si riempie con 1198 kcal (64% del target): la cena libera non aggiunge nulla e l’anello calorie resta sotto
 - ℹ️ `D14` Dal mese 2 in poi il target è identico (1876 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
+- ℹ️ `Q4` Risposte raccolte ma non usate da nessuna parte: generalActivityLevel, bedTime, wakeTime, sleepQuality
+
+---
+
+## Tommaso, 35 anni — si allena una volta ogni due settimane
+
+**Esito:** ❌ NON SUPERATO (2 errori, 8 avvisi, 2 note)
+
+- **Chi è:** Uomo, 80 kg per 178 cm, mantenimento. In palestra va "una volta ogni 2 settimane" e ha 3 giorni disponibili.
+- **Cosa ci aspettiamo:** Il piano non deve inventare 3 sedute a settimana per chi ne fa meno di una; il fabbisogno e il piano devono contare lo stesso numero di allenamenti.
+
+| Dati | Valore |
+|---|---|
+| Profilo | male · 35 anni · 178 cm · 80 kg → 80 kg · obiettivo `maintainImprove` |
+| Metabolismo basale / fabbisogno | 1743 / 2143 kcal |
+| Target calorico | **2143 kcal** (0% sul fabbisogno) |
+| Macro | P 144 g (1.8 g/kg) · C 257 g · G 60 g |
+| Idratazione | 2800 ml |
+| Durata piano | 4 mesi |
+
+**Piano alimentare** — mesi: 1·2143 kcal → 2·2143 kcal → 3·2143 kcal → 4·2143 kcal
+
+Esempio giorno di allenamento (Lun) e pasto libero (Sab):
+
+| Pasto | Alimenti | kcal |
+|---|---|---|
+| Colazione 07:30 | Uova intere 4 uova, Fiocchi d’avena 60g, Banana 1 banana | 611 |
+| Pranzo 13:00 | Uova intere 5 uova, Patate (bollite) 360g, Olio EVO 10g, Noci 20g, Spinaci 150g | 924 |
+| Cena 20:00 | Salmone 150g, Patate dolci 245g, Olio EVO 10g, Mandorle 30g, Zucchine 150g | 811 |
+
+Totale Lun: **2345 kcal** · P 120 g · C 212 g · G 118 g
+
+| Pasto | Alimenti | kcal |
+|---|---|---|
+| Colazione 07:30 | Yogurt greco 235g, Fiocchi d’avena 50g, Banana 1 banana | 530 |
+| Pranzo 13:00 | Uova intere 4 uova, Patate dolci 265g, Olio EVO 10g, Mandorle 25g, Broccoli 150g | 814 |
+| Cena 20:00 | _pasto libero_ | 664 |
+
+Totale Sab: **1344 kcal** · P 70 g · C 140 g · G 60 g
+
+**Mese 1 — Mese 1 · Sovraccarico progressivo**
+
+| Giorno | Seduta | Dettaglio |
+|---|---|---|
+| Lun | Push | Panca piana 4×8-12 @40kg; Military press 4×8-12 @27.5kg; Dip alle parallele 4×8-12; Alzate laterali 4×8-12 @4kg; Chest press macchina 4×8-12 |
+| Mar | Riposo | |
+| Mer | Pull | Stacco da terra 4×8-12 @72.5kg; Trazioni zavorrate 4×8-12; Rematore con bilanciere 4×8-12 @32.5kg; Curl bicipiti 4×8-12 @12kg; Lat machine 4×8-12 |
+| Gio | Riposo | |
+| Ven | Legs | Back squat 4×8-12 @60kg; Romanian deadlift 4×8-12 @47.5kg; Leg press 4×8-12 @80kg; Affondi 4×8-12 @12kg; Hip thrust 4×8-12 @40kg |
+| Sab | Riposo | |
+| Dom | Riposo | |
+
+**Mese 4 — Mese 4 · Consolidamento**
+
+| Giorno | Seduta | Dettaglio |
+|---|---|---|
+| Lun | Push | Panca piana 4×8-12 @40kg; Military press 4×8-12 @27.5kg; Dip alle parallele 4×8-12; Alzate laterali 4×8-12 @4kg; Chest press macchina 4×8-12 |
+| Mar | Riposo | |
+| Mer | Pull | Stacco da terra 4×8-12 @72.5kg; Trazioni zavorrate 4×8-12; Rematore con bilanciere 4×8-12 @32.5kg; Curl bicipiti 4×8-12 @12kg; Lat machine 4×8-12 |
+| Gio | Riposo | |
+| Ven | Legs | Back squat 4×8-12 @60kg; Romanian deadlift 4×8-12 @47.5kg; Leg press 4×8-12 @80kg; Affondi 4×8-12 @12kg; Hip thrust 4×8-12 @40kg |
+| Sab | Riposo | |
+| Dom | Riposo | |
+
+**Controlli**
+
+- ❌ `D5` Grassi: i pasti danno in media 97 g contro un target di 60 g (162%)
+- ❌ `P4` freq_gym="biweekly" (meno di una volta a settimana): il piano programma 3 sedute settimanali, il fabbisogno calorico ne conta 0
+- ⚠️ `D5` Carboidrati: i pasti danno in media 188 g contro un target di 257 g (73%)
+- ⚠️ `D9` Troppe uova in un solo pasto (fino a 5) in 3 pasti della settimana
+- ⚠️ `D9` Lun: 8 uova in un giorno
+- ⚠️ `D9` Porzioni molto abbondanti in 3 pasti (es. Lun pranzo: Patate (bollite) 360 g)
+- ⚠️ `R14` I mesi "Mese 1 · Sovraccarico progressivo" (1, 2, 3) sono identici: stessi esercizi, serie, ripetizioni e carichi — nel piano non c’è un vero sovraccarico progressivo
+- ⚠️ `C3` Il fabbisogno calorico assume 0 allenamenti a settimana (risposte freq_*) ma il piano ne programma 3
+- ⚠️ `N1` La tab Nutrizione mostra sempre 6 pasti (con orari fissi) ma l’utente ne fa 3 (colazione, pranzo, cena): compaiono schede di pasti che non fa
+- ⚠️ `N3` Sab: con "Segui il piano" il giorno si riempie con 1344 kcal (63% del target): la cena libera non aggiunge nulla e l’anello calorie resta sotto
+- ℹ️ `D14` Dal mese 2 in poi il target è identico (2143 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
+- ℹ️ `Q4` Risposte raccolte ma non usate da nessuna parte: generalActivityLevel, bedTime, wakeTime, sleepQuality
+
+---
+
+## Nina, 33 anni — dimagrimento senza peso obiettivo
+
+**Esito:** ❌ NON SUPERATO (3 errori, 6 avvisi, 2 note)
+
+- **Chi è:** Donna, 70 kg per 166 cm, vuole dimagrire ma lascia vuoto il peso obiettivo (domanda facoltativa).
+- **Cosa ci aspettiamo:** Il profilo e le schermate non devono usare un peso obiettivo inventato; la durata del piano deve avere senso anche senza obiettivo.
+
+| Dati | Valore |
+|---|---|
+| Profilo | female · 33 anni · 166 cm · 70 kg → undefined kg · obiettivo `loseFat` |
+| Metabolismo basale / fabbisogno | 1412 / 2004 kcal |
+| Target calorico | **1603 kcal** (-20% sul fabbisogno) |
+| Macro | P 154 g (2.2 g/kg) · C 146 g · G 45 g |
+| Idratazione | 2450 ml |
+| Durata piano | 4 mesi |
+
+**Piano alimentare** — mesi: 1·1753 kcal → 2·1603 kcal → 3·1603 kcal → 4·1603 kcal
+
+Esempio giorno di allenamento (Lun) e pasto libero (Sab):
+
+| Pasto | Alimenti | kcal |
+|---|---|---|
+| Colazione 07:30 | Uova intere 3 uova, Fiocchi d’avena 50g, Banana 1 banana | 519 |
+| Pranzo 13:00 | Uova intere 4 uova, Patate (bollite) 295g, Olio EVO 10g, Noci 15g, Spinaci 150g | 773 |
+| Cena 20:00 | Salmone 125g, Patate dolci 200g, Olio EVO 10g, Mandorle 20g, Zucchine 150g | 662 |
+
+Totale Lun: **1952 kcal** · P 99 g · C 180 g · G 98 g
+
+| Pasto | Alimenti | kcal |
+|---|---|---|
+| Colazione 07:30 | Yogurt greco 190g, Fiocchi d’avena 40g, Banana 1 banana | 447 |
+| Pranzo 13:00 | Uova intere 3 uova, Patate dolci 215g, Olio EVO 10g, Mandorle 15g, Broccoli 150g | 659 |
+| Cena 20:00 | _pasto libero_ | 543 |
+
+Totale Sab: **1106 kcal** · P 57 g · C 119 g · G 49 g
+
+**Mese 1 — Mese 1 · Adattamento e tecnica**
+
+| Giorno | Seduta | Dettaglio |
+|---|---|---|
+| Lun | Full Body | Back squat 3×15 @32.5kg; Panca piana 3×15 @22.5kg; Rematore con bilanciere 3×15 @18kg; Plank 3×15; Leg press 3×15 @45kg |
+| Mar | Riposo | |
+| Mer | Full Body | Back squat 3×15 @32.5kg; Panca piana 3×15 @22.5kg; Rematore con bilanciere 3×15 @18kg; Plank 3×15; Leg press 3×15 @45kg |
+| Gio | Riposo | |
+| Ven | Full Body | Back squat 3×15 @32.5kg; Panca piana 3×15 @22.5kg; Rematore con bilanciere 3×15 @18kg; Plank 3×15; Leg press 3×15 @45kg |
+| Sab | Riposo | |
+| Dom | Riposo | |
+
+**Mese 4 — Mese 4 · Consolidamento**
+
+| Giorno | Seduta | Dettaglio |
+|---|---|---|
+| Lun | Full Body | Back squat 3×12-15 @40kg; Panca piana 3×12-15 @27.5kg; Rematore con bilanciere 3×12-15 @20kg; Plank 3×12-15; Leg press 3×12-15 @52.5kg |
+| Mar | Riposo | |
+| Mer | Full Body | Back squat 3×12-15 @40kg; Panca piana 3×12-15 @27.5kg; Rematore con bilanciere 3×12-15 @20kg; Plank 3×12-15; Leg press 3×12-15 @52.5kg |
+| Gio | Riposo | |
+| Ven | Full Body | Back squat 3×12-15 @40kg; Panca piana 3×12-15 @27.5kg; Rematore con bilanciere 3×12-15 @20kg; Plank 3×12-15; Leg press 3×12-15 @52.5kg |
+| Sab | Riposo | |
+| Dom | Riposo | |
+
+**Controlli**
+
+- ❌ `D5` Proteine: i pasti danno in media 117 g contro un target di 168 g (69%)
+- ❌ `D5` Grassi: i pasti danno in media 80 g contro un target di 49 g (163%)
+- ❌ `P2` Peso obiettivo non indicato: il profilo (Progressi, grafico del peso, Profilo) usa un valore inventato di 75 kg, nella direzione sbagliata rispetto all’obiettivo (peso attuale 70 kg), mentre il piano usa la durata standard di 4 mesi
+- ⚠️ `D9` Troppe uova in un solo pasto (fino a 4) in 1 pasti della settimana
+- ⚠️ `D9` Lun: 7 uova in un giorno
+- ⚠️ `D15` La scheda profilo dell’onboarding mostra 1603 kcal ma il piano (mese 1) ne prescrive 1753 (+150): l’utente vede due numeri diversi
+- ⚠️ `R14` I mesi "Mese 2 · Sovraccarico progressivo" (2, 3) sono identici: stessi esercizi, serie, ripetizioni e carichi — nel piano non c’è un vero sovraccarico progressivo
+- ⚠️ `N1` La tab Nutrizione mostra sempre 6 pasti (con orari fissi) ma l’utente ne fa 3 (colazione, pranzo, cena): compaiono schede di pasti che non fa
+- ⚠️ `N3` Sab: con "Segui il piano" il giorno si riempie con 1106 kcal (63% del target): la cena libera non aggiunge nulla e l’anello calorie resta sotto
+- ℹ️ `D14` Dal mese 2 in poi il target è identico (1603 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
+- ℹ️ `Q4` Risposte raccolte ma non usate da nessuna parte: generalActivityLevel, bedTime, wakeTime, sleepQuality
+
+---
+
+## Omar, 41 anni — ora solo dieta, ma aveva già fatto il questionario con allenamento
+
+**Esito:** ❌ NON SUPERATO (4 errori, 6 avvisi, 4 note)
+
+- **Chi è:** Uomo, 85 kg per 180 cm. Rifà il questionario scegliendo solo dieta; nelle risposte restano i dati di allenamento di prima (4 allenamenti di palestra).
+- **Cosa ci aspettiamo:** Con modalità "solo dieta" le vecchie risposte di allenamento non devono influenzare né il fabbisogno né l’alternanza giorni allenamento/riposo.
+
+| Dati | Valore |
+|---|---|
+| Profilo | male · 41 anni · 178 cm · 85 kg → 78 kg · obiettivo `loseFat` |
+| Metabolismo basale / fabbisogno | 1763 / 2379 kcal |
+| Target calorico | **1903 kcal** (-20% sul fabbisogno) |
+| Macro | P 187 g (2.2 g/kg) · C 170 g · G 53 g |
+| Idratazione | 3325 ml |
+| Durata piano | 4 mesi |
+
+**Piano alimentare** — mesi: 1·2053 kcal → 2·1903 kcal → 3·1903 kcal → 4·1903 kcal
+
+Esempio giorno di allenamento (Lun) e pasto libero (Sab):
+
+| Pasto | Alimenti | kcal |
+|---|---|---|
+| Colazione 07:30 | Uova intere 3 uova, Fiocchi d’avena 55g, Banana 1 banana | 569 |
+| Pranzo 13:00 | Uova intere 4 uova, Patate (bollite) 330g, Olio EVO 10g, Noci 20g, Spinaci 150g | 867 |
+| Cena 20:00 | Salmone 140g, Patate dolci 225g, Olio EVO 10g, Mandorle 25g, Zucchine 150g | 744 |
+
+Totale Lun: **2178 kcal** · P 111 g · C 197 g · G 110 g
+
+| Pasto | Alimenti | kcal |
+|---|---|---|
+| Colazione 07:30 | Yogurt greco 225g, Fiocchi d’avena 50g, Banana 1 banana | 520 |
+| Pranzo 13:00 | Uova intere 4 uova, Patate dolci 255g, Olio EVO 10g, Mandorle 20g, Broccoli 150g | 769 |
+| Cena 20:00 | _pasto libero_ | 636 |
+
+Totale Sab: **1289 kcal** · P 67 g · C 137 g · G 57 g
+
+_Nessun piano di allenamento generato._
+
+**Controlli**
+
+- ❌ `D5` Proteine: i pasti danno in media 137 g contro un target di 202 g (68%)
+- ❌ `D5` Grassi: i pasti danno in media 92 g contro un target di 57 g (162%)
+- ❌ `P3` Utente solo dieta con risposte di allenamento rimaste da un questionario precedente: il fabbisogno conta 4 allenamenti/sett.
+- ❌ `P3` Utente solo dieta: la dieta alterna giorni di allenamento/riposo in base a risposte vecchie
+- ⚠️ `D9` Troppe uova in un solo pasto (fino a 4) in 3 pasti della settimana
+- ⚠️ `D9` Lun: 7 uova in un giorno
+- ⚠️ `D15` La scheda profilo dell’onboarding mostra 1903 kcal ma il piano (mese 1) ne prescrive 2053 (+150): l’utente vede due numeri diversi
+- ⚠️ `H1` Obiettivo settimanale mostrato in Home -434 kcal contro -3332 kcal/sett. voluti dal piano: due modelli energetici diversi
+- ⚠️ `N1` La tab Nutrizione mostra sempre 6 pasti (con orari fissi) ma l’utente ne fa 3 (colazione, pranzo, cena): compaiono schede di pasti che non fa
+- ⚠️ `N3` Sab: con "Segui il piano" il giorno si riempie con 1289 kcal (63% del target): la cena libera non aggiunge nulla e l’anello calorie resta sotto
+- ℹ️ `D14` Dal mese 2 in poi il target è identico (1903 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
+- ℹ️ `C3` Utente solo dieta: il fabbisogno assume 4 allenamenti/sett.
+- ℹ️ `S3` Utente solo dieta: la tab Allenamento resta visibile e mostra "Nessun programma generato… scegliendo sala pesi o corsa", frase fuorviante perché la domanda non è mai stata posta
+- ℹ️ `Q4` Risposte raccolte ma non usate da nessuna parte: generalActivityLevel, bedTime, wakeTime, sleepQuality
 
 ---

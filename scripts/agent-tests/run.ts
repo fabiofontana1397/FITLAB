@@ -22,6 +22,7 @@ import { computePlanDurationMonths } from '@/lib/planning/plan-duration';
 import type { PlanStrategy } from '@/lib/planning/strategy-types';
 
 import { checkStrategy, openAiSession } from './ai';
+import { checkFlow, checkGlobal } from './flow';
 import { computeTargetsForAnswers, macrosOf, runChecks, type Finding, type PersonaRun } from './checks';
 import { PERSONAS, type Persona } from './personas';
 
@@ -37,7 +38,7 @@ export function generateForPersona(persona: Persona, strategy: PlanStrategy | nu
   const diet = mode === 'training' ? null : generateDietPlan({ answers, dailyCalorieTarget: targets.dailyCalorieTarget, macroTargetsG: targets.macroTargetsG, strategy: strategy?.diet ?? null });
   const training = mode === 'diet' ? null : generateTrainingPlan({ answers, strategy: strategy?.training ?? null });
 
-  const findings = runChecks(persona, targets, durationMonths, diet, training);
+  const findings = [...runChecks(persona, targets, durationMonths, diet, training), ...checkFlow(persona, targets, diet, training)];
   if (aiMode) findings.push(...checkStrategy(persona, strategy, targets.dailyCalorieTarget, durationMonths));
   return { persona, targets, durationMonths, diet, training, findings };
 }
@@ -124,7 +125,7 @@ function personaSection(run: PersonaRun): string {
   return out.join('\n');
 }
 
-function buildReport(runs: PersonaRun[]): string {
+function buildReport(runs: PersonaRun[], globals: Finding[]): string {
   const total = counts(runs.flatMap((r) => r.findings));
   const lines: string[] = [];
   lines.push('# Test dei piani generati dai questionari', '');
@@ -141,6 +142,11 @@ function buildReport(runs: PersonaRun[]): string {
     );
   }
   lines.push('');
+  if (globals.length) {
+    lines.push('## Controlli generali dell’app', '');
+    for (const g of globals) lines.push(`- ${ICON[g.level]} \`${g.code}\` ${g.message}`);
+    lines.push('', '---', '');
+  }
   for (const r of runs) lines.push(personaSection(r), '---', '');
   return lines.join('\n');
 }
@@ -186,13 +192,18 @@ async function main() {
       console.log(`     ${ICON[f.level]} ${f.code} ${f.message}`);
     }
   }
-  const total = counts(runs.flatMap((r) => r.findings));
+  const globals = checkGlobal();
+  if (globals.length) {
+    console.log('\nControlli generali dell’app');
+    for (const g of globals) console.log(`     ${ICON[g.level]} ${g.code} ${g.message}`);
+  }
+  const total = counts([...runs.flatMap((r) => r.findings), ...globals]);
   console.log(`\nTotale: ${total.fail} errori, ${total.warn} avvisi, ${total.info} note su ${runs.length} questionari`);
 
   const dir = join(dirname(fileURLToPath(import.meta.url)), 'reports');
   mkdirSync(dir, { recursive: true });
   const file = join(dir, only ? `persona-${only}.md` : 'latest.md');
-  writeFileSync(file, buildReport(runs), 'utf8');
+  writeFileSync(file, buildReport(runs, globals), 'utf8');
   console.log(`Report: ${file}`);
   process.exit(total.fail > 0 ? 1 : 0);
 }
