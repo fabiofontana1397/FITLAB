@@ -9,7 +9,7 @@ import { MeasurementTrendModal } from '@/components/body/measurement-trend-modal
 import { PhotoDetailModal } from '@/components/body/photo-detail-modal';
 import { PosePickerSheet } from '@/components/body/pose-picker-sheet';
 import { QuickMeasurementSheet } from '@/components/body/quick-measurement-sheet';
-import { QuickWeightSheet } from '@/components/body/quick-weight-sheet';
+import { WeightEntryModal } from '@/components/body/weight-entry-modal';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { FlatCard } from '@/components/ui/flat-card';
@@ -22,7 +22,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useWeightSeries, weightDateGranularity, type WeightRange } from '@/hooks/use-weight-series';
 import { generatePhotoInsight } from '@/lib/assistant/photo-insight';
 import { latestSnapshot, seriesOf } from '@/lib/mock/body';
-import { addDaysISO, daysAgoISO, formatFullDay } from '@/lib/mock/dates';
+import { formatFullDay } from '@/lib/mock/dates';
 import { POSE_LABELS, useBodyStore, type BodyPhoto, type BodyPhotoPose } from '@/store/body-store';
 import { useUserStore } from '@/store/user-store';
 
@@ -58,7 +58,8 @@ export default function ProgressScreen() {
   const addMeasurement = useBodyStore((s) => s.addMeasurement);
   const addPhoto = useBodyStore((s) => s.addPhoto);
 
-  const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [weightModalOpen, setWeightModalOpen] = useState(false);
+  const [editDate, setEditDate] = useState<string | undefined>(undefined);
   const [infoZone, setInfoZone] = useState<MeasurementZone | null>(null);
   const [trendMeasurement, setTrendMeasurement] = useState<{ zone: MeasurementZone; label: string } | null>(null);
   const [addMeasurementZone, setAddMeasurementZone] = useState<{ zone: MeasurementZone; label: string } | null>(null);
@@ -70,11 +71,6 @@ export default function ProgressScreen() {
   const latest = useMemo(() => latestSnapshot(entries), [entries]);
   const startBody = entries[0] ?? latest;
   const photoInsight = generatePhotoInsight(photos, entries);
-
-  // Last weigh-in at least a week old (falls back to the very first entry).
-  const weekAgo = addDaysISO(daysAgoISO(0), -7);
-  const lastWeekBody = [...entries].reverse().find((e) => e.date <= weekAgo) ?? startBody;
-  const weekDelta = latest.weightKg - lastWeekBody.weightKg;
 
   const sinceStart = latest.weightKg - startBody.weightKg;
   const totalToGo = startBody.weightKg - currentUser.targetWeightKg;
@@ -116,26 +112,66 @@ export default function ProgressScreen() {
       <ThemedText style={[styles.sectionTitle, { marginTop: 22 }]}>Peso</ThemedText>
       <FlatCard radius={CARD_RADIUS} style={styles.weightCard}>
         <View style={styles.weightTop}>
-          <View>
-            <View style={styles.bigRow}>
-              <ThemedText style={styles.bigNumber}>{latest.weightKg.toFixed(1)}</ThemedText>
-              <ThemedText style={styles.bigUnit} themeColor="textSecondary">
-                kg
-              </ThemedText>
-            </View>
-            <View style={styles.deltaRow}>
-              <Icon name={weekDelta <= 0 ? 'trendDown' : 'trendUp'} size={13} color={deltaColor(weekDelta)} />
-              <ThemedText style={[styles.deltaText, { color: deltaColor(weekDelta) }]}>{signedKg(weekDelta)} kg</ThemedText>
-              <ThemedText style={styles.deltaText} themeColor="textTertiary">
-                vs. settimana scorsa
-              </ThemedText>
-            </View>
+          <View style={styles.bigRow}>
+            <ThemedText style={styles.bigNumber}>{latest.weightKg.toFixed(1)}</ThemedText>
+            <ThemedText style={styles.bigUnit} themeColor="textSecondary">
+              kg
+            </ThemedText>
           </View>
-          <Pressable onPress={() => setQuickAddOpen(true)} accessibilityLabel="Registra peso" style={[styles.addWeight, { backgroundColor: theme.accent }]}>
-            <Icon name="plus" size={22} color={theme.onAccent} />
+          <Pressable
+            onPress={() => {
+              setEditDate(undefined);
+              setWeightModalOpen(true);
+            }}
+            accessibilityLabel="Registra peso"
+            style={[styles.addWeight, { backgroundColor: theme.accent }]}>
+            <Icon name="plus" size={28} color={theme.onAccent} />
           </Pressable>
         </View>
 
+        <View style={styles.progressBlock}>
+          <View style={[styles.goalTrack, { backgroundColor: theme.backgroundElement }]}>
+            <View style={[styles.goalFill, { width: `${Math.round(goalProgress * 100)}%`, backgroundColor: theme.accent }]} />
+          </View>
+          <View style={styles.progressCaption}>
+            <ThemedText style={styles.deltaText} themeColor="textTertiary">
+              {startBody.weightKg.toFixed(1)} kg
+            </ThemedText>
+            <ThemedText style={[styles.deltaText, { color: theme.accent }]}>{Math.round(goalProgress * 100)}% verso l’obiettivo</ThemedText>
+            <ThemedText style={styles.deltaText} themeColor="textTertiary">
+              {currentUser.targetWeightKg} kg
+            </ThemedText>
+          </View>
+        </View>
+
+        <View style={styles.miniRow}>
+          <View style={[styles.miniBox, { backgroundColor: theme.backgroundElement }]}>
+            <View style={[styles.miniIcon, { backgroundColor: deltaColor(sinceStart) + '22' }]}>
+              <Icon name={sinceStart <= 0 ? 'trendDown' : 'trendUp'} size={20} color={deltaColor(sinceStart)} />
+            </View>
+            <View>
+              <ThemedText style={[styles.miniValue, { color: deltaColor(sinceStart) }]}>{signedKg(sinceStart)} kg</ThemedText>
+              <ThemedText style={styles.miniLabel} themeColor="textTertiary">
+                da inizio piano
+              </ThemedText>
+            </View>
+          </View>
+          <View style={[styles.miniBox, { backgroundColor: theme.backgroundElement }]}>
+            <View style={[styles.miniIcon, { backgroundColor: theme.brandGreen + '22' }]}>
+              <Icon name="target" size={20} color={theme.brandGreen} />
+            </View>
+            <View>
+              <ThemedText style={styles.miniValue}>{currentUser.targetWeightKg} kg</ThemedText>
+              <ThemedText style={styles.miniLabel} themeColor="textTertiary">
+                obiettivo
+              </ThemedText>
+            </View>
+          </View>
+        </View>
+      </FlatCard>
+
+      <FlatCard radius={CARD_RADIUS} style={styles.chartCard}>
+        <ThemedText style={styles.chartTitle}>Andamento peso</ThemedText>
         <SegmentedControl
           options={[
             { value: 'settimana', label: 'Settimana' },
@@ -145,8 +181,6 @@ export default function ProgressScreen() {
           value={weightRange}
           onChange={(v) => setWeightRange(v as WeightRange)}
         />
-
-        <ThemedText style={styles.chartTitle}>Andamento peso</ThemedText>
         <GoalTrendChart
           points={weightSeries}
           target={currentUser.targetWeightKg}
@@ -159,22 +193,46 @@ export default function ProgressScreen() {
         />
       </FlatCard>
 
-      <FlatCard radius={CARD_RADIUS} style={styles.goalCard}>
-        <View style={styles.goalTitleRow}>
-          <View style={[styles.goalDot, { backgroundColor: theme.brandGreen }]} />
-          <ThemedText style={styles.goalTitle}>Obiettivo</ThemedText>
-        </View>
-        <ThemedText style={styles.goalValue}>{currentUser.targetWeightKg} kg</ThemedText>
-        <View style={[styles.goalTrack, { backgroundColor: theme.backgroundElement }]}>
-          <View style={[styles.goalFill, { width: `${Math.round(goalProgress * 100)}%`, backgroundColor: theme.brandGreen }]} />
-        </View>
-        <View style={styles.deltaRow}>
-          <Icon name={sinceStart <= 0 ? 'trendDown' : 'trendUp'} size={13} color={deltaColor(sinceStart)} />
-          <ThemedText style={[styles.deltaText, { color: deltaColor(sinceStart) }]}>{signedKg(sinceStart)} kg</ThemedText>
-          <ThemedText style={styles.deltaText} themeColor="textTertiary">
-            da inizio piano
+      <View style={styles.logHeader}>
+        <ThemedText style={styles.chartTitle}>Registrazioni</ThemedText>
+        <Pressable
+          onPress={() => {
+            setEditDate(undefined);
+            setWeightModalOpen(true);
+          }}
+          hitSlop={8}>
+          <ThemedText style={[styles.logAdd, { color: theme.accent }]}>Aggiungi</ThemedText>
+        </Pressable>
+      </View>
+      <FlatCard radius={CARD_RADIUS} style={styles.logCard}>
+        {[...entries]
+          .sort((x, y) => y.date.localeCompare(x.date))
+          .slice(0, 8)
+          .map((entry, i) => (
+            <Pressable
+              key={entry.date}
+              onPress={() => {
+                setEditDate(entry.date);
+                setWeightModalOpen(true);
+              }}
+              style={[
+                styles.logRow,
+                i === 0 && { backgroundColor: theme.accentSoft },
+                i > 0 && { borderTopColor: theme.border, borderTopWidth: StyleSheet.hairlineWidth },
+              ]}>
+              <View style={[styles.logDot, { backgroundColor: i === 0 ? theme.accent : theme.textTertiary }]} />
+              <ThemedText style={styles.logDate} themeColor="textSecondary">
+                {new Date(entry.date).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' }).replace(/\./g, '')}
+              </ThemedText>
+              <ThemedText style={styles.logWeight}>{entry.weightKg.toFixed(1)} kg</ThemedText>
+              <Icon name="chevronRight" size={16} color={theme.textTertiary} />
+            </Pressable>
+          ))}
+        {entries.length === 0 ? (
+          <ThemedText style={styles.hint} themeColor="textTertiary">
+            Nessuna registrazione: tocca + per aggiungere il tuo peso.
           </ThemedText>
-        </View>
+        ) : null}
       </FlatCard>
 
       <ThemedText style={[styles.sectionTitle, { marginTop: 24 }]}>Misure</ThemedText>
@@ -264,11 +322,12 @@ export default function ProgressScreen() {
         ) : null}
       </View>
 
-      <QuickWeightSheet
-        visible={quickAddOpen}
-        currentWeightKg={latest.weightKg}
-        onClose={() => setQuickAddOpen(false)}
-        onSave={(weightKg) => addWeightEntry(weightKg)}
+      <WeightEntryModal
+        visible={weightModalOpen}
+        initialWeightKg={(editDate ? entries.find((e) => e.date === editDate)?.weightKg : undefined) ?? latest.weightKg}
+        date={editDate}
+        onClose={() => setWeightModalOpen(false)}
+        onSave={(weightKg, date) => addWeightEntry(weightKg, date)}
       />
       <MeasurementInfoModal zone={infoZone} onClose={() => setInfoZone(null)} />
       <MeasurementTrendModal
@@ -367,13 +426,92 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   addWeight: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     alignItems: 'center',
     justifyContent: 'center',
   },
   chartTitle: {
+    fontSize: 14,
+    lineHeight: 18,
+    fontWeight: '700',
+  },
+  progressBlock: {
+    gap: 6,
+  },
+  progressCaption: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  miniRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  miniBox: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderRadius: 16,
+    padding: 12,
+  },
+  miniIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  miniValue: {
+    fontSize: 16,
+    lineHeight: 20,
+    fontWeight: '800',
+  },
+  miniLabel: {
+    fontSize: 11.5,
+    lineHeight: 15,
+    fontWeight: '500',
+  },
+  chartCard: {
+    marginTop: 14,
+    padding: 16,
+    gap: 14,
+  },
+  logHeader: {
+    marginTop: 22,
+    marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  logAdd: {
+    fontSize: 14,
+    lineHeight: 18,
+    fontWeight: '700',
+  },
+  logCard: {
+    overflow: 'hidden',
+  },
+  logRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  logDot: {
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+  },
+  logDate: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 17,
+    fontWeight: '500',
+  },
+  logWeight: {
     fontSize: 14,
     lineHeight: 18,
     fontWeight: '700',
@@ -407,9 +545,9 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   goalTrack: {
-    width: 156,
-    height: 8,
-    borderRadius: 4,
+    alignSelf: 'stretch',
+    height: 10,
+    borderRadius: 5,
     overflow: 'hidden',
   },
   goalFill: {
