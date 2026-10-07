@@ -1,4 +1,5 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { FlatCard } from '@/components/ui/flat-card';
@@ -13,69 +14,95 @@ export function difficultyLabel(phase: PlanPhaseKind | undefined): 'Bassa' | 'Me
   return 'Bassa';
 }
 
-/** The rounded orange-tinted square with a dumbbell, used on the session
- * card and on the detail page header. */
+/** The same difficulty, worded as a training level. */
+export function levelLabel(phase: PlanPhaseKind | undefined): string {
+  const d = difficultyLabel(phase);
+  return d === 'Alta' ? 'Livello avanzato' : d === 'Media' ? 'Livello intermedio' : 'Livello base';
+}
+
+/** The rounded orange square with a dumbbell, used on the session card and
+ * on the detail page header. */
 export function WorkoutBadge({ size = 60 }: { size?: number }) {
-  const theme = useTheme();
   return (
-    <View style={[styles.badge, { width: size, height: size, borderRadius: size * 0.3, backgroundColor: theme.accent }]}>
+    <LinearGradient
+      colors={['#FF8F2A', '#FF6A13']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={[styles.badge, { width: size, height: size, borderRadius: size * 0.22 }]}>
       <Icon name="barbell" size={size / 2} color="#FFFFFF" />
-    </View>
+    </LinearGradient>
   );
 }
 
 export type WorkoutSummaryCardProps = {
   title: string;
-  difficulty: string;
+  subtitle: string;
   minutes: number;
   kcal: number;
-  onPress: () => void;
+  /** Opens the session detail (the chevron and the card). */
+  onOpen: () => void;
+  /** The green "Inizia allenamento" button. */
+  onStart: () => void;
 };
 
-/** "Allenamento di oggi" card from the Figma Training screen: badge, session
- * name, difficulty, duration + estimated kcal, chevron to the detail page. */
-export function WorkoutSummaryCard({ title, difficulty, minutes, kcal, onPress }: WorkoutSummaryCardProps) {
+/** "Allenamento di oggi": session thumbnail, name, "Forza - Livello base",
+ * duration + estimated kcal, and a full-width green start button. */
+export function WorkoutSummaryCard({ title, subtitle, minutes, kcal, onOpen, onStart }: WorkoutSummaryCardProps) {
   const theme = useTheme();
   return (
-    <Pressable onPress={onPress}>
-      <FlatCard radius={20} style={styles.card}>
-        <WorkoutBadge />
+    <FlatCard radius={20} style={styles.card}>
+      <Pressable onPress={onOpen} style={styles.top}>
+        <WorkoutBadge size={82} />
         <View style={styles.textCol}>
           <ThemedText style={styles.title} numberOfLines={1}>
             {title}
           </ThemedText>
-          <ThemedText style={styles.difficulty} themeColor="textTertiary">
-            Difficoltà {difficulty}
+          <ThemedText style={styles.subtitle} themeColor="textTertiary" numberOfLines={1}>
+            {subtitle}
           </ThemedText>
           <View style={styles.statsRow}>
             <View style={styles.stat}>
               <Icon name="clock" size={15} color={theme.textTertiary} />
-              <ThemedText style={styles.statText} themeColor="textSecondary">
-                {minutes} min
-              </ThemedText>
+              <ThemedText style={styles.statText}>{minutes} min</ThemedText>
             </View>
             <View style={styles.stat}>
               <Icon name="flame" size={15} color={theme.accent} />
-              <ThemedText style={styles.statText} themeColor="textSecondary">
-                {kcal} kcal
-              </ThemedText>
+              <ThemedText style={styles.statText}>{kcal} kcal</ThemedText>
             </View>
           </View>
         </View>
         <Icon name="chevronRight" size={18} color={theme.textTertiary} />
-      </FlatCard>
-    </Pressable>
+      </Pressable>
+
+      <Pressable
+        onPress={onStart}
+        style={[
+          styles.startButton,
+          { backgroundColor: theme.brandGreen },
+          Platform.select({
+            web: { boxShadow: '0px 6px 14px rgba(34,179,94,0.28)' },
+            default: { shadowColor: '#22B35E', shadowOpacity: 0.28, shadowRadius: 10, shadowOffset: { width: 0, height: 5 }, elevation: 3 },
+          }),
+        ]}>
+        <View style={styles.playCircle}>
+          <Icon name="play" size={14} color={theme.brandGreen} />
+        </View>
+        <ThemedText style={styles.startLabel}>Inizia allenamento</ThemedText>
+        <Icon name="chevronRight" size={16} color="#FFFFFF" />
+      </Pressable>
+    </FlatCard>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
+    padding: 12,
+    gap: 12,
+  },
+  top: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
-    paddingHorizontal: 10,
-    paddingVertical: 12,
-    paddingRight: 16,
   },
   badge: {
     alignItems: 'center',
@@ -86,18 +113,18 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   title: {
-    fontSize: 15,
-    lineHeight: 18,
-    fontWeight: '700',
+    fontSize: 17,
+    lineHeight: 21,
+    fontWeight: '800',
   },
-  difficulty: {
-    marginTop: 4,
-    fontSize: 12,
-    lineHeight: 15,
+  subtitle: {
+    marginTop: 3,
+    fontSize: 12.5,
+    lineHeight: 16,
     fontWeight: '500',
   },
   statsRow: {
-    marginTop: 8,
+    marginTop: 10,
     flexDirection: 'row',
     gap: 14,
   },
@@ -107,8 +134,32 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   statText: {
-    fontSize: 12,
-    lineHeight: 15,
+    fontSize: 12.5,
+    lineHeight: 16,
     fontWeight: '500',
+  },
+  startButton: {
+    height: 48,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  playCircle: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingLeft: 2,
+  },
+  startLabel: {
+    flex: 1,
+    color: '#FFFFFF',
+    fontSize: 15,
+    lineHeight: 19,
+    fontWeight: '700',
   },
 });

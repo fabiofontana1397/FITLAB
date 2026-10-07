@@ -2,7 +2,6 @@ import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { HeaderIconButton } from '@/components/screen-header';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { AiCoachCard } from '@/components/ui/ai-coach-card';
@@ -12,13 +11,15 @@ import { Icon } from '@/components/ui/icon';
 import { LogActivityModal } from '@/components/training/log-activity-modal';
 import { TrainingHeroCard } from '@/components/training/training-hero-card';
 import { TrainingWeekCard } from '@/components/training/training-week-card';
-import { difficultyLabel, WorkoutSummaryCard } from '@/components/training/workout-summary-card';
+import { TrainingWeekStats } from '@/components/training/training-week-stats';
+import { levelLabel, WorkoutSummaryCard } from '@/components/training/workout-summary-card';
 import { useStoreHydrated } from '@/hooks/use-store-hydrated';
 import { useTheme } from '@/hooks/use-theme';
 import { latestSnapshot } from '@/lib/mock/body';
 import { addDaysISO, currentWeekDates, daysAgoISO, mondayIndex } from '@/lib/mock/dates';
 import { estimateTrainingContributionKcal, sessionDurationMinutes } from '@/lib/nutrition/targets';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
+import type { Goal } from '@/lib/mock/types';
 import type { TrainingDayPlan } from '@/lib/planning/types';
 import { useActivityLogStore } from '@/store/activity-log-store';
 import { useBodyStore } from '@/store/body-store';
@@ -29,9 +30,17 @@ import { useUserStore } from '@/store/user-store';
 
 const SCREEN_PADDING = 20;
 
-function capitalized(label: string): string {
-  return label.charAt(0).toUpperCase() + label.slice(1);
-}
+/** Short label for the user's goal, shown next to the session level. */
+const GOAL_SHORT_LABEL: Record<Goal, string> = {
+  loseFat: 'Definizione',
+  gainMuscle: 'Ipertrofia',
+  maintainImprove: 'Mantenimento',
+  gainStrength: 'Forza',
+  improveEndurance: 'Resistenza',
+  generalHealth: 'Benessere',
+};
+
+const BLUE = '#2E6BEA';
 
 export default function TrainingScreen() {
   const theme = useTheme();
@@ -43,6 +52,7 @@ export default function TrainingScreen() {
   const toggleCompleted = useTrainingProgressStore((s) => s.toggleCompleted);
   const bodyEntries = useBodyStore((s) => s.entries);
   const addActivityEntry = useActivityLogStore((s) => s.addEntry);
+  const activityEntries = useActivityLogStore((s) => s.entries);
   const [isLogActivityVisible, setLogActivityVisible] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
 
@@ -51,7 +61,6 @@ export default function TrainingScreen() {
   const [weekOffset, setWeekOffset] = useState(0);
 
   const viewedWeekDates = useMemo(() => currentWeekDates(new Date(addDaysISO(today, weekOffset * 7))), [today, weekOffset]);
-  const monthLabel = capitalized(new Date(viewedWeekDates[3]).toLocaleDateString('it-IT', { month: 'long' }));
 
   const planStoreHydrated = useStoreHydrated(usePlanStore);
   const onboardingHydrated = useStoreHydrated(useOnboardingStore);
@@ -125,6 +134,31 @@ export default function TrainingScreen() {
     completionFraction: 1,
   });
 
+  // Totals for the week shown in the strip: a session counts when the day's
+  // workout is fully ticked or any activity was logged that day.
+  const sessionMinutes = sessionDurationMinutes(sessionBucket);
+  let sessionsDone = 0;
+  let sessionsPlanned = 0;
+  let weekKcal = 0;
+  let weekMinutes = 0;
+  viewedWeekDates.forEach((date) => {
+    const day = weeklySplit[mondayIndex(new Date(date))];
+    const logged = activityEntries.filter((e) => e.date === date);
+    if (day && day.type !== 'rest') sessionsPlanned++;
+    const planDone = day?.type === 'workout' && isDayComplete(date);
+    if (planDone) {
+      weekKcal += sessionKcal;
+      weekMinutes += sessionMinutes;
+    }
+    weekKcal += logged.reduce((sum, e) => sum + e.estimatedKcal, 0);
+    weekMinutes += logged.reduce((sum, e) => sum + e.durationMinutes, 0);
+    if (planDone || logged.length > 0) sessionsDone++;
+  });
+
+  const selectedDone = isDayComplete(selectedDate);
+  const statusLabel = selectedDone ? 'Completato' : selectedDate < today ? 'Non completato' : 'In programma';
+  const statusColor = selectedDone ? theme.brandGreen : selectedDate < today ? theme.textTertiary : theme.accent;
+
   const dayHeading =
     selectedDate === today ? 'Allenamento di oggi' : `Allenamento del ${new Date(selectedDate).toLocaleDateString('it-IT', { day: 'numeric', month: 'long' })}`;
 
@@ -132,20 +166,26 @@ export default function TrainingScreen() {
     <ScreenScroll contentContainerStyle={styles.page}>
       <View style={styles.headerRow}>
         <ThemedText style={styles.pageTitle}>Allenamento</ThemedText>
-        <HeaderIconButton
-          icon="barbell"
-          color={theme.text}
-          accessibilityLabel="Piano di allenamento"
-          onPress={() => router.push('/training-plan')}
-        />
+        <View style={styles.headerIcons}>
+          <Pressable
+            onPress={() => router.push('/training-plan')}
+            hitSlop={8}
+            accessibilityLabel="Piano di allenamento"
+            style={[styles.circleButton, { backgroundColor: theme.backgroundElevated, borderColor: theme.border }]}>
+            <Icon name="calendar" size={19} color={theme.text} />
+          </Pressable>
+          <Pressable onPress={() => router.push('/profile')} hitSlop={8} style={[styles.circleButton, { backgroundColor: theme.text }]}>
+            <Icon name="personFilled" size={21} color={theme.background} />
+          </Pressable>
+        </View>
       </View>
 
       <TrainingHeroCard onRegister={() => setLogActivityVisible(true)} />
 
       <View style={styles.sectionRow}>
-        <ThemedText style={styles.sectionTitle}>{monthLabel}</ThemedText>
-        <Pressable onPress={() => setCalendarOpen(true)} hitSlop={10} accessibilityLabel="Apri calendario">
-          <Icon name="calendar" size={22} color={theme.text} />
+        <ThemedText style={styles.sectionTitle}>La tua settimana</ThemedText>
+        <Pressable onPress={() => setCalendarOpen(true)} hitSlop={8} accessibilityLabel="Apri calendario">
+          <ThemedText style={[styles.link, { color: BLUE }]}>Vedi calendario ›</ThemedText>
         </Pressable>
       </View>
 
@@ -159,13 +199,11 @@ export default function TrainingScreen() {
 
       <View style={styles.sectionRow}>
         <ThemedText style={styles.sectionTitle}>{dayHeading}</ThemedText>
-        <Pressable
-          onPress={() => router.push('/training-progress')}
-          hitSlop={8}
-          accessibilityLabel="Andamento carichi"
-          style={[styles.trendButton, { borderColor: theme.border }]}>
-          <Icon name="trendUp" size={16} color={theme.textSecondary} />
-        </Pressable>
+        {selectedDay?.type === 'workout' ? (
+          <View style={[styles.statusPill, { backgroundColor: statusColor + '1F' }]}>
+            <ThemedText style={[styles.statusText, { color: statusColor }]}>{statusLabel}</ThemedText>
+          </View>
+        ) : null}
       </View>
 
       {!trainingPlan ? (
@@ -178,10 +216,11 @@ export default function TrainingScreen() {
       ) : selectedDay?.type === 'workout' ? (
         <WorkoutSummaryCard
           title={selectedDay.title}
-          difficulty={difficultyLabel(currentMonth?.phase)}
-          minutes={sessionDurationMinutes(sessionBucket)}
+          subtitle={GOAL_SHORT_LABEL[currentUser.goal] + ' - ' + levelLabel(currentMonth?.phase)}
+          minutes={sessionMinutes}
           kcal={sessionKcal}
-          onPress={() => router.push({ pathname: '/workout-detail', params: { date: selectedDate } })}
+          onOpen={() => router.push({ pathname: '/workout-detail', params: { date: selectedDate } })}
+          onStart={() => router.push({ pathname: '/workout-detail', params: { date: selectedDate } })}
         />
       ) : selectedDay?.type === 'cardio' ? (
         <FlatCard radius={20} style={styles.messageCard}>
@@ -205,10 +244,21 @@ export default function TrainingScreen() {
         </FlatCard>
       )}
 
+      <View style={styles.statsWrap}>
+        <TrainingWeekStats
+          sessionsDone={sessionsDone}
+          sessionsPlanned={sessionsPlanned}
+          kcal={weekKcal}
+          minutes={weekMinutes}
+          onSeeAll={() => router.push('/training-progress')}
+        />
+      </View>
+
       <View style={styles.coachWrap}>
         <AiCoachCard
-          headline="Un dubbio sull'allenamento?"
-          body="Chiedi al coach AI consigli su tecnica, carichi e progressione per il tuo piano."
+          variant="compact"
+          headline="Hai dubbi sul tuo allenamento?"
+          body="Chiedi consigli su tecnica, esercizi o progressione."
         />
       </View>
 
@@ -259,6 +309,37 @@ const styles = StyleSheet.create({
     lineHeight: 28,
     fontWeight: '700',
     letterSpacing: -0.3,
+  },
+  headerIcons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  circleButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  link: {
+    fontSize: 13,
+    lineHeight: 17,
+    fontWeight: '600',
+  },
+  statusPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 14,
+  },
+  statusText: {
+    fontSize: 11.5,
+    lineHeight: 15,
+    fontWeight: '700',
+  },
+  statsWrap: {
+    marginTop: 14,
   },
   trendButton: {
     width: 28,

@@ -33,7 +33,7 @@ export function TrainingWeekCard({ weekDates, selectedDate, onSelectDate, isDayC
               key={date}
               onPress={() => onSelectDate(date)}
               style={[styles.col, selected && { backgroundColor: theme.accentSoft }]}>
-              <ThemedText style={[styles.weekday, { color: selected ? theme.accent : theme.textTertiary }]}>{weekdayShort(date)}</ThemedText>
+              <ThemedText style={[styles.weekday, { color: selected ? theme.accent : theme.textTertiary }]}>{weekdayShort(date).charAt(0).toUpperCase() + weekdayShort(date).slice(1)}</ThemedText>
               <ThemedText style={styles.date}>{dayOfMonth(date)}</ThemedText>
               <Pressable
                 onPress={(e) => {
