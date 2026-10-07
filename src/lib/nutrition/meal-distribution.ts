@@ -12,12 +12,12 @@ import type { MealSlot } from '@/store/nutrition-store';
  * for a given user (e.g. a user with no colazione never has it in the
  * denominator). */
 export const MEAL_WEIGHTS: Record<MealSlot, number> = {
-  colazione: 3,
-  spuntinoMattina: 1,
-  pranzo: 4,
-  spuntinoPomeriggio: 1,
-  cena: 3.5,
-  spuntinoSera: 1,
+  colazione: 2.5,
+  spuntinoMattina: 1.2,
+  pranzo: 3.5,
+  spuntinoPomeriggio: 1.2,
+  cena: 3.2,
+  spuntinoSera: 1.2,
 };
 
 export function sharePctFor(slot: MealSlot, activeSlots: MealSlot[]): number {

@@ -1,27 +1,27 @@
 # Test dei piani generati dai questionari
 
-Generato il 2026-10-07 19:24 — 16 questionari finti, piani creati con i generatori reali dell’app.
+Generato il 2026-10-07 20:13 — 16 questionari finti, piani creati con i generatori reali dell’app.
 
-**Totale:** 0 errori · 8 avvisi · 21 note
+**Totale:** 0 errori · 3 avvisi · 21 note
 
 | Persona | Target kcal | P/C/G (g) | Mesi | Palestra/Corsa a sett. | Errori | Avvisi |
 |---|---|---|---|---|---|---|
 | Sofia, 16 anni | 1703 | 88/209/57 | 4 | 2/0 | 0 | 0 |
-| Matteo, 17 anni | 2601 | 118/337/87 | 5 | 3/0 | 0 | 0 |
+| Matteo, 17 anni | 2601 | 118/337/87 | 5 | 3/0 | 0 | 1 |
 | Giulia, 24 anni | 1506 | 112/152/50 | 4 | 3/0 | 0 | 1 |
 | Luca, 22 anni | 2759 | 129/353/92 | 9 | 5/0 | 0 | 0 |
 | Alessandro, 29 anni | 3370 | 128/463/112 | 4 | 4/2 | 0 | 1 |
 | Marco, 32 anni | 1913 | 143/192/64 | 6 | 3/0 | 0 | 0 |
-| Chiara, 25 anni | 1591 | 119/160/53 | 3 | 2/2 | 0 | 1 |
-| Paolo, 38 anni | 2579 | 108/344/86 | 4 | 0/4 | 0 | 1 |
-| Andrea, 40 anni | 1702 | 127/170/57 | 3 | –/– | 0 | 2 |
+| Chiara, 25 anni | 1591 | 119/160/53 | 3 | 2/2 | 0 | 0 |
+| Paolo, 38 anni | 2579 | 108/344/86 | 4 | 0/4 | 0 | 0 |
+| Andrea, 40 anni | 1702 | 127/170/57 | 3 | –/– | 0 | 0 |
 | Ilaria, 29 anni | 2143 | 122/254/71 | 5 | 4/0 | 0 | 0 |
 | Anna, 52 anni | 1238 | 92/107/49 | 5 | 2/0 | 0 | 0 |
 | Roberto, 58 anni | 2387 | 115/302/80 | 4 | 2/0 | 0 | 0 |
 | Franco, 60 anni | 1892 | 109/223/63 | 4 | 1/0 | 0 | 0 |
 | Tommaso, 35 anni | 2184 | 128/254/73 | 4 | 1/0 | 0 | 0 |
 | Nina, 33 anni | 1586 | 118/159/53 | 4 | 3/0 | 0 | 0 |
-| Omar, 41 anni | 1734 | 130/171/59 | 5 | –/– | 0 | 2 |
+| Omar, 41 anni | 1734 | 130/171/59 | 5 | –/– | 0 | 0 |
 
 ## Simulazione: ricalibrazione mensile su 6 mesi
 
@@ -186,19 +186,19 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Banana 1 banana, Uova intere 2 uova, Fiocchi d’avena 55g | 476 |
-| Pranzo 13:00 | Spinaci 150g, Olio EVO 5g, Salmone 105g, Patate (bollite) 350g, Riso basmati (cotto) 60g | 675 |
-| Cena 20:00 | Zucchine 150g, Olio EVO 5g, Yogurt greco 250g, Patate dolci 325g | 593 |
+| Colazione 07:30 | Skyr 135g, Granola 60g, Fragole 160g, Semi di chia 15g | 479 |
+| Pranzo 13:00 | Gamberi (cotti) 100g, Riso basmati (cotto) 275g, Carote 150g, Olio EVO 15g, Avocado 35g | 683 |
+| Cena 20:00 | Tonno al naturale 60g, Pasta (cotta) 230g, Pomodorini 150g, Olio EVO 15g | 607 |
 
-Totale Lun: **1742 kcal** · P 87 g · C 234 g · G 53 g
+Totale Lun: **1767 kcal** · P 87 g · C 229 g · G 56 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Banana 1 banana, Uova intere 3 uova, Fiocchi d’avena 40g | 496 |
-| Pranzo 13:00 | Broccoli 150g, Olio EVO 5g, Salmone 120g, Patate dolci 320g | 620 |
-| Cena 20:00 | _pasto libero_ | 557 |
+| Colazione 07:30 | Skyr 115g, Fette biscottate 4 fette, Arancia 1 arancia, Mandorle 25g | 435 |
+| Pranzo 13:00 | Manzo magro 90g, Patate (bollite) 320g, Fagiolini 150g, Olio EVO 10g | 581 |
+| Cena 20:00 | _pasto libero_ | 581 |
 
-Totale Sab: **1115 kcal** · P 61 g · C 130 g · G 41 g
+Totale Sab: **1016 kcal** · P 57 g · C 129 g · G 33 g
 
 **Mese 1 — Mese 1 · Adattamento e tecnica**
 
@@ -232,7 +232,7 @@ Totale Sab: **1115 kcal** · P 61 g · C 130 g · G 41 g
 
 ## Matteo, 17 anni — magro, vuole mettere massa
 
-**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 1 note)
+**Esito:** ⚠️ SUPERATO CON AVVISI (0 errori, 1 avvisi, 1 note)
 
 - **Chi è:** Ragazzo di 17 anni, 62 kg per 176 cm, vuole arrivare a 67 kg. Principiante, 3 allenamenti a settimana.
 - **Cosa ci aspettiamo:** Surplus lieve e sostenuto, proteine ~1,9 g/kg, split full body per principianti, mese di adattamento.
@@ -252,19 +252,19 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Banana 1 banana, Uova intere 1 uovo, Fiocchi d’avena 85g, Yogurt greco 100g, Mela 1 mela, Mandorle 10g | 749 |
-| Pranzo 13:00 | Spinaci 150g, Olio EVO 10g, Salmone 140g, Patate (bollite) 350g, Riso basmati (cotto) 245g | 1015 |
-| Cena 20:00 | Zucchine 150g, Olio EVO 10g, Salmone 145g, Patate dolci 350g, Riso basmati (cotto) 150g | 899 |
+| Colazione 07:30 | Skyr 135g, Fiocchi d’avena 40g, Banana 2 banane, Mandorle 40g | 687 |
+| Pranzo 13:00 | Petto di pollo 80g, Gnocchi di patate 350g, Pane integrale 40g, Spinaci 150g, Olio EVO 25g | 1012 |
+| Cena 20:00 | Gamberi (cotti) 80g, Pasta (cotta) 350g, Pomodorini 150g, Olio EVO 25g | 894 |
 
-Totale Lun: **2661 kcal** · P 120 g · C 360 g · G 82 g
+Totale Lun: **2591 kcal** · P 120 g · C 347 g · G 84 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Banana 1 banana, Uova intere 2 uova, Fiocchi d’avena 90g, Mandorle 10g | 670 |
-| Pranzo 13:00 | Broccoli 150g, Olio EVO 10g, Salmone 160g, Patate dolci 350g, Riso basmati (cotto) 160g | 967 |
-| Cena 20:00 | _pasto libero_ | 849 |
+| Colazione 07:30 | Yogurt proteico 175g, Cereali integrali 80g, Mirtilli 125g, Noci 25g, Semi di chia 15g | 692 |
+| Pranzo 13:00 | Gamberi (cotti) 120g, Couscous (cotto) 350g, Carote 150g, Avocado 60g, Olio EVO 25g | 890 |
+| Cena 20:00 | _pasto libero_ | 886 |
 
-Totale Sab: **1637 kcal** · P 78 g · C 211 g · G 55 g
+Totale Sab: **1581 kcal** · P 77 g · C 189 g · G 59 g
 
 **Mese 1 — Mese 1 · Adattamento e tecnica**
 
@@ -292,6 +292,7 @@ Totale Sab: **1637 kcal** · P 78 g · C 211 g · G 55 g
 
 **Controlli**
 
+- ⚠️ `Q6` Mer (mese 5): stessa fonte proteica a pranzo e cena (shrimp)
 - ℹ️ `D14` Dal mese 2 in poi il target è identico (2601 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
 
 ---
@@ -318,19 +319,19 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Banana 1 banana, Fiocchi di latte 225g, Pane integrale 45g | 439 |
-| Pranzo 13:00 | Spinaci 150g, Olio EVO 5g, Fiocchi di latte 185g, Ceci (cotti) 205g | 596 |
-| Cena 20:00 | Zucchine 150g, Ricotta 120g, Lenticchie (cotte) 250g | 491 |
+| Colazione 07:30 | Fiocchi di latte 195g, Pane integrale 50g, Fragole 240g | 392 |
+| Pranzo 13:00 | Uova intere 3 uova, Pane integrale 140g, Insalata mista 150g | 609 |
+| Cena 20:00 | Tofu 220g, Lenticchie (cotte) 230g, Pomodorini 150g, Olio EVO 5g | 519 |
 
-Totale Lun: **1525 kcal** · P 110 g · C 179 g · G 45 g
+Totale Lun: **1518 kcal** · P 109 g · C 168 g · G 50 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Banana 1 banana, Uova intere 3 uova, Yogurt greco 125g | 461 |
-| Pranzo 13:00 | Broccoli 150g, Yogurt greco 300g, Ceci (cotti) 110g | 522 |
-| Cena 20:00 | _pasto libero_ | 484 |
+| Colazione 07:30 | Fiocchi di latte 225g, Fette biscottate 2 fette, Fragole 205g | 360 |
+| Pranzo 13:00 | Tofu 250g, Farro (cotto) 145g, Peperone rosso 150g, Mandorle 15g | 500 |
+| Cena 20:00 | _pasto libero_ | 505 |
 
-Totale Sab: **983 kcal** · P 73 g · C 85 g · G 42 g
+Totale Sab: **859 kcal** · P 61 g · C 92 g · G 33 g
 
 **Mese 1 — Mese 1 · Adattamento e tecnica**
 
@@ -358,7 +359,7 @@ Totale Sab: **983 kcal** · P 73 g · C 85 g · G 42 g
 
 **Controlli**
 
-- ⚠️ `D5` Carboidrati: i pasti danno in media il 106% del target (giorno peggiore: 32% di scarto)
+- ⚠️ `D5` Proteine: i pasti danno in media il 91% del target (giorno peggiore: 15% di scarto)
 - ℹ️ `D14` Dal mese 2 in poi il target è identico (1506 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
 
 ---
@@ -385,23 +386,23 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Banana 1 banana, Uova intere 1 uovo, Pane integrale 120g, Fiocchi d’avena 25g, Mandorle 15g | 665 |
-| Spuntino mattina 10:30 | Mela 1 mela, Uova intere 1 uovo, Pane integrale 35g | 232 |
-| Pranzo 13:00 | Zucchine 150g, Olio EVO 10g, Yogurt greco 300g, Patate dolci 350g, Riso basmati (cotto) 155g | 894 |
-| Spuntino pomeriggio 17:00 | Mirtilli 100g, Proteine whey (polvere) 5g, Pane integrale 45g, Mandorle 10g | 245 |
-| Cena 20:00 | Fagiolini 150g, Olio EVO 10g, Yogurt greco 280g, Riso basmati (cotto) 310g | 782 |
+| Colazione 07:30 | Albume d’uovo 115g, Pane integrale 40g, Banana 2 banane, Mandorle 35g | 576 |
+| Spuntino mattina 10:30 | Kefir 290g, Pera 1 pera, Noci 10g | 276 |
+| Pranzo 13:00 | Manzo magro 80g, Pasta (cotta) 330g, Pomodorini 150g, Olio EVO 15g | 845 |
+| Spuntino pomeriggio 17:00 | Bresaola 30g, Fette biscottate 5 fette, Avocado 35g | 284 |
+| Cena 20:00 | Gamberi (cotti) 80g, Riso basmati (cotto) 315g, Broccoli 150g, Pistacchi 20g, Tahina (crema di sesamo) 25g | 772 |
 
-Totale Lun: **2816 kcal** · P 130 g · C 388 g · G 85 g
+Totale Lun: **2751 kcal** · P 139 g · C 365 g · G 89 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Banana 1 banana, Uova intere 2 uova, Fiocchi d’avena 100g | 651 |
-| Spuntino mattina 10:30 | Mela 1 mela, Uova intere 1 uovo, Pane integrale 35g | 232 |
-| Pranzo 13:00 | Spinaci 150g, Olio EVO 10g, Manzo magro 95g, Patate dolci 350g, Riso basmati (cotto) 175g, Mandorle 15g | 901 |
-| Spuntino pomeriggio 17:00 | Mirtilli 100g, Proteine whey (polvere) 5g, Pane integrale 45g, Mandorle 10g | 245 |
-| Cena 20:00 | _pasto libero_ | 789 |
+| Colazione 07:30 | Skyr 130g, Crema di riso 65g, Fragole 105g, Semi di chia 20g, Mandorle 25g | 593 |
+| Spuntino mattina 10:30 | Fiocchi di latte 80g, Gallette di mais 4 gallette, Burro di arachidi 10g | 289 |
+| Pranzo 13:00 | Gamberi (cotti) 80g, Pasta (cotta) 170g, Pane integrale 120g, Pomodorini 150g, Olio EVO 15g | 818 |
+| Spuntino pomeriggio 17:00 | Barretta proteica 1 barretta, Pera 1 pera | 255 |
+| Cena 20:00 | _pasto libero_ | 777 |
 
-Totale Sab: **2028 kcal** · P 99 g · C 285 g · G 59 g
+Totale Sab: **1954 kcal** · P 102 g · C 267 g · G 57 g
 
 **Mese 1 — Mese 1 · Sovraccarico progressivo**
 
@@ -455,19 +456,19 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Banana 1 banana, Uova intere 3 uova, Fiocchi d’avena 100g, Mela 2 mele, Olio EVO 10g | 947 |
-| Pranzo 13:00 | Spinaci 150g, Olio EVO 25g, Salmone 125g, Patate (bollite) 350g, Tonno al naturale 50g, Riso basmati (cotto) 350g | 1303 |
-| Cena 20:00 | Zucchine 150g, Olio EVO 10g, Salmone 135g, Patate dolci 350g, Yogurt greco 90g, Riso basmati (cotto) 300g | 1146 |
+| Colazione 07:30 | Skyr 145g, Muesli 80g, Banana 2 banane, Mandorle 35g, Semi di chia 20g | 895 |
+| Pranzo 13:00 | Tonno al naturale 85g, Farro (cotto) 350g, Pane integrale 150g, Carote 150g, Olio EVO 25g, Avocado 55g | 1286 |
+| Cena 20:00 | Petto di pollo 80g, Gnocchi di patate 350g, Pane integrale 100g, Pomodorini 150g, Olio EVO 25g | 1166 |
 
-Totale Lun: **3394 kcal** · P 148 g · C 446 g · G 113 g
+Totale Lun: **3345 kcal** · P 151 g · C 465 g · G 106 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Banana 1 banana, Uova intere 3 uova, Fiocchi d’avena 100g, Mela 2 mele, Olio EVO 10g | 947 |
-| Pranzo 13:00 | Broccoli 150g, Olio EVO 20g, Salmone 145g, Patate dolci 350g, Tonno al naturale 40g, Riso basmati (cotto) 350g | 1301 |
-| Cena 20:00 | _pasto libero_ | 1138 |
+| Colazione 07:30 | Yogurt proteico 160g, Cereali integrali 80g, Banana 2 banane, Mandorle 40g, Noci 10g | 887 |
+| Pranzo 13:00 | Gamberi (cotti) 95g, Couscous (cotto) 350g, Pane integrale 160g, Peperone rosso 150g, Avocado 60g, Olio EVO 25g | 1237 |
+| Cena 20:00 | _pasto libero_ | 1187 |
 
-Totale Sab: **2247 kcal** · P 97 g · C 298 g · G 76 g
+Totale Sab: **2124 kcal** · P 96 g · C 286 g · G 70 g
 
 **Mese 1 — Mese 1 · Sovraccarico progressivo**
 
@@ -495,7 +496,7 @@ Totale Sab: **2247 kcal** · P 97 g · C 298 g · G 76 g
 
 **Controlli**
 
-- ⚠️ `D5` Proteine: i pasti danno in media il 116% del target (giorno peggiore: 24% di scarto)
+- ⚠️ `D5` Proteine: i pasti danno in media il 121% del target (giorno peggiore: 34% di scarto)
 - ℹ️ `D14` Dal mese 2 in poi il target è identico (3370 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
 - ℹ️ `S2` 2 sedute di corsa a settimana (es. "Corsa facile 35-40 min")
 
@@ -523,19 +524,19 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Banana 1 banana, Yogurt greco 300g, Fiocchi d’avena 15g, Uova intere 2 uova | 611 |
-| Pranzo 13:00 | Spinaci 150g, Olio EVO 5g, Yogurt greco 300g, Pane integrale 120g, Riso basmati (cotto) 80g | 763 |
-| Cena 20:00 | Zucchine 150g, Olio EVO 5g, Petto di pollo 120g, Riso basmati (cotto) 260g, Mandorle 15g | 670 |
+| Colazione 07:30 | Skyr 270g, Granola 25g, Banana 1 banana, Mandorle 25g | 535 |
+| Pranzo 13:00 | Petto di pollo 120g, Pasta (cotta) 235g, Broccoli 150g, Olio EVO 15g | 753 |
+| Cena 20:00 | Petto di tacchino 90g, Pane integrale 160g, Insalata mista 150g, Avocado 60g, Olio EVO 5g | 687 |
 
-Totale Lun: **2043 kcal** · P 142 g · C 208 g · G 71 g
+Totale Lun: **1974 kcal** · P 144 g · C 219 g · G 61 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Banana 1 banana, Uova intere 3 uova, Yogurt greco 225g | 558 |
-| Pranzo 13:00 | Broccoli 150g, Olio EVO 5g, Petto di tacchino 120g, Pasta (cotta) 180g, Mandorle 25g | 686 |
-| Cena 20:00 | _pasto libero_ | 610 |
+| Colazione 07:30 | Fiocchi di latte 245g, Pane integrale 60g, Fragole 140g, Burro di arachidi 10g | 492 |
+| Pranzo 13:00 | Uova intere 3 uova, Pane integrale 150g, Melanzane 150g, Olio EVO 5g | 686 |
+| Cena 20:00 | _pasto libero_ | 637 |
 
-Totale Sab: **1244 kcal** · P 96 g · C 109 g · G 50 g
+Totale Sab: **1177 kcal** · P 79 g · C 118 g · G 45 g
 
 **Mese 1 — Mese 1 · Adattamento e tecnica**
 
@@ -569,7 +570,7 @@ Totale Sab: **1244 kcal** · P 96 g · C 109 g · G 50 g
 
 ## Chiara, 25 anni — palestra + corsa con 4 giorni disponibili
 
-**Esito:** ⚠️ SUPERATO CON AVVISI (0 errori, 1 avvisi, 2 note)
+**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 2 note)
 
 - **Chi è:** Donna, 60 kg per 168 cm. Vorrebbe 3 palestra + 3 corsa ma ha solo 4 giorni disponibili. Obiettivo dimagrimento (−4 kg).
 - **Cosa ci aspettiamo:** Il piano rispetta i 4 giorni disponibili, bilancia palestra e corsa, e le calorie contano l’allenamento realmente programmato.
@@ -589,19 +590,19 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Banana 1 banana, Yogurt greco 300g, Fiocchi d’avena 15g | 456 |
-| Pranzo 13:00 | Spinaci 150g, Salmone 185g, Patate (bollite) 230g | 620 |
-| Cena 20:00 | Zucchine 150g, Salmone 175g, Patate dolci 175g | 541 |
+| Colazione 07:30 | Skyr 215g, Muesli 25g, Fragole 195g, Mandorle 20g, Semi di chia 5g | 428 |
+| Pranzo 13:00 | Petto di pollo 110g, Gnocchi di patate 185g, Spinaci 150g, Olio EVO 15g | 628 |
+| Cena 20:00 | Gamberi (cotti) 130g, Pasta (cotta) 165g, Pomodorini 150g, Olio EVO 15g | 564 |
 
-Totale Lun: **1616 kcal** · P 116 g · C 139 g · G 65 g
+Totale Lun: **1617 kcal** · P 119 g · C 171 g · G 52 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Banana 1 banana, Uova intere 3 uova, Yogurt greco 145g | 481 |
-| Pranzo 13:00 | Broccoli 150g, Salmone 195g, Patate dolci 120g | 560 |
-| Cena 20:00 | _pasto libero_ | 504 |
+| Colazione 07:30 | Skyr 215g, Fette biscottate 2 fette, Fragole 140g, Mandorle 25g | 398 |
+| Pranzo 13:00 | Manzo magro 145g, Patate dolci 190g, Fagiolini 150g, Avocado 55g | 569 |
+| Cena 20:00 | _pasto libero_ | 526 |
 
-Totale Sab: **1040 kcal** · P 79 g · C 69 g · G 50 g
+Totale Sab: **967 kcal** · P 78 g · C 91 g · G 35 g
 
 **Mese 1 — Mese 1 · Sovraccarico progressivo**
 
@@ -629,7 +630,6 @@ Totale Sab: **1040 kcal** · P 79 g · C 69 g · G 50 g
 
 **Controlli**
 
-- ⚠️ `D5` Carboidrati: i pasti danno in media il 89% del target (giorno peggiore: 19% di scarto)
 - ℹ️ `D14` Dal mese 2 in poi il target è identico (1591 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
 - ℹ️ `S2` 2 sedute di corsa a settimana (es. "Corsa facile 35 min")
 
@@ -637,7 +637,7 @@ Totale Sab: **1040 kcal** · P 79 g · C 69 g · G 50 g
 
 ## Paolo, 38 anni — solo corsa, resistenza
 
-**Esito:** ⚠️ SUPERATO CON AVVISI (0 errori, 1 avvisi, 2 note)
+**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 2 note)
 
 - **Chi è:** Runner amatoriale, 72 kg per 176 cm. Corre 4 volte a settimana, nessuna palestra, vuole migliorare la resistenza.
 - **Cosa ci aspettiamo:** Nessuna seduta di palestra, 4 uscite di corsa varie (facili, medio, lungo), carboidrati abbondanti, calorie di mantenimento.
@@ -657,19 +657,19 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Banana 1 banana, Uova intere 1 uovo, Fiocchi d’avena 75g, Mela 2 mele, Mandorle 20g | 723 |
-| Pranzo 13:00 | Spinaci 150g, Olio EVO 10g, Salmone 115g, Patate (bollite) 350g, Riso basmati (cotto) 275g | 1000 |
-| Cena 20:00 | Zucchine 150g, Olio EVO 10g, Salmone 125g, Patate dolci 350g, Riso basmati (cotto) 170g | 881 |
+| Colazione 07:30 | Skyr 140g, Granola 45g, Banana 2 banane, Mandorle 30g | 679 |
+| Pranzo 13:00 | Petto di pollo 80g, Gnocchi di patate 350g, Pane integrale 40g, Spinaci 150g, Olio EVO 25g | 1012 |
+| Cena 20:00 | Gamberi (cotti) 80g, Pasta (cotta) 350g, Pomodorini 150g, Olio EVO 25g | 894 |
 
-Totale Lun: **2602 kcal** · P 104 g · C 378 g · G 76 g
+Totale Lun: **2583 kcal** · P 116 g · C 347 g · G 84 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Banana 1 banana, Uova intere 1 uovo, Fiocchi d’avena 75g, Mela 1 mela, Mandorle 20g | 705 |
-| Pranzo 13:00 | Broccoli 150g, Olio EVO 10g, Salmone 140g, Patate dolci 350g, Riso basmati (cotto) 170g | 937 |
-| Cena 20:00 | _pasto libero_ | 821 |
+| Colazione 07:30 | Ricotta magra 120g, Fette biscottate 6 fette, Arancia 2 arance, Burro di arachidi 20g | 645 |
+| Pranzo 13:00 | Tonno al naturale 75g, Couscous (cotto) 345g, Pane integrale 50g, Carote 150g, Avocado 60g, Olio EVO 20g | 932 |
+| Cena 20:00 | _pasto libero_ | 857 |
 
-Totale Sab: **1641 kcal** · P 68 g · C 235 g · G 51 g
+Totale Sab: **1575 kcal** · P 70 g · C 205 g · G 56 g
 
 **Mese 1 — Mese 1 · Adattamento e tecnica**
 
@@ -697,7 +697,6 @@ Totale Sab: **1641 kcal** · P 68 g · C 235 g · G 51 g
 
 **Controlli**
 
-- ⚠️ `D5` Grassi: i pasti danno in media il 88% del target (giorno peggiore: 13% di scarto)
 - ℹ️ `D14` Dal mese 2 in poi il target è identico (2622 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
 - ℹ️ `S2` 4 sedute di corsa a settimana (es. "Corsa facile 30 min")
 
@@ -705,7 +704,7 @@ Totale Sab: **1641 kcal** · P 68 g · C 235 g · G 51 g
 
 ## Andrea, 40 anni — solo dieta
 
-**Esito:** ⚠️ SUPERATO CON AVVISI (0 errori, 2 avvisi, 2 note)
+**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 2 note)
 
 - **Chi è:** Uomo, 80 kg per 180 cm, vuole solo un piano alimentare per dimagrire a 75 kg. Non usa la parte allenamento.
 - **Cosa ci aspettiamo:** Il piano di allenamento non deve esistere, la dieta deve essere completa e basata su attività quotidiana.
@@ -725,26 +724,24 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Banana 1 banana, Yogurt greco 300g, Fiocchi d’avena 20g | 476 |
-| Pranzo 13:00 | Spinaci 150g, Salmone 200g, Patate (bollite) 215g | 638 |
-| Cena 20:00 | Zucchine 150g, Salmone 190g, Patate dolci 165g | 563 |
+| Colazione 07:30 | Skyr 230g, Muesli 25g, Fragole 155g, Mandorle 20g, Semi di chia 10g | 451 |
+| Pranzo 13:00 | Tonno al naturale 160g, Riso basmati (cotto) 190g, Carote 150g, Olio EVO 15g | 611 |
+| Cena 20:00 | Gamberi (cotti) 85g, Lenticchie (cotte) 235g, Pomodorini 150g, Tahina (crema di sesamo) 15g, Olio EVO 10g | 575 |
 
-Totale Lun: **1676 kcal** · P 123 g · C 138 g · G 69 g
+Totale Lun: **1634 kcal** · P 128 g · C 167 g · G 53 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Banana 1 banana, Uova intere 3 uova, Yogurt greco 170g | 505 |
-| Pranzo 13:00 | Broccoli 150g, Salmone 205g, Patate dolci 180g | 632 |
-| Cena 20:00 | _pasto libero_ | 567 |
+| Colazione 07:30 | Skyr 225g, Fette biscottate 3 fette, Fragole 155g, Mandorle 25g | 447 |
+| Pranzo 13:00 | Tonno al naturale 140g, Pasta (cotta) 185g, Pomodorini 150g, Olio EVO 15g | 628 |
+| Cena 20:00 | _pasto libero_ | 592 |
 
-Totale Sab: **1136 kcal** · P 84 g · C 82 g · G 53 g
+Totale Sab: **1074 kcal** · P 83 g · C 112 g · G 34 g
 
 _Nessun piano di allenamento generato._
 
 **Controlli**
 
-- ⚠️ `D5` Carboidrati: i pasti danno in media il 86% del target (giorno peggiore: 22% di scarto)
-- ⚠️ `D5` Grassi: i pasti danno in media il 111% del target (giorno peggiore: 21% di scarto)
 - ℹ️ `D14` Dal mese 2 in poi il target è identico (1702 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
 - ℹ️ `S3` Utente solo dieta: la tab Allenamento deve mostrare che il piano non è stato richiesto
 
@@ -820,19 +817,19 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Banana 1 banana, Yogurt greco 275g | 374 |
-| Pranzo 13:00 | Spinaci 150g, Salmone 135g, Patate (bollite) 205g | 494 |
-| Cena 20:00 | Zucchine 150g, Yogurt greco 295g, Patate dolci 140g | 432 |
+| Colazione 07:30 | Skyr 160g, Muesli 20g, Fragole 105g, Mandorle 20g, Semi di chia 5g | 348 |
+| Pranzo 13:00 | Gamberi (cotti) 125g, Riso basmati (cotto) 125g, Carote 150g, Olio EVO 15g | 470 |
+| Cena 20:00 | Tonno al naturale 65g, Fagioli borlotti (cotti) 145g, Pomodorini 150g, Olio EVO 15g | 446 |
 
-Totale Lun: **1299 kcal** · P 92 g · C 127 g · G 48 g
+Totale Lun: **1262 kcal** · P 92 g · C 124 g · G 47 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Banana 1 banana, Uova intere 3 uova | 335 |
-| Pranzo 13:00 | Broccoli 150g, Salmone 145g, Patate dolci 110g | 448 |
-| Cena 20:00 | _pasto libero_ | 403 |
+| Colazione 07:30 | Fiocchi di latte 195g, Fette biscottate 2 fette, Fragole 100g | 296 |
+| Pranzo 13:00 | Petto di pollo 90g, Pasta (cotta) 95g, Peperone rosso 150g, Olio EVO 15g | 471 |
+| Cena 20:00 | _pasto libero_ | 420 |
 
-Totale Sab: **782 kcal** · P 56 g · C 61 g · G 36 g
+Totale Sab: **767 kcal** · P 59 g · C 66 g · G 30 g
 
 **Mese 1 — Mese 1 · Adattamento e tecnica**
 
@@ -886,19 +883,19 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Banana 1 banana, Uova intere 2 uova, Fiocchi d’avena 100g | 651 |
-| Pranzo 13:00 | Spinaci 150g, Olio EVO 10g, Salmone 140g, Patate (bollite) 350g, Riso basmati (cotto) 185g | 943 |
-| Cena 20:00 | Zucchine 150g, Olio EVO 10g, Yogurt greco 300g, Patate dolci 350g, Riso basmati (cotto) 95g | 821 |
+| Colazione 07:30 | Skyr 140g, Muesli 80g, Fragole 250g, Mandorle 25g, Semi di chia 10g | 652 |
+| Pranzo 13:00 | Petto di pollo 90g, Gnocchi di patate 350g, Spinaci 150g, Olio EVO 25g | 930 |
+| Cena 20:00 | Tonno al naturale 110g, Riso basmati (cotto) 350g, Pomodorini 150g, Avocado 60g, Olio EVO 15g | 822 |
 
-Totale Lun: **2414 kcal** · P 112 g · C 326 g · G 74 g
+Totale Lun: **2401 kcal** · P 117 g · C 306 g · G 79 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Banana 1 banana, Uova intere 2 uova, Fiocchi d’avena 85g, Mandorle 5g | 622 |
-| Pranzo 13:00 | Broccoli 150g, Olio EVO 10g, Salmone 160g, Patate dolci 350g, Riso basmati (cotto) 100g | 894 |
-| Cena 20:00 | _pasto libero_ | 784 |
+| Colazione 07:30 | Yogurt proteico 165g, Cereali integrali 65g, Mela 1 mela, Mandorle 40g | 635 |
+| Pranzo 13:00 | Manzo magro 90g, Patate dolci 295g, Pane integrale 90g, Fagiolini 150g, Avocado 60g, Olio EVO 10g | 875 |
+| Cena 20:00 | _pasto libero_ | 818 |
 
-Totale Sab: **1516 kcal** · P 74 g · C 191 g · G 52 g
+Totale Sab: **1510 kcal** · P 76 g · C 191 g · G 52 g
 
 **Mese 1 — Mese 1 · Adattamento e tecnica**
 
@@ -952,19 +949,19 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Banana 1 banana, Yogurt greco 220g, Fiocchi d’avena 60g | 553 |
-| Pranzo 13:00 | Spinaci 150g, Olio EVO 5g, Salmone 150g, Patate (bollite) 350g | 696 |
-| Cena 20:00 | Zucchine 150g, Olio EVO 5g, Salmone 145g, Patate dolci 315g | 643 |
+| Colazione 07:30 | Skyr 155g, Muesli 65g, Fragole 135g, Mandorle 25g | 522 |
+| Pranzo 13:00 | Gamberi (cotti) 130g, Riso basmati (cotto) 285g, Carote 150g, Olio EVO 15g, Avocado 50g | 749 |
+| Cena 20:00 | Tonno al naturale 70g, Fagioli borlotti (cotti) 280g, Pomodorini 150g, Olio EVO 15g | 636 |
 
-Totale Lun: **1891 kcal** · P 108 g · C 218 g · G 66 g
+Totale Lun: **1904 kcal** · P 116 g · C 233 g · G 59 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Banana 1 banana, Uova intere 3 uova, Fiocchi d’avena 35g | 476 |
-| Pranzo 13:00 | Broccoli 150g, Olio EVO 5g, Salmone 160g, Patate dolci 315g | 699 |
-| Cena 20:00 | _pasto libero_ | 627 |
+| Colazione 07:30 | Skyr 175g, Fette biscottate 5 fette, Arancia 1 arancia, Noci 20g | 495 |
+| Pranzo 13:00 | Manzo magro 115g, Patate (bollite) 350g, Fagiolini 150g, Avocado 30g, Olio EVO 10g | 703 |
+| Cena 20:00 | _pasto libero_ | 654 |
 
-Totale Sab: **1174 kcal** · P 68 g · C 126 g · G 46 g
+Totale Sab: **1197 kcal** · P 71 g · C 143 g · G 41 g
 
 **Mese 1 — Mese 1 · Adattamento e tecnica**
 
@@ -1018,19 +1015,19 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Banana 1 banana, Yogurt greco 240g, Fiocchi d’avena 80g | 651 |
-| Pranzo 13:00 | Spinaci 150g, Olio EVO 10g, Salmone 180g, Patate (bollite) 350g, Riso basmati (cotto) 70g | 887 |
-| Cena 20:00 | Zucchine 150g, Salmone 165g, Patate dolci 350g, Riso basmati (cotto) 95g | 785 |
+| Colazione 07:30 | Skyr 185g, Muesli 75g, Fragole 180g, Mandorle 25g, Semi di chia 5g | 616 |
+| Pranzo 13:00 | Gamberi (cotti) 115g, Farro (cotto) 340g, Carote 150g, Olio EVO 15g, Avocado 60g | 837 |
+| Cena 20:00 | Tonno al naturale 80g, Fagioli borlotti (cotti) 300g, Pomodorini 150g, Tahina (crema di sesamo) 25g, Olio EVO 10g | 779 |
 
-Totale Lun: **2322 kcal** · P 128 g · C 280 g · G 75 g
+Totale Lun: **2230 kcal** · P 138 g · C 276 g · G 74 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Banana 1 banana, Yogurt greco 285g, Fiocchi d’avena 60g | 616 |
-| Pranzo 13:00 | Broccoli 150g, Salmone 190g, Patate dolci 350g, Riso basmati (cotto) 65g | 826 |
-| Cena 20:00 | _pasto libero_ | 720 |
+| Colazione 07:30 | Skyr 170g, Fette biscottate 6 fette, Fragole 200g, Burro di arachidi 30g | 567 |
+| Pranzo 13:00 | Manzo magro 145g, Patate (bollite) 350g, Fagiolini 150g, Avocado 60g, Olio EVO 5g | 763 |
+| Cena 20:00 | _pasto libero_ | 751 |
 
-Totale Sab: **1443 kcal** · P 87 g · C 174 g · G 45 g
+Totale Sab: **1330 kcal** · P 85 g · C 153 g · G 46 g
 
 **Mese 1 — Mese 1 · Sovraccarico progressivo**
 
@@ -1084,19 +1081,19 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Banana 1 banana, Yogurt greco 300g, Fiocchi d’avena 20g | 476 |
-| Pranzo 13:00 | Spinaci 150g, Salmone 180g, Patate (bollite) 250g | 627 |
-| Cena 20:00 | Zucchine 150g, Salmone 170g, Patate dolci 195g | 548 |
+| Colazione 07:30 | Skyr 215g, Granola 20g, Fragole 250g, Mandorle 10g, Semi di chia 15g | 436 |
+| Pranzo 13:00 | Petto di pollo 110g, Gnocchi di patate 195g, Spinaci 150g, Olio EVO 15g | 643 |
+| Cena 20:00 | Gamberi (cotti) 125g, Pasta (cotta) 175g, Pomodorini 150g, Olio EVO 15g | 575 |
 
-Totale Lun: **1649 kcal** · P 116 g · C 151 g · G 64 g
+Totale Lun: **1651 kcal** · P 118 g · C 180 g · G 52 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Banana 1 banana, Uova intere 3 uova, Yogurt greco 145g | 481 |
-| Pranzo 13:00 | Broccoli 150g, Olio EVO 5g, Petto di pollo 115g, Patate dolci 220g, Mandorle 15g | 561 |
-| Cena 20:00 | _pasto libero_ | 508 |
+| Colazione 07:30 | Yogurt proteico 240g, Muesli 20g, Fragole 150g, Mandorle 25g | 398 |
+| Pranzo 13:00 | Tonno al naturale 105g, Pane integrale 120g, Insalata mista 150g, Olio EVO 15g | 581 |
+| Cena 20:00 | _pasto libero_ | 530 |
 
-Totale Sab: **1041 kcal** · P 80 g · C 92 g · G 42 g
+Totale Sab: **978 kcal** · P 77 g · C 93 g · G 35 g
 
 **Mese 1 — Mese 1 · Adattamento e tecnica**
 
@@ -1130,7 +1127,7 @@ Totale Sab: **1041 kcal** · P 80 g · C 92 g · G 42 g
 
 ## Omar, 41 anni — ora solo dieta, ma rimaste vecchie risposte di allenamento
 
-**Esito:** ⚠️ SUPERATO CON AVVISI (0 errori, 2 avvisi, 2 note)
+**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 2 note)
 
 - **Chi è:** Uomo, 85 kg per 180 cm. Rifà il questionario scegliendo solo dieta; nelle risposte restano i dati di allenamento di prima (4 allenamenti di palestra).
 - **Cosa ci aspettiamo:** Con modalità "solo dieta" le vecchie risposte di allenamento non influenzano né il fabbisogno né la dieta.
@@ -1150,26 +1147,24 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Banana 1 banana, Yogurt greco 300g, Uova intere 1 uovo | 476 |
-| Pranzo 13:00 | Spinaci 150g, Salmone 205g, Patate (bollite) 220g | 652 |
-| Cena 20:00 | Zucchine 150g, Salmone 195g, Patate dolci 170g | 578 |
+| Colazione 07:30 | Skyr 245g, Granola 30g, Fragole 170g, Mandorle 20g | 459 |
+| Pranzo 13:00 | Gamberi (cotti) 175g, Riso basmati (cotto) 185g, Carote 150g, Olio EVO 15g, Avocado 40g | 656 |
+| Cena 20:00 | Tonno al naturale 80g, Lenticchie (cotte) 235g, Pomodorini 150g, Tahina (crema di sesamo) 15g, Olio EVO 10g | 584 |
 
-Totale Lun: **1705 kcal** · P 128 g · C 127 g · G 74 g
+Totale Lun: **1698 kcal** · P 130 g · C 170 g · G 59 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Banana 1 banana, Uova intere 3 uova, Yogurt greco 180g | 515 |
-| Pranzo 13:00 | Broccoli 150g, Salmone 210g, Patate dolci 180g | 643 |
-| Cena 20:00 | _pasto libero_ | 578 |
+| Colazione 07:30 | Skyr 250g, Fette biscottate 3 fette, Fragole 185g, Noci 20g | 458 |
+| Pranzo 13:00 | Tonno al naturale 145g, Pasta (cotta) 185g, Pomodorini 150g, Olio EVO 15g | 634 |
+| Cena 20:00 | _pasto libero_ | 603 |
 
-Totale Sab: **1157 kcal** · P 86 g · C 82 g · G 54 g
+Totale Sab: **1091 kcal** · P 85 g · C 112 g · G 35 g
 
 _Nessun piano di allenamento generato._
 
 **Controlli**
 
-- ⚠️ `D5` Carboidrati: i pasti danno in media il 87% del target (giorno peggiore: 26% di scarto)
-- ⚠️ `D5` Grassi: i pasti danno in media il 113% del target (giorno peggiore: 26% di scarto)
 - ℹ️ `D14` Dal mese 2 in poi il target è identico (1734 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
 - ℹ️ `S3` Utente solo dieta: la tab Allenamento deve mostrare che il piano non è stato richiesto
 

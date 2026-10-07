@@ -48,6 +48,6 @@ export function useEnsurePlan(kind: 'diet' | 'training'): void {
     const otherKind = kind === 'diet' ? 'training' : 'diet';
     const otherRequested = mode !== otherKind;
     const otherValid = !otherRequested || (otherKind === 'diet' ? isValidDietPlan(otherPlan as never) : isValidTrainingPlan(otherPlan as never));
-    void generatePlans(answers, { only: otherValid ? kind : undefined, skipAi: true, currentWeightKg: weight > 0 ? weight : undefined });
+    void generatePlans(answers, { only: otherValid ? kind : undefined, skipAi: true, keepProgress: plan != null, currentWeightKg: weight > 0 ? weight : undefined });
   }, [plan, otherPlan, kind, hasSynced, planHydrated, onboardingHydrated, userHydrated, hasOnboarded, calorieTarget, isGenerating, answers, bodyEntries, generatePlans]);
 }

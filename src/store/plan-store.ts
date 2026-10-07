@@ -16,7 +16,7 @@ import { appJsonStorage } from '@/store/storage';
 // Bump whenever the planning logic changes materially — recorded on every
 // plan_versions row (algorithm_version) so a stored plan can always be traced
 // back to the generation logic that produced it (spec §12 bis, §4.2).
-const ALGORITHM_VERSION = 'engine-2026-10-v2';
+const ALGORITHM_VERSION = 'engine-2026-10-v3';
 
 type GenerateOptions = {
   trigger?: PlanVersionTrigger;
@@ -26,6 +26,8 @@ type GenerateOptions = {
   only?: 'diet' | 'training';
   /** Skip the AI strategy call (slow): the plan is built from the deterministic defaults right away. */
   skipAi?: boolean;
+  /** Rebuild with the current engine but keep the plan's start date, calibration and check-in history (an outdated plan upgraded in place). */
+  keepProgress?: boolean;
 };
 
 export type RecalibrateMonthInput = {
@@ -97,17 +99,18 @@ export const usePlanStore = create<PlanState>()(
       isGenerating: false,
       hasSynced: false,
       generatePlans: async (answers, options = {}) => {
-        const { trigger = 'regenerate', currentWeightKg, only, skipAi = false } = options;
+        const { trigger = 'regenerate', currentWeightKg, only, skipAi = false, keepProgress = false } = options;
         set({ isGenerating: true });
         try {
           const base = buildUserContext(answers);
           const ctx = currentWeightKg ? { ...base, weightKg: currentWeightKg } : base;
-          const deterministic = buildPlans(ctx);
+          const { dietPlan: currentDiet, trainingPlan: currentTraining } = get();
+          const carry = keepProgress ? { calibration: currentDiet?.calibration ?? currentTraining?.calibration, existing: { diet: currentDiet, training: currentTraining } } : {};
+          const deterministic = buildPlans(ctx, carry);
           const first = deterministic.monthTargets[0];
           const strategy = skipAi ? null : await fetchPlanStrategy(answers, first.calories, first.macros, deterministic.durationMonths);
-          const bundle = strategy ? buildPlans(ctx, { strategy }) : deterministic;
+          const bundle = strategy ? buildPlans(ctx, { strategy, ...carry }) : deterministic;
 
-          const { dietPlan: currentDiet, trainingPlan: currentTraining } = get();
           const replaceDiet = !only || only === 'diet';
           const replaceTraining = !only || only === 'training';
           set({ dietPlan: replaceDiet ? bundle.diet : currentDiet, trainingPlan: replaceTraining ? bundle.training : currentTraining });
@@ -220,5 +223,6 @@ export function isValidTrainingPlan(plan: TrainingPlan | null): boolean {
  */
 export function isValidDietPlan(plan: DietPlan | null): boolean {
   if (!plan || !plan.calibration) return false;
-  return plan.months.every((month) => Array.isArray(month.weeklySplit) && month.weeklySplit.length > 0);
+  // plans built before the Fit Lab dishes (no recipe on a prescribed meal) are rebuilt
+  return plan.months.every((month) => Array.isArray(month.weeklySplit) && month.weeklySplit.length > 0 && month.weeklySplit.every((day) => day.meals.every((meal) => meal.isFreeMeal || meal.recipe)));
 }

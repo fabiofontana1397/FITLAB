@@ -54,3 +54,7 @@ sempre coerenti. Il log mostra "60 scenari ok" quando tutto passa.
 
 Persone: solo persone comuni (16–60 anni, sedentarie o molto attive, principianti o esperte). Casi clinici (obesità, celiachia,
 veganismo stretto…) richiedono un dietologo e non fanno parte dei test.
+
+## Qualità della dieta (framework Fit Lab)
+
+`diet-quality.ts` verifica la struttura del piano alimentare, indipendentemente dal planner: ogni alimento appartiene al catalogo del pasto (Q2), niente latticini o integratori a pranzo e cena (Q3), spuntini senza cottura (Q4), verdura e carboidrato a pranzo e cena (Q5), stessa proteina non a pranzo e cena (Q6), almeno 4 piatti diversi nella settimana (Q7), sostituzioni che portano lo stesso nutriente (Q8), ogni pasto ha un nome di piatto (Q1) e le ricette usano solo alimenti del catalogo (Q0). Vedi `docs/DIET-ENGINE.md`.

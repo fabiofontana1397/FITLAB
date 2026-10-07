@@ -390,10 +390,26 @@ export const FOOD_DATABASE: FoodItem[] = [
   { id: 'ketchup', name: 'Ketchup', category: 'altro', kcal100: 101, protein100: 1, carbs100: 27.4, fats100: 0.1, defaultPortionG: 15 },
   { id: 'condensed-milk', name: 'Latte condensato', category: 'altro', kcal100: 321, protein100: 7.9, carbs100: 54.4, fats100: 8.7, defaultPortionG: 20 },
   { id: 'roasted-soybeans', name: 'Semi di soia tostati', category: 'altro', kcal100: 469, protein100: 38.6, carbs100: 30.2, fats100: 25.4, defaultPortionG: 30 },
+  // Catalogo Fit Lab: prodotti di uso comune (valori medi per 100 g, CREA/USDA/etichette tipiche)
+  { id: 'greek-yogurt-0', name: 'Yogurt greco 0%', category: 'proteine', kcal100: 57, protein100: 10.3, carbs100: 3.8, fats100: 0.2, defaultPortionG: 170 },
+  { id: 'yogurt-protein', name: 'Yogurt proteico', category: 'proteine', kcal100: 55, protein100: 10, carbs100: 3.6, fats100: 0.2, defaultPortionG: 160 },
+  { id: 'protein-pudding', name: 'Budino proteico', category: 'proteine', kcal100: 75, protein100: 10, carbs100: 6.5, fats100: 1.5, defaultPortionG: 200 },
+  { id: 'protein-drink', name: 'Bevanda proteica', category: 'proteine', kcal100: 58, protein100: 9, carbs100: 3.5, fats100: 1, defaultPortionG: 330 },
+  { id: 'milk-lactose-free', name: 'Latte senza lattosio', category: 'latticini', kcal100: 46, protein100: 3.4, carbs100: 4.9, fats100: 1.6, defaultPortionG: 200 },
+  { id: 'sea-bream', name: 'Orata (cotta)', category: 'proteine', kcal100: 128, protein100: 20.9, carbs100: 0, fats100: 4.5, defaultPortionG: 150 },
+  { id: 'muesli', name: 'Muesli', category: 'carboidrati', kcal100: 363, protein100: 9.5, carbs100: 66, fats100: 6, defaultPortionG: 40 },
+  { id: 'granola', name: 'Granola', category: 'carboidrati', kcal100: 450, protein100: 9, carbs100: 64, fats100: 17, defaultPortionG: 40 },
+  { id: 'cereals-wholegrain', name: 'Cereali integrali', category: 'carboidrati', kcal100: 360, protein100: 9.5, carbs100: 68, fats100: 2.5, defaultPortionG: 40 },
+  { id: 'cream-of-rice', name: 'Crema di riso', category: 'carboidrati', kcal100: 362, protein100: 6.5, carbs100: 80, fats100: 0.6, defaultPortionG: 40 },
+  { id: 'corn-cakes', name: 'Gallette di mais', category: 'carboidrati', kcal100: 380, protein100: 8, carbs100: 80, fats100: 3, defaultPortionG: 20 },
+  { id: 'gnocchi', name: 'Gnocchi di patate', category: 'carboidrati', kcal100: 150, protein100: 3.5, carbs100: 32, fats100: 0.4, defaultPortionG: 200 },
+  { id: 'almond-butter', name: 'Burro di mandorle 100%', category: 'grassi', kcal100: 614, protein100: 21, carbs100: 19, fats100: 55, defaultPortionG: 15 },
 ];
 
+const FOOD_BY_ID = new Map(FOOD_DATABASE.map((f) => [f.id, f]));
+
 export function findFood(id: string): FoodItem | undefined {
-  return FOOD_DATABASE.find((f) => f.id === id);
+  return FOOD_BY_ID.get(id);
 }
 
 export function searchFood(query: string): FoodItem[] {

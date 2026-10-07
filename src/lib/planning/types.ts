@@ -30,6 +30,8 @@ export type PlanMeal = {
   time: string;
   items: PlanMealItem[];
   totalKcal: number;
+  /** The dish this meal makes ( e.g. "Bowl di pollo con riso basmati e zucchine" ) and the free flavourings that complete it. */
+  recipe?: { name: string; flavorings: string[]; portable?: boolean };
   /** Macros delivered by the items (grams). Absent on a free meal. */
   macros?: { protein: number; carbs: number; fats: number };
   /** True for the one weekly unprescribed meal ("pasto libero") — items is

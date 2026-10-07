@@ -12,6 +12,13 @@ const COUNT_UNIT: Record<string, { unitGrams: number; singular: string; plural: 
   apple: { unitGrams: 150, singular: 'mela', plural: 'mele' },
   orange: { unitGrams: 150, singular: 'arancia', plural: 'arance' },
   kiwi: { unitGrams: 75, singular: 'kiwi', plural: 'kiwi' },
+  pear: { unitGrams: 150, singular: 'pera', plural: 'pere' },
+  'protein-bar': { unitGrams: 45, singular: 'barretta', plural: 'barrette' },
+  'protein-pudding': { unitGrams: 200, singular: 'vasetto', plural: 'vasetti' },
+  'protein-drink': { unitGrams: 330, singular: 'bottiglietta', plural: 'bottigliette' },
+  'rice-cakes': { unitGrams: 9, singular: 'galletta', plural: 'gallette' },
+  'corn-cakes': { unitGrams: 10, singular: 'galletta', plural: 'gallette' },
+  'fette-biscottate': { unitGrams: 9, singular: 'fetta', plural: 'fette' },
 };
 
 export function formatFoodQuantity(foodId: string, grams: number): string {

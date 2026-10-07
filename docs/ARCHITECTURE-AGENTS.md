@@ -30,7 +30,7 @@ non ricalcolano nulla: chiamano il dominio.
 | `domain/plan-engine.ts` | `buildPlans(ctx, {strategy, calibration, preserveMonthsBefore, existing})` → dieta + allenamento coerenti |
 | `domain/recalibration.ts` | `recalibrate(input)` → verdetto, nuova calibrazione, cambi spiegati; `applyGuardrails` |
 | `domain/profile.ts` | `profileFromContext` per il profilo utente |
-| `lib/planning/diet-planner.ts` | Pasti risolti su proteine e calorie esatte, porzioni realistiche |
+| `lib/planning/diet-planner.ts` + `lib/planning/fitlab/*` | Dieta secondo il framework Fit Lab: catalogo per pasto → ricette → quantità risolte su calorie e macro (vedi `docs/DIET-ENGINE.md`) |
 | `lib/planning/training-planner.ts` | Split, progressione, rotazione, `tuning` dalla calibrazione |
 | `lib/planning/month-adherence.ts` | Fatti del mese: sedute fatte, giorni tracciati, calorie medie, segnali del check-in |
 

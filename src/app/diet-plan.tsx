@@ -248,6 +248,16 @@ function MealCard({ meal }: { meal: PlanMeal }) {
         </View>
       ) : (
         <>
+          {meal.recipe ? (
+            <View style={{ gap: 2 }}>
+              <ThemedText type="smallBold">{meal.recipe.name}</ThemedText>
+              {meal.recipe.flavorings.length > 0 ? (
+                <ThemedText type="caption" themeColor="textSecondary">
+                  Per insaporire: {meal.recipe.flavorings.join(', ')}
+                </ThemedText>
+              ) : null}
+            </View>
+          ) : null}
           <View style={{ gap: 6 }}>
             {meal.items.map((item, index) => (
               <MealItemRow key={index} item={item} />

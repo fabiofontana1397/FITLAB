@@ -20,6 +20,7 @@ import type { PlanStrategy } from '@/lib/planning/strategy-types';
 
 import { checkStrategy, openAiSession } from './ai';
 import { checkCoach } from './coach';
+import { checkDietQuality, checkDishLibrary } from './diet-quality';
 import { checkFlow, checkGlobal } from './flow';
 import { SCENARIOS, simulate, type SimulationResult } from './simulate';
 import { buildPlans, buildUserContext, macrosOf, runChecks, toNutritionTargets, type Finding, type PersonaRun } from './checks';
@@ -32,7 +33,7 @@ export function generateForPersona(persona: Persona, strategy: PlanStrategy | nu
   const ctx = buildUserContext(persona.answers);
   const bundle = buildPlans(ctx, { strategy });
   const targets = toNutritionTargets(ctx, bundle.monthTargets[0]);
-  const findings = [...runChecks(persona, ctx, bundle), ...checkFlow(persona, ctx, bundle)];
+  const findings = [...runChecks(persona, ctx, bundle), ...checkFlow(persona, ctx, bundle), ...(bundle.diet ? checkDietQuality(persona, bundle.diet) : [])];
   if (aiMode) findings.push(...checkStrategy(persona, strategy, bundle.durationMonths));
   return { persona, ctx, bundle, targets, durationMonths: bundle.durationMonths, diet: bundle.diet, training: bundle.training, findings };
 }
@@ -222,7 +223,7 @@ async function main() {
     console.log('\nSimulazione della ricalibrazione mensile');
     for (const sim of sims) for (const f of sim.findings) console.log(`     ${ICON[f.level]} ${f.code} ${sim.persona.id}: ${f.message}`);
   } else console.log(`\nSimulazione della ricalibrazione mensile: ${sims.length} scenari ok`);
-  const globals = [...checkGlobal(), ...checkCoach()];
+  const globals = [...checkGlobal(), ...checkCoach(), ...checkDishLibrary()];
   if (globals.length) {
     console.log('\nControlli generali dell’app');
     for (const g of globals) console.log(`     ${ICON[g.level]} ${g.code} ${g.message}`);
