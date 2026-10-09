@@ -5,6 +5,7 @@
  * answers) so a bug in the generators can't hide itself.
  */
 import { FOOD_DATABASE, findFood } from '@/lib/mock/food-database';
+import { FITLAB_FOODS } from '@/lib/planning/fitlab/foods';
 import { ONBOARDING_STEPS, buildActivityQuestions, isQuestionVisible, stepsForMode, TIME_REGEX, type OnboardingMode, type Question } from '@/lib/questionnaire/schema';
 import { parseNumericAnswer } from '@/lib/questionnaire/parse-answer';
 import { baselineKcal } from '@/domain/energy';
@@ -65,12 +66,15 @@ export function macrosOf(items: { foodId: string; grams: number }[]) {
   return { kcal, protein, carbs, fats };
 }
 
-const MEAT = new Set(['chicken-breast', 'turkey-breast', 'beef-lean', 'prosciutto-crudo', 'bresaola', 'chicken-thigh', 'chicken-thigh-raw']);
-const FISH = new Set(['salmon', 'tuna-canned']);
-const DAIRY = new Set(['greek-yogurt', 'cottage-cheese', 'ricotta', 'skyr', 'whey-protein', 'milk-semi', 'mozzarella', 'parmesan']);
-const EGGS = new Set(['eggs', 'egg-whites']);
-const ANIMAL = new Set([...MEAT, ...FISH, ...DAIRY, ...EGGS, 'honey']);
-const MAIN_MEAL_ONLY = new Set([...MEAT, ...FISH, 'chickpeas', 'lentils', 'black-beans']);
+const subsOf = (...subs: string[]) => new Set(FITLAB_FOODS.filter((f) => subs.includes(f.sub)).map((f) => f.id));
+const MEAT = subsOf('Carni bianche', 'Carni rosse', 'Carni suine', 'Preparazioni di carne', 'Salumi');
+const FISH = subsOf('Pesce', 'Crostacei', 'Preparazioni di pesce');
+const DAIRY = subsOf('Latticini', 'Latticini fermentati', 'Formaggi freschi', 'Formaggi stagionati', 'Latte', 'Preparazioni lattiero-casearie');
+const EGGS = subsOf('Uova');
+const HONEY = new Set(FITLAB_FOODS.filter((f) => f.name === 'Miele').map((f) => f.id));
+const ANIMAL = new Set([...MEAT, ...FISH, ...DAIRY, ...EGGS, ...HONEY]);
+// at breakfast the person does not eat roast meat, fish or legumes (cured turkey, as in the workbook's toast, is fine)
+const MAIN_MEAL_ONLY = new Set([...subsOf('Carni bianche', 'Carni rosse', 'Carni suine', 'Preparazioni di carne'), ...FISH, ...subsOf('Legumi')]);
 
 const ALL_FOOD_NAMES = new Map(FOOD_DATABASE.map((f) => [f.id, f.name]));
 const foodName = (id: string) => ALL_FOOD_NAMES.get(id) ?? id;
@@ -308,10 +312,10 @@ export function checkDiet(persona: Persona, targets: NutritionTargets, diet: Die
           for (const it of meal.items) {
             const food = findFood(it.foodId);
             if (!food) continue;
-            if (EGGS.has(it.foodId) && it.foodId === 'eggs') entry.eggs += it.grams / 50; // ≈50 g per egg
+            if (EGGS.has(it.foodId) && findFood(it.foodId)?.name === 'Uova intere') entry.eggs += it.grams / 50; // ≈50 g per egg
             const isLean = food.category === 'proteine' && !EGGS.has(it.foodId);
-            if (isLean && food.defaultPortionG && it.grams > 300 && it.foodId !== 'greek-yogurt') entry.heavy.push(`${food.name} ${it.grams} g`);
-            if (food.category === 'carboidrati' && food.kcal100 < 200 && it.grams > 350) entry.heavy.push(`${food.name} ${it.grams} g`);
+            if (isLean && food.defaultPortionG && it.grams > 300 && !DAIRY.has(it.foodId)) entry.heavy.push(`${food.name} ${it.grams} g`);
+            if (food.category === 'carboidrati' && food.kcal100 < 200 && it.grams > (food.basis === 'crudo' ? 450 : 350)) entry.heavy.push(`${food.name} ${it.grams} g`);
           }
           byMeal.set(key, entry);
         })

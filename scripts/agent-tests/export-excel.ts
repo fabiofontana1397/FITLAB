@@ -1,7 +1,8 @@
 /**
  * Exports an Excel workbook with the diets the engine builds for the 20 simulated questionnaires:
- * which dishes and foods it puts together (no grams, calories or macros), plus the Fit Lab food catalog
- * the engine starts from. Run with:  npm run agents:excel
+ * which dishes and foods it puts together (no grams, calories or macros), the dish library the agent
+ * draws from (the workbook's dishes plus the agent's own) and the Fit Lab catalog with its nutrition values.
+ * Run with:  npm run agents:excel
  *
  * The plans come from the same function the app uses (domain/plan-engine.ts buildPlans), so what is in
  * the file is what a person with those answers would get.
@@ -13,8 +14,8 @@ import ExcelJS from 'exceljs';
 
 import { buildPlans } from '@/domain/plan-engine';
 import { buildUserContext } from '@/domain/user-context';
-import { findFood } from '@/lib/mock/food-database';
 import { DISHES } from '@/lib/planning/fitlab/dishes';
+import { FITLAB_FOODS } from '@/lib/planning/fitlab/foods';
 import { findQuestion } from '@/lib/questionnaire/schema';
 
 import { PERSONAS } from './personas';
@@ -31,68 +32,7 @@ const SLOT_LABEL: Record<string, string> = {
 const SLOT_ORDER = Object.keys(SLOT_LABEL);
 const MONTHS_SHOWN = [1, 2];
 
-// ------------------------------------------------------------------ catalog --
-// The Fit Lab guide exactly as provided: meal → category → foods, with what each one is in the app.
-type GuideRow = { meal: string; category: string; sub?: string; food: string; app: string; note?: string };
-
-const guide: GuideRow[] = [];
-function add(meal: string, category: string, foods: [string, string, string?][], sub?: string) {
-  for (const [food, app, note] of foods) guide.push({ meal, category, sub, food, app, note });
-}
-
-add('Colazione', 'Proteine', [
-  ['Yogurt greco 0%', 'greek-yogurt-0'], ['Skyr', 'skyr'], ['Yogurt proteico', 'yogurt-protein'], ['Latte senza lattosio', 'milk-lactose-free'],
-  ['WPI / Whey', 'whey-protein', 'Stessa polvere di proteine whey'], ['Uova', 'eggs'], ['Albumi', 'egg-whites'], ['Fiocchi di latte', 'cottage-cheese'], ['Kefir', 'kefir'], ['Ricotta magra', 'ricotta-magra'],
-]);
-add('Colazione', 'Carboidrati', [
-  ['Fiocchi d’avena', 'oats'], ['Avena istantanea', 'oats', 'Stesso alimento dei fiocchi d’avena'], ['Pane integrale', 'bread-wholegrain'], ['Pane di segale', 'bread-rye'],
-  ['Fette biscottate integrali', 'fette-biscottate'], ['Muesli', 'muesli'], ['Cereali integrali', 'cereals-wholegrain'], ['Gallette di riso', 'rice-cakes'], ['Crema di riso', 'cream-of-rice'], ['Granola', 'granola'],
-]);
-add('Colazione', 'Frutta / Grassi', [['Banana', 'banana'], ['Mela', 'apple'], ['Kiwi', 'kiwi'], ['Frutti di bosco', 'blueberries', 'Nell’app: mirtilli e fragole'], ['Arancia', 'orange'], ['Fragole', 'strawberries']], 'Frutta');
-add('Colazione', 'Frutta / Grassi', [['Mandorle', 'almonds'], ['Noci', 'walnuts'], ['Burro di arachidi 100%', 'peanut-butter'], ['Semi di chia', 'chia-seeds']], 'Grassi');
-add('Spuntino', 'Proteine', [
-  ['Yogurt greco 0%', 'greek-yogurt-0'], ['Skyr', 'skyr'], ['Yogurt proteico', 'yogurt-protein'], ['WPI / Whey', 'whey-protein'], ['Budino proteico', 'protein-pudding'],
-  ['Barretta proteica', 'protein-bar'], ['Bevanda proteica', 'protein-drink'], ['Fiocchi di latte', 'cottage-cheese'], ['Kefir', 'kefir'], ['Bresaola', 'bresaola'],
-]);
-add('Spuntino', 'Carboidrati', [
-  ['Banana', 'banana'], ['Mela', 'apple'], ['Pera', 'pear'], ['Kiwi', 'kiwi'], ['Arancia', 'orange'], ['Frutti di bosco', 'blueberries', 'Nell’app: mirtilli e fragole'],
-  ['Gallette di riso', 'rice-cakes'], ['Gallette di mais', 'corn-cakes'], ['Pane integrale', 'bread-wholegrain'], ['Fette biscottate integrali', 'fette-biscottate'],
-]);
-add('Spuntino', 'Grassi', [
-  ['Mandorle', 'almonds'], ['Noci', 'walnuts'], ['Nocciole', 'hazelnuts'], ['Pistacchi', 'pistachios'], ['Anacardi', 'cashews'], ['Burro di arachidi 100%', 'peanut-butter'],
-  ['Burro di mandorle 100%', 'almond-butter'], ['Semi di chia', 'chia-seeds'], ['Semi di zucca', 'pumpkin-seeds'], ['Avocado', 'avocado'],
-]);
-
-const mainProtein: [string, string, string?][] = [
-  ['Pollo', 'chicken-breast', 'Nell’app: petto di pollo'], ['Tacchino', 'turkey-breast', 'Nell’app: petto di tacchino'], ['Manzo magro', 'beef-lean'],
-  ['Tonno al naturale', 'tuna-canned'], ['Salmone', 'salmon'], ['Merluzzo', 'cod'], ['Orata', 'sea-bream'], ['Gamberi', 'shrimp'], ['Uova', 'eggs'],
-  ['Legumi', 'chickpeas', 'Nell’app: ceci, lenticchie, fagioli borlotti e cannellini'],
-];
-const mainCarb: [string, string, string?][] = [
-  ['Riso', 'rice-basmati', 'Nell’app: riso basmati'], ['Pasta', 'pasta'], ['Cous cous', 'couscous'], ['Patate', 'potato'], ['Patate dolci', 'sweet-potato'], ['Farro', 'farro-cooked'],
-  ['Quinoa', 'quinoa'], ['Pane integrale', 'bread-wholegrain'], ['Gnocchi', 'gnocchi'], ['Polenta', 'polenta-cooked'],
-];
-const mainFat: [string, string, string?][] = [
-  ['Olio EVO', 'olive-oil'], ['Avocado', 'avocado'], ['Mandorle', 'almonds'], ['Noci', 'walnuts'], ['Nocciole', 'hazelnuts'], ['Pistacchi', 'pistachios'], ['Anacardi', 'cashews'],
-  ['Semi di chia', 'chia-seeds'], ['Semi di lino', 'flaxseed'], ['Tahina', 'tahini'],
-];
-const mainVeg: [string, string, string?][] = [
-  ['Zucchine', 'zucchini'], ['Broccoli', 'broccoli'], ['Spinaci', 'spinach'], ['Carote', 'carrot'], ['Pomodori', 'cherry-tomato', 'Nell’app: pomodorini'], ['Peperoni', 'bell-pepper-red', 'Nell’app: peperone rosso'],
-  ['Melanzane', 'eggplant'], ['Insalata', 'mixed-salad', 'Nell’app: insalata mista'], ['Cavolfiore', 'cauliflower'], ['Fagiolini', 'green-beans'],
-];
-add('Pranzo', 'Proteine', mainProtein);
-add('Pranzo', 'Carboidrati', mainCarb);
-add('Pranzo', 'Grassi', mainFat);
-add('Pranzo', 'Verdure', mainVeg);
-add('Cena', 'Proteine', [...mainProtein.slice(0, 3), ['Vitello', 'veal-cutlet', 'Nell’app: cotoletta di vitello'], ...mainProtein.slice(4, 5), mainProtein[3], ...mainProtein.slice(5)]);
-add('Cena', 'Carboidrati', mainCarb);
-add('Cena', 'Grassi', mainFat);
-add('Cena', 'Verdure', mainVeg);
-
 // ----------------------------------------------------------------- helpers --
-const clean = (name: string) => name.replace(/\s*\([^)]*\)/g, '').trim();
-const appName = (id: string) => (findFood(id) ? clean(findFood(id)!.name) : `⚠ non presente (${id})`);
-
 function lab(id: string, value: unknown): string {
   if (value == null || value === '' || (Array.isArray(value) && value.length === 0)) return '';
   const q = findQuestion(id);
@@ -106,18 +46,12 @@ const GOAL_LABEL: Record<string, string> = {
   gainStrength: 'Aumentare forza', improveEndurance: 'Migliorare resistenza', generalHealth: 'Salute generale',
 };
 const SEX_LABEL: Record<string, string> = { male: 'Uomo', female: 'Donna', unspecified: '—' };
+const KIND_LABEL: Record<string, string> = { breakfast: 'Colazione', snack: 'Spuntino', lunch: 'Pranzo', dinner: 'Cena' };
+const REGIME_LABEL: Record<string, string> = { omni: 'Onnivoro', veg: 'Vegetariano', vegan: 'Vegano', pesc: 'Pescetariano' };
+const MEAL_ORDER = ['breakfast', 'snack', 'lunch', 'dinner'];
 
-type Role = 'Proteine' | 'Carboidrati e legumi' | 'Grassi' | 'Verdure' | 'Frutta';
-function roleOf(foodId: string): Role | null {
-  const f = findFood(foodId);
-  if (!f) return null;
-  if (f.category === 'proteine' || f.category === 'latticini') return 'Proteine';
-  if (f.category === 'carboidrati' || f.category === 'legumi') return 'Carboidrati e legumi';
-  if (f.category === 'grassi') return 'Grassi';
-  if (f.category === 'verdura') return 'Verdure';
-  if (f.category === 'frutta') return 'Frutta';
-  return foodId === 'protein-bar' ? 'Proteine' : null;
-}
+type Column = 'Proteine' | 'Carboidrati e legumi' | 'Grassi' | 'Verdure' | 'Frutta' | 'Altro';
+const COLUMN_OF: Record<string, Column> = { protein: 'Proteine', carb: 'Carboidrati e legumi', fat: 'Grassi', veg: 'Verdure', fruit: 'Frutta', extra: 'Altro' };
 
 // ------------------------------------------------------------------- styling --
 const FONT = 'Arial';
@@ -145,7 +79,7 @@ function styleSheet(ws: ExcelJS.Worksheet, widths: number[], headerRow = 1) {
   ws.views = [{ state: 'frozen', xSplit: 0, ySplit: headerRow }];
 }
 
-function band(ws: ExcelJS.Worksheet, keyCol: number, fromRow = 2) {
+function band(ws: ExcelJS.Worksheet, keyCol: number, fromRow = 2, color = BAND) {
   let last = '';
   let on = false;
   for (let r = fromRow; r <= ws.rowCount; r++) {
@@ -154,7 +88,7 @@ function band(ws: ExcelJS.Worksheet, keyCol: number, fromRow = 2) {
       on = !on;
       last = key;
     }
-    if (on) ws.getRow(r).eachCell({ includeEmpty: true }, (c) => (c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BAND } }));
+    if (on) ws.getRow(r).eachCell({ includeEmpty: true }, (c) => (c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: color } }));
   }
 }
 
@@ -180,20 +114,21 @@ async function main() {
     ['Diete generate dall’agente — 20 questionari simulati', true],
     ['', false],
     ['Scopo: capire come l’agente mette insieme gli alimenti e che tipo di pasti propone. Grammature, calorie e macro sono volutamente omesse.', false],
+    ['L’agente usa principalmente gli alimenti e i piatti del file "fitlab-catalogo-piatti.xlsx" (catalogo di 170 alimenti, 49 piatti mediterranei) e ne propone altri nello stesso stile.', false],
     ['', false],
     ['Come leggere i fogli', true],
     ['• Questionari — le 20 persone simulate e le risposte che orientano la dieta (età, obiettivo, pasti scelti, esclusioni, preferenze, abitudini).', false],
-    ['• Diete — per ogni persona, giorno e pasto: nome del piatto, alimenti divisi in proteine / carboidrati / grassi / verdure / frutta e ingredienti per insaporire.', false],
+    ['• Diete — per ogni persona, giorno e pasto: nome del piatto, alimenti divisi in proteine / carboidrati / grassi / verdure / frutta, altro (marmellata, passata) e condimenti per insaporire.', false],
     ['• Settimana per pasto — la stessa dieta in forma di tabella: una riga per pasto, un giorno per colonna, per vedere a colpo d’occhio la varietà.', false],
     ['• Varietà — per ogni persona e pasto: quanti piatti diversi in una settimana e quante volte torna lo stesso (regola: al massimo 3).', false],
-    ['• Piatti — la libreria di ricette dell’agente: quali alimenti può abbinare in ogni piatto.', false],
-    ['• Catalogo Fit Lab — l’elenco degli alimenti della tua guida, diviso per pasto e per proteine / carboidrati / grassi / verdure / frutta, con il nome che ha nell’app.', false],
+    ['• Piatti — la libreria di ricette: i piatti del tuo file (origine "File") e quelli aggiunti dall’agente (origine "Agente"), con gli alimenti ammessi in ogni ruolo. Il primo alimento di ogni lista è quello scritto nel tuo file, gli altri sono le alternative.', false],
+    ['• Catalogo Fit Lab — i 170 alimenti con regimi, allergeni, stato (secco / crudo / cotto) e valori nutrizionali per 100 g.', false],
     ['', false],
     ['Note', true],
     ['• Sono mostrati il mese 1 e il mese 2. Dentro un mese la settimana è la stessa per tutte le settimane; da un mese all’altro i piatti cambiano.', false],
     ['• "Pasto libero" è la cena del sabato lasciata alla scelta della persona.', false],
+    ['• Nei piani i pesi sono quelli indicati nel catalogo: pasta, riso e cereali a secco, carne e pesce a crudo, legumi cotti.', false],
     ['• I piani sono creati con la stessa funzione che usa l’app (nessuna chiamata AI): un utente con quelle risposte riceverebbe esattamente questi piatti.', false],
-    ['• Nel catalogo "Frutti di bosco" corrisponde nell’app a mirtilli e fragole; "Legumi" a ceci, lenticchie, fagioli borlotti e cannellini.', false],
   ];
   lines.forEach(([text, bold], i) => {
     const cell = info.getCell(i + 1, 1);
@@ -233,7 +168,7 @@ async function main() {
   const diets = wb.addWorksheet('Diete');
   diets.columns = [
     { header: 'Persona' }, { header: 'Mese' }, { header: 'Giorno' }, { header: 'Pasto' }, { header: 'Piatto' }, { header: 'Proteine' },
-    { header: 'Carboidrati e legumi' }, { header: 'Grassi' }, { header: 'Verdure' }, { header: 'Frutta' }, { header: 'Per insaporire' },
+    { header: 'Carboidrati e legumi' }, { header: 'Grassi' }, { header: 'Verdure' }, { header: 'Frutta' }, { header: 'Altro (marmellata, passata)' }, { header: 'Condimenti per insaporire' },
   ];
   for (const { persona, diet } of runs) {
     for (const monthIndex of MONTHS_SHOWN) {
@@ -242,25 +177,22 @@ async function main() {
       month.weeklySplit.forEach((day, dayIdx) => {
         for (const meal of [...day.meals].sort((a, b) => SLOT_ORDER.indexOf(a.slotId) - SLOT_ORDER.indexOf(b.slotId))) {
           if (meal.isFreeMeal) {
-            diets.addRow([persona.name, monthIndex, WEEKDAYS[dayIdx], SLOT_LABEL[meal.slotId], 'Pasto libero', '', '', '', '', '', '']);
+            diets.addRow([persona.name, monthIndex, WEEKDAYS[dayIdx], SLOT_LABEL[meal.slotId], 'Pasto libero', '', '', '', '', '', '', '']);
             continue;
           }
-          const by: Record<Role, string[]> = { Proteine: [], 'Carboidrati e legumi': [], Grassi: [], Verdure: [], Frutta: [] };
-          for (const item of meal.items) {
-            const role = roleOf(item.foodId);
-            if (role) by[role].push(clean(item.name));
-          }
+          const by: Record<Column, string[]> = { Proteine: [], 'Carboidrati e legumi': [], Grassi: [], Verdure: [], Frutta: [], Altro: [] };
+          for (const item of meal.items) by[COLUMN_OF[item.role ?? 'extra']].push(item.name);
           diets.addRow([
             persona.name, monthIndex, WEEKDAYS[dayIdx], SLOT_LABEL[meal.slotId] ?? meal.label, meal.recipe?.name ?? '—',
-            by.Proteine.join(' + '), by['Carboidrati e legumi'].join(' + '), by.Grassi.join(' + '), by.Verdure.join(' + '), by.Frutta.join(' + '),
+            by.Proteine.join(' + '), by['Carboidrati e legumi'].join(' + '), by.Grassi.join(' + '), by.Verdure.join(' + '), by.Frutta.join(' + '), by.Altro.join(' + '),
             meal.recipe?.flavorings.join(', ') ?? '',
           ]);
         }
       });
     }
   }
-  styleSheet(diets, [34, 6, 12, 18, 44, 28, 30, 24, 18, 16, 28]);
-  diets.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: 11 } };
+  styleSheet(diets, [34, 6, 12, 18, 52, 28, 30, 24, 22, 16, 22, 30]);
+  diets.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: 12 } };
   band(diets, 1);
 
   // 4. Settimana per pasto (matrix) + 5. Varietà
@@ -272,6 +204,9 @@ async function main() {
     { header: 'Stessa preparazione: max volte' }, { header: 'Regola (max 3)' },
   ];
   let worst = 0;
+  let fromFile = 0;
+  let totalMeals = 0;
+  const sourceOf = new Map(DISHES.map((d) => [d.id, d.source]));
   for (const { persona, diet } of runs) {
     for (const monthIndex of MONTHS_SHOWN) {
       const month = diet.months.find((m) => m.monthIndex === monthIndex);
@@ -289,6 +224,8 @@ async function main() {
         for (const m of real) {
           names.set(m!.recipe!.name, (names.get(m!.recipe!.name) ?? 0) + 1);
           dishes.set(m!.recipe!.dishId ?? '?', (dishes.get(m!.recipe!.dishId ?? '?') ?? 0) + 1);
+          totalMeals++;
+          if (sourceOf.get(m!.recipe!.dishId ?? '') === 'excel') fromFile++;
         }
         const maxName = Math.max(...names.values());
         const maxDish = Math.max(...dishes.values());
@@ -297,7 +234,7 @@ async function main() {
       }
     }
   }
-  styleSheet(week, [34, 6, 20, 30, 30, 30, 30, 30, 30, 30]);
+  styleSheet(week, [34, 6, 20, 32, 32, 32, 32, 32, 32, 32]);
   band(week, 1);
   styleSheet(variety, [34, 6, 20, 16, 20, 18, 16]);
   band(variety, 1);
@@ -308,38 +245,40 @@ async function main() {
   // 6. Piatti (recipe library)
   const dishSheet = wb.addWorksheet('Piatti');
   dishSheet.columns = [
-    { header: 'Piatto (modello)' }, { header: 'Pasti' }, { header: 'Proteine ammesse' }, { header: 'Carboidrati ammessi' }, { header: 'Grassi ammessi' },
-    { header: 'Verdure ammesse' }, { header: 'Frutta ammessa' }, { header: 'Per insaporire' }, { header: 'Note' },
+    { header: 'ID' }, { header: 'Origine' }, { header: 'Pasti' }, { header: 'Piatto (modello)' }, { header: 'Primo / base' }, { header: 'Secondo / proteine' },
+    { header: 'Proteine di completamento' }, { header: 'Contorni / frutta' }, { header: 'Grassi / accompagnamento' }, { header: 'Olio EVO' }, { header: 'Passata' }, { header: 'Condimenti e aromi' }, { header: 'Trasportabile' },
   ];
-  const KIND_LABEL: Record<string, string> = { breakfast: 'Colazione', snack: 'Spuntino', lunch: 'Pranzo', dinner: 'Cena' };
-  const names = (ids?: string[]) => (ids ?? []).map(appName).join(', ');
-  for (const d of DISHES) {
+  const TOKENS: [RegExp, string][] = [[/\{base\}/g, '[base]'], [/\{protein\}/g, '[proteina]'], [/\{s1\}/g, '[contorno 1]'], [/\{s2\}/g, '[contorno 2]'], [/\{fat\}/g, '[grasso]'], [/\{spread\}/g, '[marmellata]']];
+  const list = (names?: string[]) => (names ?? []).join(', ');
+  for (const d of [...DISHES].sort((a, b) => MEAL_ORDER.indexOf(a.kinds[0]) - MEAL_ORDER.indexOf(b.kinds[0]) || a.id.localeCompare(b.id))) {
+    let name = d.name;
+    for (const [re, to] of TOKENS) name = name.replace(re, to);
     dishSheet.addRow([
-      d.name.replace(/\{p\}/g, '[proteina]').replace(/\{pc\}/g, '[proteina cotta]').replace(/\{c\}/g, '[carboidrato]').replace(/\{v\}/g, '[verdura]').replace(/\{f\}/g, '[grasso]').replace(/\{fr\}/g, '[frutta]'),
-      d.kinds.map((k) => KIND_LABEL[k]).join(', '), names(d.protein) + (d.meatlessProtein ? ` (solo vegetariani: ${names(d.meatlessProtein)})` : ''), names(d.carb), names(d.fat), names(d.veg), names(d.fruit),
-      d.flavor.join(', '), [d.portable ? 'Trasportabile' : '', d.meatless ? 'Solo senza carne e pesce' : ''].filter(Boolean).join(' · '),
+      d.id, d.source === 'excel' ? 'File' : 'Agente', d.kinds.map((k) => KIND_LABEL[k]).join(', '), name, list(d.base), list(d.protein), list(d.extraProtein),
+      (d.sides ?? []).map((g) => g.join(' / ')).join('  +  ') + (d.spread ? `${d.sides ? '  +  ' : ''}${d.spread.join(' / ')}` : ''), list(d.fat), d.oil ? 'Sì' : '', d.sauce ? 'Sì' : '', d.aromas.join(', '), d.portable ? 'Sì' : '',
     ]);
   }
-  styleSheet(dishSheet, [44, 16, 46, 40, 36, 40, 30, 30, 24]);
-  band(dishSheet, 2);
+  styleSheet(dishSheet, [8, 9, 18, 52, 32, 40, 32, 44, 32, 8, 8, 30, 12]);
+  dishSheet.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: 13 } };
+  band(dishSheet, 3);
 
-  // 7. Catalogo Fit Lab
+  // 7. Catalogo Fit Lab (with nutrition)
   const cat = wb.addWorksheet('Catalogo Fit Lab');
-  cat.columns = [{ header: 'Pasto' }, { header: 'Categoria' }, { header: 'Tipo' }, { header: 'N°' }, { header: 'Alimento (dalla tua guida)' }, { header: 'Nell’app' }, { header: 'Note' }];
-  const counters = new Map<string, number>();
-  for (const row of guide) {
-    const key = `${row.meal}|${row.category}`;
-    const n = (counters.get(key) ?? 0) + 1;
-    counters.set(key, n);
-    const present = findFood(row.app);
-    cat.addRow([row.meal, row.category, row.sub ?? '', n, row.food, present ? clean(present.name) : '⚠ non presente', row.note ?? '']);
+  cat.columns = [
+    { header: 'ID' }, { header: 'Alimento' }, { header: 'Categoria' }, { header: 'Sottocategoria' }, { header: 'Pasti compatibili' }, { header: 'Regimi alimentari' }, { header: 'Allergeni' },
+    { header: 'Stato (peso riferito a)' }, { header: 'Kcal/100 g' }, { header: 'Proteine/100 g' }, { header: 'Carboidrati/100 g' }, { header: 'Grassi/100 g' }, { header: 'Fibre/100 g' },
+  ];
+  for (const f of FITLAB_FOODS) {
+    cat.addRow([
+      f.id.toUpperCase(), f.name, f.category, f.sub, f.meals.map((m) => KIND_LABEL[m]).join('; '), f.regimes.map((r) => REGIME_LABEL[r]).join('; '), f.allergens, f.state, f.kcal, f.p, f.c, f.f, f.fib,
+    ]);
   }
-  styleSheet(cat, [14, 18, 10, 6, 32, 30, 48]);
-  cat.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: 7 } };
+  styleSheet(cat, [9, 34, 18, 26, 30, 38, 36, 36, 10, 11, 12, 10, 10]);
+  cat.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: 13 } };
   let prev = '';
   let shade = false;
   for (let r = 2; r <= cat.rowCount; r++) {
-    const key = `${cat.getRow(r).getCell(1).value}|${cat.getRow(r).getCell(2).value}`;
+    const key = String(cat.getRow(r).getCell(3).value);
     if (key !== prev) {
       shade = !shade;
       prev = key;
@@ -353,7 +292,9 @@ async function main() {
   mkdirSync(dir, { recursive: true });
   const file = join(dir, 'fitlab-20-diete.xlsx');
   await wb.xlsx.writeFile(file);
-  console.log(`Creato ${file}\n  questionari: ${runs.length}, righe nel foglio Diete: ${diets.rowCount - 1}, ripetizione massima in una settimana: ${worst}`);
+  console.log(
+    `Creato ${file}\n  questionari: ${runs.length}, righe nel foglio Diete: ${diets.rowCount - 1}, ripetizione massima in una settimana: ${worst}, pasti con piatti del tuo file: ${Math.round((fromFile / totalMeals) * 100)}%`
+  );
 }
 
 void main();

@@ -10,7 +10,16 @@
  * plus what a sensible plan for them looks like. The harness (run.ts) feeds
  * them through the real plan engine and checks the output against it.
  */
+import { FITLAB_FOODS } from '@/lib/planning/fitlab/foods';
+
 export type Answers = Record<string, unknown>;
+
+/** Catalog food ids by subcategory / allergen, for the persona expectations. */
+const subIds = (...subs: string[]) => FITLAB_FOODS.filter((f) => subs.includes(f.sub)).map((f) => f.id);
+const MEAT_IDS = subIds('Carni bianche', 'Carni rosse', 'Carni suine', 'Preparazioni di carne', 'Salumi');
+const FISH_IDS = subIds('Pesce', 'Crostacei', 'Preparazioni di pesce');
+const MILK_IDS = FITLAB_FOODS.filter((f) => /latte/i.test(f.allergens) && !/senza lattosio/i.test(f.name) && f.sub !== 'Formaggi stagionati').map((f) => f.id);
+const EGG_IDS = subIds('Uova');
 
 export type Persona = {
   id: string;
@@ -154,7 +163,7 @@ export const PERSONAS: Persona[] = [
       preferredProteins: ['eggs', 'yogurt', 'dairy', 'legumes'],
       preferredCarbs: ['rice', 'oats', 'bread', 'legumes', 'pasta'],
     }),
-    expect: { calories: 'deficit', gymSessions: 3, forbiddenFoodIds: ['chicken-breast', 'turkey-breast', 'beef-lean', 'salmon', 'tuna-canned', 'bresaola', 'prosciutto-crudo'] },
+    expect: { calories: 'deficit', gymSessions: 3, forbiddenFoodIds: [...MEAT_IDS, ...FISH_IDS] },
   },
   {
     id: 'luca-22',
@@ -491,7 +500,7 @@ export const PERSONAS: Persona[] = [
       afternoonSnackTime: '17:00',
       allergiesIntolerances: 'intolleranza al lattosio',
     }),
-    expect: { calories: 'deficit', forbiddenFoodIds: ['greek-yogurt-0', 'skyr', 'yogurt-protein', 'kefir', 'cottage-cheese', 'ricotta-magra', 'whey-protein', 'protein-pudding', 'protein-drink', 'protein-bar'] },
+    expect: { calories: 'deficit', forbiddenFoodIds: MILK_IDS },
   },
   {
     id: 'davide-45-senza-uova-pesce',
@@ -509,7 +518,7 @@ export const PERSONAS: Persona[] = [
       allergiesIntolerances: 'allergia alle uova',
       excludedFoods: 'pesce',
     }),
-    expect: { calories: 'deficit', forbiddenFoodIds: ['eggs', 'egg-whites', 'salmon', 'tuna-canned', 'cod', 'sea-bream', 'shrimp'] },
+    expect: { calories: 'deficit', forbiddenFoodIds: [...EGG_IDS, ...FISH_IDS] },
   },
   {
     id: 'paola-36-merenda-abituale',
@@ -563,6 +572,6 @@ export const PERSONAS: Persona[] = [
       dietaryPattern: 'pescetarian',
       dailySteps: '8000-12000',
     }),
-    expect: { calories: 'deficit', forbiddenFoodIds: ['chicken-breast', 'turkey-breast', 'beef-lean', 'veal-cutlet', 'bresaola'] },
+    expect: { calories: 'deficit', forbiddenFoodIds: MEAT_IDS },
   },
 ];

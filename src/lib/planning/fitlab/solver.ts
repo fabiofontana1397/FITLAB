@@ -4,15 +4,16 @@
  * matched together by coordinate descent over the grams of the variable foods, inside
  * realistic portion limits (no 400 g of yogurt, no 6 eggs), then rounded to practical
  * units (whole eggs, whole bananas, 5 g steps) and polished.
+ *
+ * Grams are in the state of the catalog: dry pasta and rice, raw meat and fish, cooked legumes.
  */
-import type { FoodItem } from '@/lib/mock/food-database';
-
-import type { Role } from './catalog';
+import { UNITS, type Role } from './catalog';
+import type { FitLabFood } from './foods';
 
 export type Macros = { protein: number; carbs: number; fats: number };
 
 export type PortionVar = {
-  food: FoodItem;
+  food: FitLabFood;
   role: Role;
   min: number;
   max: number;
@@ -22,108 +23,135 @@ export type PortionVar = {
   grams: number;
 };
 
-/** Foods eaten as whole pieces/packs: [grams of one unit]. */
-export const UNIT_GRAMS: Record<string, number> = {
-  eggs: 50,
-  banana: 120,
-  apple: 150,
-  orange: 150,
-  pear: 150,
-  kiwi: 75,
-  'protein-bar': 45,
-  'protein-pudding': 200,
-  'protein-drink': 330,
-  'rice-cakes': 9,
-  'corn-cakes': 10,
-  'fette-biscottate': 9,
-};
-
 type Range = [number, number];
 
-const RANGE: Record<string, Range> = {
+const BY_NAME: Record<string, Range> = {
   // proteins
-  'egg-whites': [60, 250],
-  'whey-protein': [20, 40],
-  'plant-protein': [20, 40],
-  'greek-yogurt-0': [100, 300],
-  skyr: [100, 300],
-  'yogurt-protein': [100, 300],
-  kefir: [150, 300],
-  'cottage-cheese': [80, 250],
-  'ricotta-magra': [60, 200],
-  'milk-lactose-free': [150, 300],
-  bresaola: [30, 70],
-  'tuna-canned': [60, 160],
-  'turkey-breast-smoked': [30, 100],
-  tofu: [80, 300],
-  shrimp: [80, 250],
-  // carbs
-  pasta: [70, 350],
-  'pasta-wholewheat': [70, 350],
-  'rice-basmati': [80, 350],
-  'rice-brown-cooked': [80, 350],
-  couscous: [80, 350],
-  quinoa: [80, 350],
-  'farro-cooked': [80, 350],
-  'barley-cooked': [80, 300],
-  potato: [150, 350],
-  'sweet-potato': [120, 350],
-  gnocchi: [100, 350],
-  'polenta-cooked': [150, 350],
-  'bread-wholegrain': [40, 160],
-  'bread-rye': [40, 160],
-  'bread-white': [40, 160],
-  oats: [20, 100],
-  'cream-of-rice': [20, 70],
-  muesli: [20, 80],
-  granola: [20, 60],
-  'cereals-wholegrain': [20, 80],
-  blueberries: [50, 150],
-  strawberries: [100, 250],
+  "Albume d'uovo": [60, 250],
+  'Yogurt greco 0%': [100, 300],
+  'Yogurt greco 2%': [100, 300],
+  Skyr: [100, 300],
+  'Yogurt proteico': [100, 300],
+  'Yogurt magro': [125, 300],
+  Kefir: [150, 300],
+  'Fiocchi di latte': [80, 250],
+  'Ricotta magra': [60, 170],
+  Mozzarella: [60, 125],
+  'Mozzarella light': [60, 125],
+  'Parmigiano Reggiano': [10, 40],
+  'Latte vaccino': [150, 300],
+  'Latte senza lattosio': [150, 300],
+  'Bevanda di soia non zuccherata': [150, 300],
+  'Bevanda di mandorla non zuccherata': [150, 300],
+  'Bevanda di cocco non zuccherata': [150, 300],
+  Tofu: [80, 220],
+  Seitan: [80, 200],
+  Edamame: [80, 200],
+  'Tonno al naturale': [60, 160],
+  Gamberi: [100, 250],
+  Bresaola: [30, 70],
+  'Fesa di tacchino affettata': [30, 100],
+  'Prosciutto crudo': [30, 70],
+  'Hamburger di pollo magro': [100, 200],
+  'Hamburger di tacchino magro': [100, 200],
+  'Hamburger di merluzzo': [100, 200],
+  'Hamburger di salmone': [100, 200],
+  Sardine: [80, 200],
+  // carbohydrates (dry weights for pasta, rice and cereals)
+  'Gnocchi di patate': [150, 350],
+  Patate: [150, 400],
+  'Patate dolci': [150, 400],
+  Polenta: [40, 120],
+  'Cous cous': [40, 120],
+  'Crema di riso': [20, 70],
+  "Fiocchi d'avena": [20, 100],
+  'Avena istantanea': [20, 100],
+  Muesli: [20, 80],
+  'Granola con frutta secca': [20, 60],
+  'Cereali integrali': [20, 80],
+  'Cereali da colazione senza zuccheri aggiunti': [20, 70],
+  'Crackers integrali': [20, 60],
+  'Grano saraceno': [40, 120],
+  Quinoa: [40, 120],
   // fats
-  'olive-oil': [0, 15],
-  avocado: [30, 60],
-  tahini: [10, 25],
-  'peanut-butter': [10, 30],
-  'almond-butter': [10, 30],
-  'chia-seeds': [5, 20],
-  flaxseed: [5, 20],
+  'Olio extravergine di oliva': [5, 15],
+  Avocado: [30, 60],
+  Olive: [20, 50],
+  Pesto: [10, 40],
+  'Cioccolato fondente': [10, 30],
+  // fruit
+  Uva: [75, 200],
+  'Frutti di bosco': [50, 250],
+  Mirtilli: [50, 200],
+  Fragole: [100, 250],
+  Anguria: [150, 400],
+  Melone: [150, 300],
+  Ananas: [100, 250],
+  Mango: [100, 200],
+  Cachi: [100, 250],
+  Pompelmo: [150, 300],
 };
 
-const LEGUMES = new Set(['chickpeas', 'lentils', 'borlotti-beans', 'cannellini-beans', 'black-beans', 'white-beans']);
-const NUTS = new Set(['almonds', 'walnuts', 'hazelnuts', 'pistachios', 'cashews', 'pumpkin-seeds']);
+/** Most units of a counted food in one meal. */
+const MAX_UNITS: Record<string, number> = {
+  'Uova intere': 3,
+  'Budino proteico': 1,
+  'Bevanda proteica': 1,
+  'Barretta proteica': 2,
+  'Gallette di riso': 6,
+  'Gallette di mais': 6,
+  'Gallette di farro': 6,
+  'Fette biscottate integrali': 6,
+  Albicocca: 4,
+  Prugna: 3,
+};
+const MIN_UNITS: Record<string, number> = { 'Gallette di riso': 2, 'Gallette di mais': 2, 'Gallette di farro': 2, 'Fette biscottate integrali': 2, Albicocca: 2 };
 
-export function portionBounds(food: FoodItem, role: Role, opts: { eggRoom?: number; cookingFat?: boolean; bigMeal?: boolean } = {}): { min: number; max: number; step: number; minUse: number } {
-  const unit = UNIT_GRAMS[food.id];
+function defaultRange(food: FitLabFood): Range {
+  switch (food.category) {
+    case 'Proteine':
+      if (food.sub === 'Legumi') return [50, 300];
+      if (food.sub === 'Preparazioni di carne' || food.sub === 'Preparazioni di pesce') return [100, 200];
+      return [100, 280]; // meat and fish, raw
+    case 'Carboidrati':
+      if (food.sub === 'Pane e prodotti da forno') return [30, 160];
+      if (food.sub === 'Pasta e derivati') return [40, 130];
+      if (food.sub === 'Cereali') return [40, 130];
+      return [20, 100];
+    case 'Grassi':
+      if (food.sub === 'Oli') return [5, 15];
+      if (food.sub === 'Semi') return [5, 20];
+      if (food.sub === 'Creme di frutta a guscio') return [10, 30];
+      return [10, 40]; // nuts
+    case 'Frutta':
+      return [75, 300];
+    default:
+      return [20, 200];
+  }
+}
+
+export function portionBounds(food: FitLabFood, role: Role, opts: { eggRoom?: number; cookingFat?: boolean; bigMeal?: boolean } = {}): { min: number; max: number; step: number; minUse: number } {
+  const unit = UNITS[food.name];
   if (unit) {
-    // eggs: up to 3 in a meal and 4 a day; fruit: one or two pieces; packs: one or two
-    const maxUnits = food.id === 'eggs' ? Math.min(3, Math.floor((opts.eggRoom ?? 200) / 50)) : food.id === 'protein-drink' || food.id === 'protein-pudding' ? 1 : food.id.endsWith('cakes') || food.id === 'fette-biscottate' ? 6 : 2;
-    const minUnits = Math.min(food.id.endsWith('cakes') || food.id === 'fette-biscottate' ? 2 : 1, Math.max(maxUnits, 1));
-    return { min: minUnits * unit, max: Math.max(maxUnits, minUnits) * unit, step: unit, minUse: unit };
+    let maxUnits = food.name === 'Uova intere' ? Math.min(3, Math.floor((opts.eggRoom ?? 200) / 50)) : (MAX_UNITS[food.name] ?? 2);
+    const minUnits = Math.min(MIN_UNITS[food.name] ?? 1, Math.max(maxUnits, 1));
+    maxUnits = Math.max(maxUnits, minUnits);
+    return { min: minUnits * unit.grams, max: maxUnits * unit.grams, step: unit.grams, minUse: unit.grams };
   }
-  let [min, max]: Range = RANGE[food.id] ?? [0, 0];
-  if (max === 0) {
-    if (LEGUMES.has(food.id)) [min, max] = role === 'carb' ? [80, 300] : [80, 250];
-    else if (NUTS.has(food.id)) [min, max] = [10, 40];
-    else if (food.category === 'proteine') [min, max] = [80, 280];
-    else if (food.category === 'carboidrati') [min, max] = [Math.round(food.defaultPortionG * 0.5), Math.round(food.defaultPortionG * 2)];
-    else if (food.category === 'grassi') [min, max] = [5, 30];
-    else if (food.category === 'frutta') [min, max] = [Math.round(food.defaultPortionG * 0.7), Math.round(food.defaultPortionG * 1.6)];
-    else [min, max] = [Math.round(food.defaultPortionG * 0.5), Math.round(food.defaultPortionG * 2)];
-  }
-  if (role === 'fat' && food.id === 'olive-oil' && opts.bigMeal) max = 25; // two spoons for a very large meal
+  let [min, max] = BY_NAME[food.name] ?? defaultRange(food);
+  if (food.name === 'Olio extravergine di oliva' && opts.bigMeal) max = 25; // two spoons for a very large meal
   const minUse = role === 'fat' ? Math.max(min, 5) : min;
-  if (role === 'fat') min = opts.cookingFat && food.id === 'olive-oil' ? 5 : 0;
-  const step = food.id.startsWith('bread') ? 10 : 5;
+  if (role === 'fat') min = opts.cookingFat && food.name === 'Olio extravergine di oliva' ? 5 : 0;
+  const step = food.sub === 'Pane e prodotti da forno' || food.sub === 'Preparazioni di carne' || food.sub === 'Preparazioni di pesce' ? 10 : food.category === 'Frutta' ? 25 : 5;
   return { min, max, step, minUse: role === 'fat' ? minUse : step };
 }
 
 // Errors are weighed in kcal (protein ×4, carbs ×4, fat ×9), with protein counting a bit more.
-const W = { protein: 34, carbs: 16, fats: 81 };
+const W = { protein: 26, carbs: 16, fats: 81 };
 
-function macrosOf(food: FoodItem, grams: number): Macros {
+export function macrosOfGrams(food: FitLabFood, grams: number): Macros {
   const k = grams / 100;
-  return { protein: food.protein100 * k, carbs: food.carbs100 * k, fats: food.fats100 * k };
+  return { protein: food.p * k, carbs: food.c * k, fats: food.f * k };
 }
 
 export function addMacros(a: Macros, b: Macros): Macros {
@@ -132,7 +160,6 @@ export function addMacros(a: Macros, b: Macros): Macros {
 
 export const ZERO: Macros = { protein: 0, carbs: 0, fats: 0 };
 export const kcalOfMacros = (m: Macros) => m.protein * 4 + m.carbs * 4 + m.fats * 9;
-export const macrosOfGrams = macrosOf;
 
 function objective(total: Macros, target: Macros): number {
   const dp = total.protein - target.protein;
@@ -147,7 +174,7 @@ function objective(total: Macros, target: Macros): number {
  * squared error: roughly "how many kcal off" the meal is.
  */
 export function solvePortions(fixed: Macros, vars: PortionVar[], target: Macros): { vars: PortionVar[]; total: Macros; error: number } {
-  const per = vars.map((v) => ({ p: v.food.protein100 / 100, c: v.food.carbs100 / 100, f: v.food.fats100 / 100 }));
+  const per = vars.map((v) => ({ p: v.food.p / 100, c: v.food.c / 100, f: v.food.f / 100 }));
   const g = vars.map((v) => (v.min + v.max) / 2);
 
   for (let iter = 0; iter < 80; iter++) {
@@ -176,7 +203,7 @@ export function solvePortions(fixed: Macros, vars: PortionVar[], target: Macros)
     const { step, min, max } = vars[i];
     g[i] = Math.min(Math.max(Math.round(g[i] / step) * step, min), max);
   }
-  const totalOf = () => vars.reduce((acc, v, i) => addMacros(acc, macrosOf(v.food, g[i])), fixed);
+  const totalOf = () => vars.reduce((acc, v, i) => addMacros(acc, macrosOfGrams(v.food, g[i])), fixed);
 
   // polish: try one step either way on each food while the error improves
   for (let pass = 0; pass < 3; pass++) {

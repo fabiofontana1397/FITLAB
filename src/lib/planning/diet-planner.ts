@@ -12,7 +12,7 @@ import type { DietStrategy } from './strategy-types';
 import type { DietDayPlan, DietMonthPlan, DietPlan, PlanMeal, PlanPhaseKind } from './types';
 
 /** Bump when the generator changes in a way existing plans should pick up (they are rebuilt in place, keeping start date and history). */
-export const DIET_ENGINE_VERSION = 'fitlab-2';
+export const DIET_ENGINE_VERSION = 'fitlab-3';
 
 export type DietPlanInput = {
   ctx: UserContext;
@@ -51,10 +51,6 @@ function phaseNote(phase: PlanPhaseKind, goal: UserContext['goal']): string {
   if (goal === 'loseFat') return 'Il deficit calorico è pienamente attivo: la priorità è preservare la massa muscolare mentre il peso scende.';
   if (goal === 'gainMuscle' || goal === 'gainStrength') return 'Il surplus calorico sostiene la crescita muscolare, con un ritmo di aumento controllato.';
   return 'Piccoli aggiustamenti su calorie e macro, guidati dai tuoi progressi reali in energia e performance.';
-}
-
-function round5(n: number): number {
-  return Math.max(5, Math.round(n / 5) * 5);
 }
 
 // ---------------------------------------------------------------- the week --

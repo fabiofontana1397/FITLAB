@@ -49,3 +49,6 @@ supabase/.temp
 
 .vercel
 .env*
+
+# generated Excel exports
+scripts/agent-tests/reports/*.xlsx

@@ -20,6 +20,8 @@ export type PlanMealItem = {
   foodId: string;
   /** Human-friendly quantity — "2 uova" for count-based foods, "120g" otherwise. See food-quantity.ts. */
   quantityLabel: string;
+  /** What the food is there for in the meal. */
+  role?: 'protein' | 'carb' | 'fat' | 'veg' | 'fruit' | 'extra';
   /** Same nutritional role (protein/carb/fat/veg/fruit), swappable 1-for-1. */
   substitutes?: PlanMealItemSubstitute[];
 };

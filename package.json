@@ -70,7 +70,8 @@
     "functions:serve": "supabase functions serve --env-file supabase/.env.local",
     "knowledge:ingest": "tsx scripts/ingest-knowledge.ts",
     "agents:test": "tsx scripts/agent-tests/run.ts",
-    "agents:excel": "tsx scripts/agent-tests/export-excel.ts"
+    "agents:excel": "tsx scripts/agent-tests/export-excel.ts",
+    "catalog:import": "tsx scripts/catalog/import-catalog.ts"
   },
   "private": true
 }

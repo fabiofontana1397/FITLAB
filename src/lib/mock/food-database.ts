@@ -1,3 +1,5 @@
+import { FITLAB_FOODS, type FitLabFood } from '@/lib/planning/fitlab/data/foods.generated';
+
 export type FoodItem = {
   id: string;
   name: string;
@@ -7,9 +9,12 @@ export type FoodItem = {
   carbs100: number;
   fats100: number;
   defaultPortionG: number;
+  /** Fit Lab catalog foods: fibre per 100 g and how the grams are weighed (dry / raw). */
+  fiber100?: number;
+  basis?: 'secco' | 'crudo';
 };
 
-export const FOOD_DATABASE: FoodItem[] = [
+const LEGACY_FOODS: FoodItem[] = [
   // Proteine
   { id: 'chicken-breast', name: 'Petto di pollo', category: 'proteine', kcal100: 165, protein100: 31, carbs100: 0, fats100: 3.6, defaultPortionG: 150 },
   { id: 'turkey-breast', name: 'Petto di tacchino', category: 'proteine', kcal100: 135, protein100: 29, carbs100: 0, fats100: 1.5, defaultPortionG: 150 },
@@ -406,6 +411,31 @@ export const FOOD_DATABASE: FoodItem[] = [
   { id: 'plant-protein', name: 'Proteine vegetali (polvere)', category: 'proteine', kcal100: 380, protein100: 78, carbs100: 3, fats100: 6, defaultPortionG: 30 },
   { id: 'almond-butter', name: 'Burro di mandorle 100%', category: 'grassi', kcal100: 614, protein100: 21, carbs100: 19, fats100: 55, defaultPortionG: 15 },
 ];
+
+// Fit Lab catalog (data/fitlab workbook) → app foods, so plans can be logged like any other food.
+const LATTICINI_SUBS = new Set(['Latticini', 'Latticini fermentati', 'Formaggi freschi', 'Formaggi stagionati', 'Latte', 'Preparazioni lattiero-casearie']);
+function fromFitLab(f: FitLabFood): FoodItem {
+  const state = f.state.split(';')[0].toLowerCase();
+  const basis = f.category === 'Verdure' || f.category === 'Frutta' || f.category === 'Condimenti e aromi' ? undefined : /^(secc)/.test(state) ? 'secco' : /^crud/.test(state) ? 'crudo' : undefined;
+  const category: FoodItem['category'] =
+    f.category === 'Proteine' ? (f.sub === 'Legumi' ? 'legumi' : LATTICINI_SUBS.has(f.sub) ? 'latticini' : 'proteine') :
+    f.category === 'Carboidrati' ? 'carboidrati' : f.category === 'Grassi' ? 'grassi' : f.category === 'Verdure' ? 'verdura' : f.category === 'Frutta' ? 'frutta' : 'altro';
+  const portion = category === 'grassi' ? 15 : category === 'verdura' || category === 'frutta' ? 150 : category === 'altro' ? 10 : category === 'carboidrati' ? 70 : category === 'latticini' || category === 'legumi' ? 150 : 120;
+  return {
+    id: f.id,
+    name: basis ? `${f.name} (a ${basis === 'secco' ? 'secco' : 'crudo'})` : f.name,
+    category,
+    kcal100: f.kcal,
+    protein100: f.p,
+    carbs100: f.c,
+    fats100: f.f,
+    defaultPortionG: portion,
+    fiber100: f.fib,
+    basis,
+  };
+}
+
+export const FOOD_DATABASE: FoodItem[] = [...LEGACY_FOODS, ...FITLAB_FOODS.map(fromFitLab)];
 
 const FOOD_BY_ID = new Map(FOOD_DATABASE.map((f) => [f.id, f]));
 

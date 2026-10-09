@@ -1,9 +1,6 @@
 /**
- * The Fit Lab food framework: which foods belong to which role in which meal.
- * Every meal of the diet is built from these lists first (the "structural layer");
- * everything else (recipes, quantities, variety) works inside them.
- *
- * Ids are those of lib/mock/food-database.ts.
+ * Shared vocabulary of the Fit Lab diet engine: the meal kinds, the roles a food plays in a meal, and how
+ * a food is called inside a dish name. The foods themselves live in foods.ts (generated from the workbook).
  */
 import type { MealSlot } from '@/store/nutrition-store';
 
@@ -19,134 +16,57 @@ export const SLOT_KIND: Record<MealSlot, SlotKind> = {
   spuntinoSera: 'snack',
 };
 
-const MAIN_PROTEIN = ['chicken-breast', 'turkey-breast', 'beef-lean', 'tuna-canned', 'salmon', 'cod', 'sea-bream', 'shrimp', 'eggs', 'chickpeas', 'lentils', 'borlotti-beans', 'cannellini-beans'];
-const MAIN_CARB = ['rice-basmati', 'pasta', 'couscous', 'potato', 'sweet-potato', 'farro-cooked', 'quinoa', 'bread-wholegrain', 'gnocchi', 'polenta-cooked'];
-const MAIN_FAT = ['olive-oil', 'avocado', 'almonds', 'walnuts', 'hazelnuts', 'pistachios', 'cashews', 'chia-seeds', 'flaxseed', 'tahini'];
-const MAIN_VEG = ['zucchini', 'broccoli', 'spinach', 'carrot', 'cherry-tomato', 'bell-pepper-red', 'eggplant', 'mixed-salad', 'cauliflower', 'green-beans'];
-
-export const CATALOG: Record<SlotKind, Partial<Record<Role, string[]>>> = {
-  breakfast: {
-    protein: ['greek-yogurt-0', 'skyr', 'yogurt-protein', 'milk-lactose-free', 'whey-protein', 'eggs', 'egg-whites', 'cottage-cheese', 'kefir', 'ricotta-magra'],
-    carb: ['oats', 'bread-wholegrain', 'bread-rye', 'fette-biscottate', 'muesli', 'cereals-wholegrain', 'rice-cakes', 'cream-of-rice', 'granola'],
-    fruit: ['banana', 'apple', 'kiwi', 'blueberries', 'orange', 'strawberries'],
-    fat: ['almonds', 'walnuts', 'peanut-butter', 'chia-seeds'],
-  },
-  snack: {
-    protein: ['greek-yogurt-0', 'skyr', 'yogurt-protein', 'whey-protein', 'protein-pudding', 'protein-bar', 'protein-drink', 'cottage-cheese', 'kefir', 'bresaola'],
-    carb: ['banana', 'apple', 'pear', 'kiwi', 'orange', 'blueberries', 'rice-cakes', 'corn-cakes', 'bread-wholegrain', 'fette-biscottate'],
-    fat: ['almonds', 'walnuts', 'hazelnuts', 'pistachios', 'cashews', 'peanut-butter', 'almond-butter', 'chia-seeds', 'pumpkin-seeds', 'avocado'],
-  },
-  lunch: { protein: MAIN_PROTEIN, carb: MAIN_CARB, fat: MAIN_FAT, veg: MAIN_VEG },
-  dinner: { protein: [...MAIN_PROTEIN, 'veal-cutlet'], carb: MAIN_CARB, fat: MAIN_FAT, veg: MAIN_VEG },
+/** How a catalog food is named inside a dish ("Petto di pollo" → "pollo"). Anything not listed: the name in lower case. */
+const SHORT: Record<string, string> = {
+  'Petto di pollo': 'pollo',
+  'Petto di tacchino': 'tacchino',
+  'Lonza di maiale magra': 'lonza di maiale',
+  'Cavolini di Bruxelles': 'cavolini di Bruxelles',
+  'Ricotta magra': 'ricotta',
+  'Parmigiano Reggiano': 'parmigiano',
+  'Latte vaccino': 'latte',
+  'Yogurt greco 0%': 'yogurt greco',
+  'Yogurt greco 2%': 'yogurt greco',
+  'Tonno al naturale': 'tonno',
+  'Hamburger di pollo magro': 'hamburger di pollo',
+  'Hamburger di tacchino magro': 'hamburger di tacchino',
+  'Fesa di tacchino affettata': 'fesa di tacchino',
+  "Albume d'uovo": 'albumi',
+  'Uova intere': 'uova',
+  "Fiocchi d'avena": 'avena',
+  'Avena istantanea': 'avena',
+  'Riso lungo B': 'riso',
+  'Cereali da colazione senza zuccheri aggiunti': 'cereali',
+  'Granola con frutta secca': 'granola',
+  'Pan bauletto': 'pane in cassetta',
+  'Gnocchi di patate': 'gnocchi',
+  'Fette biscottate integrali': 'fette biscottate',
+  'Olio extravergine di oliva': 'olio EVO',
+  'Bevanda di soia non zuccherata': 'bevanda di soia',
+  'Bevanda di mandorla non zuccherata': 'bevanda di mandorla',
+  'Bevanda di cocco non zuccherata': 'bevanda di cocco',
 };
 
-/** Extra foods that keep a meal buildable when the person's exclusions empty a role's list (still the same kind of food). */
-export const FALLBACK: Record<SlotKind, Partial<Record<Role, string[]>>> = {
-  breakfast: { protein: ['plant-protein', 'turkey-breast-smoked', 'bresaola', 'tofu', 'protein-bar'], carb: ['bread-white', 'puffed-rice', 'corn-cakes'] },
-  snack: { protein: ['plant-protein', 'turkey-breast-smoked', 'tuna-canned', 'tofu'], carb: ['bread-white', 'puffed-rice'] },
-  lunch: { protein: ['tofu', 'ricotta-magra', 'cottage-cheese', 'turkey-ground', 'veal-cutlet', 'black-beans', 'white-beans'], carb: ['rice-brown-cooked', 'pasta-wholewheat', 'barley-cooked'] },
-  dinner: { protein: ['tofu', 'ricotta-magra', 'cottage-cheese', 'turkey-ground', 'black-beans', 'white-beans'], carb: ['rice-brown-cooked', 'pasta-wholewheat', 'barley-cooked'] },
-};
+export function short(name: string): string {
+  return SHORT[name] ?? name.replace(/ 100%$/, '').toLowerCase();
+}
 
-/** How a food is called inside a dish name. */
-export const SHORT: Record<string, string> = {
-  'chicken-breast': 'pollo',
-  'turkey-breast': 'tacchino',
-  'beef-lean': 'manzo magro',
-  'beef-ground-lean': 'manzo magro',
-  'veal-cutlet': 'vitello',
-  'tuna-canned': 'tonno',
-  salmon: 'salmone',
-  cod: 'merluzzo',
-  'sea-bream': 'orata',
-  shrimp: 'gamberi',
-  eggs: 'uova',
-  'egg-whites': 'albumi',
-  chickpeas: 'ceci',
-  lentils: 'lenticchie',
-  'borlotti-beans': 'fagioli borlotti',
-  'cannellini-beans': 'fagioli cannellini',
-  tofu: 'tofu',
-  'rice-basmati': 'riso basmati',
-  'rice-brown-cooked': 'riso integrale',
-  pasta: 'pasta',
-  'pasta-wholewheat': 'pasta integrale',
-  couscous: 'cous cous',
-  potato: 'patate',
-  'sweet-potato': 'patate dolci',
-  'farro-cooked': 'farro',
-  quinoa: 'quinoa',
-  'barley-cooked': 'orzo',
-  'bread-wholegrain': 'pane integrale',
-  gnocchi: 'gnocchi',
-  'polenta-cooked': 'polenta',
-  zucchini: 'zucchine',
-  broccoli: 'broccoli',
-  spinach: 'spinaci',
-  carrot: 'carote',
-  'cherry-tomato': 'pomodorini',
-  'bell-pepper-red': 'peperoni',
-  eggplant: 'melanzane',
-  'mixed-salad': 'insalata',
-  cauliflower: 'cavolfiore',
-  'green-beans': 'fagiolini',
-  'greek-yogurt-0': 'yogurt greco',
-  skyr: 'skyr',
-  'yogurt-protein': 'yogurt proteico',
-  kefir: 'kefir',
-  'cottage-cheese': 'fiocchi di latte',
-  'ricotta-magra': 'ricotta',
-  'whey-protein': 'proteine whey',
-  'milk-lactose-free': 'latte senza lattosio',
-  oats: 'avena',
-  'cream-of-rice': 'crema di riso',
-  muesli: 'muesli',
-  granola: 'granola',
-  'cereals-wholegrain': 'cereali integrali',
-  'bread-rye': 'pane di segale',
-  'fette-biscottate': 'fette biscottate',
-  'rice-cakes': 'gallette di riso',
-  'corn-cakes': 'gallette di mais',
-  banana: 'banana',
-  apple: 'mela',
-  pear: 'pera',
-  kiwi: 'kiwi',
-  orange: 'arancia',
-  blueberries: 'mirtilli',
-  strawberries: 'fragole',
-  almonds: 'mandorle',
-  walnuts: 'noci',
-  pistachios: 'pistacchi',
-  hazelnuts: 'nocciole',
-  cashews: 'anacardi',
-  'peanut-butter': 'burro di arachidi',
-  'almond-butter': 'burro di mandorle',
-  avocado: 'avocado',
-  'olive-oil': 'olio EVO',
-  bresaola: 'bresaola',
-  'protein-pudding': 'budino proteico',
-  'protein-bar': 'barretta proteica',
-  'plant-protein': 'proteine vegetali',
-  'turkey-breast-smoked': 'tacchino affumicato',
-  'protein-drink': 'bevanda proteica',
-};
-
-export const short = (id: string, fallback: string): string => SHORT[id] ?? fallback.toLowerCase();
-
-/** Dish names say how a protein is cooked ("Pollo alla piastra"). */
-export const COOKED: Record<string, string> = {
-  'chicken-breast': 'Pollo alla piastra',
-  'turkey-breast': 'Tacchino alla piastra',
-  'beef-lean': 'Straccetti di manzo',
-  'beef-ground-lean': 'Manzo magro',
-  'veal-cutlet': 'Vitello alla piastra',
-  salmon: 'Salmone al forno',
-  cod: 'Merluzzo al forno',
-  'sea-bream': 'Orata al forno',
-  shrimp: 'Gamberi saltati',
-  'tuna-canned': 'Tonno',
-  eggs: 'Uova',
-  tofu: 'Tofu alla piastra',
-  'ricotta-magra': 'Ricotta',
-  'cottage-cheese': 'Fiocchi di latte',
+/** Foods weighed as whole pieces or packs: grams of one unit and the words used to count them. */
+export const UNITS: Record<string, { grams: number; one: string; many: string }> = {
+  'Uova intere': { grams: 50, one: 'uovo', many: 'uova' },
+  Banana: { grams: 120, one: 'banana', many: 'banane' },
+  Mela: { grams: 150, one: 'mela', many: 'mele' },
+  Arancia: { grams: 150, one: 'arancia', many: 'arance' },
+  Pera: { grams: 150, one: 'pera', many: 'pere' },
+  Pesca: { grams: 150, one: 'pesca', many: 'pesche' },
+  Kiwi: { grams: 75, one: 'kiwi', many: 'kiwi' },
+  Albicocca: { grams: 40, one: 'albicocca', many: 'albicocche' },
+  Prugna: { grams: 60, one: 'prugna', many: 'prugne' },
+  'Barretta proteica': { grams: 45, one: 'barretta', many: 'barrette' },
+  'Budino proteico': { grams: 150, one: 'vasetto', many: 'vasetti' },
+  'Bevanda proteica': { grams: 330, one: 'bottiglietta', many: 'bottigliette' },
+  'Gallette di riso': { grams: 9, one: 'galletta', many: 'gallette' },
+  'Gallette di mais': { grams: 10, one: 'galletta', many: 'gallette' },
+  'Gallette di farro': { grams: 10, one: 'galletta', many: 'gallette' },
+  'Fette biscottate integrali': { grams: 9, one: 'fetta', many: 'fette' },
 };

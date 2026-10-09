@@ -1,13 +1,13 @@
 /**
  * Does the diet follow the Fit Lab framework (src/lib/planning/fitlab)? Where checks.ts verifies the
- * numbers (calories, macros, portions), these verify the structure: foods belong to the slot's
- * catalog, snacks need no cooking, main meals have vegetables, every meal is a named dish, the same
- * protein does not repeat within a day, the week is varied, and substitutions are nutritionally sound.
- * They are written independently of the planner (they only read the produced plan and the catalog).
+ * numbers (calories, macros, portions), these verify the structure: snacks need no cooking, main meals have
+ * vegetables, every meal is a named dish, the same protein does not repeat within a day, the week is varied
+ * (no meal more than 3 times), and substitutions are nutritionally sound. They are written independently of
+ * the planner (they only read the produced plan and the catalog).
  */
-import { findFood } from '@/lib/mock/food-database';
-import { CATALOG, FALLBACK, SLOT_KIND, type SlotKind } from '@/lib/planning/fitlab/catalog';
+import { SLOT_KIND, type SlotKind } from '@/lib/planning/fitlab/catalog';
 import { DISHES } from '@/lib/planning/fitlab/dishes';
+import { fitlabById, FITLAB_FOODS, type FitLabFood } from '@/lib/planning/fitlab/foods';
 import { familyOf } from '@/lib/planning/fitlab/pools';
 import type { DietPlan } from '@/lib/planning/types';
 
@@ -15,28 +15,34 @@ import type { Finding } from './checks';
 import type { Persona } from './personas';
 
 const WEEKDAYS = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
-const DAIRY_OR_SUPPLEMENT = new Set(['greek-yogurt-0', 'skyr', 'yogurt-protein', 'kefir', 'whey-protein', 'protein-pudding', 'protein-bar', 'protein-drink', 'milk-lactose-free']);
-const NO_COOK_SNACK_FORBIDDEN = new Set(['chicken-breast', 'turkey-breast', 'beef-lean', 'salmon', 'cod', 'sea-bream', 'shrimp', 'eggs', 'pasta', 'rice-basmati', 'potato', 'polenta-cooked']);
-const VEG_IDS = new Set(['zucchini', 'broccoli', 'spinach', 'carrot', 'cherry-tomato', 'tomato', 'bell-pepper-red', 'eggplant', 'mixed-salad', 'cauliflower', 'green-beans']);
-
-const catalogOf = (kind: SlotKind) => new Set([...Object.values(CATALOG[kind]).flat(), ...Object.values(FALLBACK[kind]).flat()]);
+const DAIRY_DRINKS = new Set(['Yogurt greco 0%', 'Yogurt greco 2%', 'Yogurt magro', 'Yogurt proteico', 'Skyr', 'Kefir', 'Budino proteico', 'Barretta proteica', 'Bevanda proteica', 'Latte vaccino', 'Latte senza lattosio']);
+// a snack is assembled, not cooked: no raw meat/fish, no pasta, rice, potatoes, polenta or couscous to boil
+const COOKED_SUBS = new Set(['Carni bianche', 'Carni rosse', 'Carni suine', 'Preparazioni di carne', 'Preparazioni di pesce', 'Pesce', 'Crostacei', 'Pasta e derivati', 'Cereali', 'Pseudocereali', 'Tuberi']);
+const COOKED_NAMES = new Set(['Polenta', 'Cous cous']);
+const NO_COOK_OK = new Set(['Tonno al naturale']);
+const needsCooking = (f: FitLabFood) => (COOKED_SUBS.has(f.sub) || COOKED_NAMES.has(f.name)) && !NO_COOK_OK.has(f.name);
 
 /** Static check of the recipe library itself (run once). */
 export function checkDishLibrary(): Finding[] {
   const f: Finding[] = [];
+  const fail = (message: string) => f.push({ level: 'FAIL', area: 'dieta', code: 'Q0', message });
+  const ids = new Set<string>();
   for (const dish of DISHES) {
-    for (const kind of dish.kinds) {
-      const catalog = catalogOf(kind);
-      const ids = [...dish.protein, ...(dish.meatlessProtein ?? []), ...dish.carb, ...(dish.fat ?? []), ...(dish.veg ?? []), ...(dish.fruit ?? [])];
-      const outside = ids.filter((id) => !catalog.has(id));
-      if (outside.length > 0) f.push({ level: 'FAIL', area: 'dieta', code: 'Q0', message: `Piatto "${dish.id}" (${kind}) usa alimenti fuori dal catalogo Fit Lab: ${outside.join(', ')}` });
-      const missing = ids.filter((id) => !findFood(id));
-      if (missing.length > 0) f.push({ level: 'FAIL', area: 'dieta', code: 'Q0', message: `Piatto "${dish.id}" usa alimenti non presenti nel database: ${missing.join(', ')}` });
+    if (ids.has(dish.id)) fail(`Piatto duplicato: ${dish.id}`);
+    ids.add(dish.id);
+    const foods = (names?: string[]) => (names ?? []).map((n) => FITLAB_FOODS.find((x) => x.name === n)).filter((x): x is FitLabFood => !!x);
+    if (dish.kinds.includes('snack')) {
+      const cooked = [...foods(dish.base), ...foods(dish.protein)].filter(needsCooking);
+      if (cooked.length > 0) fail(`Lo spuntino "${dish.id}" (${dish.name}) richiede cottura: ${cooked.map((x) => x.name).join(', ')}`);
     }
-    if (dish.kinds.includes('snack') && [...dish.protein, ...dish.carb].some((id) => NO_COOK_SNACK_FORBIDDEN.has(id))) {
-      f.push({ level: 'FAIL', area: 'dieta', code: 'Q0', message: `Lo spuntino "${dish.id}" richiede cottura` });
+    if (dish.kinds.some((k) => k === 'lunch' || k === 'dinner')) {
+      if ((dish.sides ?? []).length === 0) fail(`Il piatto "${dish.id}" (${dish.name}) non ha verdure di contorno`);
+      const dairy = foods(dish.protein).filter((x) => DAIRY_DRINKS.has(x.name));
+      if (dairy.length > 0) fail(`Il piatto "${dish.id}" usa a pranzo/cena: ${dairy.map((x) => x.name).join(', ')}`);
     }
   }
+  const nutritionMissing = FITLAB_FOODS.filter((x) => !(x.kcal > 0) && x.f + x.p + x.c < 0.1 && x.name !== 'Aceto');
+  if (nutritionMissing.length > 0) fail(`Alimenti senza valori nutrizionali: ${nutritionMissing.map((x) => x.name).join(', ')}`);
   return f;
 }
 
@@ -54,57 +60,59 @@ export function checkDietQuality(persona: Persona, diet: DietPlan): Finding[] {
       const mainFamilies = new Map<string, number>();
       for (const meal of day.meals) {
         if (meal.isFreeMeal) continue;
-        const kind = SLOT_KIND[meal.slotId as keyof typeof SLOT_KIND];
+        const kind: SlotKind = SLOT_KIND[meal.slotId as keyof typeof SLOT_KIND];
         const where = `mese ${month.monthIndex}, ${WEEKDAYS[dayIdx]} ${meal.label}`;
         if (!meal.recipe?.name) fail('Q1', `Nessun nome di piatto (${where})`);
-        const catalog = catalogOf(kind);
-        for (const item of meal.items) {
-          if (!catalog.has(item.foodId)) fail('Q2', `${item.name} non fa parte del catalogo del pasto (${where})`);
-          if ((kind === 'lunch' || kind === 'dinner') && DAIRY_OR_SUPPLEMENT.has(item.foodId)) fail('Q3', `${item.name} a ${meal.label.toLowerCase()} (${where})`);
-          if (kind === 'snack' && NO_COOK_SNACK_FORBIDDEN.has(item.foodId)) fail('Q4', `Spuntino che richiede cottura: ${item.name} (${where})`);
+        const foods = meal.items.map((i) => ({ item: i, food: fitlabById(i.foodId) }));
+        for (const { item, food } of foods) {
+          if (!food) {
+            fail('Q2', `${item.name} non è un alimento del catalogo Fit Lab (${where})`);
+            continue;
+          }
+          if ((kind === 'lunch' || kind === 'dinner') && DAIRY_DRINKS.has(food.name)) fail('Q3', `${food.name} a ${meal.label.toLowerCase()} (${where})`);
+          if (kind === 'snack' && needsCooking(food)) fail('Q4', `Spuntino che richiede cottura: ${food.name} (${where})`);
         }
         if (kind === 'lunch' || kind === 'dinner') {
-          if (!meal.items.some((i) => VEG_IDS.has(i.foodId))) fail('Q5', `Manca la verdura (${where})`);
-          if (!meal.items.some((i) => findFood(i.foodId)?.category === 'carboidrati' || findFood(i.foodId)?.category === 'legumi')) fail('Q5', `Manca il carboidrato (${where})`);
+          if (!foods.some(({ food }) => food?.category === 'Verdure')) fail('Q5', `Manca la verdura (${where})`);
+          if (!foods.some(({ food }) => food?.category === 'Carboidrati' || food?.sub === 'Legumi')) fail('Q5', `Manca il carboidrato (${where})`);
         }
         // the main protein source of the meal counts once for the day's "same protein" rule
-        const main = meal.items.find((i) => ['proteine', 'latticini', 'legumi'].includes(findFood(i.foodId)?.category ?? ''));
+        const main = foods.find(({ food }) => food?.category === 'Proteine')?.food;
         if (main) {
-          families.set(familyOf(main.foodId), (families.get(familyOf(main.foodId)) ?? 0) + 1);
-          if (kind === 'lunch' || kind === 'dinner') mainFamilies.set(familyOf(main.foodId), (mainFamilies.get(familyOf(main.foodId)) ?? 0) + 1);
+          families.set(familyOf(main), (families.get(familyOf(main)) ?? 0) + 1);
+          if (kind === 'lunch' || kind === 'dinner') mainFamilies.set(familyOf(main), (mainFamilies.get(familyOf(main)) ?? 0) + 1);
         }
 
+        const name = meal.recipe?.name ?? '?';
         const byRecipe = slotRecipes.get(meal.slotId) ?? new Map<string, number>();
-        byRecipe.set(meal.recipe?.name ?? '?', (byRecipe.get(meal.recipe?.name ?? '?') ?? 0) + 1);
+        byRecipe.set(name, (byRecipe.get(name) ?? 0) + 1);
         slotRecipes.set(meal.slotId, byRecipe);
-        // the dish template (recipe name without its food variations) and the main protein
         const dishKey = meal.recipe?.dishId ?? '?';
         const byDish = slotDishes.get(meal.slotId) ?? new Map<string, number>();
         byDish.set(dishKey, (byDish.get(dishKey) ?? 0) + 1);
         slotDishes.set(meal.slotId, byDish);
         if (main) {
           const byFood = slotFoods.get(meal.slotId) ?? new Map<string, number>();
-          byFood.set(main.foodId, (byFood.get(main.foodId) ?? 0) + 1);
+          byFood.set(main.name, (byFood.get(main.name) ?? 0) + 1);
           slotFoods.set(meal.slotId, byFood);
         }
 
         // substitutions must deliver about the same of the nutrient the item is there for
-        for (const item of meal.items) {
-          const food = findFood(item.foodId);
+        for (const { item, food } of foods) {
           if (!food || !item.substitutes) continue;
-          const role = food.category === 'legumi' ? 'kcal100' : food.category === 'carboidrati' || food.category === 'frutta' ? 'carbs100' : food.category === 'grassi' ? 'fats100' : 'protein100';
-          const original = (food[role] * item.grams) / 100;
+          const nutrient = item.role === 'carb' || item.role === 'fruit' ? 'c' : item.role === 'fat' ? 'f' : 'p';
+          const original = (food[nutrient] * item.grams) / 100;
           for (const s of item.substitutes) {
-            const sf = findFood(s.foodId);
+            const sf = fitlabById(s.foodId);
             if (!sf || original < 4) continue;
-            const got = (sf[role] * s.grams) / 100;
-            if (Math.abs(got / original - 1) > 0.3) fail('Q8', `Sostituzione ${item.name} → ${s.name}: ${got.toFixed(0)} g contro ${original.toFixed(0)} g del nutriente (${where})`, 'WARN');
+            const got = (sf[nutrient] * s.grams) / 100;
+            if (Math.abs(got / original - 1) > 0.3) fail('Q8', `Sostituzione ${item.name} → ${s.name}: ${got.toFixed(0)} contro ${original.toFixed(0)} del nutriente (${where})`, 'WARN');
           }
         }
       }
       // lunch and dinner must not share a protein; snacks and breakfast share families only when the catalog leaves no choice (a note)
       const mainRepeated = [...mainFamilies.entries()].filter(([, n]) => n > 1);
-      if (mainRepeated.length > 0) fail('Q6', `${WEEKDAYS[dayIdx]} (mese ${month.monthIndex}): stessa fonte proteica a pranzo e cena (${mainRepeated.map(([k]) => k).join(', ')})`, 'WARN');
+      if (mainRepeated.length > 0) fail('Q6', `${WEEKDAYS[dayIdx]} (mese ${month.monthIndex}): stessa fonte proteica a pranzo e cena (${mainRepeated.map(([k]) => fitlabById(k)?.name ?? k).join(', ')})`, 'WARN');
       else if ([...families.values()].some((n) => n > 2)) fail('Q6', `${WEEKDAYS[dayIdx]} (mese ${month.monthIndex}): una fonte proteica compare tre volte nel giorno`, 'INFO');
     }
     // weekly variety, slot by slot: the same dish or the same meal must not come back more than 3 times in a week

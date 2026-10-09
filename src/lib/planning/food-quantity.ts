@@ -6,6 +6,9 @@
  * ground truth everywhere else (kcal math, meal_entries logging); this is
  * purely a display label computed from it.
  */
+import { UNITS } from './fitlab/catalog';
+import { basisOf, fitlabById } from './fitlab/foods';
+
 const COUNT_UNIT: Record<string, { unitGrams: number; singular: string; plural: string }> = {
   eggs: { unitGrams: 50, singular: 'uovo', plural: 'uova' },
   banana: { unitGrams: 120, singular: 'banana', plural: 'banane' },
@@ -22,6 +25,17 @@ const COUNT_UNIT: Record<string, { unitGrams: number; singular: string; plural: 
 };
 
 export function formatFoodQuantity(foodId: string, grams: number): string {
+  // Fit Lab catalog foods: pieces where it makes sense, otherwise grams in the state the weight refers to (dry / raw)
+  const fitlab = fitlabById(foodId);
+  if (fitlab) {
+    const piece = UNITS[fitlab.name];
+    if (piece) {
+      const count = Math.max(1, Math.round(grams / piece.grams));
+      return `${count} ${count === 1 ? piece.one : piece.many}`;
+    }
+    const basis = basisOf(fitlab);
+    return basis ? `${grams}g a ${basis}` : `${grams}g`;
+  }
   const unit = COUNT_UNIT[foodId];
   if (!unit) return `${grams}g`;
   const count = Math.max(1, Math.round(grams / unit.unitGrams));

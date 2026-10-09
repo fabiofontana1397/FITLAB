@@ -1,107 +1,116 @@
 /**
- * Which Fit Lab foods this person can and likes to eat: the catalog (catalog.ts) filtered by
- * allergies/intolerances/exclusions and dietary pattern, with a weight per food that reflects
- * what they said they prefer, usually eat or explicitly want. The weights only steer the choice
- * (a food they did not pick can still appear, rarely); the filters are hard.
+ * Which Fit Lab foods this person can and likes to eat. The hard filters come straight from the catalog columns:
+ * the dietary regime ("Regimi_alimentari") and the allergens ("Allergeni"), plus foods the person excluded by name.
+ * The weights only steer the choice (what they said they prefer, usually eat or explicitly want); a food they did not
+ * pick can still appear, rarely.
  */
-import { FOOD_DATABASE, findFood } from '@/lib/mock/food-database';
-
-import { CATALOG, FALLBACK, SHORT, type Role, type SlotKind } from './catalog';
-
-const MEAT = new Set(['chicken-breast', 'turkey-breast', 'beef-lean', 'veal-cutlet', 'bresaola', 'turkey-breast-smoked', 'turkey-ground']);
-const FISH = new Set(['tuna-canned', 'salmon', 'cod', 'sea-bream', 'shrimp']);
-const ANIMAL = new Set([
-  'eggs', 'egg-whites', 'greek-yogurt-0', 'yogurt-protein', 'skyr', 'kefir', 'cottage-cheese', 'ricotta-magra', 'milk-lactose-free', 'whey-protein',
-  'protein-pudding', 'protein-bar', 'protein-drink', 'ricotta', 'greek-yogurt', 'milk-semi', 'gnocchi',
-]);
-
-const FRUIT_IDS = ['banana', 'apple', 'pear', 'kiwi', 'orange', 'blueberries', 'strawberries'];
-const LEGUME_IDS = ['chickpeas', 'lentils', 'borlotti-beans', 'cannellini-beans', 'black-beans', 'white-beans'];
-
-// Free-text (Italian) allergen/intolerance terms → the food groups they imply.
-const ALLERGEN_GROUPS: { keywords: string[]; ids: string[] }[] = [
-  { keywords: ['glutine', 'celiach'], ids: ['pasta', 'pasta-wholewheat', 'bread-wholegrain', 'bread-rye', 'bread-white', 'fette-biscottate', 'couscous', 'gnocchi', 'muesli', 'granola', 'cereals-wholegrain', 'oats', 'barley-cooked', 'farro-cooked'] },
-  { keywords: ['lattosio', 'latte', 'latticini', 'formaggio'], ids: ['greek-yogurt-0', 'yogurt-protein', 'skyr', 'kefir', 'cottage-cheese', 'ricotta-magra', 'whey-protein', 'protein-pudding', 'protein-bar', 'protein-drink'] },
-  { keywords: ['uova', 'uovo'], ids: ['eggs', 'egg-whites'] },
-  { keywords: ['frutta secca', 'noci', 'mandorle', 'arachidi'], ids: ['almonds', 'walnuts', 'hazelnuts', 'pistachios', 'cashews', 'peanut-butter', 'almond-butter'] },
-  { keywords: ['pesce'], ids: [...FISH] },
-  { keywords: ['crostacei', 'gamberi', 'molluschi'], ids: ['shrimp'] },
-  { keywords: ['soia'], ids: ['tofu'] },
-  { keywords: ['carne'], ids: [...MEAT] },
-  { keywords: ['sesamo'], ids: ['tahini'] },
-];
-
-// A generic word the person may type → the catalog foods it means.
-const GENERIC_WORDS: Record<string, string[]> = {
-  riso: ['rice-basmati', 'rice-brown-cooked', 'cream-of-rice', 'rice-cakes'],
-  pane: ['bread-wholegrain', 'bread-rye', 'bread-white', 'fette-biscottate'],
-  yogurt: ['greek-yogurt-0', 'yogurt-protein'],
-  patate: ['potato', 'sweet-potato', 'gnocchi'],
-  legumi: LEGUME_IDS,
-  avena: ['oats'],
-};
+import { FITLAB_FOODS, type FitLabFood } from './foods';
+import type { SlotKind } from './catalog';
 
 const NO_ANSWER = new Set(['', 'no', 'nessuna', 'nessuno', 'niente', 'no.', 'n/a', 'na']);
+const STOPWORDS = new Set(['di', 'del', 'della', 'al', 'alla', 'con', 'magro', 'magra', 'light', 'intere', 'intero', 'naturale', 'proteico', 'proteica', 'zuccherata', 'fresca', 'fresco', 'non', 'senza', 'istantanea']);
 
-function normalize(text: string): string {
-  return text.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-}
+const norm = (text: string): string => text.toLowerCase().replace(/[’‘]/g, "'").normalize('NFD').replace(/[̀-ͯ]/g, '');
 
 function textOf(answers: Record<string, unknown>, fields: string[]): string {
-  return normalize(
+  return norm(
     fields
       .map((f) => answers[f])
       .filter((v): v is string => typeof v === 'string')
       .map((v) => v.trim())
-      .filter((v) => !NO_ANSWER.has(normalize(v)))
+      .filter((v) => !NO_ANSWER.has(norm(v)))
       .join(' . ')
   );
 }
 
-/** Catalog foods named in a free text (full name, short name, plural stem, or a generic word). */
+const wordsOf = (food: FitLabFood): string[] =>
+  [food.name, ...food.synonyms]
+    .flatMap((n) => norm(n).split(/[^a-z0-9]+/))
+    .filter((w) => w.length >= 4 && !STOPWORDS.has(w));
+
+// Free-text (Italian) allergen/intolerance terms → the allergen they name in the catalog's "Allergeni" column.
+const ALLERGEN_KEYWORDS: { keywords: string[]; allergen: string }[] = [
+  { keywords: ['lattosio', 'latte', 'latticini', 'formaggio', 'formaggi'], allergen: 'latte' },
+  { keywords: ['uova', 'uovo'], allergen: 'uova' },
+  { keywords: ['glutine', 'celiach'], allergen: 'glutine' },
+  { keywords: ['frutta secca', 'frutta a guscio', 'noci', 'mandorle', 'nocciole', 'pistacchi', 'anacardi'], allergen: 'guscio' },
+  { keywords: ['arachidi'], allergen: 'arachidi' },
+  { keywords: ['soia'], allergen: 'soia' },
+  { keywords: ['pesce'], allergen: 'pesce' },
+  { keywords: ['crostacei', 'gamberi', 'molluschi'], allergen: 'crostacei' },
+  { keywords: ['sesamo'], allergen: 'sesamo' },
+  { keywords: ['senape'], allergen: 'senape' },
+  { keywords: ['solfiti'], allergen: 'solfiti' },
+];
+
+// Generic words the person may type → the catalog subcategories they mean.
+const GENERIC_SUBS: Record<string, string[]> = {
+  carne: ['Carni bianche', 'Carni rosse', 'Carni suine', 'Preparazioni di carne', 'Salumi'],
+  pesce: ['Pesce', 'Crostacei', 'Preparazioni di pesce'],
+  legumi: ['Legumi'],
+  formaggi: ['Formaggi freschi', 'Formaggi stagionati'],
+  formaggio: ['Formaggi freschi', 'Formaggi stagionati'],
+  yogurt: ['Latticini', 'Latticini fermentati'],
+  pane: ['Pane e prodotti da forno'],
+};
+
+/** Foods named in a free text: by whole name, by a word of the name or a synonym (plural tolerated), or by a generic word. */
 function foodsNamedIn(blob: string): Set<string> {
   const found = new Set<string>();
   if (blob.length === 0) return found;
   const tokens = blob.split(/[^a-z0-9]+/).filter(Boolean);
-  for (const food of FOOD_DATABASE) if (blob.includes(normalize(food.name))) found.add(food.id);
-  for (const [id, label] of Object.entries(SHORT)) {
-    const phrase = normalize(label);
-    const stem = phrase.length >= 6 ? phrase.slice(0, -1) : phrase;
-    if (blob.includes(phrase) || tokens.some((t) => t === phrase || (phrase.length >= 6 && t.startsWith(stem)))) found.add(id);
+  for (const food of FITLAB_FOODS) {
+    if (blob.includes(norm(food.name))) {
+      found.add(food.id);
+      continue;
+    }
+    const words = wordsOf(food);
+    if (tokens.some((t) => words.some((w) => t === w || (t.length >= 5 && w.length >= 5 && t.slice(0, -1) === w.slice(0, -1))))) found.add(food.id);
   }
-  for (const [word, ids] of Object.entries(GENERIC_WORDS)) if (tokens.includes(word)) ids.forEach((id) => found.add(id));
+  for (const [word, subs] of Object.entries(GENERIC_SUBS)) {
+    if (!tokens.includes(word)) continue;
+    for (const food of FITLAB_FOODS) if (subs.includes(food.sub)) found.add(food.id);
+  }
   return found;
 }
 
-const PREFERRED: Record<'protein' | 'carb' | 'fat', Record<string, string[]>> = {
+type Spec = string; // an exact food name, or "sub:<Sottocategoria>", or "cat:<Categoria>", or "name:<prefix>"
+function matches(food: FitLabFood, spec: Spec): boolean {
+  if (spec.startsWith('sub:')) return food.sub === spec.slice(4);
+  if (spec.startsWith('cat:')) return food.category === spec.slice(4);
+  if (spec.startsWith('name:')) return food.name.startsWith(spec.slice(5));
+  return food.name === spec;
+}
+
+const PREFERRED: Record<'protein' | 'carb' | 'fat', Record<string, Spec[]>> = {
   protein: {
-    chicken: ['chicken-breast'],
-    turkey: ['turkey-breast'],
-    beef: ['beef-lean', 'veal-cutlet'],
-    eggs: ['eggs', 'egg-whites'],
-    fish: ['tuna-canned', 'salmon', 'cod', 'sea-bream', 'shrimp'],
-    legumes: LEGUME_IDS,
-    dairy: ['cottage-cheese', 'ricotta-magra'],
-    yogurt: ['greek-yogurt-0', 'skyr', 'yogurt-protein', 'kefir'],
-    proteinPowder: ['whey-protein', 'plant-protein', 'protein-drink', 'protein-pudding', 'protein-bar'],
-    tofu: ['tofu'],
+    chicken: ['Petto di pollo', 'Hamburger di pollo magro'],
+    turkey: ['Petto di tacchino', 'Hamburger di tacchino magro', 'Fesa di tacchino affettata'],
+    beef: ['Manzo magro'],
+    eggs: ['Uova intere', "Albume d'uovo"],
+    fish: ['sub:Pesce', 'sub:Crostacei', 'sub:Preparazioni di pesce'],
+    legumes: ['sub:Legumi'],
+    dairy: ['sub:Formaggi freschi', 'sub:Formaggi stagionati', 'sub:Latte'],
+    yogurt: ['sub:Latticini', 'sub:Latticini fermentati'],
+    proteinPowder: ['Bevanda proteica', 'Barretta proteica', 'Budino proteico'],
+    tofu: ['Tofu', 'Seitan'],
   },
   carb: {
-    rice: ['rice-basmati', 'rice-brown-cooked'],
-    pasta: ['pasta', 'pasta-wholewheat', 'gnocchi'],
-    potatoes: ['potato', 'sweet-potato'],
-    bread: ['bread-wholegrain', 'bread-rye', 'fette-biscottate'],
-    oats: ['oats', 'cream-of-rice', 'muesli', 'granola', 'cereals-wholegrain'],
-    cereals: ['quinoa', 'couscous', 'farro-cooked', 'polenta-cooked', 'barley-cooked'],
-    legumes: LEGUME_IDS,
-    fruit: FRUIT_IDS,
+    rice: ['name:Riso'],
+    pasta: ['name:Pasta', 'Gnocchi di patate'],
+    potatoes: ['Patate', 'Patate dolci'],
+    bread: ['sub:Pane e prodotti da forno'],
+    oats: ["Fiocchi d'avena", 'Avena istantanea', 'Crema di riso', 'sub:Cereali da colazione'],
+    cereals: ['sub:Cereali', 'sub:Pseudocereali', 'Cous cous', 'Polenta'],
+    legumes: ['sub:Legumi'],
+    fruit: ['cat:Frutta'],
   },
   fat: {
-    oliveOil: ['olive-oil'],
-    nuts: ['almonds', 'walnuts', 'hazelnuts', 'pistachios', 'cashews'],
-    avocado: ['avocado'],
-    fattyFish: ['salmon'],
-    butter: ['olive-oil'],
+    oliveOil: ['Olio extravergine di oliva'],
+    nuts: ['sub:Frutta a guscio', 'sub:Creme di frutta a guscio'],
+    avocado: ['Avocado'],
+    fattyFish: ['Salmone', 'Sgombro', 'Sardine'],
+    butter: ['Olio extravergine di oliva'],
   },
 };
 
@@ -112,57 +121,56 @@ const USUAL_FIELDS: Record<SlotKind, string[]> = {
   snack: ['usualMorningSnack', 'usualAfternoonSnack', 'usualPreSleepSnack'],
 };
 
-/** Foods that count as "the same protein" for the one-source-per-day rule. */
-const FAMILY: Record<string, string> = {
-  eggs: 'egg',
-  'egg-whites': 'egg',
-  'greek-yogurt-0': 'yogurt',
-  skyr: 'yogurt',
-  'yogurt-protein': 'yogurt',
-  kefir: 'yogurt',
-  'whey-protein': 'supplement',
-  'protein-drink': 'supplement',
-  'protein-pudding': 'supplement',
-  'protein-bar': 'supplement',
-  'cottage-cheese': 'cheese',
-  'ricotta-magra': 'cheese',
-};
-export const familyOf = (id: string): string => FAMILY[id] ?? id;
+/** The "same protein" rule of the day: foods of one family count as one source. */
+export function familyOf(food: FitLabFood): string {
+  if (food.sub === 'Uova') return 'egg';
+  if (food.sub === 'Latticini' || food.sub === 'Latticini fermentati') return 'yogurt';
+  if (food.sub === 'Formaggi freschi' || food.sub === 'Formaggi stagionati') return 'cheese';
+  if (food.sub === 'Latte' || food.sub === 'Bevande vegetali') return 'milk';
+  if (food.sub === 'Legumi') return 'legumes';
+  if (food.name === 'Budino proteico' || food.name === 'Barretta proteica' || food.name === 'Bevanda proteica') return 'supplement';
+  if (food.sub === 'Salumi') return 'cured';
+  return food.id;
+}
 
 export type FitLabPools = {
-  /** Hard filter: allergies, exclusions, dietary pattern. */
-  allowed: (id: string) => boolean;
+  /** Hard filter: dietary regime, allergens, foods excluded by name. */
+  allowed: (food: FitLabFood) => boolean;
   /** Preference weight (≈1 neutral, >1 wanted, <1 not preferred). */
-  weight: (id: string, kind: SlotKind) => number;
-  /** The slot's catalog list for a role, filtered (with the fallback foods only when too few remain). */
-  pool: (kind: SlotKind, role: Role) => string[];
+  weight: (food: FitLabFood, kind: SlotKind) => number;
   /** Eats out often: lunches should be easy to carry. */
   eatsOutOften: boolean;
-  /** Vegetarian or vegan: dishes built on tofu/ricotta become available. */
-  meatless: boolean;
 };
 
 export function buildFitLabPools(answers: Record<string, unknown>): FitLabPools {
   const pattern = answers.dietaryPattern;
-  const excluded = foodsNamedIn(textOf(answers, ['allergiesIntolerances', 'excludedFoods']));
-  const blob = textOf(answers, ['allergiesIntolerances', 'excludedFoods']);
-  for (const group of ALLERGEN_GROUPS) if (group.keywords.some((k) => blob.includes(k))) group.ids.forEach((id) => excluded.add(id));
+  const regime = pattern === 'vegan' ? 'vegan' : pattern === 'vegetarian' ? 'veg' : pattern === 'pescetarian' ? 'pesc' : 'omni';
 
-  const allowed = (id: string): boolean => {
-    if (excluded.has(id)) return false;
-    if (pattern === 'vegan' && (MEAT.has(id) || FISH.has(id) || ANIMAL.has(id))) return false;
-    if (pattern === 'vegetarian' && (MEAT.has(id) || FISH.has(id))) return false;
-    if (pattern === 'pescetarian' && MEAT.has(id)) return false;
+  const blob = textOf(answers, ['allergiesIntolerances', 'excludedFoods']);
+  const excludedByName = foodsNamedIn(blob);
+  const bannedAllergens = ALLERGEN_KEYWORDS.filter((g) => g.keywords.some((k) => blob.includes(k))).map((g) => g.allergen);
+  // lactose intolerance is not milk allergy: lactose-free milk and aged cheese stay
+  const lactoseOnly = /lattosio/.test(blob) && !/allergia al latte|proteine del latte|caseina/.test(blob);
+
+  const allowed = (food: FitLabFood): boolean => {
+    if (!food.regimes.includes(regime)) return false;
+    if (excludedByName.has(food.id)) return false;
+    const allergens = norm(food.allergens);
+    for (const a of bannedAllergens) {
+      if (!allergens.includes(a)) continue;
+      if (a === 'latte' && lactoseOnly && (/senza lattosio/.test(norm(food.name)) || food.sub === 'Formaggi stagionati')) continue;
+      return false;
+    }
     return true;
   };
 
-  // preferences: only meaningful when the person actually picked some
+  // preferences only count when the person actually picked some
   const picked = (field: string, kind: 'protein' | 'carb' | 'fat') => {
     const values = Array.isArray(answers[field]) ? (answers[field] as string[]) : [];
     if (values.length === 0) return null;
-    const wanted = new Set(values.flatMap((v) => PREFERRED[kind][v] ?? []));
-    const known = new Set(Object.values(PREFERRED[kind]).flat());
-    return { wanted, known };
+    const wantedSpecs = values.flatMap((v) => PREFERRED[kind][v] ?? []);
+    const knownSpecs = Object.values(PREFERRED[kind]).flat();
+    return { wanted: (f: FitLabFood) => wantedSpecs.some((s) => matches(f, s)), known: (f: FitLabFood) => knownSpecs.some((s) => matches(f, s)) };
   };
   const prefs = [picked('preferredProteins', 'protein'), picked('preferredCarbs', 'carb'), picked('preferredFats', 'fat')];
   const included = foodsNamedIn(textOf(answers, ['includedFoods']));
@@ -173,23 +181,17 @@ export function buildFitLabPools(answers: Record<string, unknown>): FitLabPools 
     snack: foodsNamedIn(textOf(answers, USUAL_FIELDS.snack)),
   };
 
-  const weight = (id: string, kind: SlotKind): number => {
+  const weight = (food: FitLabFood, kind: SlotKind): number => {
     let w = 1;
     for (const p of prefs) {
-      if (!p || !p.known.has(id)) continue;
-      w = p.wanted.has(id) ? 1.6 : 0.3;
+      if (!p || !p.known(food)) continue;
+      w = p.wanted(food) ? 1.6 : 0.3;
     }
-    if (included.has(id)) w = Math.max(w, 3);
-    if (usual[kind].has(id)) w = Math.max(w, 2.2);
+    if (included.has(food.id)) w = Math.max(w, 3);
+    if (usual[kind].has(food.id)) w = Math.max(w, 2.2);
     return w;
   };
 
-  const pool = (kind: SlotKind, role: Role): string[] => {
-    const base = (CATALOG[kind][role] ?? []).filter(allowed);
-    if (base.length >= 2 || role === 'fruit' || role === 'veg') return base;
-    return [...new Set([...base, ...(FALLBACK[kind][role] ?? []).filter((id) => allowed(id) && findFood(id))])];
-  };
-
   const outTimes = typeof answers.eatingOut === 'string' ? (answers.eatingOut === 'gt6' ? 7 : answers.eatingOut === 'rarely' ? 0 : Number(answers.eatingOut)) : 0;
-  return { allowed, weight, pool, meatless: pattern === 'vegetarian' || pattern === 'vegan', eatsOutOften: Number.isFinite(outTimes) && outTimes >= 3 };
+  return { allowed, weight, eatsOutOften: Number.isFinite(outTimes) && outTimes >= 3 };
 }
