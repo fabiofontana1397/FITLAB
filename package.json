@@ -49,6 +49,7 @@
     "@types/react": "~19.2.2",
     "eslint": "^9.0.0",
     "eslint-config-expo": "~57.0.2",
+    "exceljs": "^4.4.0",
     "pdfjs-dist": "^6.3.289",
     "supabase": "^2.117.0",
     "tsx": "^4.23.13",
@@ -68,7 +69,8 @@
     "supabase:seed:food": "tsx scripts/seed-food-database.ts",
     "functions:serve": "supabase functions serve --env-file supabase/.env.local",
     "knowledge:ingest": "tsx scripts/ingest-knowledge.ts",
-    "agents:test": "tsx scripts/agent-tests/run.ts"
+    "agents:test": "tsx scripts/agent-tests/run.ts",
+    "agents:excel": "tsx scripts/agent-tests/export-excel.ts"
   },
   "private": true
 }
