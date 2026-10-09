@@ -44,6 +44,7 @@ const RANGE: Record<string, Range> = {
   // proteins
   'egg-whites': [60, 250],
   'whey-protein': [20, 40],
+  'plant-protein': [20, 40],
   'greek-yogurt-0': [100, 300],
   skyr: [100, 300],
   'yogurt-protein': [100, 300],
@@ -54,7 +55,7 @@ const RANGE: Record<string, Range> = {
   bresaola: [30, 70],
   'tuna-canned': [60, 160],
   'turkey-breast-smoked': [30, 100],
-  tofu: [80, 250],
+  tofu: [80, 300],
   shrimp: [80, 250],
   // carbs
   pasta: [70, 350],
@@ -118,7 +119,7 @@ export function portionBounds(food: FoodItem, role: Role, opts: { eggRoom?: numb
 }
 
 // Errors are weighed in kcal (protein ×4, carbs ×4, fat ×9), with protein counting a bit more.
-const W = { protein: 28, carbs: 16, fats: 81 };
+const W = { protein: 34, carbs: 16, fats: 81 };
 
 function macrosOf(food: FoodItem, grams: number): Macros {
   const k = grams / 100;

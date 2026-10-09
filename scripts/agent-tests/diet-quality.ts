@@ -47,6 +47,8 @@ export function checkDietQuality(persona: Persona, diet: DietPlan): Finding[] {
 
   for (const month of diet.months) {
     const slotRecipes = new Map<string, Map<string, number>>();
+    const slotDishes = new Map<string, Map<string, number>>();
+    const slotFoods = new Map<string, Map<string, number>>();
     for (const [dayIdx, day] of month.weeklySplit.entries()) {
       const families = new Map<string, number>();
       const mainFamilies = new Map<string, number>();
@@ -75,6 +77,16 @@ export function checkDietQuality(persona: Persona, diet: DietPlan): Finding[] {
         const byRecipe = slotRecipes.get(meal.slotId) ?? new Map<string, number>();
         byRecipe.set(meal.recipe?.name ?? '?', (byRecipe.get(meal.recipe?.name ?? '?') ?? 0) + 1);
         slotRecipes.set(meal.slotId, byRecipe);
+        // the dish template (recipe name without its food variations) and the main protein
+        const dishKey = meal.recipe?.dishId ?? '?';
+        const byDish = slotDishes.get(meal.slotId) ?? new Map<string, number>();
+        byDish.set(dishKey, (byDish.get(dishKey) ?? 0) + 1);
+        slotDishes.set(meal.slotId, byDish);
+        if (main) {
+          const byFood = slotFoods.get(meal.slotId) ?? new Map<string, number>();
+          byFood.set(main.foodId, (byFood.get(main.foodId) ?? 0) + 1);
+          slotFoods.set(meal.slotId, byFood);
+        }
 
         // substitutions must deliver about the same of the nutrient the item is there for
         for (const item of meal.items) {
@@ -95,10 +107,23 @@ export function checkDietQuality(persona: Persona, diet: DietPlan): Finding[] {
       if (mainRepeated.length > 0) fail('Q6', `${WEEKDAYS[dayIdx]} (mese ${month.monthIndex}): stessa fonte proteica a pranzo e cena (${mainRepeated.map(([k]) => k).join(', ')})`, 'WARN');
       else if ([...families.values()].some((n) => n > 2)) fail('Q6', `${WEEKDAYS[dayIdx]} (mese ${month.monthIndex}): una fonte proteica compare tre volte nel giorno`, 'INFO');
     }
+    // weekly variety, slot by slot: the same dish or the same meal must not come back more than 3 times in a week
     for (const [slot, recipes] of slotRecipes) {
-      const total = [...recipes.values()].reduce((a, b) => a + b, 0);
-      const top = Math.max(...recipes.values());
-      if ((slot === 'pranzo' || slot === 'cena') && total >= 5 && (recipes.size < 4 || top > 2)) fail('Q7', `${slot} (mese ${month.monthIndex}): solo ${recipes.size} piatti diversi in ${total} giorni (il più ripetuto ${top} volte)`, 'WARN');
+      const total = [...recipes.values()].reduce((x, y) => x + y, 0);
+      const top = [...recipes.entries()].sort((x, y) => y[1] - x[1])[0];
+      const where = `${slot} (mese ${month.monthIndex})`;
+      if (top && top[1] > 3) fail('Q7', `${where}: "${top[0]}" compare ${top[1]} volte in una settimana`);
+      else if (top && top[1] > 2 && total >= 5) fail('Q7', `${where}: "${top[0]}" compare 3 volte in una settimana`, 'INFO');
+      if (total >= 5 && recipes.size < 4) fail('Q7', `${where}: solo ${recipes.size} pasti diversi in ${total} giorni`, 'WARN');
+    }
+    for (const [slot, dishes] of slotDishes) {
+      const total = [...dishes.values()].reduce((x, y) => x + y, 0);
+      const top = [...dishes.entries()].sort((x, y) => y[1] - x[1])[0];
+      if (top && top[1] > 3 && total >= 5) fail('Q9', `${slot} (mese ${month.monthIndex}): la stessa preparazione (${top[0]}) torna ${top[1]} volte in una settimana`);
+    }
+    for (const [slot, foods] of slotFoods) {
+      const top = [...foods.entries()].sort((x, y) => y[1] - x[1])[0];
+      if (top && top[1] > 3) fail('Q9', `${slot} (mese ${month.monthIndex}): la stessa proteina (${top[0]}) torna ${top[1]} volte in una settimana`, 'WARN');
     }
   }
   return f;

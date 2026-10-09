@@ -20,6 +20,8 @@ Nessuna chiamata AI per utente: il motore è deterministico (costo zero) e usa i
 | 6. Scelta | `fitlab/meal-builder.ts` | Prova i piatti migliori e le combinazioni di alimenti, tiene la più vicina ai target con meno ripetizioni (stessa proteina mai a pranzo e cena, piatti diversi nella settimana) |
 | 7. Sostituzioni | `meal-builder.ts` | Alimenti della stessa categoria, con la quantità ricalcolata sul nutriente che l'alimento porta (non grammo per grammo) |
 
+**Varietà categorica.** In una settimana lo stesso pasto non torna più di 2 volte per slot (penalità quasi proibitiva dalla seconda ripetizione), lo stesso piatto non più di 2, la stessa proteina non più di 3. Dove le esclusioni (lattosio, uova…) restringono il catalogo ci sono piatti alternativi (proteine vegetali, tacchino affumicato, tonno…) così restano sempre almeno 4–7 scelte per slot. Il banco di prova misura la ripetizione massima su tutte le persone (Q7/Q9).
+
 Regole del framework verificate dal banco di prova: spuntini senza cottura, nessun latticino/integratore a pranzo e cena, verdura a pranzo e cena, ogni pasto è un piatto con nome, alimenti fuori catalogo solo come fallback quando le esclusioni svuotano una categoria.
 
 ## Aggiungere un alimento o un piatto

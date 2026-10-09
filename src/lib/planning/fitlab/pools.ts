@@ -83,7 +83,7 @@ const PREFERRED: Record<'protein' | 'carb' | 'fat', Record<string, string[]>> = 
     legumes: LEGUME_IDS,
     dairy: ['cottage-cheese', 'ricotta-magra'],
     yogurt: ['greek-yogurt-0', 'skyr', 'yogurt-protein', 'kefir'],
-    proteinPowder: ['whey-protein', 'protein-drink', 'protein-pudding', 'protein-bar'],
+    proteinPowder: ['whey-protein', 'plant-protein', 'protein-drink', 'protein-pudding', 'protein-bar'],
     tofu: ['tofu'],
   },
   carb: {

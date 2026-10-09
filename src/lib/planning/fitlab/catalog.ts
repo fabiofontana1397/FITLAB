@@ -42,8 +42,8 @@ export const CATALOG: Record<SlotKind, Partial<Record<Role, string[]>>> = {
 
 /** Extra foods that keep a meal buildable when the person's exclusions empty a role's list (still the same kind of food). */
 export const FALLBACK: Record<SlotKind, Partial<Record<Role, string[]>>> = {
-  breakfast: { protein: ['turkey-breast-smoked', 'bresaola', 'tofu', 'protein-bar'], carb: ['bread-white', 'puffed-rice', 'corn-cakes'] },
-  snack: { protein: ['turkey-breast-smoked', 'tofu', 'egg-whites'], carb: ['bread-white', 'puffed-rice'] },
+  breakfast: { protein: ['plant-protein', 'turkey-breast-smoked', 'bresaola', 'tofu', 'protein-bar'], carb: ['bread-white', 'puffed-rice', 'corn-cakes'] },
+  snack: { protein: ['plant-protein', 'turkey-breast-smoked', 'tuna-canned', 'tofu'], carb: ['bread-white', 'puffed-rice'] },
   lunch: { protein: ['tofu', 'ricotta-magra', 'cottage-cheese', 'turkey-ground', 'veal-cutlet', 'black-beans', 'white-beans'], carb: ['rice-brown-cooked', 'pasta-wholewheat', 'barley-cooked'] },
   dinner: { protein: ['tofu', 'ricotta-magra', 'cottage-cheese', 'turkey-ground', 'black-beans', 'white-beans'], carb: ['rice-brown-cooked', 'pasta-wholewheat', 'barley-cooked'] },
 };
@@ -126,6 +126,8 @@ export const SHORT: Record<string, string> = {
   bresaola: 'bresaola',
   'protein-pudding': 'budino proteico',
   'protein-bar': 'barretta proteica',
+  'plant-protein': 'proteine vegetali',
+  'turkey-breast-smoked': 'tacchino affumicato',
   'protein-drink': 'bevanda proteica',
 };
 

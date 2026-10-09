@@ -7,6 +7,7 @@ import { computeTargets } from '@/domain/targets';
 import { buildUserContext } from '@/domain/user-context';
 import { deleteDietPlan, deleteTrainingPlan, fetchDietPlan, fetchTrainingPlan, insertPlanVersion, type PlanVersionTrigger, upsertDietPlan, upsertTrainingPlan } from '@/lib/api/plans';
 import { fetchPlanStrategy } from '@/lib/api/plan-strategy';
+import { DIET_ENGINE_VERSION } from '@/lib/planning/diet-planner';
 import { daysAgoISO } from '@/lib/mock/dates';
 import type { DietPlan, TrainingPlan } from '@/lib/planning/types';
 import { withAuthRetry } from '@/lib/supabase/retry';
@@ -223,6 +224,7 @@ export function isValidTrainingPlan(plan: TrainingPlan | null): boolean {
  */
 export function isValidDietPlan(plan: DietPlan | null): boolean {
   if (!plan || !plan.calibration) return false;
+  if (plan.engine !== DIET_ENGINE_VERSION) return false; // built by an older generator
   // plans built before the Fit Lab dishes (no recipe on a prescribed meal) are rebuilt
   return plan.months.every((month) => Array.isArray(month.weeklySplit) && month.weeklySplit.length > 0 && month.weeklySplit.every((day) => day.meals.every((meal) => meal.isFreeMeal || meal.recipe)));
 }

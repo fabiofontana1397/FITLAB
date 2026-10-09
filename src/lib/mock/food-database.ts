@@ -403,6 +403,7 @@ export const FOOD_DATABASE: FoodItem[] = [
   { id: 'cream-of-rice', name: 'Crema di riso', category: 'carboidrati', kcal100: 362, protein100: 6.5, carbs100: 80, fats100: 0.6, defaultPortionG: 40 },
   { id: 'corn-cakes', name: 'Gallette di mais', category: 'carboidrati', kcal100: 380, protein100: 8, carbs100: 80, fats100: 3, defaultPortionG: 20 },
   { id: 'gnocchi', name: 'Gnocchi di patate', category: 'carboidrati', kcal100: 150, protein100: 3.5, carbs100: 32, fats100: 0.4, defaultPortionG: 200 },
+  { id: 'plant-protein', name: 'Proteine vegetali (polvere)', category: 'proteine', kcal100: 380, protein100: 78, carbs100: 3, fats100: 6, defaultPortionG: 30 },
   { id: 'almond-butter', name: 'Burro di mandorle 100%', category: 'grassi', kcal100: 614, protein100: 21, carbs100: 19, fats100: 55, defaultPortionG: 15 },
 ];
 

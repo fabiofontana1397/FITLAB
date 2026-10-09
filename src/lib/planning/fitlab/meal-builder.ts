@@ -16,13 +16,14 @@ import { DISHES, type Dish } from './dishes';
 import { familyOf, type FitLabPools } from './pools';
 import { addMacros, kcalOfMacros, macrosOfGrams, portionBounds, solvePortions, ZERO, type Macros, type PortionVar } from './solver';
 
-export type WeekUsage = { dish: Map<string, number>; food: Map<string, number> };
+/** What the week has already used: overall (dish, food) and per slot (`slotId|dish|id`, `slotId|name|recipe`, `slotId|food|id`), so the same meal never comes back more than a couple of times. */
+export type WeekUsage = { dish: Map<string, number>; food: Map<string, number>; slot: Map<string, number> };
 export type DayState = { eggGrams: number; families: Set<string>; dishes: Set<string> };
 
 export type BuiltMeal = {
   items: PlanMealItem[];
   macros: Macros;
-  recipe: { name: string; flavorings: string[]; portable?: boolean };
+  recipe: { name: string; flavorings: string[]; portable?: boolean; dishId: string };
 };
 
 function hash(seed: number, text: string): number {
@@ -58,7 +59,7 @@ type Candidate = {
   cost: number;
 };
 
-function candidateDishes(kind: SlotKind, pools: FitLabPools, seed: number, day: DayState, week: WeekUsage): Candidate[] {
+function candidateDishes(kind: SlotKind, slotId: string, pools: FitLabPools, seed: number, day: DayState, week: WeekUsage): Candidate[] {
   const out: Candidate[] = [];
   for (const dish of DISHES) {
     if (!dish.kinds.includes(kind)) continue;
@@ -75,8 +76,12 @@ function candidateDishes(kind: SlotKind, pools: FitLabPools, seed: number, day: 
     if (kind === 'breakfast' && dish.fruit && fruit.length === 0) continue;
 
     const liked = protein.reduce((s, id) => s + pools.weight(id, kind), 0) / protein.length;
+    const inSlot = used(week.slot, `${slotId}|dish|${dish.id}`);
     const cost =
       used(week.dish, dish.id) * 3 +
+      inSlot * 8 +
+      (inSlot >= 2 ? 150 : 0) +
+      (inSlot >= 3 ? 600 : 0) +
       (day.dishes.has(dish.id) ? 100 : 0) +
       hash(seed, dish.id) * 2 +
       (kind === 'lunch' && pools.eatsOutOften && dish.portable ? -2.5 : 0) -
@@ -142,18 +147,35 @@ function substitutesFor(item: { food: FoodItem; grams: number; role: Role }, kin
 
 type Solved = { vars: PortionVar[]; total: Macros; error: number; fixedItems: { food: FoodItem; grams: number; role: Role }[]; score: number };
 
+function recipeNameFor(dish: Dish, picks: { protein?: FoodItem; carb?: FoodItem; veg?: FoodItem; fat?: FoodItem; fruit?: FoodItem }): string {
+  const nameOf = (food?: FoodItem) => (food ? short(food.id, food.name) : undefined);
+  const p = nameOf(picks.protein);
+  return render(dish.name, {
+    p,
+    pc: picks.protein ? (COOKED[picks.protein.id] ?? (p ? p[0].toUpperCase() + p.slice(1) : undefined)) : undefined,
+    c: nameOf(picks.carb),
+    v: nameOf(picks.veg),
+    f: nameOf(picks.fat),
+    fr: nameOf(picks.fruit),
+  });
+}
+
+/** A meal that already appeared this week in the same slot costs a lot; more than twice is practically ruled out. */
+const repeatPenalty = (n: number, soft: number, hard: number) => (n >= 4 ? hard * 5 : n >= 3 ? hard : n >= 2 ? hard / 3 : n >= 1 ? soft : 0);
+
 export function buildFitLabMeal(args: {
   kind: SlotKind;
+  slotId: string;
   target: Macros;
   pools: FitLabPools;
   seed: number;
   day: DayState;
   week: WeekUsage;
 }): BuiltMeal {
-  const { kind, target, pools, seed, day, week } = args;
+  const { kind, slotId, target, pools, seed, day, week } = args;
   const isMain = kind === 'lunch' || kind === 'dinner';
   const kcalTarget = kcalOfMacros(target);
-  const candidates = candidateDishes(kind, pools, seed, day, week);
+  const candidates = candidateDishes(kind, slotId, pools, seed, day, week);
   if (candidates.length === 0) throw new Error(`No dish can be built for ${kind}`);
 
   const eggRoom = Math.max(200 - day.eggGrams, 0);
@@ -210,7 +232,12 @@ export function buildFitLabMeal(args: {
                 (vid ? foodCost(vid, 'veg', kind, seed, pools, day, week) * 0.5 : 0) +
                 (frid ? foodCost(frid, 'fruit', kind, seed, pools, day, week) * 0.5 : 0);
               const proteinShort = Math.max(target.protein - solved.total.protein, 0);
-              const score = solved.error / 6 + variety + kcalOff * 200 + proteinShort * 0.6;
+              const name = recipeNameFor(cand.dish, { protein: pf, carb: cf, veg: vid ? findFood(vid)! : undefined, fat: fid ? findFood(fid[0])! : undefined, fruit: frid ? findFood(frid)! : undefined });
+              const repeats =
+                repeatPenalty(used(week.slot, `${slotId}|name|${name}`), 70, 600) +
+                repeatPenalty(used(week.slot, `${slotId}|food|${pid}`), 0, 120) +
+                repeatPenalty(used(week.slot, `${slotId}|food|${cid}`), 0, 40);
+              const score = solved.error / 6 + variety + kcalOff * 200 + proteinShort * 0.6 + repeats;
               if (!best || score < best.score) best = { ...solved, fixedItems, score, cand };
             }
           }
@@ -262,15 +289,7 @@ export function buildFitLabMeal(args: {
   const vegItem = chosen.fixedItems.find((f) => f.role === 'veg');
 
   const dish = chosen.cand.dish;
-  const nameOf = (food?: FoodItem) => (food ? short(food.id, food.name) : undefined);
-  const recipeName = render(dish.name, {
-    p: nameOf(proteinVar.food),
-    pc: COOKED[proteinVar.food.id] ?? (nameOf(proteinVar.food) ? nameOf(proteinVar.food)![0].toUpperCase() + nameOf(proteinVar.food)!.slice(1) : undefined),
-    c: nameOf(carbVar.food),
-    v: nameOf(vegItem?.food),
-    f: nameOf(fatVar?.food),
-    fr: nameOf(fruitVar?.food),
-  });
+  const recipeName = recipeNameFor(dish, { protein: proteinVar.food, carb: carbVar.food, veg: vegItem?.food, fat: fatVar?.food, fruit: fruitVar?.food });
 
   const sub = (v: { food: FoodItem; grams: number; role: Role }) => substitutesFor(v, kind, dish, pools, seed);
   const items: PlanMealItem[] = [];
@@ -283,6 +302,10 @@ export function buildFitLabMeal(args: {
   // remember what was used: variety within the day and across the week
   week.dish.set(dish.id, used(week.dish, dish.id) + 1);
   day.dishes.add(dish.id);
+  const bump = (key: string) => week.slot.set(key, used(week.slot, key) + 1);
+  bump(`${slotId}|dish|${dish.id}`);
+  bump(`${slotId}|name|${recipeName}`);
+  for (const v of kept) if (v.role === 'protein' || v.role === 'carb') bump(`${slotId}|food|${v.food.id}`);
   for (const v of kept) {
     week.food.set(v.food.id, used(week.food, v.food.id) + 1);
     if (v.role === 'protein') day.families.add(familyOf(v.food.id));
@@ -290,5 +313,5 @@ export function buildFitLabMeal(args: {
   }
   if (vegItem) week.food.set(vegItem.food.id, used(week.food, vegItem.food.id) + 1);
 
-  return { items, macros: total, recipe: { name: recipeName, flavorings: dish.flavor, portable: dish.portable } };
+  return { items, macros: total, recipe: { name: recipeName, flavorings: dish.flavor, portable: dish.portable, dishId: dish.id } };
 }

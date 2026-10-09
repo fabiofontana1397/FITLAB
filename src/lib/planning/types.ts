@@ -31,7 +31,7 @@ export type PlanMeal = {
   items: PlanMealItem[];
   totalKcal: number;
   /** The dish this meal makes ( e.g. "Bowl di pollo con riso basmati e zucchine" ) and the free flavourings that complete it. */
-  recipe?: { name: string; flavorings: string[]; portable?: boolean };
+  recipe?: { name: string; flavorings: string[]; portable?: boolean; /** Recipe template id (e.g. "bowl"), for variety checks. */ dishId?: string };
   /** Macros delivered by the items (grams). Absent on a free meal. */
   macros?: { protein: number; carbs: number; fats: number };
   /** True for the one weekly unprescribed meal ("pasto libero") — items is
@@ -63,6 +63,8 @@ export type DietPlan = {
   durationMonths: number;
   goal: Goal;
   months: DietMonthPlan[];
+  /** Version of the diet generator that built it: an older plan is rebuilt in place (see DIET_ENGINE_VERSION). */
+  engine?: string;
   /** Monthly recalibration state and history (see domain/recalibration.ts). */
   calibration?: PlanCalibration;
   recalibrations?: RecalibrationRecord[];

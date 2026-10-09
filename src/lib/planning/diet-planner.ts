@@ -11,6 +11,9 @@ import { buildMealSlotsFromAnswers, type MealSlotDef } from './meal-slots';
 import type { DietStrategy } from './strategy-types';
 import type { DietDayPlan, DietMonthPlan, DietPlan, PlanMeal, PlanPhaseKind } from './types';
 
+/** Bump when the generator changes in a way existing plans should pick up (they are rebuilt in place, keeping start date and history). */
+export const DIET_ENGINE_VERSION = 'fitlab-2';
+
 export type DietPlanInput = {
   ctx: UserContext;
   /** One entry per plan month (index 0 = month 1), from computeTargets on that month's training week. */
@@ -79,7 +82,7 @@ function buildDay(
       carbs: dayTarget.macros.carbs * kcalShare,
       fats: dayTarget.macros.fats * kcalShare,
     };
-    const { items, macros, recipe } = buildFitLabMeal({ kind: SLOT_KIND[slot.id], target, pools, seed: seed + slotIdx, day, week });
+    const { items, macros, recipe } = buildFitLabMeal({ kind: SLOT_KIND[slot.id], slotId: slot.id, target, pools, seed: seed + slotIdx, day, week });
     return {
       slotId: slot.id,
       label: slot.label,
@@ -117,7 +120,7 @@ export function generateDietPlan(input: DietPlanInput): DietPlan {
     }
     const phase = phaseForMonth(monthIndex, durationMonths);
     const targets = monthTargets[monthIndex - 1];
-    const usage: WeekUsage = { dish: new Map(), food: new Map() }; // variety within the month's week
+    const usage: WeekUsage = { dish: new Map(), food: new Map(), slot: new Map() }; // variety within the month's week
     const monthlyFocus = strategy?.monthlyFocus?.find((m) => m.monthIndex === monthIndex);
     months.push({
       monthIndex,
@@ -130,6 +133,6 @@ export function generateDietPlan(input: DietPlanInput): DietPlan {
     });
   }
 
-  return { generatedAt: new Date().toISOString(), durationMonths, goal: ctx.goal, months };
+  return { generatedAt: new Date().toISOString(), durationMonths, goal: ctx.goal, months, engine: DIET_ENGINE_VERSION };
 }
 
