@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Switch, View } from 'react-native';
 
 import { FoodSearchModal } from '@/components/nutrition/food-search-modal';
 import { MealPickerModal, mealSlotColor } from '@/components/nutrition/meal-picker-modal';
@@ -217,22 +217,20 @@ export default function NutritionScreen() {
       </View>
 
       {planDayForSelectedDate ? (
-        <Pressable
-          onPress={() => (isFollowingPlan ? unseedDay(selectedDate) : seedDayFromPlan(selectedDate, planDayForSelectedDate.meals))}
-          accessibilityRole="checkbox"
-          accessibilityState={{ checked: isFollowingPlan }}
-          style={[styles.followRow, { backgroundColor: theme.backgroundElevated, borderColor: isFollowingPlan ? theme.accent : theme.border }]}>
-          <View
-            style={[
-              styles.checkbox,
-              isFollowingPlan ? { backgroundColor: theme.accent, borderColor: theme.accent } : { borderColor: theme.textTertiary },
-            ]}>
-            {isFollowingPlan ? <Icon name="check" size={14} color="#FFFFFF" /> : null}
-          </View>
+        <View style={[styles.followRow, { backgroundColor: theme.backgroundElevated, borderColor: theme.border }]}>
           <ThemedText style={styles.followText}>
             {selectedDate === today ? 'Inserisci la dieta di oggi nei pasti' : 'Inserisci la dieta di questo giorno nei pasti'}
           </ThemedText>
-        </Pressable>
+          <Switch
+            value={isFollowingPlan}
+            onValueChange={(on) => (on ? seedDayFromPlan(selectedDate, planDayForSelectedDate.meals) : unseedDay(selectedDate))}
+            trackColor={{ false: theme.backgroundElement, true: theme.accent }}
+            ios_backgroundColor={theme.backgroundElement}
+            thumbColor="#FFFFFF"
+            {...(Platform.OS === 'web' ? { activeThumbColor: '#FFFFFF' } : null)}
+            accessibilityLabel="Inserisci la dieta del giorno nei pasti"
+          />
+        </View>
       ) : null}
 
       <View style={styles.mealsList}>
@@ -589,22 +587,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 11,
     paddingHorizontal: CARD_PADDING,
-    paddingVertical: 12,
+    paddingVertical: 10,
     borderRadius: 16,
-    borderWidth: 1,
-  },
-  checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 6,
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
   },
   followText: {
     flex: 1,
-    fontSize: 13.5,
-    lineHeight: 18,
-    fontWeight: '600',
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: '500',
   },
 });
