@@ -5,6 +5,8 @@
  * pick can still appear, rarely.
  */
 import { FITLAB_FOODS, type FitLabFood } from './foods';
+import { componentOf, FOOD_COMPONENTS, preferredByComponent } from '@/lib/questionnaire/food-preferences';
+
 import type { SlotKind } from './catalog';
 
 const NO_ANSWER = new Set(['', 'no', 'nessuna', 'nessuno', 'niente', 'no.', 'n/a', 'na']);
@@ -74,46 +76,6 @@ function foodsNamedIn(blob: string): Set<string> {
   return found;
 }
 
-type Spec = string; // an exact food name, or "sub:<Sottocategoria>", or "cat:<Categoria>", or "name:<prefix>"
-function matches(food: FitLabFood, spec: Spec): boolean {
-  if (spec.startsWith('sub:')) return food.sub === spec.slice(4);
-  if (spec.startsWith('cat:')) return food.category === spec.slice(4);
-  if (spec.startsWith('name:')) return food.name.startsWith(spec.slice(5));
-  return food.name === spec;
-}
-
-const PREFERRED: Record<'protein' | 'carb' | 'fat', Record<string, Spec[]>> = {
-  protein: {
-    chicken: ['Petto di pollo', 'Hamburger di pollo magro'],
-    turkey: ['Petto di tacchino', 'Hamburger di tacchino magro', 'Fesa di tacchino affettata'],
-    beef: ['Manzo magro'],
-    eggs: ['Uova intere', "Albume d'uovo"],
-    fish: ['sub:Pesce', 'sub:Crostacei', 'sub:Preparazioni di pesce'],
-    legumes: ['sub:Legumi'],
-    dairy: ['sub:Formaggi freschi', 'sub:Formaggi stagionati', 'sub:Latte'],
-    yogurt: ['sub:Latticini', 'sub:Latticini fermentati'],
-    proteinPowder: ['Bevanda proteica', 'Barretta proteica', 'Budino proteico'],
-    tofu: ['Tofu', 'Seitan'],
-  },
-  carb: {
-    rice: ['name:Riso'],
-    pasta: ['name:Pasta', 'Gnocchi di patate'],
-    potatoes: ['Patate', 'Patate dolci'],
-    bread: ['sub:Pane e prodotti da forno'],
-    oats: ["Fiocchi d'avena", 'Avena istantanea', 'Crema di riso', 'sub:Cereali da colazione'],
-    cereals: ['sub:Cereali', 'sub:Pseudocereali', 'Cous cous', 'Polenta'],
-    legumes: ['sub:Legumi'],
-    fruit: ['cat:Frutta'],
-  },
-  fat: {
-    oliveOil: ['Olio extravergine di oliva'],
-    nuts: ['sub:Frutta a guscio', 'sub:Creme di frutta a guscio'],
-    avocado: ['Avocado'],
-    fattyFish: ['Salmone', 'Sgombro', 'Sardine'],
-    butter: ['Olio extravergine di oliva'],
-  },
-};
-
 const USUAL_FIELDS: Record<SlotKind, string[]> = {
   breakfast: ['usualBreakfast'],
   lunch: ['usualLunch'],
@@ -142,6 +104,9 @@ export type FitLabPools = {
   eatsOutOften: boolean;
   /** Vegetarian, or asked for tofu / seitan: otherwise plant proteins stay occasional for an omnivore. */
   wantsPlantProtein: boolean;
+  /** The foods the person picked as preferred that they can eat (diet, allergens, exclusions). */
+  preferredFoods: FitLabFood[];
+  isPreferred: (food: FitLabFood) => boolean;
 };
 
 export function buildFitLabPools(answers: Record<string, unknown>): FitLabPools {
@@ -166,15 +131,13 @@ export function buildFitLabPools(answers: Record<string, unknown>): FitLabPools 
     return true;
   };
 
-  // preferences only count when the person actually picked some
-  const picked = (field: string, kind: 'protein' | 'carb' | 'fat') => {
-    const values = Array.isArray(answers[field]) ? (answers[field] as string[]) : [];
-    if (values.length === 0) return null;
-    const wantedSpecs = values.flatMap((v) => PREFERRED[kind][v] ?? []);
-    const knownSpecs = Object.values(PREFERRED[kind]).flat();
-    return { wanted: (f: FitLabFood) => wantedSpecs.some((s) => matches(f, s)), known: (f: FitLabFood) => knownSpecs.some((s) => matches(f, s)) };
+  // what the person picked in the five selectors (food ids; older answers hold broad codes, normalised here)
+  const picked = preferredByComponent(answers);
+  const preferredIds = new Set(FOOD_COMPONENTS.flatMap((c) => picked[c]));
+  const withPrefs = (food: FitLabFood) => {
+    const c = componentOf(food);
+    return c != null && picked[c].length > 0;
   };
-  const prefs = [picked('preferredProteins', 'protein'), picked('preferredCarbs', 'carb'), picked('preferredFats', 'fat')];
   const included = foodsNamedIn(textOf(answers, ['includedFoods']));
   const usual: Record<SlotKind, Set<string>> = {
     breakfast: foodsNamedIn(textOf(answers, USUAL_FIELDS.breakfast)),
@@ -185,17 +148,16 @@ export function buildFitLabPools(answers: Record<string, unknown>): FitLabPools 
 
   const weight = (food: FitLabFood, kind: SlotKind): number => {
     let w = 1;
-    for (const p of prefs) {
-      if (!p || !p.known(food)) continue;
-      w = p.wanted(food) ? 1.6 : 0.3;
-    }
+    // preferred foods are favoured; the others of a component the person has chosen for stay possible, just less likely
+    if (withPrefs(food)) w = preferredIds.has(food.id) ? 2 : 0.6;
     if (included.has(food.id)) w = Math.max(w, 3);
     if (usual[kind].has(food.id)) w = Math.max(w, 2.2);
     return w;
   };
 
   const outTimes = typeof answers.eatingOut === 'string' ? (answers.eatingOut === 'gt6' ? 7 : answers.eatingOut === 'rarely' ? 0 : Number(answers.eatingOut)) : 0;
-  const pickedPlant = Array.isArray(answers.preferredProteins) && (answers.preferredProteins as string[]).includes('tofu');
+  const pickedPlant = picked.protein.some((id) => FITLAB_FOODS.find((f) => f.id === id)?.sub === 'Proteine vegetali');
   const namedPlant = [...included].some((id) => FITLAB_FOODS.find((f) => f.id === id)?.sub === 'Proteine vegetali');
-  return { allowed, weight, eatsOutOften: Number.isFinite(outTimes) && outTimes >= 3, wantsPlantProtein: regime !== 'omni' || pickedPlant || namedPlant };
+  const preferredFoods = FITLAB_FOODS.filter((f) => preferredIds.has(f.id) && allowed(f));
+  return { allowed, weight, preferredFoods, isPreferred: (f: FitLabFood) => preferredIds.has(f.id), eatsOutOften: Number.isFinite(outTimes) && outTimes >= 3, wantsPlantProtein: regime !== 'omni' || pickedPlant || namedPlant };
 }

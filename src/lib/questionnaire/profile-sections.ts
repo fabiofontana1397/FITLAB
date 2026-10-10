@@ -14,6 +14,7 @@ import {
   type OnboardingMode,
   type Question,
 } from '@/lib/questionnaire/schema';
+import { normalizePreferred } from '@/lib/questionnaire/food-preferences';
 import { getStepQuestions } from '@/lib/questionnaire/step-questions';
 
 export type ProfileGroupId = 'identity' | 'lifestyle' | 'meals' | 'foodPrefs' | 'habits' | 'training' | 'availability' | 'limitations';
@@ -37,7 +38,7 @@ export const PROFILE_GROUPS: ProfileGroup[] = [
     title: 'Preferenze alimentari',
     icon: 'nutrition',
     stepIds: ['preferences'],
-    questionIds: ['dietaryPattern', 'allergiesIntolerances', 'excludedFoods', 'includedFoods', 'preferredProteins', 'preferredCarbs', 'preferredFats'],
+    questionIds: ['dietaryPattern', 'allergiesIntolerances', 'excludedFoods', 'includedFoods', 'preferredProteins', 'preferredCarbs', 'preferredFats', 'preferredFruit', 'preferredVegetables'],
   },
   {
     id: 'habits',
@@ -93,6 +94,8 @@ const SHORT_LABEL: Record<string, string> = {
   preferredProteins: 'Proteine preferite',
   preferredCarbs: 'Carboidrati preferiti',
   preferredFats: 'Grassi preferiti',
+  preferredFruit: 'Frutta preferita',
+  preferredVegetables: 'Verdura preferita',
   usualBreakfast: 'Colazione tipo',
   usualMorningSnack: 'Spuntino di metà mattina',
   usualLunch: 'Pranzo tipo',
@@ -159,8 +162,10 @@ export function summaryRows(group: ProfileGroup, answers: Record<string, unknown
     if (DETAIL_OF[id]) {
       const details = typeof answers[DETAIL_OF[id]] === 'string' ? (answers[DETAIL_OF[id]] as string).trim() : '';
       rows.push({ kind: 'value', id, label, value: isYes(value) ? details || 'Sì' : optionLabel(question, value), alert: isYes(value) });
-    } else if (question.type === 'multi') {
-      const values = Array.isArray(value) ? value.map((v) => question.options?.find((o) => o.value === v)?.label ?? String(v)) : [];
+    } else if (question.type === 'multi' || question.type === 'foodPicker') {
+      // food pickers may still hold the broad codes of older answers: show the foods they stand for
+      const stored = question.type === 'foodPicker' && question.component ? normalizePreferred(question.component, value) : Array.isArray(value) ? (value as string[]) : [];
+      const values = stored.map((v) => question.options?.find((o) => o.value === v)?.label ?? String(v));
       rows.push({ kind: 'chips', id, label, values });
     } else if (question.type === 'text' || question.type === 'longtext') {
       rows.push({ kind: 'text', id, label, value: optionLabel(question, value) });

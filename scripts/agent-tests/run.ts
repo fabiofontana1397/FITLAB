@@ -20,7 +20,7 @@ import type { PlanStrategy } from '@/lib/planning/strategy-types';
 
 import { checkStrategy, openAiSession } from './ai';
 import { checkCoach } from './coach';
-import { checkDietQuality, checkDishLibrary } from './diet-quality';
+import { checkDietQuality, checkDishLibrary, checkPreferences } from './diet-quality';
 import { checkFlow, checkGlobal } from './flow';
 import { SCENARIOS, simulate, type SimulationResult } from './simulate';
 import { buildPlans, buildUserContext, macrosOf, runChecks, toNutritionTargets, type Finding, type PersonaRun } from './checks';
@@ -33,7 +33,7 @@ export function generateForPersona(persona: Persona, strategy: PlanStrategy | nu
   const ctx = buildUserContext(persona.answers);
   const bundle = buildPlans(ctx, { strategy });
   const targets = toNutritionTargets(ctx, bundle.monthTargets[0]);
-  const findings = [...runChecks(persona, ctx, bundle), ...checkFlow(persona, ctx, bundle), ...(bundle.diet ? checkDietQuality(persona, bundle.diet) : [])];
+  const findings = [...runChecks(persona, ctx, bundle), ...checkFlow(persona, ctx, bundle), ...(bundle.diet ? [...checkDietQuality(persona, bundle.diet), ...checkPreferences(persona, bundle.diet)] : [])];
   if (aiMode) findings.push(...checkStrategy(persona, strategy, bundle.durationMonths));
   return { persona, ctx, bundle, targets, durationMonths: bundle.durationMonths, diet: bundle.diet, training: bundle.training, findings };
 }

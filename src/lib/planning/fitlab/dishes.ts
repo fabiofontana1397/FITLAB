@@ -34,6 +34,8 @@ export type Dish = {
   portable?: boolean;
   /** Takes time to prepare (oven, long-cooking grains, ragù, soups…): kept for dinner, lunch needs quick dishes. */
   slow?: boolean;
+  /** The fat is named in the dish (avocado toast, pesto): it is always in the meal, never rounded away. */
+  fatRequired?: boolean;
 };
 
 type Spec = Omit<Dish, 'source' | 'kinds'> & { kinds: SlotKind[] };
@@ -159,6 +161,8 @@ const SLOW = new Set([
   'X301', 'X302', 'X308', 'X309', 'X310', 'X311', 'X312', 'X314', 'X315', 'X316', 'X319', 'X320', 'X324', 'X325', 'X327',
 ]);
 for (const d of DISHES) d.slow = SLOW.has(d.id);
+const FAT_REQUIRED = new Set(['PL006', 'PL021', 'X205', 'X303']);
+for (const d of DISHES) d.fatRequired = FAT_REQUIRED.has(d.id);
 
 // Every food named in a dish must exist in the catalog (a typo fails loudly at load, not silently at plan time).
 for (const d of DISHES) {

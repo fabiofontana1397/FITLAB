@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { AppTextInput } from '@/components/ui/app-text';
+import { FoodPicker } from '@/components/onboarding/food-picker';
 
 import { GlassSurface } from '@/components/glass/glass-surface';
 import { ThemedText } from '@/components/themed-text';
@@ -28,6 +29,8 @@ export type QuestionFieldProps = {
 
 export function QuestionField({ question, value, onChange }: QuestionFieldProps) {
   const theme = useTheme();
+
+  if (question.type === 'foodPicker') return <FoodPicker question={question} value={value} onChange={onChange} />;
 
   if (question.type === 'single' || question.type === 'multi') {
     const isMulti = question.type === 'multi';

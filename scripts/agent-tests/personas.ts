@@ -20,6 +20,8 @@ const MEAT_IDS = subIds('Carni bianche', 'Carni rosse', 'Carni suine', 'Preparaz
 const FISH_IDS = subIds('Pesce', 'Crostacei', 'Preparazioni di pesce');
 const MILK_IDS = FITLAB_FOODS.filter((f) => /latte/i.test(f.allergens) && !/senza lattosio/i.test(f.name) && f.sub !== 'Formaggi stagionati').map((f) => f.id);
 const EGG_IDS = subIds('Uova');
+/** Catalog food ids by name, for the food-preference selectors. */
+const foodIds = (...names: string[]) => names.map((n) => FITLAB_FOODS.find((f) => f.name === n)!.id);
 
 export type Persona = {
   id: string;
@@ -573,5 +575,27 @@ export const PERSONAS: Persona[] = [
       dailySteps: '8000-12000',
     }),
     expect: { calories: 'deficit', forbiddenFoodIds: MEAT_IDS },
+  },
+  {
+    id: 'sara-26-alimenti-preferiti',
+    name: 'Sara, 26 anni — sceglie i suoi alimenti preferiti',
+    summary: 'Grafica, 60 kg per 168 cm, forma fisica. Nel questionario sceglie i suoi alimenti preferiti per proteine, carboidrati, grassi, frutta e verdura (selettori per componente).',
+    expectation: 'Gli alimenti scelti compaiono nelle diete, mese dopo mese; il piano resta vario.',
+    answers: base({
+      sex: 'female',
+      age: 26,
+      heightCm: 168,
+      currentWeightKg: 60,
+      goal: 'maintainImprove',
+      targetWeightKg: 60,
+      mealsSelected: ['colazione', 'spuntinoPomeriggio', 'pranzo', 'cena'],
+      afternoonSnackTime: '17:00',
+      preferredProteins: foodIds('Petto di tacchino', 'Salmone', 'Uova intere', 'Yogurt greco 0%', 'Ceci', 'Ricotta magra'),
+      preferredCarbs: foodIds('Riso integrale', 'Pasta integrale', 'Patate dolci', "Fiocchi d'avena", 'Quinoa'),
+      preferredFats: foodIds('Avocado', 'Mandorle', 'Noci'),
+      preferredFruit: foodIds('Mela', 'Kiwi', 'Mirtilli', 'Banana'),
+      preferredVegetables: foodIds('Zucchine', 'Spinaci', 'Carciofi', 'Peperoni', 'Broccoli'),
+    }),
+    expect: { calories: 'maintenance' },
   },
 ];

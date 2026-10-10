@@ -86,12 +86,25 @@ function candidateDishes(kind: SlotKind, slotId: string, pools: FitLabPools, see
     const r = resolve(dish);
     // lunch is quick: no fish to cook (canned tuna is fine); a dish built only on fish stays for dinner
     const lunchOk = (foods: FitLabFood[]) => (kind === 'lunch' ? foods.filter((f) => !isFish(f) || f.name === 'Tonno al naturale') : foods);
-    const base = ok(r.base);
-    const protein = lunchOk(ok(r.protein));
+    // the foods the person picked as preferred join a role when they are of the same kind as the dish's own (another white meat, another cereal)
+    const expand = (foods: FitLabFood[]) => {
+      if (pools.preferredFoods.length === 0 || foods.length === 0) return foods;
+      const subs = new Set(foods.map((f) => f.sub));
+      return [...foods, ...pools.preferredFoods.filter((f) => !foods.includes(f) && subs.has(f.sub) && f.meals.includes(kind) && !(kind === 'snack' && needsCooking(f)))];
+    };
+    // sides: any preferred vegetable (main meals) or fruit (breakfast and snacks) can take the place of the dish's own
+    const expandSide = (group: FitLabFood[]) => {
+      const category = group[0]?.category;
+      if (pools.preferredFoods.length === 0 || (category !== 'Verdure' && category !== 'Frutta')) return group;
+      if (category === 'Verdure' && kind !== 'lunch' && kind !== 'dinner') return group;
+      return [...group, ...pools.preferredFoods.filter((f) => f.category === category && !group.includes(f) && f.meals.includes(kind))];
+    };
+    const base = expand(ok(r.base));
+    const protein = lunchOk(expand(ok(r.protein)));
     if (dish.base && base.length === 0) continue;
     if (dish.protein.length > 0 && protein.length === 0) continue;
     // a side nobody can eat (excluded) is dropped when the dish has another; a dish with a single side needs it
-    const sides = r.sides.map(ok).filter((g) => g.length > 0);
+    const sides = r.sides.map((g) => expandSide(ok(g))).filter((g) => g.length > 0);
     if (r.sides.length > 0 && sides.length === 0) continue;
     const spread = ok(r.spread);
     if (r.spread.length > 0 && spread.length === 0) continue;
@@ -117,7 +130,7 @@ function candidateDishes(kind: SlotKind, slotId: string, pools: FitLabPools, see
       extraProtein: lunchOk(ok(r.extraProtein)),
       sides,
       spread,
-      fat: ok(r.fat),
+      fat: expand(ok(r.fat)),
       oil: !!dish.oil && pools.allowed(OIL),
       sauce: !!dish.sauce && pools.allowed(PASSATA),
       cost,
@@ -127,11 +140,16 @@ function candidateDishes(kind: SlotKind, slotId: string, pools: FitLabPools, see
 }
 
 const FISH_SUBS = new Set(['Pesce', 'Crostacei', 'Preparazioni di pesce']);
+// a snack is assembled, not cooked: nothing to boil, roast or fry (canned tuna is fine)
+const COOKED_SUBS = new Set(['Carni bianche', 'Carni rosse', 'Carni suine', 'Preparazioni di carne', 'Preparazioni di pesce', 'Pesce', 'Crostacei', 'Pasta e derivati', 'Cereali', 'Pseudocereali', 'Tuberi']);
+const needsCooking = (f: FitLabFood) => (COOKED_SUBS.has(f.sub) || f.name === 'Polenta' || f.name === 'Cous cous') && f.name !== 'Tonno al naturale';
 const isFish = (food: FitLabFood) => FISH_SUBS.has(food.sub);
 
 function foodCost(food: FitLabFood, role: Role, kind: SlotKind, seed: number, pools: FitLabPools, day: DayState, week: WeekUsage): number {
   return (
     used(week.food, food.id) * 2.2 +
+    // every preferred food should reach the week's table: one not used yet is favoured
+    (pools.isPreferred(food) && used(week.food, food.id) === 0 ? -2.5 : 0) +
     // the same protein across the week's lunches and dinners: 3 times at most when there is any alternative
     (role === 'protein' && (kind === 'lunch' || kind === 'dinner') ? (used(week.food, food.id) >= 4 ? 150 : used(week.food, food.id) >= 3 ? 45 : 0) : 0) +
     (role === 'protein' && day.families.has(familyOf(food)) ? 12 : 0) +
@@ -249,8 +267,15 @@ export function buildFitLabMeal(args: { kind: SlotKind; slotId: string; target: 
     const bases: (FitLabFood | null)[] = cand.base.length === 0 ? [null] : rank(cand.base, 'carb', 2);
     const spreadPick = cand.spread.length > 0 ? rank(cand.spread, 'fat', 1)[0] : null;
     // each side: a vegetable (fixed amount), a fruit (variable) or a spread; fruit gets two options for variety
-    const sideChoices: FitLabFood[][] = cand.sides.map((group) => rank(group, group[0].category === 'Frutta' ? 'fruit' : 'veg', group[0].category === 'Frutta' ? 2 : 1));
-    const sideCombos: FitLabFood[][] = sideChoices.reduce<FitLabFood[][]>((acc, group) => acc.flatMap((a) => group.map((g) => [...a, g])), [[]]);
+    // (the same food never serves as two sides of one dish)
+    const buildSides = (i: number, chosen: FitLabFood[]): FitLabFood[][] => {
+      if (i === cand.sides.length) return [chosen];
+      const group = cand.sides[i].filter((f) => !chosen.includes(f));
+      if (group.length === 0) return [];
+      const isFruit = group[0].category === 'Frutta';
+      return rank(group, isFruit ? 'fruit' : 'veg', isFruit ? 2 : 1).flatMap((f) => buildSides(i + 1, [...chosen, f]));
+    };
+    const sideCombos: FitLabFood[][] = buildSides(0, []);
     const fatTop = cand.fat.length > 0 ? rank(cand.fat, 'fat', 2) : [];
     const fatOptions: FitLabFood[][] = fatTop.length === 0 ? [[]] : [...fatTop.map((f) => [f]), ...(fatTop.length === 2 ? [fatTop] : [])];
 
@@ -288,7 +313,10 @@ export function buildFitLabMeal(args: { kind: SlotKind; slotId: string; target: 
               fixedMacros = addMacros(fixedMacros, macrosOfGrams(PASSATA, 60));
             }
             if (cand.oil) vars.push({ food: OIL, role: 'fat', ...portionBounds(OIL, 'fat', { cookingFat: true, bigMeal: kcalTarget > 900 }), grams: 0 });
-            for (const f of fats) vars.push({ food: f, role: 'fat', ...portionBounds(f, 'fat', { bigMeal: kcalTarget > 900 }), grams: 0 });
+            for (const f of fats) {
+              const pb = portionBounds(f, 'fat', { bigMeal: kcalTarget > 900 });
+              vars.push({ food: f, role: 'fat', ...pb, min: cand.r.dish.fatRequired ? pb.minUse : pb.min, grams: 0 });
+            }
             if (vars.length === 0) continue;
 
             const solved = solvePortions(fixedMacros, vars, target);

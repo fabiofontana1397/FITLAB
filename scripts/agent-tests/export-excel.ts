@@ -104,6 +104,7 @@ async function main() {
     return { persona, ctx, diet: buildPlans(ctx).diet };
   })
     .filter((r): r is { persona: (typeof PERSONAS)[number]; ctx: ReturnType<typeof buildUserContext>; diet: NonNullable<typeof r.diet> } => r.diet != null)
+    .filter((r) => r.persona.id !== 'omar-41-ex-allenamento') // same case as Andrea (diet only)
     .slice(0, 20)
     .map((r, i) => ({ ...r, n: i + 1 }));
 
@@ -143,7 +144,7 @@ async function main() {
     { header: 'N°' }, { header: 'Persona' }, { header: 'Descrizione' }, { header: 'Età' }, { header: 'Sesso' }, { header: 'Altezza (cm)' }, { header: 'Peso (kg)' },
     { header: 'Obiettivo' }, { header: 'Peso obiettivo (kg)' }, { header: 'Cosa ha scelto' }, { header: 'Pasti al giorno' }, { header: 'Alimentazione' },
     { header: 'Allergie / intolleranze' }, { header: 'Alimenti esclusi' }, { header: 'Alimenti da includere' }, { header: 'Proteine preferite' },
-    { header: 'Carboidrati preferiti' }, { header: 'Grassi preferiti' }, { header: 'Cosa mangia di solito' }, { header: 'Pasti fuori casa' },
+    { header: 'Carboidrati preferiti' }, { header: 'Grassi preferiti' }, { header: 'Frutta preferita' }, { header: 'Verdura preferita' }, { header: 'Cosa mangia di solito' }, { header: 'Pasti fuori casa' },
   ];
   for (const { n, persona } of runs) {
     const a = persona.answers as Record<string, unknown>;
@@ -159,10 +160,10 @@ async function main() {
       n, persona.name, persona.summary, Number(a.age), SEX_LABEL[String(a.sex)] ?? String(a.sex), Number(a.heightCm), Number(a.currentWeightKg),
       GOAL_LABEL[String(a.goal)] ?? String(a.goal), a.targetWeightKg ? Number(a.targetWeightKg) : '—', MODE_LABEL[String(a.mode ?? 'both')] ?? 'Dieta e allenamento', meals,
       lab('dietaryPattern', a.dietaryPattern) || 'Nessuna', (a.allergiesIntolerances as string) || '—', (a.excludedFoods as string) || '—', (a.includedFoods as string) || '—',
-      lab('preferredProteins', a.preferredProteins) || '—', lab('preferredCarbs', a.preferredCarbs) || '—', lab('preferredFats', a.preferredFats) || '—', usual || '—', lab('eatingOut', a.eatingOut) || '—',
+      lab('preferredProteins', a.preferredProteins) || '—', lab('preferredCarbs', a.preferredCarbs) || '—', lab('preferredFats', a.preferredFats) || '—', lab('preferredFruit', a.preferredFruit) || '—', lab('preferredVegetables', a.preferredVegetables) || '—', usual || '—', lab('eatingOut', a.eatingOut) || '—',
     ]);
   }
-  styleSheet(qs, [5, 30, 60, 7, 9, 10, 9, 24, 12, 20, 34, 16, 24, 20, 20, 30, 30, 26, 44, 20]);
+  styleSheet(qs, [5, 30, 60, 7, 9, 10, 9, 24, 12, 20, 34, 16, 24, 20, 20, 30, 30, 26, 26, 26, 44, 20]);
 
   // 3. Diete (long format)
   const diets = wb.addWorksheet('Diete');

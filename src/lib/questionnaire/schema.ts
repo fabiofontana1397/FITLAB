@@ -1,11 +1,13 @@
+import { foodOptions, PREFERENCE_QUESTION_ID, type FoodComponent } from './food-preferences';
+
 // Bump whenever a question is added/removed/renamed in a way that changes
 // how a stored answers blob should be interpreted (spec §3.1/§11, Passo 8)
 // — written alongside every answers upsert (see lib/api/onboarding.ts) so
 // existing responses can always be traced back to the schema version that
 // collected them.
-export const QUESTIONNAIRE_VERSION = 3;
+export const QUESTIONNAIRE_VERSION = 4; // v4: food preferences per component (food ids, incl. fruit and vegetables) instead of broad codes
 
-export type QuestionType = 'single' | 'multi' | 'scale' | 'number' | 'text' | 'longtext' | 'time';
+export type QuestionType = 'single' | 'multi' | 'foodPicker' | 'scale' | 'number' | 'text' | 'longtext' | 'time';
 
 // HH:MM, 00-23 hours — same format meal-slots.ts's parseTime() already
 // expects. Exported so question-field.tsx and onboarding.tsx's isAnswered()
@@ -14,7 +16,8 @@ export type QuestionType = 'single' | 'multi' | 'scale' | 'number' | 'text' | 'l
 // discarding an unparseable time downstream instead of flagging it).
 export const TIME_REGEX = /^([01]?\d|2[0-3]):([0-5]\d)$/;
 
-export type QuestionOption = { value: string; label: string };
+/** `group` (optional) is the heading an option is listed under in long pickers. */
+export type QuestionOption = { value: string; label: string; group?: string };
 
 /** Shows this question only when another question's answer matches `equals`
  * (array-includes for multi-select answers, strict equality otherwise). */
@@ -26,12 +29,22 @@ export type Question = {
   label: string;
   helper?: string;
   options?: QuestionOption[];
+  /** foodPicker questions: which meal component the catalog foods belong to. */
+  component?: FoodComponent;
   min?: number;
   max?: number;
   unit?: string;
   placeholder?: string;
   optional?: boolean;
   dependsOn?: QuestionDependency;
+};
+
+const PICKER_LABEL: Record<FoodComponent, string> = {
+  protein: 'Quali proteine preferisci?',
+  carb: 'Quali carboidrati preferisci?',
+  fat: 'Quali grassi preferisci?',
+  fruit: 'Quale frutta preferisci?',
+  veg: 'Quale verdura preferisci?',
 };
 
 export type OnboardingStep = {
@@ -403,51 +416,17 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
         optional: true,
         dependsOn: { questionId: 'mealsSelected', equals: 'spuntinoSera' },
       },
-      {
-        id: 'preferredProteins',
-        type: 'multi',
-        label: 'Quali sono le tue fonti proteiche preferite?',
-        options: [
-          { value: 'chicken', label: 'Pollo' },
-          { value: 'turkey', label: 'Tacchino' },
-          { value: 'beef', label: 'Manzo' },
-          { value: 'eggs', label: 'Uova' },
-          { value: 'fish', label: 'Pesce' },
-          { value: 'legumes', label: 'Legumi' },
-          { value: 'dairy', label: 'Latticini' },
-          { value: 'yogurt', label: 'Yogurt' },
-          { value: 'proteinPowder', label: 'Proteine in polvere' },
-          { value: 'tofu', label: 'Tofu/alternative vegetali' },
-        ],
-      },
-      {
-        id: 'preferredCarbs',
-        type: 'multi',
-        label: 'Quali carboidrati preferisci?',
-        options: [
-          { value: 'rice', label: 'Riso' },
-          { value: 'pasta', label: 'Pasta' },
-          { value: 'potatoes', label: 'Patate' },
-          { value: 'bread', label: 'Pane' },
-          { value: 'oats', label: 'Avena' },
-          { value: 'cereals', label: 'Cereali' },
-          { value: 'legumes', label: 'Legumi' },
-          { value: 'fruit', label: 'Frutta' },
-        ],
-      },
-      {
-        id: 'preferredFats',
-        type: 'multi',
-        label: 'Quali grassi preferisci?',
-        options: [
-          { value: 'oliveOil', label: 'Olio EVO' },
-          { value: 'nuts', label: 'Frutta secca' },
-          { value: 'avocado', label: 'Avocado' },
-          { value: 'eggs', label: 'Uova' },
-          { value: 'fattyFish', label: 'Pesce grasso' },
-          { value: 'butter', label: 'Burro' },
-        ],
-      },
+      ...(['protein', 'carb', 'fat', 'fruit', 'veg'] as const).map(
+        (component): Question => ({
+          id: PREFERENCE_QUESTION_ID[component],
+          type: 'foodPicker',
+          component,
+          label: PICKER_LABEL[component],
+          helper: 'Scegli gli alimenti che preferisci: il piano li userà il più possibile, mese dopo mese.',
+          options: foodOptions(component),
+          optional: true,
+        })
+      ),
       {
         id: 'coffeeIntake',
         type: 'single',

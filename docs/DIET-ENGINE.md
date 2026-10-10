@@ -33,6 +33,19 @@ Convenzioni: valori per 100 g **nello stato del catalogo** (pasta e riso a secco
 
 Gli spuntini sono senza cottura; pranzo e cena hanno sempre una verdura e un carboidrato; la colazione ha proteine, carboidrati e frutta o grassi.
 
+## Alimenti preferiti (questionario)
+
+Nel questionario, step "Preferenze alimentari", ci sono **cinque selettori** — proteine, carboidrati, grassi, frutta, verdura — ognuno con l'elenco degli alimenti del catalogo (raggruppati per tipo, con ricerca). Le risposte sono id del catalogo (`preferredProteins`, `preferredCarbs`, `preferredFats`, `preferredFruit`, `preferredVegetables`); i codici generici delle risposte vecchie ("chicken", "rice"…) vengono tradotti negli alimenti che intendevano (`lib/questionnaire/food-preferences.ts`).
+
+Il motore li usa come alimenti **preferenziali**, mese dopo mese:
+
+- hanno un peso alto (×2) e, se ne hai scelti alcuni in un componente, gli altri di quel componente restano possibili ma meno probabili;
+- un alimento preferito non ancora comparso nella settimana è favorito, così tutti i preferiti arrivano in tavola;
+- possono sostituire gli alimenti di un piatto della stessa famiglia (un altro cereale, un'altra carne bianca) e qualsiasi verdura o frutta preferita può fare da contorno;
+- restano validi tutti i filtri: regime, allergeni, esclusioni, pranzo veloce, spuntini senza cottura.
+
+Il banco di prova (Q11) verifica che gli alimenti scelti con i nuovi selettori compaiano nella settimana di ogni mese.
+
 ## Varietà categorica
 
 In una settimana lo stesso pasto non torna più di 2 volte per slot (penalità quasi proibitiva dalla seconda ripetizione), lo stesso piatto non più di 2, la stessa proteina non più di 3 tra pranzi e cene. Dove le esclusioni restringono il catalogo (lattosio, uova, regime vegetariano) restano comunque molte alternative nei piatti. Il banco di prova misura la ripetizione massima su tutte le persone (Q7/Q9).

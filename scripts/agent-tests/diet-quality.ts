@@ -12,6 +12,8 @@ import { familyOf } from '@/lib/planning/fitlab/pools';
 import type { DietPlan } from '@/lib/planning/types';
 
 import type { Finding } from './checks';
+import { COMPONENT_LABEL, FOOD_COMPONENTS, PREFERENCE_QUESTION_ID, preferredByComponent } from '@/lib/questionnaire/food-preferences';
+
 import type { Persona } from './personas';
 
 const WEEKDAYS = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
@@ -66,6 +68,8 @@ export function checkDietQuality(persona: Persona, diet: DietPlan): Finding[] {
         const where = `mese ${month.monthIndex}, ${WEEKDAYS[dayIdx]} ${meal.label}`;
         if (!meal.recipe?.name) fail('Q1', `Nessun nome di piatto (${where})`);
         const foods = meal.items.map((i) => ({ item: i, food: fitlabById(i.foodId) }));
+        const ids = meal.items.map((i) => i.foodId);
+        if (new Set(ids).size !== ids.length) fail('Q12', `Lo stesso alimento compare due volte nel pasto: ${meal.recipe?.name} (${where})`);
         for (const { item, food } of foods) {
           if (!food) {
             fail('Q2', `${item.name} non è un alimento del catalogo Fit Lab (${where})`);
@@ -140,6 +144,32 @@ export function checkDietQuality(persona: Persona, diet: DietPlan): Finding[] {
     for (const [slot, foods] of slotFoods) {
       const top = [...foods.entries()].sort((x, y) => y[1] - x[1])[0];
       if (top && top[1] > 3) fail('Q9', `${slot} (mese ${month.monthIndex}): la stessa proteina (${top[0]}) torna ${top[1]} volte in una settimana`, 'WARN');
+    }
+  }
+  return f;
+}
+
+/**
+ * The foods the person picked in the five preference selectors must reach their table: in every month, most of them
+ * appear in the week's plan (a food they cannot eat — regime, allergens — is not expected).
+ */
+export function checkPreferences(persona: Persona, diet: DietPlan): Finding[] {
+  const f: Finding[] = [];
+  const picked = preferredByComponent(persona.answers as Record<string, unknown>);
+  for (const component of FOOD_COMPONENTS) {
+    // only the new selectors (food ids) promise every picked food a place; the broad codes of old answers are just a hint
+    const raw = (persona.answers as Record<string, unknown>)[PREFERENCE_QUESTION_ID[component]];
+    if (!Array.isArray(raw) || !raw.every((v) => typeof v === 'string' && /^fld+$/.test(v))) continue;
+    const wanted = picked[component];
+    if (wanted.length < 2) continue;
+    for (const month of diet.months.slice(0, 3)) {
+      const used = new Set(month.weeklySplit.flatMap((d) => d.meals.flatMap((m) => m.items.map((i) => i.foodId))));
+      const hit = wanted.filter((id) => used.has(id));
+      const share = hit.length / wanted.length;
+      if (share < 0.6) {
+        const missing = wanted.filter((id) => !used.has(id)).map((id) => fitlabById(id)?.name ?? id);
+        f.push({ level: 'WARN', area: 'dieta', code: 'Q11', message: `${COMPONENT_LABEL[component]} preferite: nel mese ${month.monthIndex} compaiono ${hit.length} su ${wanted.length} (mancano: ${missing.join(', ')})` });
+      }
     }
   }
   return f;
