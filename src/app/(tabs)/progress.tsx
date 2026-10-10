@@ -89,6 +89,19 @@ export default function ProgressScreen() {
   const wantsLoss = hasGoal ? currentUser.targetWeightKg < startBody.weightKg : currentUser.goal === 'loseFat';
   const deltaColor = (delta: number) => (delta === 0 ? theme.textTertiary : (delta < 0) === wantsLoss ? theme.brandGreen : theme.danger);
 
+  // Contextual nudge above the measurement list: never measured, overdue
+  // (4+ weeks since the last tape measure) or how many zones are still empty.
+  const measureStatus = useMemo(() => {
+    const lastMeasured = [...entries].reverse().find((e) => MEASUREMENTS.some((m) => Number.isFinite(e[m.zone])));
+    if (!lastMeasured) return 'Non hai ancora preso nessuna misura: parti da vita e fianchi, sono le più indicative. Tocca + per registrarle.';
+    if (lastMeasured.date <= addDaysISO(daysAgoISO(0), -28)) {
+      return `Ultime misure del ${formatFullDay(lastMeasured.date)}: è passato quasi un mese, è il momento di aggiornarle.`;
+    }
+    const missing = MEASUREMENTS.filter((m) => !Number.isFinite(latest[m.zone])).length;
+    if (missing > 0) return `Ti mancano ${missing} ${missing === 1 ? 'zona' : 'zone'} da misurare per avere il quadro completo.`;
+    return null;
+  }, [entries, latest]);
+
   // Every photo taken on the same day grouped into its own box, most recent
   // session first.
   const photosByDay = useMemo(() => {
@@ -271,6 +284,30 @@ export default function ProgressScreen() {
 
       {tab === 'misure' ? (
       <View style={styles.measureList}>
+        <InsightCard
+          icon="bulb"
+          tone="positive"
+          headline="Perché prendere le misure"
+          body={
+            'La bilancia non racconta tutto: se perdi grasso e metti muscolo il peso può restare fermo, mentre vita e fianchi scendono e spalle e braccia crescono.\n' +
+            'I centimetri ti mostrano dove sta cambiando il corpo, ti tengono motivato nelle settimane in cui il peso non si muove e aiutano a capire se il piano sta funzionando.'
+          }
+        />
+        <InsightCard
+          icon="ruler"
+          tone="neutral"
+          headline="Come misurarti"
+          body={
+            'Usa un metro da sarta morbido, aderente alla pelle ma senza stringere.\n' +
+            'Misurati sempre nelle stesse condizioni: al mattino, a digiuno, prima dell’allenamento.\n' +
+            'Ripeti ogni 2–4 settimane: bastano 5 minuti. Tocca ⓘ accanto a ogni zona per sapere esattamente dove misurare.'
+          }
+        />
+        {measureStatus ? (
+          <ThemedText style={styles.hint} themeColor="textTertiary">
+            {measureStatus}
+          </ThemedText>
+        ) : null}
         {MEASUREMENTS.map((m) => {
           // Entries logged before this zone existed (or never recorded) carry
           // no value for it — filter those out rather than let a missing
