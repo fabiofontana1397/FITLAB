@@ -4,14 +4,12 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
-import { AiCoachCard } from '@/components/ui/ai-coach-card';
 import { DayCalendarModal } from '@/components/ui/day-calendar-modal';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon } from '@/components/ui/icon';
 import { LogActivityModal } from '@/components/training/log-activity-modal';
 import { TrainingHeroCard } from '@/components/training/training-hero-card';
 import { TrainingWeekCard } from '@/components/training/training-week-card';
-import { TrainingWeekStats } from '@/components/training/training-week-stats';
 import { levelLabel, WorkoutSummaryCard } from '@/components/training/workout-summary-card';
 import { useEnsurePlan } from '@/hooks/use-ensure-plan';
 import { useUserContext } from '@/hooks/use-user-context';
@@ -38,8 +36,6 @@ const GOAL_SHORT_LABEL: Record<Goal, string> = {
   generalHealth: 'Benessere',
 };
 
-const BLUE = '#2E6BEA';
-
 export default function TrainingScreen() {
   const theme = useTheme();
   const trainingPlan = usePlanStore((s) => s.trainingPlan);
@@ -48,7 +44,6 @@ export default function TrainingScreen() {
   const completedExercises = useTrainingProgressStore((s) => s.completed);
   const toggleCompleted = useTrainingProgressStore((s) => s.toggleCompleted);
   const addActivityEntry = useActivityLogStore((s) => s.addEntry);
-  const activityEntries = useActivityLogStore((s) => s.entries);
   const [isLogActivityVisible, setLogActivityVisible] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
 
@@ -106,26 +101,6 @@ export default function TrainingScreen() {
   const sessionKcal = plannedSessionKcal(selectedDay, ctx);
   const sessionMinutes = plannedSessionMinutes(selectedDay, ctx);
 
-  // Totals for the week shown in the strip: a session counts when the day's
-  // workout is fully ticked or any activity was logged that day.
-  let sessionsDone = 0;
-  let sessionsPlanned = 0;
-  let weekKcal = 0;
-  let weekMinutes = 0;
-  viewedWeekDates.forEach((date) => {
-    const day = weeklySplit[isoMondayIndex(date)];
-    const logged = activityEntries.filter((e) => e.date === date);
-    if (day && day.type !== 'rest') sessionsPlanned++;
-    const planDone = day?.type === 'workout' && isDayComplete(date);
-    if (planDone) {
-      weekKcal += plannedSessionKcal(day, ctx);
-      weekMinutes += plannedSessionMinutes(day, ctx);
-    }
-    weekKcal += logged.reduce((sum, e) => sum + e.estimatedKcal, 0);
-    weekMinutes += logged.reduce((sum, e) => sum + e.durationMinutes, 0);
-    if (planDone || logged.length > 0) sessionsDone++;
-  });
-
   const selectedDone = isDayComplete(selectedDate);
   const statusLabel = selectedDone ? 'Completato' : selectedDate < today ? 'Non completato' : 'In programma';
   const statusColor = selectedDone ? theme.brandGreen : selectedDate < today ? theme.textTertiary : theme.accent;
@@ -156,7 +131,7 @@ export default function TrainingScreen() {
       <View style={styles.sectionRow}>
         <ThemedText style={styles.sectionTitle}>La tua settimana</ThemedText>
         <Pressable onPress={() => setCalendarOpen(true)} hitSlop={8} accessibilityLabel="Apri calendario">
-          <ThemedText style={[styles.link, { color: BLUE }]}>Vedi calendario ›</ThemedText>
+          <ThemedText style={[styles.link, { color: theme.accent }]}>Vedi calendario ›</ThemedText>
         </Pressable>
       </View>
 
@@ -166,6 +141,7 @@ export default function TrainingScreen() {
         onSelectDate={setSelectedDate}
         isDayComplete={isDayComplete}
         onToggleDayComplete={toggleDayComplete}
+        dayType={(date) => (trainingPlan ? weeklySplit[isoMondayIndex(date)]?.type : undefined)}
       />
 
       <View style={styles.sectionRow}>
@@ -216,24 +192,6 @@ export default function TrainingScreen() {
           </ThemedText>
         </FlatCard>
       )}
-
-      <View style={styles.statsWrap}>
-        <TrainingWeekStats
-          sessionsDone={sessionsDone}
-          sessionsPlanned={sessionsPlanned}
-          kcal={weekKcal}
-          minutes={weekMinutes}
-          onSeeAll={() => router.push('/training-progress')}
-        />
-      </View>
-
-      <View style={styles.coachWrap}>
-        <AiCoachCard
-          variant="compact"
-          headline="Hai dubbi sul tuo allenamento?"
-          body="Chiedi consigli su tecnica, esercizi o progressione."
-        />
-      </View>
 
       <DayCalendarModal
         visible={calendarOpen}
@@ -311,9 +269,6 @@ const styles = StyleSheet.create({
     lineHeight: 15,
     fontWeight: '700',
   },
-  statsWrap: {
-    marginTop: 14,
-  },
   trendButton: {
     width: 28,
     height: 28,
@@ -343,8 +298,5 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  coachWrap: {
-    marginTop: 24,
   },
 });
