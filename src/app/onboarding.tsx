@@ -16,19 +16,15 @@ import {
   ACTIVITY_TO_SPORT,
   buildActivityQuestions,
   findQuestion,
-  isQuestionVisible,
   labelFor,
   stepsForMode,
-  TIME_REGEX,
   type OnboardingMode,
-  type OnboardingStep,
-  type Question,
 } from '@/lib/questionnaire/schema';
+import { getStepQuestions, isAnswered } from '@/lib/questionnaire/step-questions';
 import { initialTargets } from '@/domain/plan-engine';
 import { profileFromContext } from '@/domain/profile';
 import { buildUserContext, cleanAnswersForMode } from '@/domain/user-context';
 import { daysAgoISO } from '@/lib/mock/dates';
-import { parseNumericAnswer } from '@/lib/questionnaire/parse-answer';
 import { sportIcon } from '@/lib/mock/training';
 import { useBodyStore } from '@/store/body-store';
 import { useOnboardingStore, type AnswerValue } from '@/store/onboarding-store';
@@ -40,31 +36,6 @@ const MODE_OPTIONS: { value: OnboardingMode; label: string }[] = [
   { value: 'training', label: 'Programma di allenamento' },
   { value: 'both', label: 'Entrambi' },
 ];
-
-// Spec §13 point 7: a "time" question isn't just non-empty, it must actually
-// parse as HH:MM — otherwise the free-text answer used to silently fall
-// back to a default further downstream in meal-slots.ts, with no feedback
-// to the user that what they typed was ignored.
-function isAnswered(question: Question, value: AnswerValue): boolean {
-  if (Array.isArray(value)) return value.length > 0;
-  if (value === undefined || value === null || value === '') return false;
-  if (question.type === 'time') return TIME_REGEX.test(String(value).trim());
-  if (question.type === 'number' && (question.min != null || question.max != null)) {
-    const n = parseNumericAnswer(value);
-    if (n == null) return false;
-    if (question.min != null && n < question.min) return false;
-    if (question.max != null && n > question.max) return false;
-  }
-  return true;
-}
-
-function getStepQuestions(step: OnboardingStep, answers: Record<string, AnswerValue>): Question[] {
-  const questions =
-    step.id === 'training'
-      ? [...step.questions, ...buildActivityQuestions((answers.activitiesPracticed as string[]) ?? [])]
-      : step.questions;
-  return questions.filter((q) => isQuestionVisible(q, answers));
-}
 
 export default function OnboardingScreen() {
   const theme = useTheme();

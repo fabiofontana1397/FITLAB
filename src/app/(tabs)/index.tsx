@@ -1,5 +1,4 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
 import { useState } from 'react';
 import { Image, Platform, Pressable, StyleSheet, View } from 'react-native';
 
@@ -13,6 +12,7 @@ import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon, type IconName } from '@/components/ui/icon';
+import { ProfileAvatarButton } from '@/components/ui/profile-avatar-button';
 import { InfoPopover } from '@/components/ui/info-popover';
 import { LogActivityModal } from '@/components/training/log-activity-modal';
 import { sumActivityKcalForDate, useWeeklyEnergy } from '@/hooks/use-weekly-energy';
@@ -208,9 +208,7 @@ export default function HomeScreen() {
             style={[styles.bell, { backgroundColor: theme.backgroundElevated, borderColor: theme.border }]}>
             <Icon name="bell" size={19} color={theme.text} />
           </Pressable>
-          <Pressable onPress={() => router.push('/profile')} hitSlop={8} style={[styles.avatar, { backgroundColor: theme.text }]}>
-            <Icon name="personFilled" size={22} color={theme.background} />
-          </Pressable>
+          <ProfileAvatarButton size={36} />
         </View>
       </View>
 
@@ -553,13 +551,6 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 18,
     borderWidth: StyleSheet.hairlineWidth,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
   },

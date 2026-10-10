@@ -1,15 +1,15 @@
 # Test dei piani generati dai questionari
 
-Generato il 2026-10-09 18:58 — 21 questionari finti, piani creati con i generatori reali dell’app.
+Generato il 2026-10-10 14:42 — 21 questionari finti, piani creati con i generatori reali dell’app.
 
-**Totale:** 0 errori · 10 avvisi · 35 note
+**Totale:** 0 errori · 5 avvisi · 35 note
 
 | Persona | Target kcal | P/C/G (g) | Mesi | Palestra/Corsa a sett. | Errori | Avvisi |
 |---|---|---|---|---|---|---|
 | Sofia, 16 anni | 1703 | 88/209/57 | 4 | 2/0 | 0 | 0 |
 | Matteo, 17 anni | 2601 | 118/337/87 | 5 | 3/0 | 0 | 0 |
-| Giulia, 24 anni | 1506 | 112/152/50 | 4 | 3/0 | 0 | 6 |
-| Luca, 22 anni | 2759 | 129/353/92 | 9 | 5/0 | 0 | 4 |
+| Giulia, 24 anni | 1506 | 112/152/50 | 4 | 3/0 | 0 | 5 |
+| Luca, 22 anni | 2759 | 129/353/92 | 9 | 5/0 | 0 | 0 |
 | Alessandro, 29 anni | 3370 | 128/463/112 | 4 | 4/2 | 0 | 0 |
 | Marco, 32 anni | 1913 | 143/192/64 | 6 | 3/0 | 0 | 0 |
 | Chiara, 25 anni | 1591 | 119/160/53 | 3 | 2/2 | 0 | 0 |
@@ -237,18 +237,18 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 | Pasto | Alimenti | kcal |
 |---|---|---|
 | Colazione 07:30 | Albume d'uovo 80g a crudo, Fiocchi d'avena 75g a secco, Mirtilli 125g, Mandorle 20g | 511 |
-| Pranzo 13:00 | Orata 100g a crudo, Pasta 115g a secco, Bietole 120g, Pomodori 80g, Olio extravergine di oliva 15g | 696 |
-| Cena 20:00 | Tonno al naturale 75g, Riso venere 110g a secco, Zucchine 150g, Olio extravergine di oliva 15g | 635 |
+| Pranzo 13:00 | Tonno al naturale 60g, Pasta integrale 130g a secco, Pomodori 80g, Lattuga 50g, Olio extravergine di oliva 15g | 689 |
+| Cena 20:00 | Petto di pollo 100g a crudo, Riso integrale 95g a secco, Carote 80g, Finocchi 120g, Olio extravergine di oliva 15g | 636 |
 
-Totale Lun: **1842 kcal** · P 90 g · C 231 g · G 56 g
+Totale Lun: **1836 kcal** · P 89 g · C 229 g · G 55 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
 | Colazione 07:30 | Yogurt greco 0% 140g, Fiocchi d'avena 30g a secco, Pera 2 pere, Mandorle 20g | 449 |
-| Pranzo 13:00 | Sgombro 100g a crudo, Pasta 100g a secco, Pomodori 80g, Lattuga 50g, Olio extravergine di oliva 10g | 638 |
+| Pranzo 13:00 | Tofu 205g, Quinoa 110g a secco, Zucchine 150g, Olio extravergine di oliva 5g | 656 |
 | Cena 20:00 | _pasto libero_ | 581 |
 
-Totale Sab: **1087 kcal** · P 55 g · C 129 g · G 35 g
+Totale Sab: **1104 kcal** · P 57 g · C 130 g · G 34 g
 
 **Mese 1 — Mese 1 · Adattamento e tecnica**
 
@@ -303,18 +303,18 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 | Pasto | Alimenti | kcal |
 |---|---|---|
 | Colazione 07:30 | Yogurt greco 0% 145g, Fiocchi d'avena 95g a secco, Mela 2 mele, Noci 20g | 733 |
-| Pranzo 13:00 | Orata 110g a crudo, Pasta 130g a secco, Pane integrale 80g, Bietole 120g, Pomodori 80g, Olio extravergine di oliva 25g | 1050 |
+| Pranzo 13:00 | Tonno al naturale 95g, Riso 80g a secco, Pane integrale 160g, Pomodori 80g, Cetrioli 80g, Olio extravergine di oliva 25g | 1033 |
 | Cena 20:00 | Petto di pollo 130g a crudo, Riso integrale 130g a secco, Carote 80g, Finocchi 120g, Olio extravergine di oliva 25g | 886 |
 
-Totale Lun: **2670 kcal** · P 118 g · C 337 g · G 86 g
+Totale Lun: **2653 kcal** · P 118 g · C 340 g · G 82 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
 | Colazione 07:30 | Uova intere 3 uova, Pane di segale 160g, Arancia 1 arancia | 698 |
-| Pranzo 13:00 | Sgombro 125g a crudo, Pasta 110g a secco, Pane integrale 90g, Pomodori 80g, Lattuga 50g, Olio extravergine di oliva 15g | 985 |
+| Pranzo 13:00 | Ricotta magra 170g, Tofu 110g, Pasta 130g a secco, Spinaci 120g, Carciofi 120g, Olio extravergine di oliva 15g | 932 |
 | Cena 20:00 | _pasto libero_ | 886 |
 
-Totale Sab: **1682 kcal** · P 79 g · C 212 g · G 52 g
+Totale Sab: **1629 kcal** · P 82 g · C 197 g · G 51 g
 
 **Mese 1 — Mese 1 · Adattamento e tecnica**
 
@@ -348,7 +348,7 @@ Totale Sab: **1682 kcal** · P 79 g · C 212 g · G 52 g
 
 ## Giulia, 24 anni — vuole dimagrire qualche kg
 
-**Esito:** ⚠️ SUPERATO CON AVVISI (0 errori, 6 avvisi, 1 note)
+**Esito:** ⚠️ SUPERATO CON AVVISI (0 errori, 5 avvisi, 1 note)
 
 - **Chi è:** Studentessa universitaria, 62 kg per 166 cm, vuole scendere a 57 kg. Poco attiva, principiante, 3 allenamenti.
 - **Cosa ci aspettiamo:** Deficit moderato, proteine alte, durata ~5-6 mesi, scheda full body principiante.
@@ -377,10 +377,10 @@ Totale Lun: **1665 kcal** · P 112 g · C 174 g · G 49 g
 | Pasto | Alimenti | kcal |
 |---|---|---|
 | Colazione 07:30 | Yogurt magro 125g, Yogurt proteico 190g, Fiocchi d'avena 20g a secco, Mela 1 mela, Noci 15g | 413 |
-| Pranzo 13:00 | Ricotta magra 170g, Pasta di legumi 90g a secco, Zucchine 150g, Passata di pomodoro 60g, Olio extravergine di oliva 5g | 563 |
+| Pranzo 13:00 | Seitan 140g, Riso integrale 50g a secco, Broccoli 120g, Peperoni 120g, Olio extravergine di oliva 15g | 573 |
 | Cena 20:00 | _pasto libero_ | 505 |
 
-Totale Sab: **975 kcal** · P 70 g · C 99 g · G 29 g
+Totale Sab: **985 kcal** · P 73 g · C 95 g · G 31 g
 
 **Mese 1 — Mese 1 · Adattamento e tecnica**
 
@@ -408,19 +408,18 @@ Totale Sab: **975 kcal** · P 70 g · C 99 g · G 29 g
 
 **Controlli**
 
-- ⚠️ `D5` Proteine: i pasti danno in media il 95% del target (giorno peggiore: 12% di scarto)
-- ⚠️ `Q6` Mer (mese 1): stessa fonte proteica a pranzo e cena (legumes)
-- ⚠️ `Q6` Dom (mese 1): stessa fonte proteica a pranzo e cena (legumes)
-- ⚠️ `Q6` Gio (mese 3): stessa fonte proteica a pranzo e cena (legumes)
-- ⚠️ `Q6` Lun (mese 4): stessa fonte proteica a pranzo e cena (legumes)
-- ⚠️ `Q6` Ven (mese 4): stessa fonte proteica a pranzo e cena (legumes)
+- ⚠️ `D5` Proteine: i pasti danno in media il 94% del target (giorno peggiore: 17% di scarto)
+- ⚠️ `Q6` Mar (mese 1): stessa fonte proteica a pranzo e cena (legumes)
+- ⚠️ `Q6` Ven (mese 1): stessa fonte proteica a pranzo e cena (cheese)
+- ⚠️ `Q6` Gio (mese 2): stessa fonte proteica a pranzo e cena (legumes)
+- ⚠️ `Q6` Mer (mese 3): stessa fonte proteica a pranzo e cena (legumes)
 - ℹ️ `D14` Dal mese 2 in poi il target è identico (1506 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
 
 ---
 
 ## Luca, 22 anni — massa muscolare, esperto
 
-**Esito:** ⚠️ SUPERATO CON AVVISI (0 errori, 4 avvisi, 10 note)
+**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 10 note)
 
 - **Chi è:** Studente magro (68 kg per 180 cm), vuole arrivare a 75 kg. Esperto, 5 allenamenti a settimana da 60-90 min, 5 pasti.
 - **Cosa ci aspettiamo:** Surplus controllato, proteine ~1,9 g/kg, split a 5 giorni senza mese di adattamento, progressione di carichi mese dopo mese.
@@ -442,21 +441,21 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 |---|---|---|
 | Colazione 07:30 | Yogurt greco 2% 135g, Avena istantanea 95g a secco, Mirtilli 150g, Noci 15g | 636 |
 | Spuntino mattina 10:30 | Yogurt greco 0% 100g, Mela 2 mele, Semi di chia 5g, Semi di lino 15g | 315 |
-| Pranzo 13:00 | Petto di pollo 100g a crudo, Riso integrale 55g a secco, Pane integrale 140g, Carote 80g, Finocchi 120g, Olio extravergine di oliva 15g | 839 |
+| Pranzo 13:00 | Ceci 300g, Quinoa 70g a secco, Peperoni 120g, Zucchine 120g, Olio extravergine di oliva 15g | 910 |
 | Spuntino pomeriggio 17:00 | Yogurt greco 2% 105g, Uva 200g, Pistacchi 15g | 301 |
 | Cena 20:00 | Manzo magro 100g a crudo, Pasta 130g a secco, Rucola 30g, Pomodori 80g, Passata di pomodoro 60g, Olio extravergine di oliva 15g | 758 |
 
-Totale Lun: **2848 kcal** · P 135 g · C 367 g · G 81 g
+Totale Lun: **2919 kcal** · P 133 g · C 368 g · G 86 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
 | Colazione 07:30 | Uova intere 3 uova, Pane di segale 130g, Kiwi 2 kiwi | 632 |
 | Spuntino mattina 10:30 | Parmigiano Reggiano 35g, Mela 2 mele | 293 |
-| Pranzo 13:00 | Sgombro 110g a crudo, Pasta 130g a secco, Pomodori 80g, Lattuga 50g, Olio extravergine di oliva 15g | 807 |
-| Spuntino pomeriggio 17:00 | Ceci 120g, Crackers integrali 20g, Cetrioli 40g, Olio extravergine di oliva 5g | 316 |
+| Pranzo 13:00 | Tofu 115g, Seitan 80g, Riso integrale 125g a secco, Broccoli 120g, Peperoni 120g, Olio extravergine di oliva 15g | 862 |
+| Spuntino pomeriggio 17:00 | Ceci 120g, Crackers integrali 20g, Finocchi 60g, Olio extravergine di oliva 5g | 321 |
 | Cena 20:00 | _pasto libero_ | 777 |
 
-Totale Sab: **2048 kcal** · P 94 g · C 246 g · G 69 g
+Totale Sab: **2109 kcal** · P 100 g · C 258 g · G 66 g
 
 **Mese 1 — Mese 1 · Sovraccarico progressivo**
 
@@ -484,10 +483,6 @@ Totale Sab: **2048 kcal** · P 94 g · C 246 g · G 69 g
 
 **Controlli**
 
-- ⚠️ `D5` Grassi: i pasti danno in media il 89% del target (giorno peggiore: 16% di scarto)
-- ⚠️ `Q6` Lun (mese 7): stessa fonte proteica a pranzo e cena (Manzo magro)
-- ⚠️ `Q6` Lun (mese 9): stessa fonte proteica a pranzo e cena (Manzo magro)
-- ⚠️ `Q6` Gio (mese 9): stessa fonte proteica a pranzo e cena (legumes)
 - ℹ️ `D14` Dal mese 2 in poi il target è identico (2759 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
 - ℹ️ `Q6` Lun (mese 1): una fonte proteica compare tre volte nel giorno
 - ℹ️ `Q6` Lun (mese 2): una fonte proteica compare tre volte nel giorno
@@ -524,18 +519,18 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 | Pasto | Alimenti | kcal |
 |---|---|---|
 | Colazione 07:30 | Yogurt magro 300g, Fiocchi d'avena 100g a secco, Mela 2 mele, Nocciole 40g | 917 |
-| Pranzo 13:00 | Orata 120g a crudo, Pasta 130g a secco, Pane integrale 160g, Bietole 120g, Pomodori 80g, Olio extravergine di oliva 25g | 1260 |
+| Pranzo 13:00 | Uova intere 2 uova, Tonno al naturale 60g, Riso basmati 130g a secco, Pane integrale 160g, Pomodori 80g, Cetrioli 80g, Olio extravergine di oliva 25g | 1311 |
 | Cena 20:00 | Salmone 100g a crudo, Riso basmati 130g a secco, Pane integrale 140g, Asparagi 150g, Olio extravergine di oliva 20g | 1222 |
 
-Totale Lun: **3399 kcal** · P 135 g · C 448 g · G 107 g
+Totale Lun: **3449 kcal** · P 133 g · C 454 g · G 111 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
 | Colazione 07:30 | Latte senza lattosio 300g, Skyr 105g, Crema di riso 70g a secco, Pera 2 pere, Burro di mandorle 100% 30g, Burro di arachidi 100% 20g | 912 |
-| Pranzo 13:00 | Tofu 130g, Ricotta magra 60g, Pasta 130g a secco, Pane integrale 160g, Spinaci 120g, Carciofi 120g, Olio extravergine di oliva 25g | 1326 |
+| Pranzo 13:00 | Tonno al naturale 95g, Riso integrale 130g a secco, Pane integrale 160g, Carote 80g, Lattuga 50g, Olio extravergine di oliva 25g | 1241 |
 | Cena 20:00 | _pasto libero_ | 1187 |
 
-Totale Sab: **2237 kcal** · P 91 g · C 285 g · G 73 g
+Totale Sab: **2153 kcal** · P 88 g · C 287 g · G 65 g
 
 **Mese 1 — Mese 1 · Sovraccarico progressivo**
 
@@ -591,18 +586,18 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 | Pasto | Alimenti | kcal |
 |---|---|---|
 | Colazione 07:30 | Yogurt greco 0% 255g, Fiocchi d'avena 55g a secco, Mirtilli 125g, Mandorle 25g | 573 |
-| Pranzo 13:00 | Petto di pollo 195g a crudo, Riso rosso 105g a secco, Carote 80g, Finocchi 120g, Olio extravergine di oliva 15g | 765 |
+| Pranzo 13:00 | Petto di pollo 160g a crudo, Pasta integrale 120g a secco, Pomodori 100g, Pesto 40g | 789 |
 | Cena 20:00 | Lonza di maiale magra 175g a crudo, Patate 400g a crudo, Cavolini di Bruxelles 150g, Olio extravergine di oliva 15g | 737 |
 
-Totale Lun: **2075 kcal** · P 144 g · C 219 g · G 62 g
+Totale Lun: **2098 kcal** · P 143 g · C 220 g · G 63 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
 | Colazione 07:30 | Mozzarella 100g, Pane di segale 90g, Kiwi 1 kiwi | 515 |
-| Pranzo 13:00 | Uova intere 3 uova, Albume d'uovo 185g a crudo, Pane integrale 140g, Bietole 150g, Olio extravergine di oliva 5g | 722 |
+| Pranzo 13:00 | Tonno al naturale 160g, Pasta integrale 95g a secco, Pomodori 80g, Lattuga 50g, Olio extravergine di oliva 15g | 675 |
 | Cena 20:00 | _pasto libero_ | 637 |
 
-Totale Sab: **1236 kcal** · P 81 g · C 118 g · G 45 g
+Totale Sab: **1190 kcal** · P 81 g · C 116 g · G 41 g
 
 **Mese 1 — Mese 1 · Adattamento e tecnica**
 
@@ -657,18 +652,18 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 | Pasto | Alimenti | kcal |
 |---|---|---|
 | Colazione 07:30 | Albume d'uovo 195g a crudo, Avena istantanea 45g a secco, Mirtilli 150g, Mandorle 20g | 467 |
-| Pranzo 13:00 | Trota 180g a crudo, Patate 340g a crudo, Fagiolini 150g, Olio extravergine di oliva 10g | 648 |
-| Cena 20:00 | Tonno al naturale 135g, Riso integrale 75g a secco, Zucchine 150g, Olio extravergine di oliva 15g | 582 |
+| Pranzo 13:00 | Tonno al naturale 125g, Pasta integrale 95g a secco, Pomodori 80g, Lattuga 50g, Olio extravergine di oliva 15g | 636 |
+| Cena 20:00 | Petto di pollo 145g a crudo, Riso rosso 70g a secco, Carote 80g, Finocchi 120g, Olio extravergine di oliva 15g | 587 |
 
-Totale Lun: **1695 kcal** · P 120 g · C 171 g · G 53 g
+Totale Lun: **1689 kcal** · P 119 g · C 171 g · G 53 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
 | Colazione 07:30 | Uova intere 1 uovo, Albume d'uovo 175g a crudo, Pane di segale 70g, Avocado 45g | 415 |
-| Pranzo 13:00 | Trota 175g a crudo, Riso basmati 65g a secco, Broccoli 150g, Olio extravergine di oliva 10g | 595 |
+| Pranzo 13:00 | Petto di pollo 175g a crudo, Riso integrale 65g a secco, Melanzane 150g, Olio extravergine di oliva 15g | 590 |
 | Cena 20:00 | _pasto libero_ | 526 |
 
-Totale Sab: **1009 kcal** · P 77 g · C 91 g · G 35 g
+Totale Sab: **1004 kcal** · P 78 g · C 89 g · G 34 g
 
 **Mese 1 — Mese 1 · Sovraccarico progressivo**
 
@@ -724,18 +719,18 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 | Pasto | Alimenti | kcal |
 |---|---|---|
 | Colazione 07:30 | Yogurt greco 0% 100g, Fiocchi d'avena 95g a secco, Mela 2 mele, Nocciole 10g, Mandorle 20g | 756 |
-| Pranzo 13:00 | Orata 100g a crudo, Pasta 130g a secco, Pane integrale 80g, Bietole 120g, Pomodori 80g, Olio extravergine di oliva 25g | 1039 |
+| Pranzo 13:00 | Tonno al naturale 80g, Riso 80g a secco, Pane integrale 160g, Pomodori 80g, Cetrioli 80g, Olio extravergine di oliva 25g | 1017 |
 | Cena 20:00 | Petto di pollo 115g a crudo, Riso integrale 130g a secco, Carote 80g, Finocchi 120g, Olio extravergine di oliva 25g | 870 |
 
-Totale Lun: **2665 kcal** · P 111 g · C 337 g · G 88 g
+Totale Lun: **2643 kcal** · P 109 g · C 340 g · G 85 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
 | Colazione 07:30 | Yogurt greco 2% 180g, Cereali integrali 80g a secco, Frutti di bosco 250g, Noci 25g | 705 |
-| Pranzo 13:00 | Tofu 220g, Pasta 130g a secco, Spinaci 120g, Carciofi 120g, Olio extravergine di oliva 20g | 897 |
+| Pranzo 13:00 | Ricotta magra 155g, Pasta 95g a secco, Pane integrale 90g, Spinaci 120g, Carciofi 120g, Olio extravergine di oliva 20g | 970 |
 | Cena 20:00 | _pasto libero_ | 857 |
 
-Totale Sab: **1600 kcal** · P 69 g · C 187 g · G 56 g
+Totale Sab: **1674 kcal** · P 72 g · C 202 g · G 55 g
 
 **Mese 1 — Mese 1 · Adattamento e tecnica**
 
@@ -791,18 +786,18 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 | Pasto | Alimenti | kcal |
 |---|---|---|
 | Colazione 07:30 | Yogurt greco 0% 240g, Fiocchi d'avena 35g a secco, Pera 1 pera, Mandorle 25g | 486 |
-| Pranzo 13:00 | Trota 195g a crudo, Patate 340g a crudo, Fagiolini 150g, Olio extravergine di oliva 10g | 668 |
-| Cena 20:00 | Tonno al naturale 140g, Riso venere 80g a secco, Zucchine 150g, Olio extravergine di oliva 15g | 599 |
+| Pranzo 13:00 | Tonno al naturale 135g, Pasta integrale 95g a secco, Pomodori 80g, Lattuga 50g, Olio extravergine di oliva 15g | 647 |
+| Cena 20:00 | Trota 175g a crudo, Riso basmati 70g a secco, Asparagi 150g, Olio extravergine di oliva 10g | 597 |
 
-Totale Lun: **1752 kcal** · P 127 g · C 171 g · G 56 g
+Totale Lun: **1728 kcal** · P 127 g · C 169 g · G 55 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
 | Colazione 07:30 | Uova intere 2 uova, Albume d'uovo 135g a crudo, Pane di segale 90g | 444 |
-| Pranzo 13:00 | Sgombro 130g a crudo, Tonno al naturale 60g, Pasta 85g a secco, Pomodori 80g, Lattuga 50g, Olio extravergine di oliva 5g | 658 |
+| Pranzo 13:00 | Tofu 140g, Ricotta magra 170g, Pasta integrale 80g a secco, Spinaci 120g, Carciofi 120g, Olio extravergine di oliva 5g | 690 |
 | Cena 20:00 | _pasto libero_ | 592 |
 
-Totale Sab: **1101 kcal** · P 86 g · C 110 g · G 34 g
+Totale Sab: **1133 kcal** · P 81 g · C 111 g · G 36 g
 
 _Nessun piano di allenamento generato._
 
@@ -884,18 +879,18 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 | Pasto | Alimenti | kcal |
 |---|---|---|
 | Colazione 07:30 | Yogurt greco 2% 210g, Avena istantanea 20g a secco, Mirtilli 100g, Mandorle 15g | 368 |
-| Pranzo 13:00 | Trota 140g a crudo, Patate 245g a crudo, Fagiolini 150g, Olio extravergine di oliva 10g | 517 |
+| Pranzo 13:00 | Tonno al naturale 95g, Pasta integrale 70g a secco, Pomodori 80g, Lattuga 50g, Olio extravergine di oliva 15g | 513 |
 | Cena 20:00 | Gamberi 140g a crudo, Riso lungo B 45g a secco, Zucca 200g, Olio extravergine di oliva 15g | 455 |
 
-Totale Lun: **1341 kcal** · P 93 g · C 125 g · G 48 g
+Totale Lun: **1337 kcal** · P 92 g · C 126 g · G 48 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
 | Colazione 07:30 | Uova intere 3 uova, Pane integrale 30g, Arancia 1 arancia | 344 |
-| Pranzo 13:00 | Petto di tacchino 110g a crudo, Farro 50g a secco, Melanzane 120g, Pomodori 80g, Olio extravergine di oliva 15g | 476 |
+| Pranzo 13:00 | Petto di tacchino 130g a crudo, Riso integrale 45g a secco, Melanzane 150g, Olio extravergine di oliva 15g | 468 |
 | Cena 20:00 | _pasto libero_ | 420 |
 
-Totale Sab: **819 kcal** · P 58 g · C 66 g · G 33 g
+Totale Sab: **810 kcal** · P 58 g · C 64 g · G 33 g
 
 **Mese 1 — Mese 1 · Adattamento e tecnica**
 
@@ -950,18 +945,18 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 | Pasto | Alimenti | kcal |
 |---|---|---|
 | Colazione 07:30 | Albume d'uovo 110g a crudo, Fiocchi d'avena 85g a secco, Mela 2 mele, Burro di arachidi 100% 10g, Mandorle 20g | 709 |
-| Pranzo 13:00 | Orata 110g a crudo, Pasta 110g a secco, Pane integrale 90g, Bietole 120g, Pomodori 80g, Olio extravergine di oliva 20g | 959 |
+| Pranzo 13:00 | Tonno al naturale 100g, Riso 80g a secco, Pane integrale 130g, Pomodori 80g, Cetrioli 80g, Olio extravergine di oliva 25g | 965 |
 | Cena 20:00 | Salmone 125g a crudo, Riso basmati 130g a secco, Asparagi 150g, Olio extravergine di oliva 10g | 834 |
 
-Totale Lun: **2501 kcal** · P 115 g · C 317 g · G 78 g
+Totale Lun: **2506 kcal** · P 114 g · C 316 g · G 80 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
 | Colazione 07:30 | Yogurt greco 0% 215g, Crema di riso 40g a secco, Mela 2 mele, Burro di mandorle 100% 15g, Noci 20g | 657 |
-| Pranzo 13:00 | Hamburger di pollo magro 140g, Patate dolci 180g a crudo, Pane integrale 160g, Rucola 30g, Pomodori 80g, Olio extravergine di oliva 15g | 903 |
+| Pranzo 13:00 | Mozzarella light 125g, Pasta 130g a secco, Pomodori 80g, Rucola 30g, Olio extravergine di oliva 15g | 839 |
 | Cena 20:00 | _pasto libero_ | 818 |
 
-Totale Sab: **1562 kcal** · P 78 g · C 190 g · G 48 g
+Totale Sab: **1496 kcal** · P 72 g · C 177 g · G 52 g
 
 **Mese 1 — Mese 1 · Adattamento e tecnica**
 
@@ -1016,18 +1011,18 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 | Pasto | Alimenti | kcal |
 |---|---|---|
 | Colazione 07:30 | Yogurt greco 0% 145g, Avena istantanea 65g a secco, Mirtilli 150g, Mandorle 25g | 560 |
-| Pranzo 13:00 | Orata 135g a crudo, Pasta 120g a secco, Bietole 120g, Pomodori 80g, Olio extravergine di oliva 15g | 753 |
+| Pranzo 13:00 | Uova intere 2 uova, Tonno al naturale 75g, Riso basmati 110g a secco, Pomodori 80g, Cetrioli 80g, Olio extravergine di oliva 15g | 768 |
 | Cena 20:00 | Sgombro 140g a crudo, Riso integrale 105g a secco, Zucchine 150g, Olio extravergine di oliva 5g | 688 |
 
-Totale Lun: **1999 kcal** · P 108 g · C 237 g · G 63 g
+Totale Lun: **2014 kcal** · P 107 g · C 235 g · G 67 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
 | Colazione 07:30 | Yogurt greco 0% 200g, Fiocchi d'avena 55g a secco, Mela 1 mela, Nocciole 20g | 533 |
-| Pranzo 13:00 | Sgombro 155g a crudo, Pasta 110g a secco, Pomodori 80g, Lattuga 50g, Olio extravergine di oliva 5g | 722 |
+| Pranzo 13:00 | Ricotta magra 115g, Tofu 130g, Pasta 100g a secco, Spinaci 120g, Carciofi 120g, Olio extravergine di oliva 10g | 741 |
 | Cena 20:00 | _pasto libero_ | 654 |
 
-Totale Sab: **1254 kcal** · P 74 g · C 142 g · G 40 g
+Totale Sab: **1273 kcal** · P 71 g · C 143 g · G 41 g
 
 **Mese 1 — Mese 1 · Adattamento e tecnica**
 
@@ -1082,18 +1077,18 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 | Pasto | Alimenti | kcal |
 |---|---|---|
 | Colazione 07:30 | Skyr 150g, Avena istantanea 95g a secco, Mirtilli 125g, Mandorle 25g | 665 |
-| Pranzo 13:00 | Orata 175g a crudo, Pasta 130g a secco, Bietole 120g, Pomodori 80g, Olio extravergine di oliva 15g | 834 |
+| Pranzo 13:00 | Uova intere 3 uova, Tonno al naturale 75g, Riso 130g a secco, Pomodori 80g, Cetrioli 80g, Olio extravergine di oliva 10g | 860 |
 | Cena 20:00 | Trota 160g a crudo, Riso basmati 125g a secco, Asparagi 150g, Olio extravergine di oliva 15g | 816 |
 
-Totale Lun: **2314 kcal** · P 131 g · C 278 g · G 69 g
+Totale Lun: **2340 kcal** · P 129 g · C 286 g · G 71 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
 | Colazione 07:30 | Uova intere 3 uova, Pane integrale 150g | 581 |
-| Pranzo 13:00 | Sgombro 185g a crudo, Pasta 125g a secco, Pomodori 80g, Lattuga 50g, Olio extravergine di oliva 5g | 826 |
+| Pranzo 13:00 | Tofu 220g, Ricotta magra 75g, Pasta integrale 125g a secco, Spinaci 120g, Carciofi 120g, Olio extravergine di oliva 10g | 866 |
 | Cena 20:00 | _pasto libero_ | 751 |
 
-Totale Sab: **1406 kcal** · P 83 g · C 161 g · G 45 g
+Totale Sab: **1446 kcal** · P 81 g · C 161 g · G 46 g
 
 **Mese 1 — Mese 1 · Sovraccarico progressivo**
 
@@ -1148,18 +1143,18 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 | Pasto | Alimenti | kcal |
 |---|---|---|
 | Colazione 07:30 | Yogurt greco 2% 285g, Fiocchi d'avena 30g a secco, Mirtilli 150g, Noci 10g | 470 |
-| Pranzo 13:00 | Trota 175g a crudo, Patate 360g a crudo, Fagiolini 150g, Olio extravergine di oliva 10g | 659 |
-| Cena 20:00 | Tonno al naturale 130g, Riso integrale 80g a secco, Zucchine 150g, Olio extravergine di oliva 15g | 594 |
+| Pranzo 13:00 | Tonno al naturale 120g, Pasta integrale 100g a secco, Pomodori 80g, Lattuga 50g, Olio extravergine di oliva 15g | 648 |
+| Cena 20:00 | Trota 155g a crudo, Riso basmati 75g a secco, Asparagi 150g, Olio extravergine di oliva 10g | 589 |
 
-Totale Lun: **1721 kcal** · P 118 g · C 179 g · G 54 g
+Totale Lun: **1705 kcal** · P 118 g · C 178 g · G 53 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
 | Colazione 07:30 | Skyr 225g, Crema di riso 20g a secco, Frutti di bosco 125g, Burro di mandorle 100% 25g | 429 |
-| Pranzo 13:00 | Trota 175g a crudo, Riso basmati 65g a secco, Broccoli 150g, Olio extravergine di oliva 10g | 595 |
+| Pranzo 13:00 | Tofu 135g, Ricotta magra 170g, Pasta 60g a secco, Spinaci 120g, Carciofi 120g, Olio extravergine di oliva 5g | 614 |
 | Cena 20:00 | _pasto libero_ | 530 |
 
-Totale Sab: **1024 kcal** · P 77 g · C 94 g · G 35 g
+Totale Sab: **1042 kcal** · P 75 g · C 95 g · G 36 g
 
 **Mese 1 — Mese 1 · Adattamento e tecnica**
 
@@ -1214,18 +1209,18 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 | Pasto | Alimenti | kcal |
 |---|---|---|
 | Colazione 07:30 | Skyr 220g, Avena istantanea 40g a secco, Mirtilli 100g, Mandorle 25g | 491 |
-| Pranzo 13:00 | Trota 205g a crudo, Patate 340g a crudo, Fagiolini 150g, Olio extravergine di oliva 10g | 681 |
+| Pranzo 13:00 | Tonno al naturale 140g, Pasta integrale 95g a secco, Pomodori 80g, Lattuga 50g, Olio extravergine di oliva 15g | 652 |
 | Cena 20:00 | Petto di pollo 170g a crudo, Riso integrale 70g a secco, Carote 80g, Finocchi 120g, Olio extravergine di oliva 15g | 619 |
 
-Totale Lun: **1791 kcal** · P 132 g · C 171 g · G 58 g
+Totale Lun: **1763 kcal** · P 131 g · C 172 g · G 55 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
 | Colazione 07:30 | Yogurt greco 0% 275g, Crema di riso 30g a secco, Frutti di bosco 125g, Noci 10g, Burro di mandorle 100% 15g | 485 |
-| Pranzo 13:00 | Sgombro 135g a crudo, Tonno al naturale 60g, Pasta 85g a secco, Pomodori 80g, Lattuga 50g, Olio extravergine di oliva 5g | 666 |
+| Pranzo 13:00 | Uova intere 3 uova, Albume d'uovo 145g a crudo, Pane integrale 140g, Spinaci 150g, Olio extravergine di oliva 5g | 709 |
 | Cena 20:00 | _pasto libero_ | 603 |
 
-Totale Sab: **1151 kcal** · P 87 g · C 112 g · G 37 g
+Totale Sab: **1193 kcal** · P 87 g · C 113 g · G 39 g
 
 _Nessun piano di allenamento generato._
 
@@ -1259,22 +1254,22 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 | Pasto | Alimenti | kcal |
 |---|---|---|
 | Colazione 07:30 | Albume d'uovo 140g a crudo, Fiocchi d'avena 25g a secco, Mirtilli 150g, Mandorle 15g | 338 |
-| Spuntino mattina 10:30 | Tofu 95g, Pane integrale 30g | 154 |
-| Pranzo 13:00 | Petto di pollo 115g a crudo, Riso integrale 55g a secco, Carote 80g, Finocchi 120g, Olio extravergine di oliva 10g | 461 |
+| Spuntino mattina 10:30 | Uva 100g, Pistacchi 15g | 157 |
+| Pranzo 13:00 | Tonno al naturale 85g, Pasta integrale 70g a secco, Pomodori 80g, Lattuga 50g, Olio extravergine di oliva 10g | 457 |
 | Spuntino pomeriggio 17:00 | Prosciutto crudo 30g, Pane di segale 30g, Rucola 30g | 156 |
-| Cena 20:00 | Gamberi 115g a crudo, Pasta 60g a secco, Pomodori 100g, Olio extravergine di oliva 10g | 418 |
+| Cena 20:00 | Gamberi 100g a crudo, Pasta integrale 65g a secco, Zucchine 150g, Olio extravergine di oliva 10g | 428 |
 
-Totale Lun: **1528 kcal** · P 106 g · C 160 g · G 47 g
+Totale Lun: **1537 kcal** · P 99 g · C 163 g · G 48 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Bevanda di soia non zuccherata 300g, Crema di riso 20g a secco, Mela 1 mela, Burro di arachidi 100% 10g | 311 |
+| Colazione 07:30 | Bevanda di soia non zuccherata 300g, Crema di riso 20g a secco, Mela 1 mela, Burro di mandorle 100% 10g | 315 |
 | Spuntino mattina 10:30 | Parmigiano Reggiano 20g, Pera 1 pera | 146 |
-| Pranzo 13:00 | Petto di pollo 100g a crudo, Farro 50g a secco, Melanzane 120g, Pomodori 80g, Olio extravergine di oliva 10g | 421 |
-| Spuntino pomeriggio 17:00 | Uva 75g, Pistacchi 15g | 140 |
+| Pranzo 13:00 | Petto di pollo 115g a crudo, Cous cous 40g a secco, Carote 80g, Peperoni 120g, Olio extravergine di oliva 10g | 419 |
+| Spuntino pomeriggio 17:00 | Pesca 2 pesche, Nocciole 10g | 163 |
 | Cena 20:00 | _pasto libero_ | 377 |
 
-Totale Sab: **1016 kcal** · P 56 g · C 105 g · G 37 g
+Totale Sab: **1043 kcal** · P 58 g · C 110 g · G 36 g
 
 **Mese 1 — Mese 1 · Sovraccarico progressivo**
 
@@ -1329,20 +1324,20 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 | Pasto | Alimenti | kcal |
 |---|---|---|
 | Colazione 07:30 | Yogurt greco 2% 295g, Avena istantanea 35g a secco, Mela 1 mela, Mandorle 10g | 474 |
-| Pranzo 13:00 | Petto di pollo 160g a crudo, Riso rosso 85g a secco, Carote 80g, Finocchi 120g, Olio extravergine di oliva 15g | 656 |
+| Pranzo 13:00 | Petto di pollo 145g a crudo, Pasta 90g a secco, Zucchine 150g, Passata di pomodoro 60g, Olio extravergine di oliva 15g | 649 |
 | Spuntino pomeriggio 17:00 | Yogurt magro 270g, Mirtilli 75g, Semi di chia 20g | 237 |
 | Cena 20:00 | Hamburger di pollo magro 170g, Patate 330g a crudo, Lattuga 50g, Pomodori 80g, Olio extravergine di oliva 10g | 603 |
 
-Totale Lun: **1971 kcal** · P 136 g · C 206 g · G 59 g
+Totale Lun: **1964 kcal** · P 137 g · C 208 g · G 58 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
 | Colazione 07:30 | Mozzarella light 125g, Pane integrale 70g, Kiwi 1 kiwi | 430 |
-| Pranzo 13:00 | Lonza di maiale magra 160g a crudo, Patate 280g a crudo, Cavolini di Bruxelles 150g, Olio extravergine di oliva 15g | 619 |
+| Pranzo 13:00 | Seitan 145g, Riso integrale 55g a secco, Broccoli 120g, Peperoni 120g, Olio extravergine di oliva 15g | 597 |
 | Spuntino pomeriggio 17:00 | Skyr 105g, Pera 1 pera, Semi di chia 20g | 222 |
 | Cena 20:00 | _pasto libero_ | 532 |
 
-Totale Sab: **1272 kcal** · P 92 g · C 114 g · G 43 g
+Totale Sab: **1251 kcal** · P 92 g · C 115 g · G 41 g
 
 **Mese 1 — Mese 1 · Sovraccarico progressivo**
 
@@ -1397,20 +1392,20 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 | Pasto | Alimenti | kcal |
 |---|---|---|
 | Colazione 07:30 | Yogurt greco 2% 175g, Fiocchi d'avena 55g a secco, Mirtilli 125g, Noci 10g | 471 |
-| Pranzo 13:00 | Orata 130g a crudo, Patate 400g a crudo, Fagiolini 150g, Olio extravergine di oliva 15g | 655 |
+| Pranzo 13:00 | Tonno al naturale 80g, Pasta integrale 110g a secco, Pomodori 80g, Lattuga 50g, Olio extravergine di oliva 15g | 640 |
 | Spuntino pomeriggio 17:00 | Kefir 285g, Frutti di bosco 175g, Semi di chia 5g | 235 |
 | Cena 20:00 | Merluzzo 115g a crudo, Cous cous 90g a secco, Peperoni 150g, Olio extravergine di oliva 15g | 593 |
 
-Totale Lun: **1951 kcal** · P 106 g · C 228 g · G 60 g
+Totale Lun: **1937 kcal** · P 107 g · C 228 g · G 58 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
 | Colazione 07:30 | Yogurt proteico 165g, Crema di riso 30g a secco, Frutti di bosco 175g, Burro di mandorle 100% 25g | 439 |
-| Pranzo 13:00 | Hamburger di tacchino magro 140g, Patate dolci 300g a crudo, Rucola 30g, Pomodori 80g, Olio extravergine di oliva 15g | 605 |
+| Pranzo 13:00 | Petto di tacchino 120g a crudo, Riso integrale 80g a secco, Melanzane 150g, Olio extravergine di oliva 15g | 585 |
 | Spuntino pomeriggio 17:00 | Skyr 100g, Arancia 1 arancia, Pistacchi 15g | 211 |
 | Cena 20:00 | _pasto libero_ | 535 |
 
-Totale Sab: **1255 kcal** · P 75 g · C 131 g · G 42 g
+Totale Sab: **1234 kcal** · P 76 g · C 131 g · G 40 g
 
 **Mese 1 — Mese 1 · Sovraccarico progressivo**
 
@@ -1474,11 +1469,11 @@ Totale Lun: **1796 kcal** · P 97 g · C 211 g · G 56 g
 | Pasto | Alimenti | kcal |
 |---|---|---|
 | Colazione 07:30 | Albume d'uovo 95g a crudo, Avena istantanea 45g a secco, Mirtilli 125g, Burro di arachidi 100% 20g | 408 |
-| Pranzo 13:00 | Mozzarella light 100g, Pasta integrale 90g a secco, Pomodori 80g, Rucola 30g, Olio extravergine di oliva 5g | 563 |
+| Pranzo 13:00 | Seitan 90g, Riso integrale 65g a secco, Broccoli 120g, Peperoni 120g, Olio extravergine di oliva 15g | 561 |
 | Spuntino pomeriggio 17:00 | Yogurt proteico 100g, Fragole 250g, Mandorle 10g | 193 |
 | Cena 20:00 | _pasto libero_ | 498 |
 
-Totale Sab: **1164 kcal** · P 69 g · C 126 g · G 38 g
+Totale Sab: **1162 kcal** · P 68 g · C 124 g · G 39 g
 
 **Mese 1 — Mese 1 · Sovraccarico progressivo**
 
@@ -1533,18 +1528,18 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 | Pasto | Alimenti | kcal |
 |---|---|---|
 | Colazione 07:30 | Yogurt greco 0% 275g, Fiocchi d'avena 50g a secco, Pera 1 pera, Nocciole 20g | 547 |
-| Pranzo 13:00 | Orata 195g a crudo, Pasta 100g a secco, Bietole 120g, Pomodori 80g, Olio extravergine di oliva 15g | 749 |
+| Pranzo 13:00 | Tonno al naturale 140g, Pasta integrale 115g a secco, Pomodori 80g, Lattuga 50g, Olio extravergine di oliva 15g | 724 |
 | Cena 20:00 | Trota 185g a crudo, Riso basmati 90g a secco, Asparagi 150g, Olio extravergine di oliva 10g | 681 |
 
-Totale Lun: **1976 kcal** · P 137 g · C 206 g · G 62 g
+Totale Lun: **1950 kcal** · P 137 g · C 208 g · G 57 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
 | Colazione 07:30 | Uova intere 3 uova, Yogurt greco 0% 110g, Fiocchi d'avena 45g a secco, Frutti di bosco 150g | 506 |
-| Pranzo 13:00 | Sgombro 130g a crudo, Tonno al naturale 65g, Pasta 80g a secco, Pomodori 80g, Lattuga 50g, Olio extravergine di oliva 10g | 690 |
+| Pranzo 13:00 | Ricotta magra 170g, Tofu 210g, Pasta 65g a secco, Spinaci 120g, Carciofi 120g, Olio extravergine di oliva 5g | 693 |
 | Cena 20:00 | _pasto libero_ | 607 |
 
-Totale Sab: **1195 kcal** · P 89 g · C 104 g · G 44 g
+Totale Sab: **1198 kcal** · P 86 g · C 105 g · G 43 g
 
 **Mese 1 — Mese 1 · Sovraccarico progressivo**
 

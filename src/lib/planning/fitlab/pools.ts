@@ -140,6 +140,8 @@ export type FitLabPools = {
   weight: (food: FitLabFood, kind: SlotKind) => number;
   /** Eats out often: lunches should be easy to carry. */
   eatsOutOften: boolean;
+  /** Vegetarian, or asked for tofu / seitan: otherwise plant proteins stay occasional for an omnivore. */
+  wantsPlantProtein: boolean;
 };
 
 export function buildFitLabPools(answers: Record<string, unknown>): FitLabPools {
@@ -193,5 +195,7 @@ export function buildFitLabPools(answers: Record<string, unknown>): FitLabPools 
   };
 
   const outTimes = typeof answers.eatingOut === 'string' ? (answers.eatingOut === 'gt6' ? 7 : answers.eatingOut === 'rarely' ? 0 : Number(answers.eatingOut)) : 0;
-  return { allowed, weight, eatsOutOften: Number.isFinite(outTimes) && outTimes >= 3 };
+  const pickedPlant = Array.isArray(answers.preferredProteins) && (answers.preferredProteins as string[]).includes('tofu');
+  const namedPlant = [...included].some((id) => FITLAB_FOODS.find((f) => f.id === id)?.sub === 'Proteine vegetali');
+  return { allowed, weight, eatsOutOften: Number.isFinite(outTimes) && outTimes >= 3, wantsPlantProtein: regime !== 'omni' || pickedPlant || namedPlant };
 }

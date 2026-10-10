@@ -59,6 +59,9 @@ type UserState = UserProfile & {
    * against dailyCalorieTarget/macroTargetsG (the live `current_target`) to
    * see how far the Adaptive Nutrition Engine has actually nudged the plan. */
   initialEstimate: InitialEstimate;
+  /** Profile photo picked in Profilo (a data: URI, so it survives app restarts on every platform). Device-local for now: not synced to the server. */
+  avatarUri: string | null;
+  setAvatarUri: (uri: string | null) => void;
   finalizeOnboarding: (input: FinalizeOnboardingInput) => void;
   updateProfile: (partial: Partial<UserProfile>) => void;
   // Server-authoritative refresh on sign-in (see src/app/_layout.tsx) — the
@@ -91,6 +94,8 @@ export const useUserStore = create<UserState>()(
     (set, get) => ({
       ...DEFAULT_PROFILE,
       initialEstimate: null,
+      avatarUri: null,
+      setAvatarUri: (uri) => set({ avatarUri: uri }),
       finalizeOnboarding: (input) => {
         const effectiveDate = daysAgoISO(0);
         set({ ...input, initialEstimate: { calories: input.dailyCalorieTarget, macroTargetsG: input.macroTargetsG, effectiveDate } });
@@ -142,7 +147,7 @@ export const useUserStore = create<UserState>()(
           console.warn('user-store syncFromServer failed', err);
         }
       },
-      clearLocal: () => set({ ...DEFAULT_PROFILE, initialEstimate: null }),
+      clearLocal: () => set({ ...DEFAULT_PROFILE, initialEstimate: null, avatarUri: null }),
     }),
     { name: 'fitlab/user', storage: appJsonStorage }
   )

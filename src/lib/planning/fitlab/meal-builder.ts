@@ -84,8 +84,10 @@ function candidateDishes(kind: SlotKind, slotId: string, pools: FitLabPools, see
   for (const dish of DISHES) {
     if (!dish.kinds.includes(kind)) continue;
     const r = resolve(dish);
+    // lunch is quick: no fish to cook (canned tuna is fine); a dish built only on fish stays for dinner
+    const lunchOk = (foods: FitLabFood[]) => (kind === 'lunch' ? foods.filter((f) => !isFish(f) || f.name === 'Tonno al naturale') : foods);
     const base = ok(r.base);
-    const protein = ok(r.protein);
+    const protein = lunchOk(ok(r.protein));
     if (dish.base && base.length === 0) continue;
     if (dish.protein.length > 0 && protein.length === 0) continue;
     // a side nobody can eat (excluded) is dropped when the dish has another; a dish with a single side needs it
@@ -104,13 +106,15 @@ function candidateDishes(kind: SlotKind, slotId: string, pools: FitLabPools, see
       (day.dishes.has(dish.id) ? 100 : 0) +
       hash(seed, dish.id) * 2 +
       (dish.source === 'excel' ? -1 : 0) + // the dishes from the workbook come first, the extras add variety
-      (kind === 'lunch' && pools.eatsOutOften && dish.portable ? -2.5 : 0) -
+      (kind === 'lunch' && pools.eatsOutOften && dish.portable ? -2.5 : 0) +
+      // lunch has to be quick to prepare: slow dishes stay for dinner (a last resort when nothing else fits)
+      (kind === 'lunch' && dish.slow ? 200 : 0) -
       (liked - 1) * 1.5;
     out.push({
       r,
       base,
       protein,
-      extraProtein: ok(r.extraProtein),
+      extraProtein: lunchOk(ok(r.extraProtein)),
       sides,
       spread,
       fat: ok(r.fat),
@@ -122,13 +126,20 @@ function candidateDishes(kind: SlotKind, slotId: string, pools: FitLabPools, see
   return out.sort((a, b) => a.cost - b.cost);
 }
 
+const FISH_SUBS = new Set(['Pesce', 'Crostacei', 'Preparazioni di pesce']);
+const isFish = (food: FitLabFood) => FISH_SUBS.has(food.sub);
+
 function foodCost(food: FitLabFood, role: Role, kind: SlotKind, seed: number, pools: FitLabPools, day: DayState, week: WeekUsage): number {
   return (
     used(week.food, food.id) * 2.2 +
     // the same protein across the week's lunches and dinners: 3 times at most when there is any alternative
     (role === 'protein' && (kind === 'lunch' || kind === 'dinner') ? (used(week.food, food.id) >= 4 ? 150 : used(week.food, food.id) >= 3 ? 45 : 0) : 0) +
     (role === 'protein' && day.families.has(familyOf(food)) ? 12 : 0) +
-    (role === 'protein' && food.name === 'Uova intere' && (kind === 'lunch' || kind === 'dinner') ? 1.2 : 0) -
+    (role === 'protein' && food.name === 'Uova intere' && (kind === 'lunch' || kind === 'dinner') ? 1.2 : 0) +
+    // tofu and seitan stay occasional for someone who did not ask for them
+    (role === 'protein' && food.sub === 'Proteine vegetali' && !pools.wantsPlantProtein ? 5 : 0) +
+    // fish takes longer to prepare: dinner, not lunch (canned tuna is quick)
+    (role === 'protein' && isFish(food) ? (kind === 'lunch' && food.name !== 'Tonno al naturale' ? 100 : kind === 'dinner' ? -1.5 : 0) : 0) -
     (pools.weight(food, kind) - 1) * 1.6 +
     hash(seed + role.length, food.id) * 1.4
   );

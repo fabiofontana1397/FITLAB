@@ -290,7 +290,7 @@ async function main() {
 
   const dir = join(process.cwd(), 'scripts', 'agent-tests', 'reports');
   mkdirSync(dir, { recursive: true });
-  const file = join(dir, 'fitlab-20-diete.xlsx');
+  const file = join(dir, process.argv[2] ?? 'fitlab-20-diete.xlsx');
   await wb.xlsx.writeFile(file);
   console.log(
     `Creato ${file}\n  questionari: ${runs.length}, righe nel foglio Diete: ${diets.rowCount - 1}, ripetizione massima in una settimana: ${worst}, pasti con piatti del tuo file: ${Math.round((fromFile / totalMeals) * 100)}%`

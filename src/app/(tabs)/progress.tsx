@@ -1,5 +1,4 @@
 import * as ImagePicker from 'expo-image-picker';
-import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
@@ -15,6 +14,7 @@ import { ThemedText } from '@/components/themed-text';
 import { FlatCard } from '@/components/ui/flat-card';
 import { GoalTrendChart } from '@/components/ui/goal-trend-chart';
 import { Icon } from '@/components/ui/icon';
+import { ProfileAvatarButton } from '@/components/ui/profile-avatar-button';
 import { InsightCard } from '@/components/ui/insight-card';
 import { SegmentedControl } from '@/components/ui/segmented-control';
 import { TrendChart } from '@/components/ui/trend-chart';
@@ -113,9 +113,7 @@ export default function ProgressScreen() {
     <ScreenScroll contentContainerStyle={styles.page}>
       <View style={styles.headerRow}>
         <ThemedText style={styles.pageTitle}>Progressi</ThemedText>
-        <Pressable onPress={() => router.push('/profile')} hitSlop={8} style={[styles.avatar, { backgroundColor: theme.text }]}>
-          <Icon name="personFilled" size={22} color={theme.background} />
-        </Pressable>
+        <ProfileAvatarButton size={37} />
       </View>
 
       <View style={styles.tabs}>
@@ -417,13 +415,6 @@ const styles = StyleSheet.create({
     lineHeight: 28,
     fontWeight: '700',
     letterSpacing: -0.3,
-  },
-  avatar: {
-    width: 37,
-    height: 37,
-    borderRadius: 19,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   sectionTitle: {
     marginBottom: 14,

@@ -12,6 +12,7 @@ import { useActivityLogStore } from '@/store/activity-log-store';
 import { useAppStore } from '@/store/app-store';
 import { initAuthListener, useAuthStore } from '@/store/auth-store';
 import { useBodyStore } from '@/store/body-store';
+import { useIntegrationsStore } from '@/store/integrations-store';
 import { useMonthlyCheckinStore } from '@/store/monthly-checkin-store';
 import { useNutritionStore } from '@/store/nutrition-store';
 import { useOnboardingStore } from '@/store/onboarding-store';
@@ -64,6 +65,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
       useOnboardingStore.getState().clearLocal();
       useMonthlyCheckinStore.getState().clearLocal();
       useActivityLogStore.getState().clearLocal();
+      useIntegrationsStore.getState().clearLocal();
       useAppStore.getState().setHasOnboarded(false);
     }
     wasAuthenticated.current = isAuthenticated;

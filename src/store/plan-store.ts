@@ -29,6 +29,8 @@ type GenerateOptions = {
   skipAi?: boolean;
   /** Rebuild with the current engine but keep the plan's start date, calibration and check-in history (an outdated plan upgraded in place). */
   keepProgress?: boolean;
+  /** With keepProgress: months before this one are already lived and stay exactly as they are (an answer edited from Profilo). */
+  fromMonth?: number;
 };
 
 export type RecalibrateMonthInput = {
@@ -100,13 +102,13 @@ export const usePlanStore = create<PlanState>()(
       isGenerating: false,
       hasSynced: false,
       generatePlans: async (answers, options = {}) => {
-        const { trigger = 'regenerate', currentWeightKg, only, skipAi = false, keepProgress = false } = options;
+        const { trigger = 'regenerate', currentWeightKg, only, skipAi = false, keepProgress = false, fromMonth } = options;
         set({ isGenerating: true });
         try {
           const base = buildUserContext(answers);
           const ctx = currentWeightKg ? { ...base, weightKg: currentWeightKg } : base;
           const { dietPlan: currentDiet, trainingPlan: currentTraining } = get();
-          const carry = keepProgress ? { calibration: currentDiet?.calibration ?? currentTraining?.calibration, existing: { diet: currentDiet, training: currentTraining } } : {};
+          const carry = keepProgress ? { calibration: currentDiet?.calibration ?? currentTraining?.calibration, existing: { diet: currentDiet, training: currentTraining }, preserveMonthsBefore: fromMonth } : {};
           const deterministic = buildPlans(ctx, carry);
           const first = deterministic.monthTargets[0];
           const strategy = skipAi ? null : await fetchPlanStrategy(answers, first.calories, first.macros, deterministic.durationMonths);

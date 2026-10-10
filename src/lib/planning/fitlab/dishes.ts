@@ -32,6 +32,8 @@ export type Dish = {
   sauce?: boolean;
   aromas: string[];
   portable?: boolean;
+  /** Takes time to prepare (oven, long-cooking grains, ragù, soups…): kept for dinner, lunch needs quick dishes. */
+  slow?: boolean;
 };
 
 type Spec = Omit<Dish, 'source' | 'kinds'> & { kinds: SlotKind[] };
@@ -150,6 +152,13 @@ export const DISHES: Dish[] = [
   extra({ id: 'X327', kinds: MAIN, name: '{protein} con {base} e {s1}', base: ['Polenta', 'Patate'], protein: ['Lonza di maiale magra', 'Petto di tacchino'], sides: [['Cavolo nero', 'Bietole', 'Cavolo cappuccio']], oil: true, aromas: ['Salvia', 'Rosmarino'] }),
   extra({ id: 'X328', kinds: MAIN, name: '{base} con {protein} e {s1}', base: ['Farro', 'Orzo', 'Cous cous'], protein: ['Salmone', 'Sgombro', 'Tonno al naturale'], sides: [['Zucchine', 'Pomodori', 'Cetrioli']], oil: true, aromas: ['Limone', 'Basilico'], portable: true }),
 ];
+
+// Dishes that need real preparation time: oven, polenta, ragù, stews and soups, risotto, black/red rice, farro and barley, roasting.
+const SLOW = new Set([
+  'PL025', 'PL028', 'PL029', 'PL030', 'PL032', 'PL034', 'PL036', 'PL037', 'PL038', 'PL040', 'PL041', 'PL042', 'PL043', 'PL045', 'PL046',
+  'X301', 'X302', 'X308', 'X309', 'X310', 'X311', 'X312', 'X314', 'X315', 'X316', 'X319', 'X320', 'X324', 'X325', 'X327',
+]);
+for (const d of DISHES) d.slow = SLOW.has(d.id);
 
 // Every food named in a dish must exist in the catalog (a typo fails loudly at load, not silently at plan time).
 for (const d of DISHES) {

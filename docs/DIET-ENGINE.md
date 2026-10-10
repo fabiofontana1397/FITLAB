@@ -29,6 +29,8 @@ Convenzioni: valori per 100 g **nello stato del catalogo** (pasta e riso a secco
 | 5. Scelta | `fitlab/meal-builder.ts` | Prova i piatti migliori e le combinazioni di alimenti, tiene la più vicina ai target con meno ripetizioni |
 | 6. Sostituzioni | `meal-builder.ts` | Alimenti della stessa categoria compatibili col pasto, con la quantità ricalcolata sul nutriente che l'alimento porta |
 
+**Pranzo veloce, pesce a cena.** A pranzo solo piatti veloci da preparare: i piatti lunghi (forno, polenta, ragù, zuppe, risotti, riso nero/rosso, farro e orzo) restano per la cena (campo `slow` in `dishes.ts`), e il pesce da cuocere va a cena (il tonno in scatola va bene a pranzo). Controllo Q10 nel banco di prova.
+
 Gli spuntini sono senza cottura; pranzo e cena hanno sempre una verdura e un carboidrato; la colazione ha proteine, carboidrati e frutta o grassi.
 
 ## Varietà categorica

@@ -7,6 +7,7 @@ import { ThemedText } from '@/components/themed-text';
 import { DayCalendarModal } from '@/components/ui/day-calendar-modal';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon } from '@/components/ui/icon';
+import { ProfileAvatarButton } from '@/components/ui/profile-avatar-button';
 import { LogActivityModal } from '@/components/training/log-activity-modal';
 import { TrainingHeroCard } from '@/components/training/training-hero-card';
 import { TrainingWeekCard } from '@/components/training/training-week-card';
@@ -120,9 +121,7 @@ export default function TrainingScreen() {
             style={[styles.circleButton, { backgroundColor: theme.backgroundElevated, borderColor: theme.border }]}>
             <Icon name="calendar" size={19} color={theme.text} />
           </Pressable>
-          <Pressable onPress={() => router.push('/profile')} hitSlop={8} style={[styles.circleButton, { backgroundColor: theme.text }]}>
-            <Icon name="personFilled" size={21} color={theme.background} />
-          </Pressable>
+          <ProfileAvatarButton size={38} />
         </View>
       </View>
 

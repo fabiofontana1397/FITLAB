@@ -20,6 +20,8 @@ const DAIRY_DRINKS = new Set(['Yogurt greco 0%', 'Yogurt greco 2%', 'Yogurt magr
 const COOKED_SUBS = new Set(['Carni bianche', 'Carni rosse', 'Carni suine', 'Preparazioni di carne', 'Preparazioni di pesce', 'Pesce', 'Crostacei', 'Pasta e derivati', 'Cereali', 'Pseudocereali', 'Tuberi']);
 const COOKED_NAMES = new Set(['Polenta', 'Cous cous']);
 const NO_COOK_OK = new Set(['Tonno al naturale']);
+const SLOW_DISHES = new Set(DISHES.filter((d) => d.slow).map((d) => d.id));
+const FISH_SUBS = new Set(['Pesce', 'Crostacei', 'Preparazioni di pesce']);
 const needsCooking = (f: FitLabFood) => (COOKED_SUBS.has(f.sub) || COOKED_NAMES.has(f.name)) && !NO_COOK_OK.has(f.name);
 
 /** Static check of the recipe library itself (run once). */
@@ -71,6 +73,12 @@ export function checkDietQuality(persona: Persona, diet: DietPlan): Finding[] {
           }
           if ((kind === 'lunch' || kind === 'dinner') && DAIRY_DRINKS.has(food.name)) fail('Q3', `${food.name} a ${meal.label.toLowerCase()} (${where})`);
           if (kind === 'snack' && needsCooking(food)) fail('Q4', `Spuntino che richiede cottura: ${food.name} (${where})`);
+        }
+        if (kind === 'lunch') {
+          // lunch must be quick to prepare: no slow dish, no fish to cook (canned tuna is fine)
+          if (meal.recipe?.dishId && SLOW_DISHES.has(meal.recipe.dishId)) fail('Q10', `Piatto lungo a pranzo: ${meal.recipe.name} (${where})`, 'WARN');
+          const fish = foods.find(({ food }) => food && FISH_SUBS.has(food.sub) && food.name !== 'Tonno al naturale');
+          if (fish?.food) fail('Q10', `Pesce a pranzo: ${fish.food.name} (${where})`, 'WARN');
         }
         if (kind === 'lunch' || kind === 'dinner') {
           if (!foods.some(({ food }) => food?.category === 'Verdure')) fail('Q5', `Manca la verdura (${where})`);
