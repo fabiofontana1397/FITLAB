@@ -2,6 +2,8 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
+import { ChatOrb } from '@/components/chat/chat-orb';
+import { CoachAura, PulseDot } from '@/components/home/coach-aura';
 import { ThemedText } from '@/components/themed-text';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon } from '@/components/ui/icon';
@@ -13,23 +15,31 @@ import { useTheme } from '@/hooks/use-theme';
 
 /** The dark "AI Coach" card at the bottom of Home — deliberately always
  * dark regardless of the app's own light/dark setting (a distinct "AI
- * feature" surface, like the chat FAB's own orb), with a soft glowing
- * accent circle bleeding off the bottom-right corner. Shows the latest
- * generated insight and opens the full list in a popup. */
+ * feature" surface). Alive like the chat FAB: the same orange orb as its
+ * avatar and slowly drifting orange light behind the text (coach-aura.tsx).
+ * Shows the latest generated insight and opens the full list in a popup. */
 export function HomeCoachCard({ isWorkoutDayIncomplete }: { isWorkoutDayIncomplete: boolean }) {
   const theme = useTheme();
   const { insights, isLoading, refresh } = useCoachInsights();
   const [modalOpen, setModalOpen] = useState(false);
+  const [layout, setLayout] = useState({ width: 0, height: 0 });
   const topInsight = insights[0];
 
   return (
     <>
-      <View style={styles.card}>
-        <View pointerEvents="none" style={styles.glow} />
+      <View style={styles.card} onLayout={(e) => setLayout({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height })}>
+        <CoachAura width={layout.width} height={layout.height} />
+        <View pointerEvents="none" style={[styles.rim, { borderColor: 'rgba(255,122,0,0.28)' }]} />
         <Pressable style={styles.headerRow} onPress={() => setModalOpen(true)} hitSlop={4}>
-          <Icon name="bulb" size={16} color={theme.accent} />
-          <ThemedText style={styles.title}>AI Coach</ThemedText>
+          <View style={styles.orbHalo}>
+            <ChatOrb size={30} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <ThemedText style={styles.title}>AI Coach</ThemedText>
+            <ThemedText style={styles.subtitle}>Il tuo consiglio di oggi</ThemedText>
+          </View>
           <View style={styles.pill}>
+            <PulseDot color="#FF7A00" />
             <ThemedText style={styles.pillLabel}>Nuovo insight</ThemedText>
           </View>
         </Pressable>
@@ -86,18 +96,31 @@ const styles = StyleSheet.create({
     backgroundColor: '#15161A',
     borderRadius: Radius.large,
     padding: Spacing.four,
-    gap: Spacing.two,
+    gap: Spacing.two + 2,
     overflow: 'hidden',
   },
-  glow: {
+  rim: {
     position: 'absolute',
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    bottom: -70,
-    right: -50,
-    backgroundColor: '#FF7A00',
-    opacity: 0.3,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: Radius.large,
+    borderWidth: StyleSheet.hairlineWidth * 2,
+  },
+  orbHalo: {
+    borderRadius: 999,
+    shadowColor: '#FF7A00',
+    shadowOpacity: 0.7,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 6,
+  },
+  subtitle: {
+    color: 'rgba(255,255,255,0.55)',
+    fontSize: 11,
+    lineHeight: 14,
+    fontWeight: '500',
   },
   headerRow: {
     flexDirection: 'row',
@@ -111,7 +134,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   pill: {
-    backgroundColor: 'rgba(255,122,0,0.22)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255,122,0,0.18)',
     paddingHorizontal: Spacing.two,
     paddingVertical: 3,
     borderRadius: Radius.pill,
@@ -123,9 +149,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   headline: {
+    marginTop: Spacing.one,
     color: '#FFFFFF',
-    fontSize: 16,
-    lineHeight: 21,
+    fontSize: 17,
+    lineHeight: 22,
     fontWeight: '800',
   },
   body: {
