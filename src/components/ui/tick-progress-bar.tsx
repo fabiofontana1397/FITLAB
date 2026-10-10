@@ -9,13 +9,24 @@ const TICK_SPACING = 10;
  * pill-shaped fill with thin vertical tick lines running the full width
  * (darker over the filled part, a faint orange tint over the empty track)
  * so progress reads like a row of small cells rather than one smooth bar. */
-export function TickProgressBar({ progress, height = 10, color }: { progress: number; height?: number; color?: string }) {
+export function TickProgressBar({
+  progress,
+  height = 10,
+  color,
+  ticks = true,
+}: {
+  progress: number;
+  height?: number;
+  color?: string;
+  /** false draws a plain smooth bar, without the cell lines. */
+  ticks?: boolean;
+}) {
   const theme = useTheme();
   const [width, setWidth] = useState(0);
   const fill = color ?? theme.accent;
   const clamped = Math.min(Math.max(progress, 0), 1);
   const fillWidth = width * clamped;
-  const tickCount = width > 0 ? Math.floor(width / TICK_SPACING) : 0;
+  const tickCount = ticks && width > 0 ? Math.floor(width / TICK_SPACING) : 0;
 
   const onLayout = (e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width);
 

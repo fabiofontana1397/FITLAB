@@ -4,13 +4,13 @@ import { Platform, Pressable, StyleSheet, Switch, View } from 'react-native';
 
 import { FoodSearchModal } from '@/components/nutrition/food-search-modal';
 import { MealPickerModal, mealSlotColor } from '@/components/nutrition/meal-picker-modal';
-import { HeaderIconButton } from '@/components/screen-header';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { AiCoachCard } from '@/components/ui/ai-coach-card';
 import { DayCalendarModal } from '@/components/ui/day-calendar-modal';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon } from '@/components/ui/icon';
+import { ProfileAvatarButton } from '@/components/ui/profile-avatar-button';
 import { ProgressRing } from '@/components/ui/progress-ring';
 import { TickProgressBar } from '@/components/ui/tick-progress-bar';
 import { useEnsurePlan } from '@/hooks/use-ensure-plan';
@@ -53,12 +53,18 @@ function macroLine(m: { protein: number; carbs: number; fats: number }): string 
   return `P ${Math.round(m.protein)}g / C ${Math.round(m.carbs)}g / G ${Math.round(m.fats)}g`;
 }
 
-function intakeMessage(ratio: number): { text: string; over: boolean } {
-  if (ratio > 1.05) return { text: "Hai superato l'obiettivo di oggi", over: true };
-  if (ratio >= 0.95) return { text: 'Obiettivo raggiunto, ottimo lavoro!', over: false };
-  if (ratio >= 0.7) return { text: 'Ci sei quasi, continua così!', over: false };
-  if (ratio >= 0.25) return { text: 'Stai andando bene, continua così!', over: false };
-  return { text: 'Registra i tuoi pasti per iniziare', over: false };
+/** The calorie card's nudge, driven by how many of the day's meals have at
+ * least one food logged: invite to start, push to finish, praise when done. */
+function trackingMessage(
+  meals: { label: string; logged: boolean }[],
+  ratio: number,
+): { text: string; tone: 'start' | 'progress' | 'done' | 'over' } {
+  const missing = meals.filter((m) => !m.logged);
+  if (ratio > 1.05) return { text: "Hai superato l'obiettivo", tone: 'over' };
+  if (missing.length === 0) return { text: 'Tutto tracciato, complimenti!', tone: 'done' };
+  if (missing.length === meals.length) return { text: 'Registra il primo pasto', tone: 'start' };
+  if (missing.length === 1) return { text: `Manca solo ${missing[0].label.toLowerCase()}`, tone: 'progress' };
+  return { text: `Ancora ${missing.length} pasti, dai!`, tone: 'progress' };
 }
 
 export default function NutritionScreen() {
@@ -124,7 +130,13 @@ export default function NutritionScreen() {
   const dayEntries = entries.filter((e) => e.date === selectedDate);
   const totals = sumMacros(dayEntries);
   const calorieRatio = calorieTarget > 0 ? totals.kcal / calorieTarget : 0;
-  const message = intakeMessage(calorieRatio);
+  const message = trackingMessage(
+    mealSlots.map((m) => ({ label: m.label, logged: dayEntries.some((e) => e.slot === m.id) })),
+    calorieRatio,
+  );
+  const messageColor =
+    message.tone === 'over' ? theme.accent : message.tone === 'done' ? theme.brandGreen : message.tone === 'start' ? theme.accent : theme.brandYellow;
+  const messageIcon = message.tone === 'done' ? 'trophy' : message.tone === 'over' ? 'alert' : message.tone === 'start' ? 'plus' : 'flame';
 
   const macroRings = [
     { key: 'protein' as const, label: 'Proteine', color: theme.accent, target: macroTargets.protein },
@@ -136,18 +148,28 @@ export default function NutritionScreen() {
     <ScreenScroll contentContainerStyle={styles.page}>
       <View style={styles.headerRow}>
         <ThemedText style={styles.pageTitle}>Nutrizione</ThemedText>
-        <HeaderIconButton
-          icon="nutrition"
-          color={theme.accent}
-          accessibilityLabel="Piano alimentare"
-          onPress={() => router.push('/diet-plan')}
-        />
+        <View style={styles.headerIcons}>
+          <Pressable
+            onPress={() => router.push('/diet-plan')}
+            hitSlop={8}
+            accessibilityLabel="Piano alimentare"
+            style={[styles.circleButton, { backgroundColor: theme.backgroundElevated, borderColor: theme.border }]}>
+            <Icon name="calendar" size={19} color={theme.text} />
+          </Pressable>
+          <ProfileAvatarButton size={38} />
+        </View>
       </View>
 
       <FlatCard radius={CARD_RADIUS} style={styles.calorieCard}>
         <View style={styles.cardTitleRow}>
           <Icon name="flame" size={16} color={theme.accent} />
-          <ThemedText style={styles.cardTitle}>Calorie di oggi</ThemedText>
+          <ThemedText style={styles.cardTitle}>{selectedDate === today ? 'Calorie di oggi' : 'Calorie del giorno'}</ThemedText>
+          <View style={[styles.statusPill, { backgroundColor: withAlpha(messageColor, 0.14) }]}>
+            <Icon name={messageIcon} size={12} color={messageColor} />
+            <ThemedText style={[styles.statusText, { color: messageColor }]} numberOfLines={1}>
+              {message.text}
+            </ThemedText>
+          </View>
         </View>
 
         <View style={styles.bigNumberRow}>
@@ -156,13 +178,12 @@ export default function NutritionScreen() {
             / {formatKcal(calorieTarget)} kcal
           </ThemedText>
         </View>
-        <ThemedText style={[styles.statusText, { color: message.over ? theme.accent : theme.brandGreen }]}>{message.text}</ThemedText>
 
         <View style={styles.calorieBar}>
-          <TickProgressBar progress={calorieRatio} />
+          <TickProgressBar progress={calorieRatio} ticks={false} />
         </View>
 
-        <ThemedText style={styles.macroHeading}>Macronutrienti</ThemedText>
+        <ThemedText style={[styles.cardTitle, styles.macroHeading]}>Macronutrienti</ThemedText>
         <View style={styles.ringsRow}>
           {macroRings.map((macro) => (
             <View key={macro.key} style={styles.ringCol}>
@@ -175,9 +196,10 @@ export default function NutritionScreen() {
                 <ThemedText style={styles.ringValue}>{Math.round(totals[macro.key])} g</ThemedText>
               </ProgressRing>
               <ThemedText style={styles.ringLabel}>{macro.label}</ThemedText>
-              <ThemedText style={styles.ringTarget} themeColor="textTertiary">
-                / {Math.round(macro.target)} g
-              </ThemedText>
+              <View style={[styles.targetPill, { backgroundColor: withAlpha(macro.color, 0.14) }]}>
+                <Icon name="target" size={12} color={macro.color} />
+                <ThemedText style={[styles.ringTarget, { color: macro.color }]}>Obiettivo {Math.round(macro.target)} g</ThemedText>
+              </View>
             </View>
           ))}
         </View>
@@ -191,8 +213,8 @@ export default function NutritionScreen() {
 
       <View style={styles.mealsHeader}>
         <ThemedText style={styles.sectionTitle}>{mealsHeading}</ThemedText>
-        <Pressable onPress={() => setCalendarOpen(true)} hitSlop={10}>
-          <Icon name="calendar" size={24} color={theme.text} />
+        <Pressable onPress={() => setCalendarOpen(true)} hitSlop={8} accessibilityLabel="Apri calendario">
+          <ThemedText style={[styles.link, { color: theme.accent }]}>Vedi calendario ›</ThemedText>
         </Pressable>
       </View>
 
@@ -339,11 +361,30 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 14,
   },
+  // Type scale: page title 28 > section title 19 > card title 15.
   pageTitle: {
-    fontSize: 22,
-    lineHeight: 28,
-    fontWeight: '700',
-    letterSpacing: -0.3,
+    fontSize: 28,
+    lineHeight: 34,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+  },
+  headerIcons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  circleButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  link: {
+    fontSize: 13,
+    lineHeight: 17,
+    fontWeight: '600',
   },
   registerButton: {
     marginTop: 12,
@@ -375,9 +416,19 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   cardTitle: {
-    fontSize: 14,
+    fontSize: 15,
     lineHeight: 20,
     fontWeight: '700',
+  },
+  statusPill: {
+    marginLeft: 'auto',
+    flexShrink: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 999,
   },
   bigNumberRow: {
     flexDirection: 'row',
@@ -397,7 +448,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   statusText: {
-    marginTop: 2,
+    flexShrink: 1,
     fontSize: 11.5,
     lineHeight: 15,
     fontWeight: '700',
@@ -406,10 +457,16 @@ const styles = StyleSheet.create({
     marginTop: 11,
   },
   macroHeading: {
-    marginTop: 12,
-    fontSize: 15,
-    lineHeight: 20,
-    fontWeight: '700',
+    marginTop: 16,
+  },
+  targetPill: {
+    marginTop: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
   },
   ringsRow: {
     flexDirection: 'row',
@@ -432,10 +489,9 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   ringTarget: {
-    marginTop: 3,
     fontSize: 11.5,
     lineHeight: 15,
-    fontWeight: '500',
+    fontWeight: '700',
   },
   mealsHeader: {
     marginTop: 20,
@@ -445,10 +501,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   sectionTitle: {
-    fontSize: 22,
-    lineHeight: 28,
+    fontSize: 19,
+    lineHeight: 24,
     fontWeight: '700',
-    letterSpacing: -0.3,
+    letterSpacing: -0.2,
   },
   mealsList: {
     gap: 12,
