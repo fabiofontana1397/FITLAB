@@ -15,6 +15,7 @@ import { Icon, type IconName } from '@/components/ui/icon';
 import { ProfileAvatarButton } from '@/components/ui/profile-avatar-button';
 import { InfoPopover } from '@/components/ui/info-popover';
 import { LogActivityModal } from '@/components/training/log-activity-modal';
+import { useHealthEnergy } from '@/hooks/use-health-energy';
 import { sumActivityKcalForDate, useWeeklyEnergy } from '@/hooks/use-weekly-energy';
 import { useTheme } from '@/hooks/use-theme';
 import { latestSnapshot } from '@/lib/mock/body';
@@ -117,13 +118,17 @@ export default function HomeScreen() {
   // The generated diet plan's own calorie target for the active month
   // (it can differ month to month) takes priority over the static profile.
   const dietMonth = dietPlan?.months.find((m) => m.monthIndex === currentMonthIndex(dietPlan));
+  const health = useHealthEnergy();
   // That day's own target (training days eat more than rest days), then the month's average, then the profile.
   const calorieTarget = dietMonth?.weeklySplit[isoMondayIndex(viewDate)]?.calorieTarget ?? dietMonth?.calorieTarget ?? currentUser.dailyCalorieTarget;
   const todaysTotals = sumMacros(nutritionEntries.filter((e) => e.date === viewDate));
 
   // The shown day's estimated expenditure from the unified energy model: resting + everyday activity
   // + the planned session scaled by how much was done + manually logged activities.
-  const energy = dayEnergy(ctx, weeklySplit[isoMondayIndex(viewDate)] ?? null, viewExerciseCompletionFraction, sumActivityKcalForDate(activityLogEntries, viewDate));
+  const energy = dayEnergy(ctx, weeklySplit[isoMondayIndex(viewDate)] ?? null, viewExerciseCompletionFraction, sumActivityKcalForDate(activityLogEntries, viewDate), {
+    calibration: health.calibration,
+    measured: health.measuredFor(viewDate),
+  });
   const basalKcal = energy.resting + energy.everyday;
   const trainingBurnKcal = energy.exercise;
   const burnedKcal = energy.total;

@@ -1,10 +1,11 @@
 import { useMemo } from 'react';
 
-import { dailyStepsTarget, stepsHistory } from '@/lib/mock/activity';
+import { dailyStepsTarget } from '@/lib/mock/activity';
 import { currentWeekDates, daysAgoISO } from '@/lib/mock/dates';
 import type { BodyMetricSnapshot } from '@/lib/mock/types';
 import type { LoggedActivity } from '@/lib/api/activity-log';
 import { dayEnergy } from '@/domain/energy';
+import { useHealthEnergy } from '@/hooks/use-health-energy';
 import { useUserContext } from '@/hooks/use-user-context';
 import { WEEKDAY_LABELS } from '@/lib/planning/exercise-library';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
@@ -70,6 +71,7 @@ export function useWeeklyEnergy(referenceDate?: string): {
   const nutritionEntries = useNutritionStore((s) => s.entries);
   const bodyEntries = useBodyStore((s) => s.entries);
   const activityLogEntries = useActivityLogStore((s) => s.entries);
+  const { calibration, measuredFor, stepsFor } = useHealthEnergy();
 
   const dietMonth = dietPlan?.months.find((m) => m.monthIndex === currentMonthIndex(dietPlan));
   const calorieTarget = dietMonth?.calorieTarget ?? currentUser.dailyCalorieTarget;
@@ -115,11 +117,12 @@ export function useWeeklyEnergy(referenceDate?: string): {
       const dayTarget = targetForWeekday(i);
       const dayDietProgress = dayTarget > 0 ? dayTotals.kcal / dayTarget : 0;
 
-      const stepsEntry = stepsHistory.find((s) => s.date === date);
-      const dayStepsProgress = stepsEntry ? stepsEntry.steps / dailyStepsTarget : 0;
+      const steps = stepsFor(date);
+      const dayStepsProgress = steps != null ? steps / dailyStepsTarget : 0;
 
       // A cardio day earns its calories through the activity the person logs (added below), not from the plan.
-      const estimatedExpenditureKcal = dayEnergy(ctx, dayPlan, completionFraction).total;
+      // With a connected health app: personal resting kcal / workout factor, and the day's measured movement.
+      const estimatedExpenditureKcal = dayEnergy(ctx, dayPlan, completionFraction, 0, { calibration, measured: measuredFor(date) }).total;
 
       return {
         date,
@@ -134,7 +137,7 @@ export function useWeeklyEnergy(referenceDate?: string): {
       };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [trainingPlan, weekDates, accountStartDate, completedExercises, nutritionEntries, calorieTarget, dietMonth, ctx, today]);
+  }, [trainingPlan, weekDates, accountStartDate, completedExercises, nutritionEntries, calorieTarget, dietMonth, ctx, today, calibration, measuredFor, stepsFor]);
 
   // Folded in as a plain post-processing pass (not inside the useMemo
   // above) so this dependency never touches that hook's own compiler-
@@ -149,7 +152,7 @@ export function useWeeklyEnergy(referenceDate?: string): {
   const weeklyProgrammedKcal = weekDaysWithActivity.reduce((sum, _d, i) => sum + targetForWeekday(i), 0);
   // "If the plan is followed": intake target of each weekday minus what that weekday's planned training makes the person burn.
   const planSplit = trainingPlan?.months.find((m) => m.monthIndex === currentMonthIndex(trainingPlan))?.weeklySplit ?? [];
-  const weeklyGoalKcal = Math.round(weekDaysWithActivity.reduce((sum, _d, i) => sum + targetForWeekday(i) - dayEnergy(ctx, planSplit[i] ?? null, 1).total, 0));
+  const weeklyGoalKcal = Math.round(weekDaysWithActivity.reduce((sum, _d, i) => sum + targetForWeekday(i) - dayEnergy(ctx, planSplit[i] ?? null, 1, 0, { calibration }).total, 0));
   const todayEstimatedBalance = todayExpenditure ? todayExpenditure.estimatedExpenditureKcal - todayExpenditure.eatenKcal : 0;
 
   return { weekDaysWithActivity, todayEstimatedBalance, weekEstimatedExpenditureSoFar, weeklyProgrammedKcal, weeklyGoalKcal };

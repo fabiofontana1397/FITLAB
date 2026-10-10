@@ -3,6 +3,7 @@ import { View } from 'react-native';
 
 import AppTabs from '@/components/app-tabs';
 import { ChatFab } from '@/components/chat/chat-fab';
+import { useHealthSync } from '@/hooks/use-health-energy';
 
 // Auth/onboarding gating now lives in the root layout (src/app/_layout.tsx)
 // so it applies to every route, not just this tab group.
@@ -23,6 +24,7 @@ import { ChatFab } from '@/components/chat/chat-fab';
 // the orb visibly jumping the moment you switched tabs.
 export default function TabLayout() {
   const [barHeight, setBarHeight] = useState<number | null>(null);
+  useHealthSync();
 
   return (
     <View style={{ flex: 1 }}>

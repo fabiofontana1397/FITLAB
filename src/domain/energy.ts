@@ -13,7 +13,12 @@
  * - Exercise: NET kcal of a session (MET − 1, because the resting part is
  *   already inside BMR), from the session's real length and the person's weight.
  *
- * An ESTIMATE, never a measurement — wearable data does not feed it.
+ * An ESTIMATE, refined by health-app data when the person connected one
+ * (Apple Salute / Health Connect, see domain/health-calibration.ts):
+ * - a personal resting expenditure replaces Mifflin–St Jeor;
+ * - an exercise factor scales the session estimate to what the wearable measured;
+ * - on a finished day with measured data, everyday activity is what was really
+ *   moved (active kcal or steps) instead of the job factor.
  */
 import type { TrainingDayPlan } from '@/lib/planning/types';
 
@@ -97,20 +102,61 @@ export function sessionKcal(day: SessionLike | null | undefined, ctx: Pick<UserC
 
 export type DayEnergy = { resting: number; everyday: number; exercise: number; total: number };
 
+/** Personal corrections learned from the health app (domain/health-calibration.ts). */
+export type EnergyCalibration = {
+  /** Measured resting kcal per day (replaces the Mifflin–St Jeor BMR). */
+  restingKcal?: number;
+  /** Measured / estimated net kcal of a planned session (1 = the MET estimate was right). */
+  exerciseFactor?: number;
+};
+
+/** What the health app recorded for one day. `complete` = the day is over (today is still running). */
+export type MeasuredDay = { steps?: number; activeKcal?: number; basalKcal?: number; complete: boolean };
+
+/** Net kcal of walking: ≈ 0.5 kcal per kg every 1000 steps. */
+export function stepsKcal(steps: number, weightKg: number): number {
+  return Math.round(steps * 0.0005 * weightKg);
+}
+
+export type DayEnergyOptions = { calibration?: EnergyCalibration | null; measured?: MeasuredDay | null };
+
 /**
  * Expenditure of one day. `completion` scales the planned session (a half-
  * finished workout earns half of its exercise kcal); `extraKcal` adds
- * manually logged activities.
+ * manually logged activities. With `measured` data, a finished day uses what
+ * the health app recorded; today keeps the full-day estimate and only grows
+ * once the movement measured so far already exceeds it.
  */
 export function dayEnergy(
   ctx: Pick<UserContext, 'sex' | 'age' | 'heightCm' | 'weightKg' | 'lifestyle' | 'training'>,
   day: SessionLike | null | undefined,
   completion = 1,
-  extraKcal = 0
+  extraKcal = 0,
+  { calibration, measured }: DayEnergyOptions = {}
 ): DayEnergy {
   const base = baselineKcal(ctx);
-  const exercise = Math.round(sessionKcal(day, ctx) * Math.min(Math.max(completion, 0), 1)) + extraKcal;
-  return { resting: base.resting, everyday: base.everyday, exercise, total: base.resting + base.everyday + exercise };
+  const modelResting = calibration?.restingKcal ?? base.resting;
+  // The job factor's everyday share stays proportional to the (possibly personal) resting kcal.
+  const modelEveryday = calibration?.restingKcal ? Math.round(modelResting * (neatFactor(ctx.lifestyle) - 1)) : base.everyday;
+  const exercise = Math.round(sessionKcal(day, ctx) * Math.min(Math.max(completion, 0), 1) * (calibration?.exerciseFactor ?? 1)) + extraKcal;
+
+  let resting = modelResting;
+  let everyday = modelEveryday;
+  if (measured) {
+    const measuredEveryday =
+      measured.activeKcal != null && measured.activeKcal > 0
+        ? Math.max(Math.round(measured.activeKcal) - exercise, 0)
+        : measured.steps != null && measured.steps > 0
+          ? stepsKcal(measured.steps, ctx.weightKg)
+          : null;
+    if (measured.complete) {
+      if (measured.basalKcal != null && measured.basalKcal > 500) resting = Math.round(measured.basalKcal);
+      if (measuredEveryday != null) everyday = measuredEveryday;
+    } else if (measuredEveryday != null) {
+      everyday = Math.max(modelEveryday, measuredEveryday);
+    }
+  }
+  return { resting, everyday, exercise, total: resting + everyday + exercise };
 }
 
 /** The seven days (Monday first) with the average, for a planned week. */
