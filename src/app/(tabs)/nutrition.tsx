@@ -196,10 +196,9 @@ export default function NutritionScreen() {
                 <ThemedText style={styles.ringValue}>{Math.round(totals[macro.key])} g</ThemedText>
               </ProgressRing>
               <ThemedText style={styles.ringLabel}>{macro.label}</ThemedText>
-              <View style={[styles.targetPill, { backgroundColor: withAlpha(macro.color, 0.14) }]}>
-                <Icon name="target" size={12} color={macro.color} />
-                <ThemedText style={[styles.ringTarget, { color: macro.color }]}>Obiettivo {Math.round(macro.target)} g</ThemedText>
-              </View>
+              <ThemedText style={styles.ringTarget} themeColor="textSecondary">
+                / {Math.round(macro.target)} g
+              </ThemedText>
             </View>
           ))}
         </View>
@@ -459,15 +458,6 @@ const styles = StyleSheet.create({
   macroHeading: {
     marginTop: 16,
   },
-  targetPill: {
-    marginTop: 6,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 999,
-  },
   ringsRow: {
     flexDirection: 'row',
     marginTop: 12,
@@ -489,9 +479,10 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   ringTarget: {
-    fontSize: 11.5,
-    lineHeight: 15,
-    fontWeight: '700',
+    marginTop: 2,
+    fontSize: 14,
+    lineHeight: 18,
+    fontWeight: '800',
   },
   mealsHeader: {
     marginTop: 20,
