@@ -36,6 +36,7 @@ export function EditAnswersSheet({ group, answers, onClose, onSave }: EditAnswer
     return buildUserContext(draft).issues.filter((i) => i.severity === 'error' && ids.has(i.field));
   }, [group, questions, draft]);
   const canSave = missing.length === 0 && blocking.length === 0;
+  const usualMeals = questions.filter((q) => q.id.startsWith('usual'));
 
   return (
     <Modal visible={group != null} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
@@ -65,14 +66,28 @@ export function EditAnswersSheet({ group, answers, onClose, onSave }: EditAnswer
                 Quando salvi, FITLAB controlla se le modifiche cambiano davvero i tuoi piani e li aggiorna solo se serve, senza toccare i mesi già trascorsi.
               </ThemedText>
             </GlassSurface>
-            {questions.map((question) => (
-              <QuestionBlock
-                key={question.id}
-                question={question}
-                value={draft[question.id]}
-                onChange={(value) => setDraft((d) => ({ ...d, [question.id]: value }))}
-              />
-            ))}
+            {questions.map((question) => {
+              const block = (
+                <QuestionBlock
+                  key={question.id}
+                  question={question}
+                  compact={group?.compact}
+                  value={draft[question.id]}
+                  onChange={(value) => setDraft((d) => ({ ...d, [question.id]: value }))}
+                />
+              );
+              // Compact groups: the "what do you usually eat" texts fold behind one drop-down, opened only when needed.
+              if (!group?.compact || !question.id.startsWith('usual')) return block;
+              if (question.id !== usualMeals[0]?.id) return null;
+              const filled = usualMeals.filter((q) => isAnswered(q, draft[q.id])).length;
+              return (
+                <FoldSection key="usualMeals" title="Cosa mangi di solito" summary={`${filled}/${usualMeals.length} pasti indicati`}>
+                  {usualMeals.map((q) => (
+                    <QuestionBlock key={q.id} question={q} compact value={draft[q.id]} onChange={(value) => setDraft((d) => ({ ...d, [q.id]: value }))} />
+                  ))}
+                </FoldSection>
+              );
+            })}
           </View>
         </ScrollView>
 
@@ -88,6 +103,30 @@ export function EditAnswersSheet({ group, answers, onClose, onSave }: EditAnswer
         </View>
       </View>
     </Modal>
+  );
+}
+
+function FoldSection({ title, summary, children }: { title: string; summary: string; children: React.ReactNode }) {
+  const theme = useTheme();
+  const [open, setOpen] = useState(false);
+  return (
+    <GlassSurface level="card" radius={Radius.medium} style={[styles.fold, open && { borderColor: theme.accent }]}>
+      <Pressable onPress={() => setOpen((o) => !o)} style={styles.foldHeader} accessibilityRole="button" accessibilityState={{ expanded: open }}>
+        <View style={{ flex: 1 }}>
+          <ThemedText type="smallBold">
+            {title}
+            <ThemedText type="caption" themeColor="textTertiary">
+              {'  (facoltativo)'}
+            </ThemedText>
+          </ThemedText>
+          <ThemedText type="caption" themeColor="textSecondary">
+            {summary}
+          </ThemedText>
+        </View>
+        <Icon name={open ? 'chevronUp' : 'chevronDown'} size={18} color={theme.textTertiary} />
+      </Pressable>
+      {open ? <View style={styles.foldBody}>{children}</View> : null}
+    </GlassSurface>
   );
 }
 
@@ -121,6 +160,21 @@ const styles = StyleSheet.create({
     maxWidth: MaxContentWidth,
     paddingHorizontal: Spacing.four,
     gap: Spacing.four,
+  },
+  fold: {
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  foldHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    padding: Spacing.three,
+  },
+  foldBody: {
+    gap: Spacing.three,
+    paddingHorizontal: Spacing.three,
+    paddingBottom: Spacing.three,
   },
   hint: {
     flexDirection: 'row',

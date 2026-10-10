@@ -27,6 +27,8 @@ export type ProfileGroup = {
   stepIds: string[];
   /** Restricts the editable questions to these ids (all the steps' questions when omitted). */
   questionIds?: string[];
+  /** Long groups: drop-downs in the editor, folded rows in the summary. */
+  compact?: boolean;
 };
 
 export const PROFILE_GROUPS: ProfileGroup[] = [
@@ -38,6 +40,7 @@ export const PROFILE_GROUPS: ProfileGroup[] = [
     title: 'Preferenze alimentari',
     icon: 'nutrition',
     stepIds: ['preferences'],
+    compact: true,
     questionIds: ['dietaryPattern', 'allergiesIntolerances', 'excludedFoods', 'includedFoods', 'preferredProteins', 'preferredCarbs', 'preferredFats', 'preferredFruit', 'preferredVegetables'],
   },
   {
@@ -45,6 +48,7 @@ export const PROFILE_GROUPS: ProfileGroup[] = [
     title: 'Abitudini a tavola',
     icon: 'utensils',
     stepIds: ['preferences'],
+    compact: true,
     questionIds: ['usualBreakfast', 'usualMorningSnack', 'usualLunch', 'usualAfternoonSnack', 'usualDinner', 'usualPreSleepSnack', 'coffeeIntake', 'alcoholIntake'],
   },
   { id: 'training', title: 'Allenamento', icon: 'barbell', stepIds: ['training'] },

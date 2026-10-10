@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { AppTextInput } from '@/components/ui/app-text';
 import { FoodPicker } from '@/components/onboarding/food-picker';
+import { SelectField } from '@/components/onboarding/select-field';
 
 import { GlassSurface } from '@/components/glass/glass-surface';
 import { ThemedText } from '@/components/themed-text';
@@ -25,12 +26,18 @@ export type QuestionFieldProps = {
   question: Question;
   value: AnswerValue;
   onChange: (value: AnswerValue) => void;
+  /** Denser layout (Profilo's editor): single choices become a drop-down, long texts get shorter. */
+  compact?: boolean;
 };
 
-export function QuestionField({ question, value, onChange }: QuestionFieldProps) {
+export function QuestionField({ question, value, onChange, compact = false }: QuestionFieldProps) {
   const theme = useTheme();
 
   if (question.type === 'foodPicker') return <FoodPicker question={question} value={value} onChange={onChange} />;
+
+  if (compact && question.type === 'single' && question.options) {
+    return <SelectField options={question.options} value={typeof value === 'string' ? value : undefined} onChange={onChange} />;
+  }
 
   if (question.type === 'single' || question.type === 'multi') {
     const isMulti = question.type === 'multi';
@@ -161,7 +168,7 @@ export function QuestionField({ question, value, onChange }: QuestionFieldProps)
       multiline={question.type === 'longtext'}
       style={[
         styles.textInput,
-        question.type === 'longtext' && styles.longTextInput,
+        question.type === 'longtext' && (compact ? styles.compactLongTextInput : styles.longTextInput),
         { color: theme.text, backgroundColor: theme.backgroundElement, borderColor: theme.border },
       ]}
     />
@@ -215,6 +222,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     paddingVertical: 10,
     fontSize: 15,
+  },
+  compactLongTextInput: {
+    minHeight: 48,
+    textAlignVertical: 'top',
   },
   longTextInput: {
     minHeight: 80,
