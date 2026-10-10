@@ -15,6 +15,7 @@ import { useUserStore } from '@/store/user-store';
 export type SaveOutcome = AnswersImpact & { message: string };
 
 function outcomeMessage(impact: AnswersImpact): string {
+  if (impact.created) return 'Piani creati dalle tue risposte.';
   if (impact.restart) return 'Nuovo obiettivo: i tuoi piani ripartono dal mese 1.';
   const from = impact.fromMonth > 1 ? ` dal mese ${impact.fromMonth}` : '';
   if (impact.diet && impact.training) return `Piano alimentare e allenamento aggiornati${from}.`;

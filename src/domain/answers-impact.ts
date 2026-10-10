@@ -27,8 +27,10 @@ export type AnswersImpact = {
   training: boolean;
   /** The calorie / macro / hydration targets on the profile change. */
   targets: boolean;
-  /** Goal or goal weight changed: both plans restart from month 1. */
+  /** Both plans (re)start from month 1: the goal or goal weight changed, or a requested plan did not exist yet. */
   restart: boolean;
+  /** True when the restart is only because a requested plan was missing. */
+  created?: boolean;
   /** First month that gets rebuilt (months before it are already lived and stay untouched). */
   fromMonth: number;
 };
@@ -56,12 +58,9 @@ export function analyzeAnswersImpact({ prev, next, weightKg, existing }: ImpactI
   const hasDiet = after.mode !== 'training';
   const hasTraining = after.mode !== 'diet';
 
-  const restart =
-    prev.goal !== next.goal ||
-    parseNumericAnswer(prev.targetWeightKg) !== parseNumericAnswer(next.targetWeightKg) ||
-    (hasDiet && !existing.diet) ||
-    (hasTraining && !existing.training);
-  if (restart) return { diet: hasDiet, training: hasTraining, targets, restart: true, fromMonth: 1 };
+  const newGoal = prev.goal !== next.goal || parseNumericAnswer(prev.targetWeightKg) !== parseNumericAnswer(next.targetWeightKg);
+  const missing = (hasDiet && !existing.diet) || (hasTraining && !existing.training);
+  if (newGoal || missing) return { diet: hasDiet, training: hasTraining, targets, restart: true, created: !newGoal, fromMonth: 1 };
 
   const plan = existing.diet ?? existing.training;
   const fromMonth = plan ? currentMonthIndex(plan) : 1;

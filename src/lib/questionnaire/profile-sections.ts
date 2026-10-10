@@ -102,8 +102,8 @@ const SHORT_LABEL: Record<string, string> = {
   coffeeIntake: 'Caffè al giorno',
   alcoholIntake: 'Alcol',
   activitiesPracticed: 'Attività',
-  freq_gym: 'Palestra',
-  freq_running: 'Corsa',
+  freq_gym: 'Frequenza palestra',
+  freq_running: 'Frequenza corsa',
   gymExperience: 'Esperienza in palestra',
   gymSkillLevel: 'Livello con i pesi',
   gymSplitPreference: 'Struttura della scheda',
@@ -182,6 +182,6 @@ export function mealTimeline(answers: Record<string, unknown>): MealSlotRow[] {
 
 /** Short label + readable value of one answer (identity card). */
 export function answerText(id: string, answers: Record<string, unknown>): string | null {
-  const question = findQuestion(id);
+  const question = findQuestion(id) ?? buildActivityQuestions(['gym', 'running']).find((q) => q.id === id);
   return question ? optionLabel(question, answers[id]) : null;
 }

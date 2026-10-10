@@ -76,6 +76,7 @@ export default function ProfileScreen() {
   const [editing, setEditing] = useState<ProfileGroup | null>(null);
   const [photoMenuOpen, setPhotoMenuOpen] = useState(false);
   const [outcome, setOutcome] = useState<SaveOutcome | null>(null);
+  const [saving, setSaving] = useState(false);
 
   // The save feedback stays until the plans are rebuilt, then fades after a few seconds.
   useEffect(() => {
@@ -121,7 +122,12 @@ export default function ProfileScreen() {
 
   const onSave = (group: ProfileGroup, draft: Record<string, AnswerValue>) => {
     setEditing(null);
-    setOutcome(saveAnswers(group, draft));
+    setSaving(true);
+    // The impact check runs the plan engine twice (a few hundred ms): let the sheet close first.
+    setTimeout(() => {
+      setOutcome(saveAnswers(group, draft));
+      setSaving(false);
+    }, 60);
   };
 
   // spec §0.3/§4.1 bis, "initial_estimate vs current_target": once the
@@ -193,10 +199,10 @@ export default function ProfileScreen() {
 
         <View style={styles.statsRow}>
           <StatBox icon="ruler" label="Altezza" value={currentUser.heightCm > 0 ? `${currentUser.heightCm}` : '—'} unit="cm" />
-          <StatBox icon="scale" label="Peso attuale" value={weightKg > 0 ? weightKg.toLocaleString('it-IT') : '—'} unit="kg" />
+          <StatBox icon="scale" label="Peso" value={weightKg > 0 ? weightKg.toLocaleString('it-IT') : '—'} unit="kg" />
           <StatBox
             icon="trophy"
-            label="Peso obiettivo"
+            label="Traguardo"
             value={currentUser.targetWeightKg > 0 ? currentUser.targetWeightKg.toLocaleString('it-IT') : '—'}
             unit={currentUser.targetWeightKg > 0 ? 'kg' : undefined}
           />
@@ -247,16 +253,16 @@ export default function ProfileScreen() {
           </ThemedText>
         </View>
 
-        {outcome ? (
+        {outcome || saving ? (
           <FadeInView>
             <GlassSurface level="subtle" radius={Radius.large} style={styles.outcome}>
-              {isGenerating ? (
+              {saving || isGenerating || !outcome ? (
                 <ActivityIndicator size="small" color={theme.accent} />
               ) : (
                 <Icon name="checkCircle" size={18} color={outcome.diet || outcome.training ? theme.accent : theme.success} />
               )}
               <ThemedText type="caption" style={{ flex: 1 }}>
-                {isGenerating ? 'Aggiornamento dei piani in corso…' : outcome.message}
+                {saving || !outcome ? 'Controllo cosa cambia nei tuoi piani…' : isGenerating ? 'Aggiornamento dei piani in corso…' : outcome.message}
               </ThemedText>
             </GlassSurface>
           </FadeInView>
