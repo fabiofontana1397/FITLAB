@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { GlassSurface } from '@/components/glass/glass-surface';
 import { PlanTimeline } from '@/components/training/plan-timeline';
@@ -13,7 +13,9 @@ import { PrimaryButton } from '@/components/ui/primary-button';
 import { SectionHeader } from '@/components/ui/section-header';
 import { SegmentedControl } from '@/components/ui/segmented-control';
 import { Radius, Spacing } from '@/constants/theme';
+import { useEnsurePlan } from '@/hooks/use-ensure-plan';
 import { useTheme } from '@/hooks/use-theme';
+import { useUserContext } from '@/hooks/use-user-context';
 import { goBackOr } from '@/lib/navigation/go-back';
 import { WEEKDAY_LABELS } from '@/lib/planning/exercise-library';
 import { exportDietPlanPdf } from '@/lib/planning/pdf-export';
@@ -21,6 +23,7 @@ import { currentMonthIndex, monthProgress } from '@/lib/planning/plan-progress';
 import type { PlanMeal, PlanPhaseKind } from '@/lib/planning/types';
 import { findQuestion, labelFor } from '@/lib/questionnaire/schema';
 import { checkinUnlockedThroughMonth, useMonthlyCheckinStore } from '@/store/monthly-checkin-store';
+import { useOnboardingStore } from '@/store/onboarding-store';
 import { isValidDietPlan, usePlanStore } from '@/store/plan-store';
 import { useUserStore } from '@/store/user-store';
 
@@ -41,6 +44,16 @@ export default function DietPlanScreen() {
   const plan = isValidDietPlan(rawPlan) ? rawPlan : null;
   const currentUser = useUserStore();
   const [exporting, setExporting] = useState(false);
+
+  // Opened straight from the Nutrition header, an outdated plan must be rebuilt here too, not only on the tab.
+  useEnsurePlan('diet');
+  const userContext = useUserContext();
+  const trainingOnly = userContext.mode === 'training';
+  const isGenerating = usePlanStore((s) => s.isGenerating);
+  const generatePlans = usePlanStore((s) => s.generatePlans);
+  const answers = useOnboardingStore((s) => s.answers);
+  const regenerate = () =>
+    void generatePlans(answers, { only: 'diet', skipAi: true, keepProgress: rawPlan != null, currentWeightKg: userContext.weightKg > 0 ? userContext.weightKg : undefined });
 
   const completedCheckinMonths = useMonthlyCheckinStore((s) => s.completedMonths);
   const currentMonthIdx = plan ? currentMonthIndex(plan) : 1;
@@ -96,11 +109,28 @@ export default function DietPlanScreen() {
 
       {!plan ? (
         <GlassSurface level="card" radius={Radius.large} style={{ padding: Spacing.four, gap: Spacing.two }}>
-          <ThemedText type="smallBold">Nessun piano alimentare</ThemedText>
-          <ThemedText type="caption" themeColor="textSecondary">
-            Hai completato il questionario in modalità “solo allenamento”. Rifallo scegliendo “Piano alimentare” o
-            “Entrambi” per generare qui il tuo piano.
-          </ThemedText>
+          {trainingOnly ? (
+            <>
+              <ThemedText type="smallBold">Nessun piano alimentare</ThemedText>
+              <ThemedText type="caption" themeColor="textSecondary">
+                Hai completato il questionario in modalità “solo allenamento”. Rifallo scegliendo “Piano alimentare” o
+                “Entrambi” per generare qui il tuo piano.
+              </ThemedText>
+            </>
+          ) : isGenerating ? (
+            <View style={styles.generatingRow}>
+              <ActivityIndicator color={theme.accent} />
+              <ThemedText type="smallBold">Sto preparando il tuo piano alimentare…</ThemedText>
+            </View>
+          ) : (
+            <>
+              <ThemedText type="smallBold">Piano alimentare da aggiornare</ThemedText>
+              <ThemedText type="caption" themeColor="textSecondary">
+                Il tuo piano è stato creato con una versione precedente. Rigeneralo con le tue risposte al questionario.
+              </ThemedText>
+              <PrimaryButton label="Genera il piano" onPress={regenerate} style={{ marginTop: Spacing.two }} />
+            </>
+          )}
         </GlassSurface>
       ) : (
         <>
@@ -330,6 +360,11 @@ function Target({ label, value, unit }: { label: string; value: string; unit: st
 }
 
 const styles = StyleSheet.create({
+  generatingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
