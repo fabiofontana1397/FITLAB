@@ -110,6 +110,8 @@ export type TrainingPlan = {
   generatedAt: string;
   durationMonths: number;
   months: TrainingMonthPlan[];
+  /** Version of the training generator that built it: an older plan is rebuilt in place (see TRAINING_ENGINE_VERSION). */
+  engine?: string;
   calibration?: PlanCalibration;
   recalibrations?: RecalibrationRecord[];
   /** True if any exercise anywhere in the plan needed the safe-fallback

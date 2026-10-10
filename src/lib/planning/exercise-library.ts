@@ -198,30 +198,187 @@ export const SAFE_FALLBACK_EXERCISE: ExerciseDef = { id: 'plank', name: 'Plank',
 
 export type SetScheme = { sets: number; reps: string; restSec: number; tempo: string };
 
-/** Sets/reps/rest/tempo per gym focus goal, adattamento vs. later phases (progressione/consolidamento share one scheme).
- * Tempo is "eccentric-isometric-concentric" in seconds, e.g. "3-0-1" = 3s negativa, 0s isometria, 1s spinta. */
-export const FOCUS_SCHEME: Record<string, { adattamento: SetScheme; later: SetScheme }> = {
+/** What an exercise does in a session, which decides how it is prescribed:
+ *  - main: the session's first multi-joint lift — heaviest, fewest reps, longest rest;
+ *  - secondary: the other multi-joint lifts — moderate load and rest;
+ *  - isolation: single-joint work — lighter, more reps, short rest, controlled tempo;
+ *  - core: isometric holds, prescribed in seconds rather than reps. */
+export type ExerciseRole = 'main' | 'secondary' | 'isolation' | 'core';
+
+const ISOLATION_IDS = new Set([
+  'curl-bicipiti',
+  'curl-manubri',
+  'alzate-laterali',
+  'alzate-laterali-manubri',
+  'leg-curl-machine',
+  'abductor-machine',
+  'polpacci-macchina',
+  'polpacci-piedi',
+  'face-pull-elastico',
+  'clamshell-elastico',
+]);
+const CORE_IDS = new Set(['plank']);
+
+/** Movement kind of a catalog exercise (single- vs multi-joint, isometric hold). */
+export function exerciseKind(id: string): 'compound' | 'isolation' | 'core' {
+  if (CORE_IDS.has(id)) return 'core';
+  if (ISOLATION_IDS.has(id)) return 'isolation';
+  return 'compound';
+}
+
+/** Roles for a session's exercises, in order: the first compound (the first
+ * two in sessions of 5+ exercises) is the main lift, the other compounds are
+ * secondary. Pools are priority-ordered, so the main lift is the key one. */
+export function assignRoles(ids: string[]): ExerciseRole[] {
+  const mainSlots = ids.length >= 5 ? 2 : 1;
+  let mains = 0;
+  return ids.map((id) => {
+    const kind = exerciseKind(id);
+    if (kind !== 'compound') return kind;
+    if (mains < mainSlots) {
+      mains++;
+      return 'main';
+    }
+    return 'secondary';
+  });
+}
+
+type RoleSchemes = Record<ExerciseRole, SetScheme>;
+
+/**
+ * Sets/reps/rest/tempo per gym focus, per month phase and per exercise role.
+ * Based on the ACSM progression models (2009 position stand) and NSCA load/
+ * rest guidelines: strength works the main lifts at 2-6 reps with 3-4 min
+ * rest, hypertrophy at 6-12 reps (accessories up to 15) with 1-2.5 min,
+ * endurance at 12-20+ reps with under a minute; adattamento always starts
+ * lighter and slower to learn the movements. Under a calorie deficit the
+ * main lifts stay fairly heavy, to keep the stimulus that preserves muscle.
+ *
+ * Tempo is "eccentric-isometric-concentric" in seconds, e.g. "3-0-1" = 3s
+ * negativa, 0s pausa, 1s spinta; core holds read "isometria".
+ */
+export const ROLE_SCHEMES: Record<string, Record<PhaseKey, RoleSchemes>> = {
   strength: {
-    adattamento: { sets: 3, reps: '10-12', restSec: 90, tempo: '3-1-1' },
-    later: { sets: 5, reps: '3-5', restSec: 180, tempo: '3-1-1' },
+    adattamento: {
+      main: { sets: 3, reps: '8-10', restSec: 120, tempo: '3-1-1' },
+      secondary: { sets: 3, reps: '10', restSec: 90, tempo: '3-0-1' },
+      isolation: { sets: 2, reps: '12', restSec: 60, tempo: '2-0-2' },
+      core: { sets: 3, reps: '20-30 s', restSec: 45, tempo: 'isometria' },
+    },
+    progressione: {
+      main: { sets: 5, reps: '3-5', restSec: 210, tempo: '2-1-1' },
+      secondary: { sets: 4, reps: '6-8', restSec: 150, tempo: '2-0-1' },
+      isolation: { sets: 3, reps: '10-12', restSec: 75, tempo: '2-0-2' },
+      core: { sets: 3, reps: '30-40 s', restSec: 60, tempo: 'isometria' },
+    },
+    consolidamento: {
+      main: { sets: 4, reps: '2-4', restSec: 240, tempo: '2-1-1' },
+      secondary: { sets: 3, reps: '5-6', restSec: 150, tempo: '2-0-1' },
+      isolation: { sets: 2, reps: '10-12', restSec: 60, tempo: '2-0-2' },
+      core: { sets: 3, reps: '30-40 s', restSec: 60, tempo: 'isometria' },
+    },
   },
   hypertrophy: {
-    adattamento: { sets: 3, reps: '12', restSec: 75, tempo: '3-0-1' },
-    later: { sets: 4, reps: '8-12', restSec: 90, tempo: '3-0-1' },
+    adattamento: {
+      main: { sets: 3, reps: '10-12', restSec: 90, tempo: '3-1-1' },
+      secondary: { sets: 3, reps: '12', restSec: 75, tempo: '3-0-1' },
+      isolation: { sets: 2, reps: '15', restSec: 60, tempo: '2-1-2' },
+      core: { sets: 3, reps: '20-30 s', restSec: 45, tempo: 'isometria' },
+    },
+    progressione: {
+      main: { sets: 4, reps: '6-8', restSec: 150, tempo: '3-0-1' },
+      secondary: { sets: 3, reps: '8-12', restSec: 90, tempo: '3-0-1' },
+      isolation: { sets: 3, reps: '12-15', restSec: 60, tempo: '2-1-2' },
+      core: { sets: 3, reps: '30-45 s', restSec: 45, tempo: 'isometria' },
+    },
+    consolidamento: {
+      main: { sets: 3, reps: '6-8', restSec: 150, tempo: '3-0-1' },
+      secondary: { sets: 3, reps: '8-10', restSec: 90, tempo: '3-0-1' },
+      isolation: { sets: 3, reps: '10-12', restSec: 60, tempo: '2-1-2' },
+      core: { sets: 3, reps: '30-45 s', restSec: 45, tempo: 'isometria' },
+    },
   },
   fatLoss: {
-    adattamento: { sets: 3, reps: '15', restSec: 45, tempo: '2-0-1' },
-    later: { sets: 3, reps: '12-15', restSec: 45, tempo: '2-0-1' },
+    adattamento: {
+      main: { sets: 3, reps: '10-12', restSec: 90, tempo: '3-0-1' },
+      secondary: { sets: 3, reps: '12', restSec: 60, tempo: '2-0-1' },
+      isolation: { sets: 2, reps: '15', restSec: 45, tempo: '2-0-2' },
+      core: { sets: 3, reps: '20-30 s', restSec: 30, tempo: 'isometria' },
+    },
+    progressione: {
+      main: { sets: 4, reps: '6-8', restSec: 120, tempo: '2-0-1' },
+      secondary: { sets: 3, reps: '10-12', restSec: 60, tempo: '2-0-1' },
+      isolation: { sets: 3, reps: '12-15', restSec: 45, tempo: '2-0-2' },
+      core: { sets: 3, reps: '30-45 s', restSec: 30, tempo: 'isometria' },
+    },
+    consolidamento: {
+      main: { sets: 3, reps: '6-8', restSec: 120, tempo: '2-0-1' },
+      secondary: { sets: 3, reps: '10-12', restSec: 60, tempo: '2-0-1' },
+      isolation: { sets: 2, reps: '15', restSec: 45, tempo: '2-0-2' },
+      core: { sets: 3, reps: '30-45 s', restSec: 30, tempo: 'isometria' },
+    },
   },
   muscularEndurance: {
-    adattamento: { sets: 3, reps: '15', restSec: 45, tempo: '2-0-1' },
-    later: { sets: 4, reps: '15-20', restSec: 45, tempo: '2-0-1' },
+    adattamento: {
+      main: { sets: 3, reps: '12', restSec: 60, tempo: '2-0-1' },
+      secondary: { sets: 3, reps: '15', restSec: 45, tempo: '2-0-1' },
+      isolation: { sets: 2, reps: '15', restSec: 30, tempo: '2-0-2' },
+      core: { sets: 3, reps: '30 s', restSec: 30, tempo: 'isometria' },
+    },
+    progressione: {
+      main: { sets: 3, reps: '12-15', restSec: 60, tempo: '2-0-1' },
+      secondary: { sets: 3, reps: '15-20', restSec: 45, tempo: '2-0-1' },
+      isolation: { sets: 3, reps: '20', restSec: 30, tempo: '1-0-1' },
+      core: { sets: 3, reps: '45-60 s', restSec: 30, tempo: 'isometria' },
+    },
+    consolidamento: {
+      main: { sets: 3, reps: '15', restSec: 60, tempo: '2-0-1' },
+      secondary: { sets: 3, reps: '15-20', restSec: 45, tempo: '2-0-1' },
+      isolation: { sets: 2, reps: '20', restSec: 30, tempo: '1-0-1' },
+      core: { sets: 3, reps: '45-60 s', restSec: 30, tempo: 'isometria' },
+    },
   },
   technique: {
-    adattamento: { sets: 3, reps: '10', restSec: 90, tempo: '3-1-1' },
-    later: { sets: 3, reps: '10', restSec: 90, tempo: '3-1-1' },
+    adattamento: {
+      main: { sets: 3, reps: '8', restSec: 120, tempo: '3-1-1' },
+      secondary: { sets: 3, reps: '10', restSec: 90, tempo: '3-1-1' },
+      isolation: { sets: 2, reps: '12', restSec: 60, tempo: '2-1-2' },
+      core: { sets: 3, reps: '20-30 s', restSec: 45, tempo: 'isometria' },
+    },
+    progressione: {
+      main: { sets: 4, reps: '6-8', restSec: 120, tempo: '3-1-1' },
+      secondary: { sets: 3, reps: '8-10', restSec: 90, tempo: '3-0-1' },
+      isolation: { sets: 3, reps: '12', restSec: 60, tempo: '2-1-2' },
+      core: { sets: 3, reps: '30-40 s', restSec: 45, tempo: 'isometria' },
+    },
+    consolidamento: {
+      main: { sets: 3, reps: '6', restSec: 120, tempo: '3-1-1' },
+      secondary: { sets: 3, reps: '8-10', restSec: 90, tempo: '3-0-1' },
+      isolation: { sets: 2, reps: '12', restSec: 60, tempo: '2-1-2' },
+      core: { sets: 3, reps: '30-40 s', restSec: 45, tempo: 'isometria' },
+    },
   },
 };
+
+type PhaseKey = 'adattamento' | 'progressione' | 'consolidamento';
+
+/** The "volume" session of a split trained twice a week (daily undulating
+ * periodization): the main lifts move to the secondary rep range with a
+ * shorter rest, so the week mixes one heavy and one higher-volume exposure
+ * per pattern instead of repeating the same session. */
+export function volumeDayScheme(schemes: RoleSchemes, role: ExerciseRole): SetScheme {
+  if (role !== 'main') return schemes[role];
+  return { ...schemes.secondary, sets: schemes.main.sets };
+}
+
+/** Load relative to a 10-rep set for the top of a rep range (Epley %1RM),
+ * so a 3-5 rep prescription suggests a heavier start than a 15-rep one. */
+export function repLoadFactor(reps: string): number {
+  const match = reps.match(/(\d+)(?:\s*-\s*(\d+))?/);
+  if (!match || /\bs\b/.test(reps)) return 1;
+  const top = Number(match[2] ?? match[1]);
+  return (1 + 10 / 30) / (1 + top / 30);
+}
 
 /** Weekly running session types per focus goal, adattamento vs. later phases. Cycled if there are more run days than entries. */
 export const RUNNING_SESSIONS: Record<string, { adattamento: string[]; later: string[] }> = {

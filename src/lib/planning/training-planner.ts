@@ -2,21 +2,26 @@ import type { UserContext } from '@/domain/user-context';
 
 import { deriveExerciseExclusions, filterByEquipment, selectExercises } from './exercise-constraints';
 import {
-  FOCUS_SCHEME,
+  assignRoles,
   GYM_EXERCISES,
   HOME_EXERCISES,
+  repLoadFactor,
   resolveSplitLabels,
+  ROLE_SCHEMES,
   roundLoad,
   RUNNING_SESSIONS,
   suggestedLoadFor,
   WEEKDAY_LABELS,
+  volumeDayScheme,
   type ExerciseDef,
-  type SetScheme,
   type SplitLabel,
 } from './exercise-library';
 import { resolveSchedule } from './training-days';
 import type { TrainingStrategy } from './strategy-types';
 import type { PlanPhaseKind, TrainingDayPlan, TrainingExerciseEntry, TrainingMonthPlan, TrainingPlan } from './types';
+
+/** Bump when the prescription logic changes: an older stored plan is rebuilt in place (see isValidTrainingPlan). */
+export const TRAINING_ENGINE_VERSION = 'training-2';
 
 /** How many exercises a session can reasonably fit for the typical session length. */
 function exerciseCountForDuration(bucket: string): number {
@@ -140,7 +145,9 @@ export function generateTrainingPlan(input: TrainingPlanInput): TrainingPlan | n
           ? sanitizedStrategySplits
           : resolveSplitLabels(gymDays, gym.skill);
 
-  const gymScheme = strategy?.gymScheme ?? FOCUS_SCHEME[gym?.focus ?? 'hypertrophy'] ?? FOCUS_SCHEME.hypertrophy;
+  // Prescriptions always come from the role table (the AI strategy's single
+  // gymScheme would give every exercise the same sets/reps/rest again).
+  const focusSchemes = ROLE_SCHEMES[gym?.focus ?? 'hypertrophy'] ?? ROLE_SCHEMES.hypertrophy;
   const runSessions = strategy?.runSessions ?? RUNNING_SESSIONS[t.running?.focus ?? 'endurance'] ?? RUNNING_SESSIONS.endurance;
 
   const skipAdattamento = !!gym && gym.skill !== 'beginner';
@@ -158,35 +165,49 @@ export function generateTrainingPlan(input: TrainingPlanInput): TrainingPlan | n
       }
     }
     const level = Math.max(progressionIndex, 0);
-    const baseScheme: SetScheme = phase === 'adattamento' ? gymScheme.adattamento : gymScheme.later;
+    const schemes = focusSchemes[phase];
     const tuningActive = tuning != null && monthIndex >= (tuning.fromMonth ?? 1);
-    const volumeBoost = phase !== 'adattamento' && level >= 2 && baseScheme.sets < 5 ? 1 : 0;
-    const sets = Math.min(Math.max(baseScheme.sets + volumeBoost + (tuningActive ? (tuning?.setsDelta ?? 0) : 0), 2), 6);
+    const setsDelta = tuningActive ? (tuning?.setsDelta ?? 0) : 0;
+    // From the third progression month the multi-joint lifts get one more set
+    // (volume is the main hypertrophy/strength driver once loads stop rising fast).
+    const volumeBoost = phase === 'progressione' && level >= 2 ? 1 : 0;
     const loadFactor = (phase === 'adattamento' ? 1 : 1 + Math.min(level * 0.04, 0.2)) * (tuningActive ? (tuning?.loadFactor ?? 1) : 1);
     const runList = phase === 'adattamento' ? runSessions.adattamento : runSessions.later;
     const rotation = Math.floor(level / 2);
 
     const week: TrainingDayPlan[] = WEEKDAY_LABELS.map((weekday) => ({ weekday, type: 'rest', title: 'Riposo' }));
 
+    // A split trained more than once a week alternates a heavy (A) and a volume (B) session.
+    const weekLabels = gymSlots.map((_, i) => splitLabels[i % splitLabels.length]);
     gymSlots.forEach((dayIdx, i) => {
-      const splitLabel = splitLabels[i % splitLabels.length];
+      const splitLabel = weekLabels[i];
+      const occurrence = weekLabels.slice(0, i).filter((l) => l === splitLabel).length;
+      const repeated = weekLabels.filter((l) => l === splitLabel).length > 1;
+      const isVolumeDay = repeated && occurrence % 2 === 1 && phase !== 'adattamento';
       const pool = rotateAccessories(exercisePool[splitLabel], rotation);
       const { exercises: selected, usedSafeFallback } = selectExercises(pool, exerciseCount, exclusions, wholeCatalog);
       if (usedSafeFallback) needsManualReview = true;
-      const exercises: TrainingExerciseEntry[] = selected.map((def) => {
+      const roles = assignRoles(selected.map((def) => def.id));
+      const exercises: TrainingExerciseEntry[] = selected.map((def, k) => {
+        const role = roles[k];
+        const scheme = isVolumeDay ? volumeDayScheme(schemes, role) : schemes[role];
+        const boost = role === 'main' || role === 'secondary' ? volumeBoost : 0;
+        const maxSets = role === 'main' ? 6 : 4;
+        const sets = Math.min(Math.max(scheme.sets + boost + setsDelta, 2), maxSets);
         const base = suggestedLoadFor(def, ctx.weightKg, phase === 'adattamento', gym?.experience);
         return {
           id: def.id,
           name: def.name,
           sets,
-          reps: baseScheme.reps,
-          restSec: baseScheme.restSec,
-          tempo: baseScheme.tempo,
-          suggestedKg: base == null ? null : roundLoad(base * loadFactor),
+          reps: scheme.reps,
+          restSec: scheme.restSec,
+          tempo: scheme.tempo,
+          suggestedKg: base == null ? null : roundLoad(base * loadFactor * repLoadFactor(scheme.reps)),
           needsManualReview: usedSafeFallback,
         };
       });
-      week[dayIdx] = { weekday: WEEKDAY_LABELS[dayIdx], type: 'workout', title: splitLabel, exercises };
+      const title = repeated && phase !== 'adattamento' ? `${splitLabel} ${occurrence % 2 === 0 ? 'A' : 'B'}` : splitLabel;
+      week[dayIdx] = { weekday: WEEKDAY_LABELS[dayIdx], type: 'workout', title, exercises };
     });
 
     runSlots.forEach((dayIdx, i) => {
@@ -203,7 +224,7 @@ export function generateTrainingPlan(input: TrainingPlanInput): TrainingPlan | n
     });
   }
 
-  return { generatedAt: new Date().toISOString(), durationMonths, months, needsManualReview };
+  return { generatedAt: new Date().toISOString(), durationMonths, months, needsManualReview, engine: TRAINING_ENGINE_VERSION };
 }
 
 /** Month 1's week for a context, used to size energy targets before the full plan exists. */

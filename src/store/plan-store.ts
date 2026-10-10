@@ -8,6 +8,7 @@ import { buildUserContext } from '@/domain/user-context';
 import { deleteDietPlan, deleteTrainingPlan, fetchDietPlan, fetchTrainingPlan, insertPlanVersion, type PlanVersionTrigger, upsertDietPlan, upsertTrainingPlan } from '@/lib/api/plans';
 import { fetchPlanStrategy } from '@/lib/api/plan-strategy';
 import { DIET_ENGINE_VERSION } from '@/lib/planning/diet-planner';
+import { TRAINING_ENGINE_VERSION } from '@/lib/planning/training-planner';
 import { daysAgoISO } from '@/lib/mock/dates';
 import type { DietPlan, TrainingPlan } from '@/lib/planning/types';
 import { withAuthRetry } from '@/lib/supabase/retry';
@@ -206,6 +207,7 @@ export const usePlanStore = create<PlanState>()(
  */
 export function isValidTrainingPlan(plan: TrainingPlan | null): boolean {
   if (!plan || !plan.calibration) return false;
+  if (plan.engine !== TRAINING_ENGINE_VERSION) return false; // built by an older generator (e.g. one scheme for every exercise)
   return plan.months.every((month) =>
     month.weeklySplit.every(
       (day) =>

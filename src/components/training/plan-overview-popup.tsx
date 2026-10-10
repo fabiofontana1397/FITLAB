@@ -40,9 +40,9 @@ const PHASE_DETAIL: Record<PlanPhaseKind, string> = {
   adattamento:
     'Carichi leggeri e gestibili, più attenzione all’esecuzione che al peso. Impari i movimenti, abitui articolazioni e tendini e trovi i tuoi carichi di partenza.',
   progressione:
-    'Il cuore del programma: i carichi consigliati salgono di circa il 4% al mese, dal terzo mese di progressione si aggiunge una serie e ogni due mesi cambiano gli esercizi complementari. I due esercizi principali di ogni seduta restano, così puoi misurare i progressi.',
+    'Il cuore del programma: gli esercizi principali passano a ripetizioni più basse e carichi più alti, i carichi consigliati salgono di circa il 4% al mese, dal terzo mese di progressione gli esercizi multiarticolari guadagnano una serie e ogni due mesi cambiano gli esercizi complementari. Gli esercizi principali restano, così puoi misurare i progressi.',
   consolidamento:
-    'Carichi e serie si stabilizzano al livello raggiunto: consolidi la forza e la tecnica conquistate e arrivi pronto al ciclo successivo, senza accumulare fatica.',
+    'Meno serie e intensità mantenuta: consolidi la forza e la tecnica conquistate smaltendo la fatica accumulata, e arrivi pronto al ciclo successivo.',
 };
 
 export type PlanOverviewPopupProps = {
@@ -87,9 +87,19 @@ export function PlanOverviewPopup({ visible, onClose, plan, goal, currentMonth }
           <Body>{week.summary}</Body>
           {week.splitNote ? <Body>{week.splitNote}</Body> : null}
           <Body>
-            Ogni esercizio ha serie, ripetizioni, recupero e tempo di esecuzione (es. 3-0-1: 3 secondi in discesa, nessuna
-            pausa, 1 secondo in salita). Dove serve un peso trovi un carico consigliato di partenza, che si aggiorna con
-            quelli che registri.
+            Ogni esercizio è prescritto in base al suo ruolo nella seduta. L’esercizio principale (squat, panca, stacco…)
+            ha meno ripetizioni, più carico e i recuperi più lunghi; i complementari multiarticolari lavorano a ripetizioni
+            medie; gli esercizi di isolamento hanno più ripetizioni, recuperi brevi e un tempo controllato; il core si
+            allena in secondi di tenuta.
+          </Body>
+          <Body>
+            Quando la stessa seduta si ripete in settimana si alternano una versione A, più pesante, e una B, di volume:
+            stimoli diversi sugli stessi movimenti, come prevede la periodizzazione ondulata.
+          </Body>
+          <Body>
+            Il tempo di esecuzione indica i secondi di ogni fase (es. 3-0-1: 3 secondi in discesa, nessuna pausa, 1 secondo
+            in salita). Dove serve un peso trovi un carico consigliato di partenza, calibrato sulle ripetizioni richieste e
+            sostituito da quelli che registri.
           </Body>
         </Section>
 
