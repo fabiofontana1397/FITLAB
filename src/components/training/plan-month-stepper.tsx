@@ -20,6 +20,8 @@ export type PlanMonthStepperProps = {
   currentFraction: number;
   selectedMonth: number;
   onSelectMonth: (month: number) => void;
+  /** Caption under each month; defaults to the training phases. */
+  phaseLabels?: Record<PlanPhaseKind, string>;
 };
 
 const NODE = 52;
@@ -29,7 +31,7 @@ const COLUMN_WIDTH = 84;
 /** Month-by-month path: completed months show a filled check, the current
  * one a ring that fills as the month goes on, later ones a grey node with a
  * padlock. Up to four months share the width; longer plans scroll. */
-export function PlanMonthStepper({ months, currentMonth, currentFraction, selectedMonth, onSelectMonth }: PlanMonthStepperProps) {
+export function PlanMonthStepper({ months, currentMonth, currentFraction, selectedMonth, onSelectMonth, phaseLabels = PHASE_SHORT_LABEL }: PlanMonthStepperProps) {
   const theme = useTheme();
   const scrolls = months.length > 4;
 
@@ -85,7 +87,7 @@ export function PlanMonthStepper({ months, currentMonth, currentFraction, select
           Mese {m.monthIndex}
         </ThemedText>
         <ThemedText style={styles.phaseLabel} themeColor={locked ? 'textTertiary' : 'textSecondary'} numberOfLines={2}>
-          {PHASE_SHORT_LABEL[m.phase]}
+          {phaseLabels[m.phase]}
         </ThemedText>
         {selected ? <View style={[styles.selectedDot, { backgroundColor: theme.accent }]} /> : <View style={styles.selectedDot} />}
       </Pressable>

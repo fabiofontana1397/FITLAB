@@ -3,14 +3,14 @@ import { useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { GlassSurface } from '@/components/glass/glass-surface';
-import { PlanTimeline } from '@/components/training/plan-timeline';
+import { DIET_PHASE_SHORT_LABEL, DietOverviewPopup } from '@/components/nutrition/diet-overview-popup';
+import { PlanJourneyHero } from '@/components/training/plan-journey-hero';
+import { PlanMonthStepper } from '@/components/training/plan-month-stepper';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
 import { InsightCard } from '@/components/ui/insight-card';
-import { MonthProgressBar } from '@/components/ui/month-progress-bar';
 import { PrimaryButton } from '@/components/ui/primary-button';
-import { SectionHeader } from '@/components/ui/section-header';
 import { SegmentedControl } from '@/components/ui/segmented-control';
 import { Radius, Spacing } from '@/constants/theme';
 import { useEnsurePlan } from '@/hooks/use-ensure-plan';
@@ -19,8 +19,8 @@ import { useUserContext } from '@/hooks/use-user-context';
 import { goBackOr } from '@/lib/navigation/go-back';
 import { WEEKDAY_LABELS } from '@/lib/planning/exercise-library';
 import { exportDietPlanPdf } from '@/lib/planning/pdf-export';
-import { currentMonthIndex, monthProgress } from '@/lib/planning/plan-progress';
-import type { PlanMeal, PlanPhaseKind } from '@/lib/planning/types';
+import { currentMonthIndex, currentMonthProgress, monthProgress } from '@/lib/planning/plan-progress';
+import type { PlanMeal } from '@/lib/planning/types';
 import { findQuestion, labelFor } from '@/lib/questionnaire/schema';
 import { checkinUnlockedThroughMonth, useMonthlyCheckinStore } from '@/store/monthly-checkin-store';
 import { useOnboardingStore } from '@/store/onboarding-store';
@@ -28,12 +28,6 @@ import { isValidDietPlan, usePlanStore } from '@/store/plan-store';
 import { useUserStore } from '@/store/user-store';
 
 const WEEKDAY_OPTIONS = WEEKDAY_LABELS.map((weekday) => ({ value: weekday, label: weekday }));
-
-const PHASE_LABEL: Record<PlanPhaseKind, string> = {
-  adattamento: 'Adattamento',
-  progressione: 'Progressione',
-  consolidamento: 'Consolidamento',
-};
 
 export default function DietPlanScreen() {
   const theme = useTheme();
@@ -44,6 +38,7 @@ export default function DietPlanScreen() {
   const plan = isValidDietPlan(rawPlan) ? rawPlan : null;
   const currentUser = useUserStore();
   const [exporting, setExporting] = useState(false);
+  const [overviewOpen, setOverviewOpen] = useState(false);
 
   // Opened straight from the Nutrition header, an outdated plan must be rebuilt here too, not only on the tab.
   useEnsurePlan('diet');
@@ -95,10 +90,8 @@ export default function DietPlanScreen() {
   return (
     <ScreenScroll>
       <View style={styles.header}>
-        <View style={{ flex: 1 }}>
-          <ThemedText type="title">Piano alimentare</ThemedText>
-        </View>
-        <Pressable onPress={() => goBackOr('/')} hitSlop={8}>
+        <ThemedText style={styles.pageTitle}>Piano alimentare</ThemedText>
+        <Pressable onPress={() => goBackOr('/')} hitSlop={8} accessibilityLabel="Chiudi">
           <GlassSurface level="card" radius={Radius.pill} style={styles.closeButton}>
             <View style={styles.closeInner}>
               <Icon name="close" size={18} color={theme.text} />
@@ -111,7 +104,7 @@ export default function DietPlanScreen() {
         <GlassSurface level="card" radius={Radius.large} style={{ padding: Spacing.four, gap: Spacing.two }}>
           {trainingOnly ? (
             <>
-              <ThemedText type="smallBold">Nessun piano alimentare</ThemedText>
+              <ThemedText style={styles.cardTitle}>Nessun piano alimentare</ThemedText>
               <ThemedText type="caption" themeColor="textSecondary">
                 Hai completato il questionario in modalità “solo allenamento”. Rifallo scegliendo “Piano alimentare” o
                 “Entrambi” per generare qui il tuo piano.
@@ -120,11 +113,11 @@ export default function DietPlanScreen() {
           ) : isGenerating ? (
             <View style={styles.generatingRow}>
               <ActivityIndicator color={theme.accent} />
-              <ThemedText type="smallBold">Sto preparando il tuo piano alimentare…</ThemedText>
+              <ThemedText style={styles.cardTitle}>Sto preparando il tuo piano alimentare…</ThemedText>
             </View>
           ) : (
             <>
-              <ThemedText type="smallBold">Piano alimentare da aggiornare</ThemedText>
+              <ThemedText style={styles.cardTitle}>Piano alimentare da aggiornare</ThemedText>
               <ThemedText type="caption" themeColor="textSecondary">
                 Il tuo piano è stato creato con una versione precedente. Rigeneralo con le tue risposte al questionario.
               </ThemedText>
@@ -134,50 +127,28 @@ export default function DietPlanScreen() {
         </GlassSurface>
       ) : (
         <>
-          <View style={styles.planMetaRow}>
-            <View style={{ gap: 2 }}>
-              <ThemedText type="caption" themeColor="textSecondary">
-                Durata piano totale
-              </ThemedText>
-              <ThemedText type="smallBold">{plan.durationMonths} mesi</ThemedText>
-            </View>
-            <View style={{ gap: 2 }}>
-              <ThemedText type="caption" themeColor="textSecondary">
-                Durata scheda
-              </ThemedText>
-              <ThemedText type="smallBold">1 mese</ThemedText>
-            </View>
-          </View>
+          <PlanJourneyHero kind="diet" totalMonths={plan.durationMonths} goal={currentUser.goal} onPress={() => setOverviewOpen(true)} />
 
-          <PlanTimeline
-            totalMonths={plan.durationMonths}
+          <PlanMonthStepper
+            months={plan.months}
             currentMonth={currentMonthIdx}
+            currentFraction={currentMonthProgress(plan).fraction}
             selectedMonth={selectedMonth}
             onSelectMonth={setSelectedMonth}
+            phaseLabels={DIET_PHASE_SHORT_LABEL}
           />
 
           {selectedMonthData ? (
-            <View style={{ gap: Spacing.one }}>
-              <View style={[styles.phaseTag, { backgroundColor: theme.accentSoft, alignSelf: 'flex-start' }]}>
-                <ThemedText
-                  type="caption"
-                  style={{ color: selectedMonthData.phase === 'consolidamento' ? theme.success : theme.accent, fontWeight: '700' }}>
-                  {PHASE_LABEL[selectedMonthData.phase]}
-                </ThemedText>
-              </View>
-              <ThemedText type="subtitle">{selectedMonthData.title}</ThemedText>
-              <ThemedText type="caption" themeColor="textSecondary">
+            <View style={{ gap: 6 }}>
+              <ThemedText style={styles.sectionTitle}>{selectedMonthData.title}</ThemedText>
+              <ThemedText style={styles.bodyText} themeColor="textSecondary">
                 {selectedMonthData.focusNote}
               </ThemedText>
-            </View>
-          ) : null}
-
-          {isUnlocked && progress ? (
-            <View style={{ gap: Spacing.two }}>
-              <MonthProgressBar fraction={progress.fraction} />
-              <ThemedText type="caption" themeColor="textSecondary">
-                Giorno {progress.dayInMonth} di 30
-              </ThemedText>
+              {isUnlocked && progress && selectedMonth === currentMonthIdx ? (
+                <ThemedText style={[styles.bodyText, { color: theme.accent, fontWeight: '700' }]}>
+                  Giorno {progress.dayInMonth} di 30
+                </ThemedText>
+              ) : null}
             </View>
           ) : null}
 
@@ -186,7 +157,7 @@ export default function DietPlanScreen() {
               <View style={[styles.lockedIcon, { backgroundColor: theme.backgroundElement }]}>
                 <Icon name="lock" size={22} color={theme.textTertiary} />
               </View>
-              <ThemedText type="smallBold">{needsCheckin ? 'Fai il check-in per sbloccare' : 'Scheda ancora da sbloccare'}</ThemedText>
+              <ThemedText style={styles.cardTitle}>{needsCheckin ? 'Fai il check-in per sbloccare' : 'Piano ancora da sbloccare'}</ThemedText>
               <ThemedText type="caption" themeColor="textSecondary" style={{ textAlign: 'center' }}>
                 {needsCheckin
                   ? `Il Mese ${selectedMonth - 1} è terminato: rispondi al check-in mensile per sbloccare e adattare il Mese ${selectedMonth}.`
@@ -198,55 +169,71 @@ export default function DietPlanScreen() {
             </GlassSurface>
           ) : selectedMonthData ? (
             <>
-              <Pressable onPress={handleExport} disabled={exporting} style={styles.exportLink} hitSlop={8}>
-                <Icon name="download" size={15} color={theme.textSecondary} />
-                <ThemedText type="caption" themeColor="textSecondary">
-                  {exporting ? 'Preparazione…' : 'Scarica PDF'}
-                </ThemedText>
-              </Pressable>
+              <PrimaryButton
+                label={exporting ? 'Preparazione PDF…' : `Scarica PDF · Mese ${selectedMonth}`}
+                icon="download"
+                onPress={handleExport}
+                disabled={exporting}
+              />
 
-              <View style={styles.targetsRow}>
-                <Target label="Calorie" value={`${selectedMonthData.calorieTarget}`} unit="kcal" />
-                <Target label="Proteine" value={`${selectedMonthData.macroTargetsG.protein}`} unit="g" />
-                <Target label="Carbo" value={`${selectedMonthData.macroTargetsG.carbs}`} unit="g" />
-                <Target label="Grassi" value={`${selectedMonthData.macroTargetsG.fats}`} unit="g" />
-              </View>
+              <GlassSurface level="card" radius={Radius.large} style={styles.targetsCard}>
+                <ThemedText style={styles.cardTitle}>Obiettivi giornalieri</ThemedText>
+                <View style={styles.targetsRow}>
+                  <Target label="Calorie" value={`${selectedMonthData.calorieTarget}`} unit="kcal" color={theme.accent} />
+                  <Target label="Proteine" value={`${selectedMonthData.macroTargetsG.protein}`} unit="g" color={theme.accent} />
+                  <Target label="Carboidrati" value={`${selectedMonthData.macroTargetsG.carbs}`} unit="g" color={theme.brandGreen} />
+                  <Target label="Grassi" value={`${selectedMonthData.macroTargetsG.fats}`} unit="g" color={theme.brandYellow} />
+                </View>
+              </GlassSurface>
 
+              <ThemedText style={[styles.sectionTitle, { marginTop: Spacing.two }]}>La tua settimana</ThemedText>
               <SegmentedControl options={WEEKDAY_OPTIONS} value={selectedWeekday} onChange={setSelectedWeekday} />
 
               {selectedDayData ? (
                 <View style={{ gap: Spacing.two }}>
+                  <ThemedText style={styles.cardTitle}>
+                    {selectedDayData.isTrainingDay ? 'Giorno di allenamento' : 'Giorno di riposo'}
+                    {selectedDayData.calorieTarget ? (
+                      <ThemedText style={[styles.cardTitle, { color: theme.accent }]}>{` · ${selectedDayData.calorieTarget} kcal`}</ThemedText>
+                    ) : null}
+                  </ThemedText>
                   {selectedDayData.meals.map((meal) => (
                     <MealCard key={meal.slotId} meal={meal} />
                   ))}
                 </View>
               ) : null}
 
-              <View>
-                <SectionHeader title="Consigli" />
-                <View style={{ gap: Spacing.two }}>
-                  <InsightCard
-                    icon="refresh"
-                    tone="neutral"
-                    headline="Sostituzioni tra proteine e grassi"
-                    body="Le fonti proteiche (pollo, tacchino, pesce, uova, legumi) e i grassi (olio EVO, frutta secca, avocado) sono intercambiabili a parità di grammi indicati, se preferisci variare rispetto a quanto proposto."
-                  />
-                  <InsightCard
-                    icon="bolt"
-                    tone="neutral"
-                    headline="Se sgarri o salti un pasto"
-                    body="Niente digiuni compensativi: alleggerisci leggermente il pasto successivo o la giornata dopo, mantenendo la regolarità dei pasti."
-                  />
-                  <InsightCard
-                    icon="alert"
-                    tone="warning"
-                    headline="Cosa evitare"
-                    body="Digiuni prolungati per compensare uno sgarro, bevande zuccherate quotidiane e fritture frequenti: rallentano i risultati più di un pasto occasionale fuori piano."
-                  />
-                </View>
+              <ThemedText style={[styles.sectionTitle, { marginTop: Spacing.two }]}>Consigli</ThemedText>
+              <View style={{ gap: Spacing.two }}>
+                <InsightCard
+                  icon="refresh"
+                  tone="neutral"
+                  headline="Sostituzioni tra proteine e grassi"
+                  body="Le fonti proteiche (pollo, tacchino, pesce, uova, legumi) e i grassi (olio EVO, frutta secca, avocado) sono intercambiabili a parità di grammi indicati, se preferisci variare rispetto a quanto proposto."
+                />
+                <InsightCard
+                  icon="bolt"
+                  tone="neutral"
+                  headline="Se sgarri o salti un pasto"
+                  body="Niente digiuni compensativi: alleggerisci leggermente il pasto successivo o la giornata dopo, mantenendo la regolarità dei pasti."
+                />
+                <InsightCard
+                  icon="alert"
+                  tone="warning"
+                  headline="Cosa evitare"
+                  body="Digiuni prolungati per compensare uno sgarro, bevande zuccherate quotidiane e fritture frequenti: rallentano i risultati più di un pasto occasionale fuori piano."
+                />
               </View>
             </>
           ) : null}
+
+          <DietOverviewPopup
+            visible={overviewOpen}
+            onClose={() => setOverviewOpen(false)}
+            plan={plan}
+            goal={currentUser.goal}
+            currentMonth={currentMonthIdx}
+          />
         </>
       )}
     </ScreenScroll>
@@ -342,10 +329,10 @@ function MealItemRow({ item }: { item: PlanMeal['items'][number] }) {
   );
 }
 
-function Target({ label, value, unit }: { label: string; value: string; unit: string }) {
+function Target({ label, value, unit, color }: { label: string; value: string; unit: string; color: string }) {
   return (
     <View style={styles.target}>
-      <ThemedText type="smallBold">
+      <ThemedText style={[styles.targetValue, { color }]}>
         {value}
         <ThemedText type="caption" themeColor="textSecondary">
           {' '}
@@ -370,6 +357,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  // Type scale shared with the training plan: page title > section title > card title.
+  pageTitle: {
+    flex: 1,
+    fontSize: 28,
+    lineHeight: 34,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    lineHeight: 25,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+  },
+  cardTitle: {
+    fontSize: 15,
+    lineHeight: 19,
+    fontWeight: '700',
+  },
+  bodyText: {
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: '500',
+  },
   closeButton: {
     width: 40,
     height: 40,
@@ -378,15 +389,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  planMetaRow: {
-    flexDirection: 'row',
-    gap: Spacing.five,
-  },
-  phaseTag: {
-    paddingHorizontal: Spacing.two,
-    paddingVertical: 2,
-    borderRadius: Radius.pill,
   },
   lockedCard: {
     alignItems: 'center',
@@ -400,11 +402,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  exportLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-end',
-    gap: 6,
+  targetsCard: {
+    gap: Spacing.three,
+    padding: Spacing.three,
+  },
+  targetValue: {
+    fontSize: 18,
+    lineHeight: 23,
+    fontWeight: '800',
   },
   targetsRow: {
     flexDirection: 'row',
