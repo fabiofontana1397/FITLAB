@@ -1,12 +1,11 @@
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Platform, Pressable, StyleSheet, Switch, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { FoodSearchModal } from '@/components/nutrition/food-search-modal';
 import { MealPickerModal, mealSlotColor } from '@/components/nutrition/meal-picker-modal';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
-import { AiCoachCard } from '@/components/ui/ai-coach-card';
 import { DayCalendarModal } from '@/components/ui/day-calendar-modal';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon } from '@/components/ui/icon';
@@ -14,7 +13,6 @@ import { ProfileAvatarButton } from '@/components/ui/profile-avatar-button';
 import { ProgressRing } from '@/components/ui/progress-ring';
 import { TickProgressBar } from '@/components/ui/tick-progress-bar';
 import { useEnsurePlan } from '@/hooks/use-ensure-plan';
-import { useUserContext } from '@/hooks/use-user-context';
 import { useTheme } from '@/hooks/use-theme';
 import { daysAgoISO, isoMondayIndex } from '@/lib/mock/dates';
 import { findFood } from '@/lib/mock/food-database';
@@ -84,7 +82,6 @@ export default function NutritionScreen() {
   const [expandedSlot, setExpandedSlot] = useState<MealSlot | null>('colazione');
 
   useEnsurePlan('diet');
-  const trainingOnly = useUserContext().mode === 'training';
 
   const monthIndex = dietPlan ? currentMonthIndex(dietPlan) : 1;
   const currentMonthData = dietPlan?.months.find((m) => m.monthIndex === monthIndex);
@@ -205,7 +202,9 @@ export default function NutritionScreen() {
       </FlatCard>
 
       <Pressable onPress={() => setPickerOpen(true)} style={[styles.registerButton, { backgroundColor: theme.accent }]}>
-        <Icon name="utensils" size={22} color="#FFFFFF" />
+        <View style={styles.registerPlus}>
+          <Icon name="plus" size={20} color="#FFFFFF" />
+        </View>
         <ThemedText style={styles.registerLabel}>Registra pasto</ThemedText>
         <Icon name="chevronRight" size={16} color="#FFFFFF" />
       </Pressable>
@@ -216,6 +215,25 @@ export default function NutritionScreen() {
           <ThemedText style={[styles.link, { color: theme.accent }]}>Vedi calendario ›</ThemedText>
         </Pressable>
       </View>
+
+      {planDayForSelectedDate ? (
+        <Pressable
+          onPress={() => (isFollowingPlan ? unseedDay(selectedDate) : seedDayFromPlan(selectedDate, planDayForSelectedDate.meals))}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: isFollowingPlan }}
+          style={[styles.followRow, { backgroundColor: theme.backgroundElevated, borderColor: isFollowingPlan ? theme.accent : theme.border }]}>
+          <View
+            style={[
+              styles.checkbox,
+              isFollowingPlan ? { backgroundColor: theme.accent, borderColor: theme.accent } : { borderColor: theme.textTertiary },
+            ]}>
+            {isFollowingPlan ? <Icon name="check" size={14} color="#FFFFFF" /> : null}
+          </View>
+          <ThemedText style={styles.followText}>
+            {selectedDate === today ? 'Inserisci la dieta di oggi nei pasti' : 'Inserisci la dieta di questo giorno nei pasti'}
+          </ThemedText>
+        </Pressable>
+      ) : null}
 
       <View style={styles.mealsList}>
         {mealSlots.map((meta) => {
@@ -290,41 +308,6 @@ export default function NutritionScreen() {
         })}
       </View>
 
-      <FlatCard radius={CARD_RADIUS} style={styles.planCard}>
-        <Pressable onPress={() => router.push('/diet-plan')} style={styles.planRow}>
-          <View style={[styles.planIcon, { backgroundColor: theme.accentSoft }]}>
-            <Icon name="calendar" size={16} color={theme.accent} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <ThemedText style={styles.mealName}>Piano alimentare</ThemedText>
-            <ThemedText style={styles.mealTime} themeColor="textTertiary">
-              {currentMonthData ? `${dietPlan?.durationMonths} mesi • ${currentMonthData.title}` : trainingOnly ? 'Non richiesto: hai scelto solo l’allenamento' : 'Nessun piano generato'}
-            </ThemedText>
-          </View>
-          <Icon name="chevronRight" size={16} color={theme.textTertiary} />
-        </Pressable>
-        {planDayForSelectedDate ? (
-          <View style={[styles.followRow, { borderTopColor: theme.border }]}>
-            <ThemedText style={[styles.foodGrams, { flex: 1 }]} themeColor="textSecondary">
-              Segui il piano alimentare per questo giorno
-            </ThemedText>
-            <Switch
-              value={isFollowingPlan}
-              onValueChange={(v) => (v ? seedDayFromPlan(selectedDate, planDayForSelectedDate.meals) : unseedDay(selectedDate))}
-              trackColor={{ false: theme.backgroundElement, true: theme.accent }}
-              thumbColor={theme.onAccent}
-            />
-          </View>
-        ) : null}
-      </FlatCard>
-
-      <View style={styles.coachWrap}>
-        <AiCoachCard
-          headline="Un dubbio sull'alimentazione?"
-          body="Chiedi al coach AI consigli su pasti, macro e calorie in base al tuo piano."
-        />
-      </View>
-
       <DayCalendarModal
         visible={calendarOpen}
         selectedDate={selectedDate}
@@ -397,6 +380,14 @@ const styles = StyleSheet.create({
       web: { boxShadow: '0px 6px 14px #FF6A1347' },
       default: { shadowColor: '#FF6A13', shadowOpacity: 0.28, shadowRadius: 10, shadowOffset: { width: 0, height: 5 }, elevation: 3 },
     }),
+  },
+  registerPlus: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.22)',
   },
   registerLabel: {
     flex: 1,
@@ -592,31 +583,28 @@ const styles = StyleSheet.create({
     lineHeight: 15,
     fontWeight: '700',
   },
-  planCard: {
-    marginTop: 20,
-    paddingHorizontal: CARD_PADDING,
-  },
-  coachWrap: {
-    marginTop: 16,
-  },
-  planRow: {
+  followRow: {
+    marginBottom: 12,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 11,
+    paddingHorizontal: CARD_PADDING,
     paddingVertical: 12,
-  },
-  planIcon: {
-    width: 32,
-    height: 32,
     borderRadius: 16,
+    borderWidth: 1,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  followRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    paddingVertical: 8,
+  followText: {
+    flex: 1,
+    fontSize: 13.5,
+    lineHeight: 18,
+    fontWeight: '600',
   },
 });
