@@ -4,11 +4,12 @@ import { Alert, Image, Pressable, StyleSheet, View } from 'react-native';
 
 import { GlassSurface } from '@/components/glass/glass-surface';
 import { ExerciseInfoModal } from '@/components/training/exercise-info-modal';
-import { PlanTimeline } from '@/components/training/plan-timeline';
+import { PlanJourneyHero } from '@/components/training/plan-journey-hero';
+import { PlanMonthStepper } from '@/components/training/plan-month-stepper';
+import { PlanOverviewPopup } from '@/components/training/plan-overview-popup';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
-import { MonthProgressBar } from '@/components/ui/month-progress-bar';
 import { PrimaryButton } from '@/components/ui/primary-button';
 import { SegmentedControl } from '@/components/ui/segmented-control';
 import { Radius, Spacing } from '@/constants/theme';
@@ -17,7 +18,7 @@ import { getExerciseMedia } from '@/lib/exercise-media/exercise-media';
 import { goBackOr } from '@/lib/navigation/go-back';
 import { WEEKDAY_LABELS } from '@/lib/planning/exercise-library';
 import { exportTrainingPlanPdf, type TrainingPlanPdfRow } from '@/lib/planning/pdf-export';
-import { currentMonthIndex, monthProgress } from '@/lib/planning/plan-progress';
+import { currentMonthIndex, currentMonthProgress, monthProgress } from '@/lib/planning/plan-progress';
 import { findQuestion, labelFor } from '@/lib/questionnaire/schema';
 import { checkinUnlockedThroughMonth, useMonthlyCheckinStore } from '@/store/monthly-checkin-store';
 import { useOnboardingStore } from '@/store/onboarding-store';
@@ -45,6 +46,7 @@ export default function TrainingPlanScreen() {
   const currentUser = useUserStore();
   const progressSets = useTrainingProgressStore((s) => s.sets);
   const [exporting, setExporting] = useState(false);
+  const [overviewOpen, setOverviewOpen] = useState(false);
 
   const completedCheckinMonths = useMonthlyCheckinStore((s) => s.completedMonths);
   const currentMonthIdx = plan ? currentMonthIndex(plan) : 1;
@@ -121,10 +123,8 @@ export default function TrainingPlanScreen() {
   return (
     <ScreenScroll>
       <View style={styles.header}>
-        <View style={{ flex: 1 }}>
-          <ThemedText type="title">Piano di allenamento</ThemedText>
-        </View>
-        <Pressable onPress={() => goBackOr('/')} hitSlop={8}>
+        <ThemedText style={styles.pageTitle}>Piano di allenamento</ThemedText>
+        <Pressable onPress={() => goBackOr('/')} hitSlop={8} accessibilityLabel="Chiudi">
           <GlassSurface level="card" radius={Radius.pill} style={styles.closeButton}>
             <View style={styles.closeInner}>
               <Icon name="close" size={18} color={theme.text} />
@@ -135,7 +135,7 @@ export default function TrainingPlanScreen() {
 
       {!plan ? (
         <GlassSurface level="card" radius={Radius.large} style={{ padding: Spacing.four, gap: Spacing.two }}>
-          <ThemedText type="smallBold">Nessun programma generato</ThemedText>
+          <ThemedText style={styles.cardTitle}>Nessun programma generato</ThemedText>
           <ThemedText type="caption" themeColor="textSecondary">
             Hai completato il questionario in modalità “solo dieta”, oppure non hai selezionato sala pesi o corsa tra
             le attività. Rifai il questionario per generare qui il tuo programma.
@@ -145,9 +145,7 @@ export default function TrainingPlanScreen() {
         <>
           {plan.needsManualReview ? (
             <GlassSurface level="card" radius={Radius.large} style={{ padding: Spacing.four, gap: Spacing.two, borderColor: theme.danger, borderWidth: 1 }}>
-              <ThemedText type="smallBold" style={{ color: theme.danger }}>
-                Revisione consigliata
-              </ThemedText>
+              <ThemedText style={[styles.cardTitle, { color: theme.danger }]}>Revisione consigliata</ThemedText>
               <ThemedText type="caption" themeColor="textSecondary">
                 Per alcuni giorni non abbiamo trovato un esercizio compatibile con i vincoli che hai indicato
                 (dolori/infortuni/attrezzatura). Ti abbiamo proposto un esercizio a corpo libero sicuro come
@@ -157,43 +155,27 @@ export default function TrainingPlanScreen() {
             </GlassSurface>
           ) : null}
 
-          <View style={styles.planMetaRow}>
-            <View style={{ gap: 2 }}>
-              <ThemedText type="caption" themeColor="textSecondary">
-                Durata piano totale
-              </ThemedText>
-              <ThemedText type="smallBold">{plan.durationMonths} mesi</ThemedText>
-            </View>
-            <View style={{ gap: 2 }}>
-              <ThemedText type="caption" themeColor="textSecondary">
-                Durata scheda
-              </ThemedText>
-              <ThemedText type="smallBold">1 mese</ThemedText>
-            </View>
-          </View>
+          <PlanJourneyHero totalMonths={plan.durationMonths} goal={currentUser.goal} onPress={() => setOverviewOpen(true)} />
 
-          <PlanTimeline
-            totalMonths={plan.durationMonths}
+          <PlanMonthStepper
+            months={plan.months}
             currentMonth={currentMonthIdx}
+            currentFraction={currentMonthProgress(plan).fraction}
             selectedMonth={selectedMonth}
             onSelectMonth={setSelectedMonth}
           />
 
           {selectedMonthData ? (
-            <View style={{ gap: Spacing.one }}>
-              <ThemedText type="subtitle">{selectedMonthData.title}</ThemedText>
-              <ThemedText type="caption" themeColor="textSecondary">
+            <View style={{ gap: 6 }}>
+              <ThemedText style={styles.sectionTitle}>{selectedMonthData.title}</ThemedText>
+              <ThemedText style={styles.bodyText} themeColor="textSecondary">
                 {selectedMonthData.focusNote}
               </ThemedText>
-            </View>
-          ) : null}
-
-          {isUnlocked && progress ? (
-            <View style={{ gap: Spacing.two }}>
-              <MonthProgressBar fraction={progress.fraction} />
-              <ThemedText type="caption" themeColor="textSecondary">
-                Giorno {progress.dayInMonth} di 30
-              </ThemedText>
+              {isUnlocked && progress && selectedMonth === currentMonthIdx ? (
+                <ThemedText style={[styles.bodyText, { color: theme.accent, fontWeight: '700' }]}>
+                  Giorno {progress.dayInMonth} di 30
+                </ThemedText>
+              ) : null}
             </View>
           ) : null}
 
@@ -202,7 +184,7 @@ export default function TrainingPlanScreen() {
               <View style={[styles.lockedIcon, { backgroundColor: theme.backgroundElement }]}>
                 <Icon name="lock" size={22} color={theme.textTertiary} />
               </View>
-              <ThemedText type="smallBold">{needsCheckin ? 'Fai il check-in per sbloccare' : 'Scheda ancora da sbloccare'}</ThemedText>
+              <ThemedText style={styles.cardTitle}>{needsCheckin ? 'Fai il check-in per sbloccare' : 'Scheda ancora da sbloccare'}</ThemedText>
               <ThemedText type="caption" themeColor="textSecondary" style={{ textAlign: 'center' }}>
                 {needsCheckin
                   ? `Il Mese ${selectedMonth - 1} è terminato: rispondi al check-in mensile per sbloccare e adattare il Mese ${selectedMonth}.`
@@ -214,17 +196,19 @@ export default function TrainingPlanScreen() {
             </GlassSurface>
           ) : (
             <>
-              <Pressable onPress={handleExport} disabled={exporting} style={styles.exportLink} hitSlop={8}>
-                <Icon name="download" size={15} color={theme.textSecondary} />
-                <ThemedText type="caption" themeColor="textSecondary">
-                  {exporting ? 'Preparazione…' : 'Scarica PDF'}
-                </ThemedText>
-              </Pressable>
+              <PrimaryButton
+                label={exporting ? 'Preparazione PDF…' : `Scarica PDF · Mese ${selectedMonth}`}
+                icon="download"
+                onPress={handleExport}
+                disabled={exporting}
+              />
 
+              <ThemedText style={[styles.sectionTitle, { marginTop: Spacing.two }]}>La tua settimana</ThemedText>
               <SegmentedControl options={WEEKDAY_OPTIONS} value={selectedWeekday} onChange={setSelectedWeekday} />
 
               {selectedDay?.type === 'workout' ? (
                 <View style={{ gap: Spacing.two }}>
+                  <ThemedText style={styles.cardTitle}>{selectedDay.title}</ThemedText>
                   {(selectedDay.exercises ?? []).map((ex) => {
                     const rest = ex.restSec < 60 ? `${ex.restSec}s` : `${Math.round(ex.restSec / 60)} min`;
                     return (
@@ -251,7 +235,7 @@ export default function TrainingPlanScreen() {
                   <View style={[styles.lockedIcon, { backgroundColor: theme.backgroundElement }]}>
                     <Icon name="moon" size={22} color={theme.textSecondary} />
                   </View>
-                  <ThemedText type="smallBold">Giorno di riposo</ThemedText>
+                  <ThemedText style={styles.cardTitle}>Giorno di riposo</ThemedText>
                   <ThemedText type="caption" themeColor="textSecondary" style={{ textAlign: 'center' }}>
                     Il recupero fa parte del piano: dormi bene e resta idratato.
                   </ThemedText>
@@ -259,6 +243,14 @@ export default function TrainingPlanScreen() {
               ) : null}
             </>
           )}
+
+          <PlanOverviewPopup
+            visible={overviewOpen}
+            onClose={() => setOverviewOpen(false)}
+            plan={plan}
+            goal={currentUser.goal}
+            currentMonth={currentMonthIdx}
+          />
         </>
       )}
     </ScreenScroll>
@@ -311,6 +303,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  // Type scale shared with the Allenamento tab: page title > section title > card title.
+  pageTitle: {
+    flex: 1,
+    fontSize: 28,
+    lineHeight: 34,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    lineHeight: 25,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+  },
+  cardTitle: {
+    fontSize: 15,
+    lineHeight: 19,
+    fontWeight: '700',
+  },
+  bodyText: {
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: '500',
+  },
   closeButton: {
     width: 40,
     height: 40,
@@ -319,16 +335,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  planMetaRow: {
-    flexDirection: 'row',
-    gap: Spacing.five,
-  },
-  exportLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-end',
-    gap: 6,
   },
   exerciseCard: {
     flexDirection: 'row',

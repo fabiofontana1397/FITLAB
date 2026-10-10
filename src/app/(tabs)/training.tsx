@@ -221,11 +221,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 14,
   },
+  // Type scale shared with the training plan: page title > section title > card title.
   pageTitle: {
-    fontSize: 22,
-    lineHeight: 28,
-    fontWeight: '700',
-    letterSpacing: -0.3,
+    fontSize: 28,
+    lineHeight: 34,
+    fontWeight: '800',
+    letterSpacing: -0.5,
   },
   sectionRow: {
     marginTop: 24,
@@ -235,8 +236,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   sectionTitle: {
-    fontSize: 22,
-    lineHeight: 28,
+    fontSize: 20,
+    lineHeight: 25,
     fontWeight: '700',
     letterSpacing: -0.3,
   },
