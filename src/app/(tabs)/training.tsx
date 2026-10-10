@@ -12,6 +12,7 @@ import { LogActivityModal } from '@/components/training/log-activity-modal';
 import { TrainingHeroCard } from '@/components/training/training-hero-card';
 import { TrainingWeekCard } from '@/components/training/training-week-card';
 import { levelLabel, WorkoutSummaryCard } from '@/components/training/workout-summary-card';
+import { WorkoutSessionModal } from '@/components/training/workout-session-modal';
 import { useEnsurePlan } from '@/hooks/use-ensure-plan';
 import { useUserContext } from '@/hooks/use-user-context';
 import { useTheme } from '@/hooks/use-theme';
@@ -47,6 +48,7 @@ export default function TrainingScreen() {
   const addActivityEntry = useActivityLogStore((s) => s.addEntry);
   const [isLogActivityVisible, setLogActivityVisible] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [sessionOpen, setSessionOpen] = useState(false);
 
   const today = daysAgoISO(0);
   const [selectedDate, setSelectedDate] = useState(today);
@@ -168,7 +170,7 @@ export default function TrainingScreen() {
           minutes={sessionMinutes}
           kcal={sessionKcal}
           onOpen={() => router.push({ pathname: '/workout-detail', params: { date: selectedDate } })}
-          onStart={() => router.push({ pathname: '/workout-detail', params: { date: selectedDate } })}
+          onStart={() => setSessionOpen(true)}
         />
       ) : selectedDay?.type === 'cardio' ? (
         <FlatCard radius={20} style={styles.messageCard}>
@@ -199,6 +201,17 @@ export default function TrainingScreen() {
         onSelectDate={selectDateFromCalendar}
         onClose={() => setCalendarOpen(false)}
       />
+
+      {selectedDay?.type === 'workout' ? (
+        <WorkoutSessionModal
+          visible={sessionOpen}
+          onClose={() => setSessionOpen(false)}
+          title={selectedDay.title}
+          exercises={selectedDay.exercises ?? []}
+          // a future day trained early counts for today
+          date={selectedDate > today ? today : selectedDate}
+        />
+      ) : null}
 
       <LogActivityModal
         visible={isLogActivityVisible}

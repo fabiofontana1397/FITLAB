@@ -87,6 +87,7 @@ const ICONS = {
   personFilled: { set: 'ion', name: 'person' },
   bell: { set: 'ion', name: 'notifications-outline' },
   play: { set: 'ion', name: 'play' },
+  pause: { set: 'ion', name: 'pause' },
   edit: { set: 'ion', name: 'create-outline' },
   link: { set: 'ion', name: 'link' },
   watch: { set: 'mci', name: 'watch-variant' },
