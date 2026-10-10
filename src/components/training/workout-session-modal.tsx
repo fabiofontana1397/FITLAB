@@ -1,11 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Vibration, View } from 'react-native';
-import Animated, { useAnimatedProps, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import { Image, Modal, Pressable, StyleSheet, Vibration, View } from 'react-native';
+import Animated, {
+  useAnimatedProps,
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 
 import { ThemedText } from '@/components/themed-text';
 import { Icon, type IconName } from '@/components/ui/icon';
+import { getExerciseMedia } from '@/lib/exercise-media/exercise-media';
 import { roundLoad } from '@/lib/planning/exercise-library';
 import type { TrainingExerciseEntry } from '@/lib/planning/types';
 import {
@@ -16,7 +24,7 @@ import {
 } from '@/store/training-progress-store';
 
 // Always dark, like a workout app on the gym floor: black canvas, graphite
-// tiles, neon green for "go", orange for a set in progress.
+// tiles, neon green for done/go, orange for the countdown.
 const C = {
   bg: '#000000',
   card: '#1C1C1E',
@@ -24,12 +32,13 @@ const C = {
   text: '#FFFFFF',
   muted: '#8E8E93',
   green: '#3DF56B',
+  greenDim: 'rgba(61,245,107,0.16)',
   orange: '#FF7A00',
 };
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
-type Phase = 'countdown' | 'ready' | 'working' | 'resting' | 'done';
+type Phase = 'countdown' | 'ready' | 'resting' | 'done';
 
 export type WorkoutSessionModalProps = {
   visible: boolean;
@@ -40,10 +49,9 @@ export type WorkoutSessionModalProps = {
   date: string;
 };
 
-function repRange(reps: string): [number, number] {
+function topReps(reps: string): number {
   const match = reps.match(/(\d+)(?:\s*-\s*(\d+))?/);
-  if (!match) return [8, 8];
-  return [Number(match[1]), Number(match[2] ?? match[1])];
+  return match ? Number(match[2] ?? match[1]) : 8;
 }
 
 const isTimed = (ex: TrainingExerciseEntry) => /\bs\b/.test(ex.reps);
@@ -54,10 +62,10 @@ function clock(totalSec: number): string {
 }
 
 /** Full-screen guided session ("Inizia allenamento"): a 3-2-1 countdown,
- * then one exercise at a time — sets, reps, tempo, load and a timer that
- * runs the set and the rest after it. Every completed set is logged and an
- * exercise is ticked once all its sets are done, so closing halfway resumes
- * where the user stopped. */
+ * then one exercise at a time — GIF, sets, reps, tempo, load — and a rest
+ * countdown after every set. Every completed set is logged and an exercise
+ * is ticked once all its sets are done, so closing halfway resumes where the
+ * user stopped. */
 export function WorkoutSessionModal({ visible, onClose, title, exercises, date }: WorkoutSessionModalProps) {
   return (
     <Modal visible={visible} animationType="fade" presentationStyle="fullScreen" onRequestClose={onClose} statusBarTranslucent>
@@ -101,41 +109,35 @@ function SessionView({ onClose, title, exercises, date }: Omit<WorkoutSessionMod
   const [restEndsAt, setRestEndsAt] = useState<number | null>(null);
   const [restTotal, setRestTotal] = useState(60);
   const [pausedLeft, setPausedLeft] = useState<number | null>(null);
-  const [workStartedAt, setWorkStartedAt] = useState<number | null>(null);
+  /** The exercise + set number the running rest follows, for the "Serie 2 fatta" label. */
+  const [restAfter, setRestAfter] = useState<{ name: string; set: number } | null>(null);
   const restBuzzed = useRef(false);
-  const holdBuzzed = useRef(false);
 
   const exercise = exercises[exIndex];
   const setsDone = doneMap[exercise.id] ?? 0;
   const exerciseDone = setsDone >= exercise.sets;
   const timed = isTimed(exercise);
   const load = loads[exercise.id] ?? null;
+  const media = getExerciseMedia(exercise.id);
 
   useEffect(() => {
-    if (phase !== 'resting' && phase !== 'working') return;
+    if (phase !== 'resting') return;
     const id = setInterval(() => setNow(Date.now()), 250);
     return () => clearInterval(id);
   }, [phase]);
 
   const restLeft = pausedLeft ?? (restEndsAt ? Math.max(0, (restEndsAt - now) / 1000) : 0);
-  const workElapsed = workStartedAt ? (now - workStartedAt) / 1000 : 0;
-  const holdTarget = timed ? repRange(exercise.reps)[1] : 0;
   // Once the rest runs out the screen falls back to "ready" for the next set.
   const restOver = phase === 'resting' && pausedLeft == null && restEndsAt != null && now >= restEndsAt;
   const view: Phase = restOver ? 'ready' : phase;
-  const holdOver = phase === 'working' && timed && workElapsed >= holdTarget;
 
-  // One buzz when the rest ends or a timed hold reaches its target.
+  // One buzz when the rest ends.
   useEffect(() => {
     if (restOver && !restBuzzed.current) {
       restBuzzed.current = true;
       Vibration.vibrate(400);
     }
-    if (holdOver && !holdBuzzed.current) {
-      holdBuzzed.current = true;
-      Vibration.vibrate(400);
-    }
-  }, [restOver, holdOver]);
+  }, [restOver]);
 
   const startRest = (seconds: number) => {
     restBuzzed.current = false;
@@ -146,30 +148,18 @@ function SessionView({ onClose, title, exercises, date }: Omit<WorkoutSessionMod
     setPhase('resting');
   };
 
-  const startSet = () => {
-    holdBuzzed.current = false;
-    setRestEndsAt(null);
-    setPausedLeft(null);
-    setWorkStartedAt(Date.now());
-    setNow(Date.now());
-    setPhase('working');
-  };
-
   const go = (index: number) => {
     setExIndex(index);
     setEditingLoad(false);
-    setWorkStartedAt(null);
-    // a running rest keeps counting across exercises
-    if (phase === 'working') setPhase('ready');
   };
 
   const completeSet = () => {
-    const reps = timed ? Math.round(workElapsed) : repRange(exercise.reps)[1];
-    if (!timed && load != null && load > 0) logSet(exercise.id, exercise.name, reps, load, date);
-    setWorkStartedAt(null);
+    if (!timed && load != null && load > 0) logSet(exercise.id, exercise.name, topReps(exercise.reps), load, date);
+    Vibration.vibrate(60);
     const doneNow = setsDone + 1;
     const nextMap = { ...doneMap, [exercise.id]: doneNow };
     setDoneMap(nextMap);
+    setRestAfter({ name: exercise.name, set: doneNow });
     if (doneNow < exercise.sets) {
       startRest(exercise.restSec);
       return;
@@ -243,9 +233,15 @@ function SessionView({ onClose, title, exercises, date }: Omit<WorkoutSessionMod
             <NavButton icon="chevronRight" disabled={isLast} onPress={() => go(exIndex + 1)} label="Esercizio successivo" />
           </View>
 
+          {media ? (
+            <View style={styles.gifBox}>
+              <Image source={{ uri: media.gifUrl }} style={styles.gif} resizeMode="contain" accessibilityLabel={`Esecuzione: ${exercise.name}`} />
+            </View>
+          ) : null}
+
           <View style={{ alignSelf: 'stretch', gap: 10 }}>
             <View style={styles.infoRow}>
-              <Info label="Serie" value={`${Math.min(setsDone + (exerciseDone ? 0 : 1), exercise.sets)}/${exercise.sets}`} />
+              <Info label="Serie" value={String(exercise.sets)} />
               <Info label={timed ? 'Durata' : 'Ripetizioni'} value={exercise.reps} />
               <Info label="Modalità" value={exercise.tempo === 'isometria' ? 'Tenuta' : exercise.tempo} />
               <Info
@@ -268,56 +264,128 @@ function SessionView({ onClose, title, exercises, date }: Omit<WorkoutSessionMod
             ) : null}
           </View>
 
-          <View style={styles.timerWrap}>
-            {view === 'resting' ? (
-              <Pressable onPress={togglePause} accessibilityLabel={pausedLeft != null ? 'Riprendi recupero' : 'Metti in pausa il recupero'}>
-                <Ring fraction={restTotal > 0 ? restLeft / restTotal : 0} color={C.green}>
-                  <ThemedText style={styles.ringLabel}>{pausedLeft != null ? 'In pausa' : 'Recupero'}</ThemedText>
-                  <ThemedText style={styles.ringTime}>{clock(restLeft)}</ThemedText>
-                  <ThemedText style={styles.ringHint}>{pausedLeft != null ? 'tocca per riprendere' : 'tocca per mettere in pausa'}</ThemedText>
-                </Ring>
-              </Pressable>
-            ) : view === 'working' ? (
-              <Ring fraction={timed ? Math.min(workElapsed / Math.max(holdTarget, 1), 1) : 1} color={C.orange}>
-                <ThemedText style={styles.ringLabel}>{timed ? 'Tieni la posizione' : `Serie ${setsDone + 1} in corso`}</ThemedText>
-                <ThemedText style={styles.ringTime}>{clock(timed ? Math.max(holdTarget - workElapsed, 0) : workElapsed)}</ThemedText>
-              </Ring>
-            ) : exerciseDone ? (
-              <Ring fraction={1} color={C.green}>
-                <Icon name="check" size={64} color={C.green} />
-                <ThemedText style={styles.ringLabel}>Completato</ThemedText>
-              </Ring>
-            ) : (
-              <Ring fraction={setsDone / exercise.sets} color={C.orange}>
-                <ThemedText style={styles.ringLabel}>Serie</ThemedText>
-                <ThemedText style={styles.ringTime}>
-                  {setsDone + 1}
-                  <ThemedText style={styles.ringTimeSmall}>/{exercise.sets}</ThemedText>
-                </ThemedText>
-              </Ring>
-            )}
-          </View>
+          {view === 'resting' ? (
+            <Pressable onPress={togglePause} accessibilityLabel={pausedLeft != null ? 'Riprendi recupero' : 'Metti in pausa il recupero'}>
+              <CountdownRing fraction={restTotal > 0 ? restLeft / restTotal : 0}>
+                {restAfter ? (
+                  <View style={styles.doneBadge}>
+                    <Icon name="check" size={13} color={C.green} />
+                    <ThemedText style={styles.doneBadgeText}>Serie {restAfter.set} fatta</ThemedText>
+                  </View>
+                ) : null}
+                <ThemedText style={styles.ringTime}>{clock(restLeft)}</ThemedText>
+                <ThemedText style={styles.ringHint}>{pausedLeft != null ? 'in pausa · tocca per riprendere' : 'recupero · tocca per la pausa'}</ThemedText>
+              </CountdownRing>
+            </Pressable>
+          ) : (
+            <SetsRing total={exercise.sets} done={setsDone}>
+              {exerciseDone ? (
+                <>
+                  <Icon name="check" size={58} color={C.green} />
+                  <ThemedText style={[styles.ringLabel, { color: C.green }]}>Completato</ThemedText>
+                </>
+              ) : (
+                <>
+                  <ThemedText style={styles.ringLabel}>Serie</ThemedText>
+                  <ThemedText style={styles.ringTime}>
+                    {setsDone + 1}
+                    <ThemedText style={styles.ringTimeSmall}>/{exercise.sets}</ThemedText>
+                  </ThemedText>
+                  <ThemedText style={styles.ringHint}>
+                    {exercise.sets - setsDone === 1 ? 'ultima serie' : `${setsDone} ${setsDone === 1 ? 'fatta' : 'fatte'} · ${exercise.sets - setsDone} da fare`}
+                  </ThemedText>
+                </>
+              )}
+            </SetsRing>
+          )}
 
-          <View style={{ alignSelf: 'stretch', alignItems: 'center', gap: 14 }}>
-            {view === 'working' ? (
-              <PrimaryAction icon="check" label="Serie fatta" onPress={completeSet} />
-            ) : exerciseDone && view !== 'resting' ? (
-              <PrimaryAction
-                icon="chevronRight"
-                label={isLast ? 'Termina' : 'Esercizio successivo'}
-                onPress={() => (isLast ? setPhase('done') : go(exIndex + 1))}
-              />
-            ) : (
-              <PrimaryAction icon="play" label="Inizia serie" onPress={startSet} />
-            )}
-            {view === 'resting' ? (
-              <Pressable onPress={skipRest} hitSlop={8}>
-                <ThemedText style={styles.secondary}>Salta recupero</ThemedText>
-              </Pressable>
-            ) : null}
-          </View>
+          {view === 'resting' ? (
+            <PrimaryAction icon="play" label="Salta recupero" onPress={skipRest} />
+          ) : exerciseDone ? (
+            <PrimaryAction
+              icon="chevronRight"
+              label={isLast ? 'Termina' : 'Esercizio successivo'}
+              onPress={() => (isLast ? setPhase('done') : go(exIndex + 1))}
+            />
+          ) : (
+            <PrimaryAction icon="check" label={`Serie ${setsDone + 1} fatta`} onPress={completeSet} />
+          )}
         </View>
       )}
+    </View>
+  );
+}
+
+const RING = 220;
+const RING_STROKE = 14;
+const RING_R = (RING - RING_STROKE) / 2;
+const RING_CIRC = 2 * Math.PI * RING_R;
+
+/** One arc per set: done sets glow green, the next one is outlined, and the
+ * arc that just got completed pops in. */
+function SetsRing({ total, done, children }: { total: number; done: number; children: React.ReactNode }) {
+  // round caps grow each arc by half a stroke per end, so the gap must exceed one stroke
+  const gap = total > 1 ? RING_STROKE + 10 : 0;
+  const seg = RING_CIRC / total;
+  const pop = useSharedValue(1);
+  const prevDone = useRef(done);
+
+  useEffect(() => {
+    if (done > prevDone.current) pop.value = withSequence(withTiming(1.06, { duration: 140 }), withSpring(1, { damping: 10, stiffness: 200 }));
+    prevDone.current = done;
+  }, [done, pop]);
+
+  const popStyle = useAnimatedStyle(() => ({ transform: [{ scale: pop.value }] }));
+
+  return (
+    <Animated.View style={[{ width: RING, height: RING, alignItems: 'center', justifyContent: 'center' }, popStyle]}>
+      <Svg width={RING} height={RING} style={StyleSheet.absoluteFill}>
+        {Array.from({ length: total }, (_, i) => {
+          const isDone = i < done;
+          const isNext = i === done;
+          return (
+            <Circle
+              key={i}
+              cx={RING / 2}
+              cy={RING / 2}
+              r={RING_R}
+              stroke={isDone ? C.green : isNext ? C.cardHigh : C.card}
+              strokeWidth={isNext ? RING_STROKE + 2 : RING_STROKE}
+              strokeLinecap="round"
+              fill="none"
+              strokeDasharray={`${Math.max(seg - gap, 1)} ${RING_CIRC}`}
+              strokeDashoffset={-(i * seg + gap / 2)}
+              transform={`rotate(-90 ${RING / 2} ${RING / 2})`}
+            />
+          );
+        })}
+      </Svg>
+      {done >= total ? <View style={[StyleSheet.absoluteFill, styles.glow]} pointerEvents="none" /> : null}
+      <View style={{ alignItems: 'center' }}>{children}</View>
+    </Animated.View>
+  );
+}
+
+function CountdownRing({ fraction, children }: { fraction: number; children: React.ReactNode }) {
+  const f = Math.min(Math.max(fraction, 0), 1);
+  return (
+    <View style={{ width: RING, height: RING, alignItems: 'center', justifyContent: 'center' }}>
+      <Svg width={RING} height={RING} style={StyleSheet.absoluteFill}>
+        <Circle cx={RING / 2} cy={RING / 2} r={RING_R} stroke={C.card} strokeWidth={RING_STROKE} fill="none" />
+        <Circle
+          cx={RING / 2}
+          cy={RING / 2}
+          r={RING_R}
+          stroke={C.green}
+          strokeWidth={RING_STROKE}
+          strokeLinecap="round"
+          fill="none"
+          strokeDasharray={`${RING_CIRC} ${RING_CIRC}`}
+          strokeDashoffset={RING_CIRC * (1 - f)}
+          transform={`rotate(-90 ${RING / 2} ${RING / 2})`}
+        />
+      </Svg>
+      <View style={{ alignItems: 'center', gap: 2 }}>{children}</View>
     </View>
   );
 }
@@ -392,9 +460,9 @@ function DoneView({
   const total = exercises.reduce((sum, ex) => sum + ex.sets, 0);
   return (
     <View style={styles.content}>
-      <Ring fraction={1} color={C.green}>
+      <SetsRing total={1} done={1}>
         <Icon name="trophy" size={56} color={C.green} />
-      </Ring>
+      </SetsRing>
       <ThemedText style={styles.doneTitle}>Allenamento completato</ThemedText>
       <View style={styles.infoRow}>
         <Info label="Durata" value={`${Math.max(1, Math.round((endedAt - startedAt) / 60000))} min`} />
@@ -402,34 +470,6 @@ function DoneView({
         <Info label="Esercizi" value={String(exercises.length)} />
       </View>
       <PrimaryAction icon="check" label="Fine" onPress={onClose} />
-    </View>
-  );
-}
-
-function Ring({ fraction, color, children }: { fraction: number; color: string; children: React.ReactNode }) {
-  const size = 250;
-  const stroke = 16;
-  const r = (size - stroke) / 2;
-  const circ = 2 * Math.PI * r;
-  const f = Math.min(Math.max(fraction, 0), 1);
-  return (
-    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
-      <Svg width={size} height={size} style={StyleSheet.absoluteFill}>
-        <Circle cx={size / 2} cy={size / 2} r={r} stroke={C.card} strokeWidth={stroke} fill="none" />
-        <Circle
-          cx={size / 2}
-          cy={size / 2}
-          r={r}
-          stroke={color}
-          strokeWidth={stroke}
-          strokeLinecap="round"
-          fill="none"
-          strokeDasharray={`${circ} ${circ}`}
-          strokeDashoffset={circ * (1 - f)}
-          transform={`rotate(-90 ${size / 2} ${size / 2})`}
-        />
-      </Svg>
-      <View style={{ alignItems: 'center' }}>{children}</View>
     </View>
   );
 }
@@ -508,7 +548,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'space-evenly',
-    gap: 18,
+    gap: 14,
   },
   selector: {
     flexDirection: 'row',
@@ -529,8 +569,8 @@ const styles = StyleSheet.create({
   },
   exerciseName: {
     color: C.text,
-    fontSize: 28,
-    lineHeight: 33,
+    fontSize: 26,
+    lineHeight: 31,
     fontWeight: '800',
     letterSpacing: -0.5,
     textAlign: 'center',
@@ -542,6 +582,17 @@ const styles = StyleSheet.create({
     backgroundColor: C.card,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  gifBox: {
+    width: 128,
+    height: 128,
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
+    overflow: 'hidden',
+  },
+  gif: {
+    width: '100%',
+    height: '100%',
   },
   infoRow: {
     flexDirection: 'row',
@@ -591,8 +642,10 @@ const styles = StyleSheet.create({
     minWidth: 80,
     textAlign: 'center',
   },
-  timerWrap: {
-    alignItems: 'center',
+  glow: {
+    borderRadius: RING / 2,
+    backgroundColor: C.greenDim,
+    margin: RING_STROKE + 6,
   },
   ringLabel: {
     color: C.muted,
@@ -602,15 +655,15 @@ const styles = StyleSheet.create({
   },
   ringTime: {
     color: C.text,
-    fontSize: 60,
-    lineHeight: 68,
+    fontSize: 56,
+    lineHeight: 64,
     fontWeight: '800',
     letterSpacing: -1,
     fontVariant: ['tabular-nums'],
   },
   ringTimeSmall: {
     color: C.muted,
-    fontSize: 30,
+    fontSize: 28,
     fontWeight: '700',
   },
   ringHint: {
@@ -618,6 +671,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 16,
     fontWeight: '500',
+  },
+  doneBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: C.greenDim,
+  },
+  doneBadgeText: {
+    color: C.green,
+    fontSize: 12.5,
+    lineHeight: 16,
+    fontWeight: '700',
   },
   primary: {
     alignSelf: 'stretch',
@@ -634,12 +702,6 @@ const styles = StyleSheet.create({
     fontSize: 17,
     lineHeight: 22,
     fontWeight: '700',
-  },
-  secondary: {
-    color: C.muted,
-    fontSize: 14,
-    lineHeight: 18,
-    fontWeight: '600',
   },
   countNumber: {
     fontSize: 120,
