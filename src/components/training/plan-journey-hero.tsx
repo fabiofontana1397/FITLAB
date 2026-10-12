@@ -65,10 +65,10 @@ export function PlanJourneyHero({ totalMonths, goal, onPress, kind = 'training',
     <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={diet ? 'Scopri il tuo piano alimentare' : 'Scopri il tuo percorso'}>
       <LinearGradient colors={['#2B2B30', '#17171A', '#0E0E10']} locations={[0, 0.55, 1]} start={{ x: 1, y: 0 }} end={{ x: 0, y: 1 }} style={styles.card}>
         <View pointerEvents="none" style={styles.artBig}>
-          <Icon name={diet ? 'utensils' : 'barbell'} size={diet ? 150 : 170} color="rgba(255,255,255,0.10)" />
+          <Icon name={diet ? 'utensils' : 'barbell'} size={diet ? 120 : 136} color="rgba(255,255,255,0.10)" />
         </View>
         <View pointerEvents="none" style={styles.artSmall}>
-          <Icon name={diet ? 'nutrition' : 'training'} size={74} color="rgba(255,255,255,0.08)" />
+          <Icon name={diet ? 'nutrition' : 'training'} size={60} color="rgba(255,255,255,0.08)" />
         </View>
 
         <ThemedText style={styles.tag}>IL TUO PERCORSO</ThemedText>
@@ -82,7 +82,7 @@ export function PlanJourneyHero({ totalMonths, goal, onPress, kind = 'training',
         {action ? (
           <Pressable onPress={action.onPress} accessibilityRole="button" style={({ pressed }) => [styles.actionButton, { opacity: pressed ? 0.88 : 1 }]}>
             <View style={[styles.actionIcon, { backgroundColor: theme.accentSoft }]}>
-              <Icon name={action.icon} size={18} color={theme.accent} />
+              <Icon name={action.icon} size={16} color={theme.accent} />
             </View>
             <ThemedText style={[styles.actionLabel, { color: theme.accent }]}>{action.label}</ThemedText>
             <Icon name="chevronRight" size={16} color={theme.accent} />
@@ -100,53 +100,53 @@ export function PlanJourneyHero({ totalMonths, goal, onPress, kind = 'training',
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 22,
-    padding: 20,
-    gap: 12,
+    borderRadius: 20,
+    padding: 16,
+    gap: 8,
     overflow: 'hidden',
   },
   artBig: {
     position: 'absolute',
-    right: -30,
-    top: 10,
+    right: -24,
+    top: 6,
     transform: [{ rotate: '-18deg' }],
   },
   artSmall: {
     position: 'absolute',
-    right: 70,
-    bottom: 6,
+    right: 56,
+    bottom: 4,
     transform: [{ rotate: '12deg' }],
   },
   tag: {
     color: 'rgba(255,255,255,0.85)',
-    fontSize: 11,
-    lineHeight: 14,
+    fontSize: 10,
+    lineHeight: 13,
     fontWeight: '700',
-    letterSpacing: 1.2,
+    letterSpacing: 1.1,
   },
   copy: {
     maxWidth: '80%',
-    gap: 4,
+    gap: 2,
   },
   months: {
     color: '#FFFFFF',
-    fontSize: 40,
-    lineHeight: 46,
+    fontSize: 32,
+    lineHeight: 37,
     fontWeight: '800',
-    letterSpacing: -1,
+    letterSpacing: -0.8,
   },
   headline: {
     color: '#FFFFFF',
-    fontSize: 22,
-    lineHeight: 27,
+    fontSize: 18,
+    lineHeight: 23,
     fontWeight: '600',
     letterSpacing: -0.3,
   },
   body: {
-    marginTop: 6,
+    marginTop: 4,
     color: 'rgba(255,255,255,0.78)',
-    fontSize: 13,
-    lineHeight: 19,
+    fontSize: 12.5,
+    lineHeight: 17,
     fontWeight: '500',
   },
   cta: {
@@ -162,8 +162,8 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     marginTop: 4,
-    height: 52,
-    borderRadius: 16,
+    height: 44,
+    borderRadius: 14,
     paddingHorizontal: 12,
     flexDirection: 'row',
     alignItems: 'center',
@@ -171,16 +171,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   actionIcon: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
   },
   actionLabel: {
     flex: 1,
-    fontSize: 15.5,
-    lineHeight: 20,
+    fontSize: 14.5,
+    lineHeight: 19,
     fontWeight: '700',
   },
 });
