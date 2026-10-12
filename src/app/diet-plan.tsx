@@ -4,7 +4,7 @@ import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from 'react-nat
 
 import { GlassSurface } from '@/components/glass/glass-surface';
 import { DIET_PHASE_SHORT_LABEL, DietOverviewPopup } from '@/components/nutrition/diet-overview-popup';
-import { PlanJourneyHero } from '@/components/training/plan-journey-hero';
+import { DietPlanSummaryCard } from '@/components/training/plan-summary-card';
 import { PlanMonthStepper } from '@/components/training/plan-month-stepper';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
@@ -127,7 +127,7 @@ export default function DietPlanScreen() {
         </GlassSurface>
       ) : (
         <>
-          <PlanJourneyHero kind="diet" totalMonths={plan.durationMonths} goal={currentUser.goal} onPress={() => setOverviewOpen(true)} />
+          <DietPlanSummaryCard plan={plan} goal={currentUser.goal} onPress={() => setOverviewOpen(true)} />
 
           <PlanMonthStepper
             months={plan.months}
