@@ -114,7 +114,7 @@ function FloatingTabBar({
     <View
       style={[
         styles.floatWrapper,
-        { paddingBottom: Platform.select({ web: Spacing.four, default: insets.bottom || Spacing.three }) },
+        { paddingBottom: Platform.select({ web: Math.max(insets.bottom, Spacing.four), default: insets.bottom || Spacing.three }) },
         { pointerEvents: 'box-none' },
       ]}>
       <View style={styles.row}>

@@ -3,6 +3,7 @@ import { useFonts } from 'expo-font';
 import { useEffect, useRef } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
 
+import { WebChrome } from '@/components/web-chrome';
 import { INTER_FONTS } from '@/constants/fonts';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useHandleAuthRedirect } from '@/hooks/use-handle-auth-redirect';
@@ -134,6 +135,7 @@ export default function RootLayout() {
           <Stack.Screen name="training-progress" options={{ presentation: 'modal' }} />
         </Stack>
       </AuthGate>
+      <WebChrome />
     </ThemeProvider>
   );
 }

@@ -119,7 +119,7 @@ function FoodSearchForm({ slot, date, editEntry, onClose }: Omit<FoodSearchModal
   };
 
   return (
-    <View style={[styles.page, { backgroundColor: theme.background, paddingTop: Platform.select({ web: 32, default: insets.top + 8 }) }]}>
+    <View style={[styles.page, { backgroundColor: theme.background, paddingTop: insets.top + Platform.select({ web: 32, default: 8 }) }]}>
       <View style={styles.headerRow}>
         <Pressable onPress={onClose} hitSlop={10} style={styles.backButton}>
           <Icon name="arrowBack" size={26} color={theme.text} />

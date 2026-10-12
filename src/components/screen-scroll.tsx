@@ -23,7 +23,7 @@ export const ScreenScroll = forwardRef<ScrollView, ScreenScrollProps>(function S
         style={[
           styles.inner,
           {
-            paddingTop: Platform.select({ web: Spacing.five, default: insets.top + Spacing.two }),
+            paddingTop: insets.top + Platform.select({ web: Spacing.five, default: Spacing.two }),
             paddingBottom: BottomTabInset + Spacing.six,
           },
           contentContainerStyle,

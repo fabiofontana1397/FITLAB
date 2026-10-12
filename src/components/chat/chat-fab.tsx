@@ -26,7 +26,7 @@ const DEFAULT_SIZE = 48;
  * image, so the coach reads as present rather than a dormant button. */
 export function ChatFab({ size }: { size?: number | null }) {
   const insets = useSafeAreaInsets();
-  const bottomOffset = Platform.select({ web: Spacing.four, default: insets.bottom || Spacing.three });
+  const bottomOffset = Platform.select({ web: Math.max(insets.bottom, Spacing.four), default: insets.bottom || Spacing.three });
   const buttonSize = size ?? DEFAULT_SIZE;
   const orbSize = Math.round(buttonSize * 0.9);
 
