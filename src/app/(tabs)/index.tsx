@@ -1,12 +1,11 @@
 import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { Image, Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { EnergyDetailsPopup } from '@/components/home/energy-details-popup';
 import { OggiGauge } from '@/components/home/oggi-gauge';
 import { HomeCoachCard } from '@/components/home/home-coach-card';
-import { FoodSearchModal } from '@/components/nutrition/food-search-modal';
-import { MealPickerModal } from '@/components/nutrition/meal-picker-modal';
 import { DayCalendarModal } from '@/components/ui/day-calendar-modal';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
@@ -14,19 +13,16 @@ import { FlatCard } from '@/components/ui/flat-card';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { ProfileAvatarButton } from '@/components/ui/profile-avatar-button';
 import { InfoPopover } from '@/components/ui/info-popover';
-import { LogActivityModal } from '@/components/training/log-activity-modal';
 import { useHealthEnergy } from '@/hooks/use-health-energy';
 import { sumActivityKcalForDate, useWeeklyEnergy } from '@/hooks/use-weekly-energy';
 import { useTheme } from '@/hooks/use-theme';
-import { latestSnapshot } from '@/lib/mock/body';
 import { currentWeekDates, dayOfMonth, daysAgoISO, isoMondayIndex } from '@/lib/mock/dates';
 import { dayEnergy } from '@/domain/energy';
 import { useUserContext } from '@/hooks/use-user-context';
 import { WEEKDAY_LABELS } from '@/lib/planning/exercise-library';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
 import { useActivityLogStore } from '@/store/activity-log-store';
-import { useBodyStore } from '@/store/body-store';
-import { useNutritionStore, sumMacros, type MealSlot } from '@/store/nutrition-store';
+import { useNutritionStore, sumMacros } from '@/store/nutrition-store';
 import { usePlanStore } from '@/store/plan-store';
 import { isExerciseCompleted, useTrainingProgressStore } from '@/store/training-progress-store';
 import { useUserStore } from '@/store/user-store';
@@ -75,27 +71,12 @@ export default function HomeScreen() {
   const dietPlan = usePlanStore((s) => s.dietPlan);
   const completedExercises = useTrainingProgressStore((s) => s.completed);
   const nutritionEntries = useNutritionStore((s) => s.entries);
-  const bodyEntries = useBodyStore((s) => s.entries);
   const activityLogEntries = useActivityLogStore((s) => s.entries);
-  const addActivityEntry = useActivityLogStore((s) => s.addEntry);
 
   const [infoTopic, setInfoTopic] = useState<InfoTopic | null>(null);
-  const [registerMealOpen, setRegisterMealOpen] = useState(false);
-  const [registerWorkoutOpen, setRegisterWorkoutOpen] = useState(false);
-  const [mealSlot, setMealSlot] = useState<MealSlot | null>(null);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [detailsFocus, setDetailsFocus] = useState<'day' | 'week' | null>(null);
   const [viewDate, setViewDate] = useState(today);
-
-  const latestBody = latestSnapshot(bodyEntries);
-
-  // The "Registra pasto" popup hands the chosen meal to "Registra alimento".
-  // On iOS a Modal can't present while another is still dismissing.
-  const pickMeal = (slot: MealSlot) => {
-    setRegisterMealOpen(false);
-    if (Platform.OS === 'ios') setTimeout(() => setMealSlot(slot), 350);
-    else setMealSlot(slot);
-  };
 
   // The active month's weekly split: the same weekday-indexed lookup the
   // Training tab uses, so Home and Training agree on what's planned.
@@ -289,7 +270,7 @@ export default function HomeScreen() {
           icon="utensils"
           iconColor="#FF6A13"
           label={'Registra\npasto'}
-          onPress={() => setRegisterMealOpen(true)}
+          onPress={() => router.navigate('/nutrition')}
         />
         <ActionTile
           colors={['#34C77B', '#1FA85B']}
@@ -297,7 +278,7 @@ export default function HomeScreen() {
           icon="barbell"
           iconColor="#1FA85B"
           label={'Registra\nallenamento'}
-          onPress={() => setRegisterWorkoutOpen(true)}
+          onPress={() => router.navigate('/training')}
         />
       </View>
 
@@ -430,16 +411,6 @@ export default function HomeScreen() {
         isDayMarked={(date) => nutritionEntries.some((e) => e.date === date)}
         onSelectDate={setViewDate}
         onClose={() => setCalendarOpen(false)}
-      />
-
-      <MealPickerModal visible={registerMealOpen} date={viewDate} onClose={() => setRegisterMealOpen(false)} onPick={pickMeal} />
-      <FoodSearchModal visible={mealSlot != null} slot={mealSlot} date={viewDate} onClose={() => setMealSlot(null)} />
-
-      <LogActivityModal
-        visible={registerWorkoutOpen}
-        weightKg={latestBody.weightKg}
-        onClose={() => setRegisterWorkoutOpen(false)}
-        onSave={(activityType, intensity, durationMinutes) => addActivityEntry(activityType, intensity, durationMinutes, latestBody.weightKg)}
       />
     </ScreenScroll>
   );
