@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Image, Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { EnergyDetailsPopup } from '@/components/home/energy-details-popup';
-import { BalanceCard } from '@/components/home/balance-card';
+import { OggiGauge } from '@/components/home/oggi-gauge';
 import { HomeCoachCard } from '@/components/home/home-coach-card';
 import { FoodSearchModal } from '@/components/nutrition/food-search-modal';
 import { MealPickerModal } from '@/components/nutrition/meal-picker-modal';
@@ -234,16 +234,52 @@ export default function HomeScreen() {
       </View>
 
       <FlatCard radius={CARD_RADIUS} style={styles.oggiCard}>
-        <BalanceCard
-          title={viewDate === today ? 'Il tuo bilancio di oggi' : `Il tuo bilancio del ${viewDateObj.getDate()} ${viewDateObj.toLocaleDateString('it-IT', { month: 'long' })}`}
-          burnedKcal={burnedKcal}
-          eatenKcal={eatenKcal}
-          balanceKcal={balanceKcal}
-          goalKcal={dailyGoalKcal}
-          isToday={viewDate === today}
-          onDetails={() => setDetailsFocus('day')}
-          onInfo={setInfoTopic}
-        />
+        <View style={styles.cardTitleRow}>
+          <ThemedText style={styles.cardTitle}>
+            {viewDate === today ? 'Calorie di oggi' : `Calorie del ${viewDateObj.getDate()} ${viewDateObj.toLocaleDateString('it-IT', { month: 'long' })}`}
+          </ThemedText>
+          <Pressable onPress={() => setDetailsFocus('day')} hitSlop={8} style={styles.linkRow}>
+            <ThemedText style={[styles.linkText, { color: theme.accent }]}>Dettagli</ThemedText>
+            <Icon name="chevronRight" size={13} color={theme.accent} />
+          </Pressable>
+        </View>
+
+        <Pressable onPress={() => setDetailsFocus('day')} style={styles.gaugeWrap}>
+          <OggiGauge
+            burnedKcal={burnedKcal}
+            eatenKcal={eatenKcal}
+            burnedColor={theme.accent}
+            eatenColor={theme.brandGreen}
+            value={formatSignedKcal(balanceKcal)}
+            caption={balanceKcal >= 0 ? 'in surplus' : 'in deficit'}
+          />
+        </Pressable>
+
+        <View style={styles.oggiRow}>
+          <Pressable onPress={() => setInfoTopic('burned')} style={styles.sideCol}>
+            <Icon name="flame" size={22} color={theme.accent} />
+            <ThemedText style={styles.sideValue}>{formatKcal(burnedKcal)}</ThemedText>
+            <ThemedText style={styles.sideLabel} themeColor="textTertiary">
+              bruciate
+            </ThemedText>
+          </Pressable>
+          <View style={[styles.sideDivider, { backgroundColor: theme.border }]} />
+          <Pressable onPress={() => setDetailsFocus('day')} style={styles.sideCol}>
+            <Icon name="target" size={22} color={theme.textSecondary} />
+            <ThemedText style={styles.sideLabel} themeColor="textTertiary">
+              Obiettivo
+            </ThemedText>
+            <ThemedText style={styles.sideValue}>{formatSignedKcal(dailyGoalKcal)} kcal</ThemedText>
+          </Pressable>
+          <View style={[styles.sideDivider, { backgroundColor: theme.border }]} />
+          <Pressable onPress={() => setInfoTopic('eaten')} style={styles.sideCol}>
+            <Icon name="utensils" size={22} color={theme.brandGreen} />
+            <ThemedText style={styles.sideValue}>{formatKcal(eatenKcal)}</ThemedText>
+            <ThemedText style={styles.sideLabel} themeColor="textTertiary">
+              assunte
+            </ThemedText>
+          </Pressable>
+        </View>
       </FlatCard>
 
       <View style={styles.actionsRow}>
@@ -583,6 +619,45 @@ const styles = StyleSheet.create({
     paddingTop: 14,
     paddingBottom: 14,
     paddingHorizontal: 14,
+  },
+  cardTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  cardTitle: {
+    fontSize: 14,
+    lineHeight: 18,
+    fontWeight: '700',
+  },
+  gaugeWrap: {
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  oggiRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6,
+  },
+  sideCol: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 3,
+  },
+  sideDivider: {
+    width: 1,
+    height: 58,
+  },
+  sideValue: {
+    fontSize: 17,
+    lineHeight: 21,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+  },
+  sideLabel: {
+    fontSize: 11.5,
+    lineHeight: 15,
+    fontWeight: '500',
   },
   actionsRow: {
     flexDirection: 'row',
