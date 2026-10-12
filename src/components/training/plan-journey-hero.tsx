@@ -2,7 +2,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Icon } from '@/components/ui/icon';
+import { Icon, type IconName } from '@/components/ui/icon';
 import { useTheme } from '@/hooks/use-theme';
 import type { Goal } from '@/lib/mock/types';
 
@@ -50,12 +50,14 @@ export type PlanJourneyHeroProps = {
   onPress: () => void;
   /** Which plan the banner sells: the training program (default) or the diet. */
   kind?: 'training' | 'diet';
+  /** Optional white button at the bottom (e.g. "Esplora piano"), in place of the "Scopri" link. */
+  action?: { label: string; icon: IconName; onPress: () => void };
 };
 
 /** The "Il tuo percorso" banner at the top of the training plan: dark card
  * selling the whole program in one line. Tapping it opens the full
  * program description (PlanOverviewPopup). */
-export function PlanJourneyHero({ totalMonths, goal, onPress, kind = 'training' }: PlanJourneyHeroProps) {
+export function PlanJourneyHero({ totalMonths, goal, onPress, kind = 'training', action }: PlanJourneyHeroProps) {
   const theme = useTheme();
   const promise = GOAL_PROMISE[goal];
   const diet = kind === 'diet';
@@ -77,10 +79,20 @@ export function PlanJourneyHero({ totalMonths, goal, onPress, kind = 'training' 
           <ThemedText style={styles.headline}>per una versione {promise.adjective} di te.</ThemedText>
           <ThemedText style={styles.body}>{diet ? DIET_BODY[goal] : promise.body}</ThemedText>
         </View>
-        <View style={styles.cta}>
-          <ThemedText style={[styles.ctaText, { color: theme.accent }]}>{diet ? 'Scopri il piano' : 'Scopri il programma'}</ThemedText>
-          <Icon name="chevronRight" size={15} color={theme.accent} />
-        </View>
+        {action ? (
+          <Pressable onPress={action.onPress} accessibilityRole="button" style={({ pressed }) => [styles.actionButton, { opacity: pressed ? 0.88 : 1 }]}>
+            <View style={[styles.actionIcon, { backgroundColor: theme.accentSoft }]}>
+              <Icon name={action.icon} size={18} color={theme.accent} />
+            </View>
+            <ThemedText style={[styles.actionLabel, { color: theme.accent }]}>{action.label}</ThemedText>
+            <Icon name="chevronRight" size={16} color={theme.accent} />
+          </Pressable>
+        ) : (
+          <View style={styles.cta}>
+            <ThemedText style={[styles.ctaText, { color: theme.accent }]}>{diet ? 'Scopri il piano' : 'Scopri il programma'}</ThemedText>
+            <Icon name="chevronRight" size={15} color={theme.accent} />
+          </View>
+        )}
       </LinearGradient>
     </Pressable>
   );
@@ -146,6 +158,29 @@ const styles = StyleSheet.create({
   ctaText: {
     fontSize: 13.5,
     lineHeight: 18,
+    fontWeight: '700',
+  },
+  actionButton: {
+    marginTop: 4,
+    height: 52,
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#FFFFFF',
+  },
+  actionIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionLabel: {
+    flex: 1,
+    fontSize: 15.5,
+    lineHeight: 20,
     fontWeight: '700',
   },
 });

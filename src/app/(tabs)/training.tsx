@@ -9,7 +9,9 @@ import { FlatCard } from '@/components/ui/flat-card';
 import { Icon } from '@/components/ui/icon';
 import { ProfileAvatarButton } from '@/components/ui/profile-avatar-button';
 import { LogActivityModal } from '@/components/training/log-activity-modal';
-import { TrainingHeroCard } from '@/components/training/training-hero-card';
+import { LoggedActivitiesCard } from '@/components/training/logged-activities-card';
+import { PlanJourneyHero } from '@/components/training/plan-journey-hero';
+import { PlanOverviewPopup } from '@/components/training/plan-overview-popup';
 import { TrainingWeekCard } from '@/components/training/training-week-card';
 import { levelLabel, WorkoutSummaryCard } from '@/components/training/workout-summary-card';
 import { WorkoutSessionModal } from '@/components/training/workout-session-modal';
@@ -49,6 +51,7 @@ export default function TrainingScreen() {
   const [isLogActivityVisible, setLogActivityVisible] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [sessionOpen, setSessionOpen] = useState(false);
+  const [overviewOpen, setOverviewOpen] = useState(false);
 
   const today = daysAgoISO(0);
   const [selectedDate, setSelectedDate] = useState(today);
@@ -115,19 +118,17 @@ export default function TrainingScreen() {
     <ScreenScroll contentContainerStyle={styles.page}>
       <View style={styles.headerRow}>
         <ThemedText style={styles.pageTitle}>Allenamento</ThemedText>
-        <View style={styles.headerIcons}>
-          <Pressable
-            onPress={() => router.push('/training-plan')}
-            hitSlop={8}
-            accessibilityLabel="Piano di allenamento"
-            style={[styles.circleButton, { backgroundColor: theme.backgroundElevated, borderColor: theme.border }]}>
-            <Icon name="calendar" size={19} color={theme.text} />
-          </Pressable>
-          <ProfileAvatarButton size={38} />
-        </View>
+        <ProfileAvatarButton size={38} />
       </View>
 
-      <TrainingHeroCard onRegister={() => setLogActivityVisible(true)} />
+      {trainingPlan ? (
+        <PlanJourneyHero
+          totalMonths={trainingPlan.durationMonths}
+          goal={currentUser.goal}
+          onPress={() => setOverviewOpen(true)}
+          action={{ label: 'Esplora piano', icon: 'calendar', onPress: () => router.push('/training-plan') }}
+        />
+      ) : null}
 
       <View style={styles.sectionRow}>
         <ThemedText style={styles.sectionTitle}>La tua settimana</ThemedText>
@@ -144,6 +145,17 @@ export default function TrainingScreen() {
         onToggleDayComplete={toggleDayComplete}
         dayType={(date) => (trainingPlan ? weeklySplit[isoMondayIndex(date)]?.type : undefined)}
       />
+
+      <Pressable
+        onPress={() => setLogActivityVisible(true)}
+        accessibilityRole="button"
+        style={({ pressed }) => [styles.registerButton, { backgroundColor: theme.brandGreen, opacity: pressed ? 0.88 : 1 }]}>
+        <View style={styles.registerPlus}>
+          <Icon name="plus" size={18} color={theme.brandGreen} />
+        </View>
+        <ThemedText style={styles.registerLabel}>Registra allenamento</ThemedText>
+        <Icon name="chevronRight" size={16} color="#FFFFFF" />
+      </Pressable>
 
       <View style={styles.sectionRow}>
         <ThemedText style={styles.sectionTitle}>{dayHeading}</ThemedText>
@@ -194,6 +206,8 @@ export default function TrainingScreen() {
         </FlatCard>
       )}
 
+      <LoggedActivitiesCard date={selectedDate} />
+
       <DayCalendarModal
         visible={calendarOpen}
         selectedDate={selectedDate}
@@ -217,8 +231,21 @@ export default function TrainingScreen() {
         visible={isLogActivityVisible}
         weightKg={weightKg}
         onClose={() => setLogActivityVisible(false)}
-        onSave={(activityType, intensity, durationMinutes) => addActivityEntry(activityType, intensity, durationMinutes, weightKg)}
+        // logged on the day picked in the strip (today if it is still to come)
+        onSave={(activityType, intensity, durationMinutes) =>
+          addActivityEntry(activityType, intensity, durationMinutes, weightKg, selectedDate > today ? today : selectedDate)
+        }
       />
+
+      {trainingPlan ? (
+        <PlanOverviewPopup
+          visible={overviewOpen}
+          onClose={() => setOverviewOpen(false)}
+          plan={trainingPlan}
+          goal={currentUser.goal}
+          currentMonth={monthIndex}
+        />
+      ) : null}
     </ScreenScroll>
   );
 }
@@ -254,18 +281,29 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: -0.3,
   },
-  headerIcons: {
+  registerButton: {
+    marginTop: 12,
+    height: 54,
+    borderRadius: 16,
+    paddingHorizontal: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
   },
-  circleButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    borderWidth: StyleSheet.hairlineWidth,
+  registerPlus: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  registerLabel: {
+    flex: 1,
+    color: '#FFFFFF',
+    fontSize: 15.5,
+    lineHeight: 20,
+    fontWeight: '700',
   },
   link: {
     fontSize: 13,

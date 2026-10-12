@@ -12,6 +12,8 @@ import { ThemedText } from '@/components/themed-text';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { ProfileAvatarButton } from '@/components/ui/profile-avatar-button';
+import { LoggedActivitiesCard } from '@/components/training/logged-activities-card';
+import { LogActivityModal } from '@/components/training/log-activity-modal';
 import { InfoPopover } from '@/components/ui/info-popover';
 import { useHealthEnergy } from '@/hooks/use-health-energy';
 import { sumActivityKcalForDate, useWeeklyEnergy } from '@/hooks/use-weekly-energy';
@@ -72,6 +74,8 @@ export default function HomeScreen() {
   const completedExercises = useTrainingProgressStore((s) => s.completed);
   const nutritionEntries = useNutritionStore((s) => s.entries);
   const activityLogEntries = useActivityLogStore((s) => s.entries);
+  const addActivityEntry = useActivityLogStore((s) => s.addEntry);
+  const [logActivityOpen, setLogActivityOpen] = useState(false);
 
   const [infoTopic, setInfoTopic] = useState<InfoTopic | null>(null);
   const [calendarOpen, setCalendarOpen] = useState(false);
@@ -278,7 +282,7 @@ export default function HomeScreen() {
           icon="barbell"
           iconColor="#1FA85B"
           label={'Registra\nallenamento'}
-          onPress={() => router.navigate('/training')}
+          onPress={() => setLogActivityOpen(true)}
         />
       </View>
 
@@ -377,6 +381,18 @@ export default function HomeScreen() {
       <View style={styles.coachWrap}>
         <HomeCoachCard isWorkoutDayIncomplete={isWorkoutDayIncomplete} />
       </View>
+
+      <LoggedActivitiesCard date={viewDate} />
+
+      <LogActivityModal
+        visible={logActivityOpen}
+        weightKg={ctx.weightKg}
+        onClose={() => setLogActivityOpen(false)}
+        // logged on the day shown on Home (today if a future day is picked)
+        onSave={(activityType, intensity, durationMinutes) =>
+          addActivityEntry(activityType, intensity, durationMinutes, ctx.weightKg, viewDate > today ? today : viewDate)
+        }
+      />
 
       <EnergyDetailsPopup
         visible={detailsFocus != null}
