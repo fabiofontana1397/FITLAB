@@ -11,7 +11,8 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 
 const ORANGE = '#FF7A00';
-// "Calorie assunte": the brand yellow; text uses a deeper/lighter shade so it stays readable on either theme.
+const GREEN = '#22B35E';
+// "Obiettivo": the brand yellow; text uses a deeper/lighter shade so it stays readable on either theme.
 const YELLOW = '#F6B21B';
 const YELLOW_TEXT = { light: '#B27800', dark: '#FFC83D' };
 
@@ -180,7 +181,7 @@ export type BalanceCardProps = {
   onInfo: (topic: 'burned' | 'eaten') => void;
 };
 
-/** Home's main KPI: today's energy balance as a two-tone gauge (orange burned, yellow eaten) around a center colored by how close the day is to the plan's target. */
+/** Home's main KPI: today's energy balance as a two-tone gauge (orange burned, green eaten) around a center colored by how close the day is to the plan's target. */
 export function BalanceCard({ title, burnedKcal, eatenKcal, balanceKcal, goalKcal, isToday, onDetails, onInfo }: BalanceCardProps) {
   const theme = useTheme();
   const [width, setWidth] = useState(0);
@@ -242,8 +243,8 @@ export function BalanceCard({ title, burnedKcal, eatenKcal, balanceKcal, goalKca
         <View style={[styles.divider, { backgroundColor: theme.border }]} />
         <StatColumn
           title="Obiettivo"
-          titleColor={theme.textSecondary}
-          tint={theme.textSecondary}
+          titleColor={isDark ? YELLOW_TEXT.dark : YELLOW_TEXT.light}
+          tint={YELLOW}
           icon="target"
           value={signed(goalKcal)}
           note={`${goalWord} giornaliero previsto dal piano`}
@@ -252,8 +253,8 @@ export function BalanceCard({ title, burnedKcal, eatenKcal, balanceKcal, goalKca
         <View style={[styles.divider, { backgroundColor: theme.border }]} />
         <StatColumn
           title="Assunte oggi"
-          titleColor={isDark ? YELLOW_TEXT.dark : YELLOW_TEXT.light}
-          tint={YELLOW}
+          titleColor={GREEN}
+          tint={GREEN}
           icon="utensils"
           value={kcal(eatenKcal)}
           onPress={() => onInfo('eaten')}
@@ -288,8 +289,8 @@ export function BalanceCard({ title, burnedKcal, eatenKcal, balanceKcal, goalKca
           body="Tutto quello che il tuo corpo consuma oggi: metabolismo a riposo, movimento quotidiano, allenamento e attività registrate. Le mostriamo in negativo perché tolgono energia."
         />
         <ExplainRow
-          swatch={YELLOW}
-          title="Barra gialla · calorie assunte"
+          swatch={GREEN}
+          title="Barra verde · calorie assunte"
           body="Cibo e bevande registrati oggi. Le due barre si dividono il cerchio: più una è lunga, più pesa sul bilancio della giornata."
         />
         <ExplainRow
@@ -299,6 +300,7 @@ export function BalanceCard({ title, burnedKcal, eatenKcal, balanceKcal, goalKca
         />
         <ExplainRow
           icon="target"
+          iconColor={YELLOW}
           title="Obiettivo del giorno"
           body="Il bilancio che il tuo piano prevede per oggi, calcolato sul tuo obiettivo e sugli allenamenti in programma. Non serve centrarlo al grammo: conta restarci vicino giorno dopo giorno."
         />
@@ -363,13 +365,13 @@ function Gauge({
         </Defs>
         <Circle cx={cx} cy={cy} r={discR} fill="url(#balanceDisc)" />
         <Path d={arcPath(cx, cy, r, ARC_START_DEG, burnedSweep)} stroke={empty ? theme.backgroundElement : ORANGE} strokeWidth={stroke} strokeLinecap="round" fill="none" />
-        <Path d={arcPath(cx, cy, r, eatenStart, eatenSweep)} stroke={empty ? theme.backgroundElement : YELLOW} strokeWidth={stroke} strokeLinecap="round" fill="none" />
+        <Path d={arcPath(cx, cy, r, eatenStart, eatenSweep)} stroke={empty ? theme.backgroundElement : GREEN} strokeWidth={stroke} strokeLinecap="round" fill="none" />
         {showCallouts ? (
           <>
         <Line x1={bubbleW * 0.55} y1={bubbleTop + bubbleH} x2={burnedDot.x} y2={burnedDot.y} stroke={ORANGE} strokeWidth={1.5} />
-        <Line x1={width - bubbleW * 0.55} y1={bubbleTop + bubbleH} x2={eatenDot.x} y2={eatenDot.y} stroke={YELLOW} strokeWidth={1.5} />
+        <Line x1={width - bubbleW * 0.55} y1={bubbleTop + bubbleH} x2={eatenDot.x} y2={eatenDot.y} stroke={GREEN} strokeWidth={1.5} />
         <Circle cx={burnedDot.x} cy={burnedDot.y} r={stroke * 0.32} fill="#FFFFFF" stroke={ORANGE} strokeWidth={2} />
-        <Circle cx={eatenDot.x} cy={eatenDot.y} r={stroke * 0.32} fill="#FFFFFF" stroke={YELLOW} strokeWidth={2} />
+        <Circle cx={eatenDot.x} cy={eatenDot.y} r={stroke * 0.32} fill="#FFFFFF" stroke={GREEN} strokeWidth={2} />
           </>
         ) : null}
       </Svg>
@@ -384,8 +386,8 @@ function Gauge({
           Corpo e attività
         </ThemedText>
       </Animated.View>
-      <Animated.View entering={FadeIn.duration(180)} exiting={FadeOut.duration(150)} style={[styles.bubble, { right: 0, top: bubbleTop, width: bubbleW, height: bubbleH, backgroundColor: isDark ? '#3A3014' : '#FFF8E6', borderColor: 'rgba(246,178,27,0.55)' }]}>
-        <ThemedText style={[styles.bubbleTitle, { color: isDark ? YELLOW_TEXT.dark : YELLOW_TEXT.light }]} numberOfLines={1}>
+      <Animated.View entering={FadeIn.duration(180)} exiting={FadeOut.duration(150)} style={[styles.bubble, { right: 0, top: bubbleTop, width: bubbleW, height: bubbleH, backgroundColor: isDark ? '#14321F' : '#EEF9F2', borderColor: 'rgba(34,179,94,0.45)' }]}>
+        <ThemedText style={[styles.bubbleTitle, { color: GREEN }]} numberOfLines={1}>
           Calorie assunte
         </ThemedText>
         <ThemedText style={styles.bubbleBody} themeColor="textSecondary">
@@ -475,12 +477,12 @@ function StatColumn({
   );
 }
 
-function ExplainRow({ swatch, icon, title, body }: { swatch?: string; icon?: IconName; title: string; body: string }) {
+function ExplainRow({ swatch, icon, iconColor, title, body }: { swatch?: string; icon?: IconName; iconColor?: string; title: string; body: string }) {
   const theme = useTheme();
   return (
     <View style={styles.explainRow}>
       {icon ? (
-        <Icon name={icon} size={20} color={theme.textSecondary} />
+        <Icon name={icon} size={20} color={iconColor ?? theme.textSecondary} />
       ) : (
         <View style={[styles.swatch, { backgroundColor: swatch }]} />
       )}
