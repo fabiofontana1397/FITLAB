@@ -15,6 +15,8 @@ import { ProfileAvatarButton } from '@/components/ui/profile-avatar-button';
 import { LoggedActivitiesCard } from '@/components/training/logged-activities-card';
 import { LogActivityModal } from '@/components/training/log-activity-modal';
 import { InfoPopover } from '@/components/ui/info-popover';
+import { FoodSearchModal } from '@/components/nutrition/food-search-modal';
+import { MealPickerModal } from '@/components/nutrition/meal-picker-modal';
 import { useHealthEnergy } from '@/hooks/use-health-energy';
 import { sumActivityKcalForDate, useWeeklyEnergy } from '@/hooks/use-weekly-energy';
 import { useTheme } from '@/hooks/use-theme';
@@ -24,7 +26,7 @@ import { useUserContext } from '@/hooks/use-user-context';
 import { WEEKDAY_LABELS } from '@/lib/planning/exercise-library';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
 import { useActivityLogStore } from '@/store/activity-log-store';
-import { useNutritionStore, sumMacros } from '@/store/nutrition-store';
+import { useNutritionStore, sumMacros, type MealSlot } from '@/store/nutrition-store';
 import { usePlanStore } from '@/store/plan-store';
 import { isExerciseCompleted, useTrainingProgressStore } from '@/store/training-progress-store';
 import { useUserStore } from '@/store/user-store';
@@ -76,6 +78,16 @@ export default function HomeScreen() {
   const activityLogEntries = useActivityLogStore((s) => s.entries);
   const addActivityEntry = useActivityLogStore((s) => s.addEntry);
   const [logActivityOpen, setLogActivityOpen] = useState(false);
+  const [registerMealOpen, setRegisterMealOpen] = useState(false);
+  const [mealSlot, setMealSlot] = useState<MealSlot | null>(null);
+
+  // On iOS a Modal can't present (or navigation run) while another is still dismissing.
+  const afterModal = (fn: () => void) => (Platform.OS === 'ios' ? setTimeout(fn, 350) : fn());
+  // "Registra pasto": pick the meal, then the food; once saved, land on Nutrizione where it shows up.
+  const pickMeal = (slot: MealSlot) => {
+    setRegisterMealOpen(false);
+    afterModal(() => setMealSlot(slot));
+  };
 
   const [infoTopic, setInfoTopic] = useState<InfoTopic | null>(null);
   const [calendarOpen, setCalendarOpen] = useState(false);
@@ -274,7 +286,7 @@ export default function HomeScreen() {
           icon="utensils"
           iconColor="#FF6A13"
           label={'Registra\npasto'}
-          onPress={() => router.navigate('/nutrition')}
+          onPress={() => setRegisterMealOpen(true)}
         />
         <ActionTile
           colors={['#34C77B', '#1FA85B']}
@@ -389,9 +401,20 @@ export default function HomeScreen() {
         weightKg={ctx.weightKg}
         onClose={() => setLogActivityOpen(false)}
         // logged on the day shown on Home (today if a future day is picked)
-        onSave={(activityType, intensity, durationMinutes) =>
-          addActivityEntry(activityType, intensity, durationMinutes, ctx.weightKg, viewDate > today ? today : viewDate)
-        }
+        onSave={(activityType, intensity, durationMinutes) => {
+          addActivityEntry(activityType, intensity, durationMinutes, ctx.weightKg, viewDate > today ? today : viewDate);
+          // Once logged, land on Training where the workout shows up.
+          afterModal(() => router.navigate('/training'));
+        }}
+      />
+
+      <MealPickerModal visible={registerMealOpen} date={viewDate} onClose={() => setRegisterMealOpen(false)} onPick={pickMeal} />
+      <FoodSearchModal
+        visible={mealSlot != null}
+        slot={mealSlot}
+        date={viewDate}
+        onClose={() => setMealSlot(null)}
+        onSaved={() => afterModal(() => router.navigate('/nutrition'))}
       />
 
       <EnergyDetailsPopup

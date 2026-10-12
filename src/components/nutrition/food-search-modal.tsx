@@ -27,6 +27,8 @@ export type FoodSearchModalProps = {
    * grams) so the user edits it in place instead of adding a new one. */
   editEntry?: { id: string; foodId: string; grams: number } | null;
   onClose: () => void;
+  /** Called after a food is saved (not on cancel), e.g. to move to Nutrizione once logged from Home. */
+  onSaved?: () => void;
 };
 
 function fmt(n: number): string {
@@ -41,15 +43,15 @@ function macroText(food: FoodItem, ratio: number): string {
  * the screen opens (see below) — remounting it is what resets query /
  * selection / grams back to defaults (or to the entry being edited) on each
  * open, without syncing that reset through an effect. */
-export function FoodSearchModal({ visible, slot, date, editEntry, onClose }: FoodSearchModalProps) {
+export function FoodSearchModal({ visible, slot, date, editEntry, onClose, onSaved }: FoodSearchModalProps) {
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <FoodSearchForm key={visible ? (editEntry?.id ?? 'add') : 'closed'} slot={slot} date={date} editEntry={editEntry} onClose={onClose} />
+      <FoodSearchForm key={visible ? (editEntry?.id ?? 'add') : 'closed'} slot={slot} date={date} editEntry={editEntry} onClose={onClose} onSaved={onSaved} />
     </Modal>
   );
 }
 
-function FoodSearchForm({ slot, date, editEntry, onClose }: Omit<FoodSearchModalProps, 'visible'>) {
+function FoodSearchForm({ slot, date, editEntry, onClose, onSaved }: Omit<FoodSearchModalProps, 'visible'>) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const entries = useNutritionStore((s) => s.entries);
@@ -110,6 +112,7 @@ function FoodSearchForm({ slot, date, editEntry, onClose }: Omit<FoodSearchModal
     if (editEntry) updateEntry(editEntry.id, selected.id, gramsNum);
     else addEntry(slot, selected.id, gramsNum, date);
     onClose();
+    onSaved?.();
   };
 
   const handleDelete = () => {
