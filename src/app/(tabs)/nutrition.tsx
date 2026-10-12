@@ -2,10 +2,12 @@ import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Platform, Pressable, StyleSheet, Switch, View } from 'react-native';
 
+import { DietOverviewPopup } from '@/components/nutrition/diet-overview-popup';
 import { FoodSearchModal } from '@/components/nutrition/food-search-modal';
 import { MealPickerModal, mealSlotColor } from '@/components/nutrition/meal-picker-modal';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
+import { PlanJourneyHero } from '@/components/training/plan-journey-hero';
 import { DayCalendarModal } from '@/components/ui/day-calendar-modal';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon } from '@/components/ui/icon';
@@ -26,7 +28,7 @@ import {
   type MealFoodEntry,
   type MealSlot,
 } from '@/store/nutrition-store';
-import { usePlanStore } from '@/store/plan-store';
+import { isValidDietPlan, usePlanStore } from '@/store/plan-store';
 import { useUserStore } from '@/store/user-store';
 
 const SCREEN_PADDING = 20;
@@ -80,6 +82,7 @@ export default function NutritionScreen() {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [expandedSlot, setExpandedSlot] = useState<MealSlot | null>('colazione');
+  const [overviewOpen, setOverviewOpen] = useState(false);
 
   useEnsurePlan('diet');
 
@@ -145,17 +148,20 @@ export default function NutritionScreen() {
     <ScreenScroll contentContainerStyle={styles.page}>
       <View style={styles.headerRow}>
         <ThemedText style={styles.pageTitle}>Nutrizione</ThemedText>
-        <View style={styles.headerIcons}>
-          <Pressable
-            onPress={() => router.push('/diet-plan')}
-            hitSlop={8}
-            accessibilityLabel="Piano alimentare"
-            style={[styles.circleButton, { backgroundColor: theme.backgroundElevated, borderColor: theme.border }]}>
-            <Icon name="calendar" size={19} color={theme.text} />
-          </Pressable>
-          <ProfileAvatarButton size={38} />
-        </View>
+        <ProfileAvatarButton size={38} />
       </View>
+
+      {dietPlan && isValidDietPlan(dietPlan) ? (
+        <View style={styles.heroWrap}>
+          <PlanJourneyHero
+            kind="diet"
+            totalMonths={dietPlan.durationMonths}
+            goal={currentUser.goal}
+            onPress={() => setOverviewOpen(true)}
+            action={{ label: 'Esplora piano', icon: 'calendar', onPress: () => router.push('/diet-plan') }}
+          />
+        </View>
+      ) : null}
 
       <FlatCard radius={CARD_RADIUS} style={styles.calorieCard}>
         <View style={styles.cardTitleRow}>
@@ -201,6 +207,13 @@ export default function NutritionScreen() {
         </View>
       </FlatCard>
 
+      <View style={styles.mealsHeader}>
+        <ThemedText style={styles.sectionTitle}>{mealsHeading}</ThemedText>
+        <Pressable onPress={() => setCalendarOpen(true)} hitSlop={8} accessibilityLabel="Apri calendario">
+          <ThemedText style={[styles.link, { color: theme.accent }]}>Vedi calendario ›</ThemedText>
+        </Pressable>
+      </View>
+
       <Pressable onPress={() => setPickerOpen(true)} style={[styles.registerButton, { backgroundColor: theme.accent }]}>
         <View style={styles.registerPlus}>
           <Icon name="plus" size={20} color="#FFFFFF" />
@@ -208,13 +221,6 @@ export default function NutritionScreen() {
         <ThemedText style={styles.registerLabel}>Registra pasto</ThemedText>
         <Icon name="chevronRight" size={16} color="#FFFFFF" />
       </Pressable>
-
-      <View style={styles.mealsHeader}>
-        <ThemedText style={styles.sectionTitle}>{mealsHeading}</ThemedText>
-        <Pressable onPress={() => setCalendarOpen(true)} hitSlop={8} accessibilityLabel="Apri calendario">
-          <ThemedText style={[styles.link, { color: theme.accent }]}>Vedi calendario ›</ThemedText>
-        </Pressable>
-      </View>
 
       {planDayForSelectedDate ? (
         <View style={[styles.followRow, { backgroundColor: theme.backgroundElevated, borderColor: theme.border }]}>
@@ -306,6 +312,16 @@ export default function NutritionScreen() {
         })}
       </View>
 
+      {dietPlan && isValidDietPlan(dietPlan) ? (
+        <DietOverviewPopup
+          visible={overviewOpen}
+          onClose={() => setOverviewOpen(false)}
+          plan={dietPlan}
+          goal={currentUser.goal}
+          currentMonth={monthIndex}
+        />
+      ) : null}
+
       <DayCalendarModal
         visible={calendarOpen}
         selectedDate={selectedDate}
@@ -348,26 +364,16 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: -0.5,
   },
-  headerIcons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  circleButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    borderWidth: StyleSheet.hairlineWidth,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   link: {
     fontSize: 13,
     lineHeight: 17,
     fontWeight: '600',
   },
+  heroWrap: {
+    marginBottom: 16,
+  },
   registerButton: {
-    marginTop: 12,
+    marginBottom: 12,
     height: 56,
     borderRadius: 20,
     paddingHorizontal: 20,
