@@ -4,7 +4,7 @@ import { Alert, Image, Pressable, StyleSheet, View } from 'react-native';
 
 import { GlassSurface } from '@/components/glass/glass-surface';
 import { ExerciseInfoModal } from '@/components/training/exercise-info-modal';
-import { PlanJourneyHero } from '@/components/training/plan-journey-hero';
+import { PlanSummaryCard } from '@/components/training/plan-summary-card';
 import { PlanMonthStepper } from '@/components/training/plan-month-stepper';
 import { PlanOverviewPopup } from '@/components/training/plan-overview-popup';
 import { ScreenScroll } from '@/components/screen-scroll';
@@ -155,7 +155,7 @@ export default function TrainingPlanScreen() {
             </GlassSurface>
           ) : null}
 
-          <PlanJourneyHero totalMonths={plan.durationMonths} goal={currentUser.goal} onPress={() => setOverviewOpen(true)} />
+          <PlanSummaryCard plan={plan} goal={currentUser.goal} onPress={() => setOverviewOpen(true)} />
 
           <PlanMonthStepper
             months={plan.months}
