@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import Svg, { Circle, Defs, Line, Path, RadialGradient, Stop } from 'react-native-svg';
 
 import { GlassPopup } from '@/components/glass/glass-popup';
@@ -10,7 +11,9 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 
 const ORANGE = '#FF7A00';
-const GREEN = '#22B35E';
+// "Calorie assunte": the brand yellow; text uses a deeper/lighter shade so it stays readable on either theme.
+const YELLOW = '#F6B21B';
+const YELLOW_TEXT = { light: '#B27800', dark: '#FFC83D' };
 
 // Arc geometry: angles clockwise from 12 o'clock, a wide gap at the bottom
 // and a hairline one where orange (burned) meets green (eaten).
@@ -177,11 +180,17 @@ export type BalanceCardProps = {
   onInfo: (topic: 'burned' | 'eaten') => void;
 };
 
-/** Home's main KPI: today's energy balance as a two-tone gauge (orange burned, green eaten) around a center colored by how close the day is to the plan's target. */
+/** Home's main KPI: today's energy balance as a two-tone gauge (orange burned, yellow eaten) around a center colored by how close the day is to the plan's target. */
 export function BalanceCard({ title, burnedKcal, eatenKcal, balanceKcal, goalKcal, isToday, onDetails, onInfo }: BalanceCardProps) {
   const theme = useTheme();
   const [width, setWidth] = useState(0);
   const [explainOpen, setExplainOpen] = useState(false);
+  const [calloutsOpen, setCalloutsOpen] = useState(false);
+  useEffect(() => {
+    if (!calloutsOpen) return;
+    const t = setTimeout(() => setCalloutsOpen(false), 8000);
+    return () => clearTimeout(t);
+  }, [calloutsOpen]);
   const status = balanceStatus(balanceKcal, goalKcal, eatenKcal, isToday);
   const goalWord = goalKcal < -50 ? 'Deficit' : goalKcal > 50 ? 'Surplus' : 'Bilancio';
   const isDark = useColorScheme() === 'dark';
@@ -196,35 +205,59 @@ export function BalanceCard({ title, burnedKcal, eatenKcal, balanceKcal, goalKca
         </Pressable>
       </View>
 
-      <Pressable onPress={() => setExplainOpen(true)} onLayout={(e) => setWidth(e.nativeEvent.layout.width)} accessibilityRole="button" accessibilityLabel="Come leggere il bilancio">
-        {width > 0 ? <Gauge width={width} burnedKcal={burnedKcal} eatenKcal={eatenKcal} balanceKcal={balanceKcal} status={status} /> : <View style={{ height: 220 }} />}
+      <Pressable
+        onPress={() => setCalloutsOpen((o) => !o)}
+        onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
+        style={{ zIndex: 2 }}
+        accessibilityRole="button"
+        accessibilityLabel="Mostra cosa significano le barre e il numero centrale">
+        {width > 0 ? (
+          <Gauge
+            width={width}
+            burnedKcal={burnedKcal}
+            eatenKcal={eatenKcal}
+            balanceKcal={balanceKcal}
+            goalKcal={goalKcal}
+            status={status}
+            showCallouts={calloutsOpen}
+            onMore={() => {
+              setCalloutsOpen(false);
+              setExplainOpen(true);
+            }}
+          />
+        ) : (
+          <View style={{ height: 200 }} />
+        )}
       </Pressable>
 
       <View style={styles.columns}>
-        <Column
+        <StatColumn
+          title="Bruciate oggi"
+          titleColor={ORANGE}
+          tint={ORANGE}
           icon="flame"
-          color={ORANGE}
           value={signed(-burnedKcal)}
-          pill="bruciate oggi"
           onPress={() => onInfo('burned')}
         />
         <View style={[styles.divider, { backgroundColor: theme.border }]} />
-        <Pressable style={styles.column} onPress={() => setExplainOpen(true)}>
-          <View style={[styles.iconCircle, { backgroundColor: 'transparent' }]}>
-            <Icon name="target" size={26} color={theme.textSecondary} />
-          </View>
-          <ThemedText style={styles.goalLabel} themeColor="textSecondary">
-            Obiettivo
-          </ThemedText>
-          <ThemedText style={styles.goalValue}>{signed(goalKcal)} kcal</ThemedText>
-          <View style={[styles.goalNote, { backgroundColor: theme.backgroundElement }]}>
-            <ThemedText style={styles.goalNoteText} themeColor="textTertiary">
-              {goalWord === 'Bilancio' ? 'Bilancio giornaliero' : `${goalWord} giornaliero`} previsto dal tuo piano
-            </ThemedText>
-          </View>
-        </Pressable>
+        <StatColumn
+          title="Obiettivo"
+          titleColor={theme.textSecondary}
+          tint={theme.textSecondary}
+          icon="target"
+          value={signed(goalKcal)}
+          note={`${goalWord} giornaliero previsto dal piano`}
+          onPress={() => setExplainOpen(true)}
+        />
         <View style={[styles.divider, { backgroundColor: theme.border }]} />
-        <Column icon="utensils" color={GREEN} value={kcal(eatenKcal)} pill="assunte oggi" onPress={() => onInfo('eaten')} />
+        <StatColumn
+          title="Assunte oggi"
+          titleColor={isDark ? YELLOW_TEXT.dark : YELLOW_TEXT.light}
+          tint={YELLOW}
+          icon="utensils"
+          value={kcal(eatenKcal)}
+          onPress={() => onInfo('eaten')}
+        />
       </View>
 
       <Pressable onPress={onDetails} style={[styles.motivation, { backgroundColor: statusColor(status.closeness, 0.12, 50) }]}>
@@ -255,8 +288,8 @@ export function BalanceCard({ title, burnedKcal, eatenKcal, balanceKcal, goalKca
           body="Tutto quello che il tuo corpo consuma oggi: metabolismo a riposo, movimento quotidiano, allenamento e attività registrate. Le mostriamo in negativo perché tolgono energia."
         />
         <ExplainRow
-          swatch={GREEN}
-          title="Barra verde · calorie assunte"
+          swatch={YELLOW}
+          title="Barra gialla · calorie assunte"
           body="Cibo e bevande registrati oggi. Le due barre si dividono il cerchio: più una è lunga, più pesa sul bilancio della giornata."
         />
         <ExplainRow
@@ -274,12 +307,30 @@ export function BalanceCard({ title, burnedKcal, eatenKcal, balanceKcal, goalKca
   );
 }
 
-function Gauge({ width, burnedKcal, eatenKcal, balanceKcal, status }: { width: number; burnedKcal: number; eatenKcal: number; balanceKcal: number; status: BalanceStatus }) {
+function Gauge({
+  width,
+  burnedKcal,
+  eatenKcal,
+  balanceKcal,
+  goalKcal,
+  status,
+  showCallouts,
+  onMore,
+}: {
+  width: number;
+  burnedKcal: number;
+  eatenKcal: number;
+  balanceKcal: number;
+  goalKcal: number;
+  status: BalanceStatus;
+  showCallouts: boolean;
+  onMore: () => void;
+}) {
   const theme = useTheme();
   const size = Math.min(width * 0.62, 240);
   const stroke = Math.round(size * 0.085);
   const bubbleH = 46;
-  const offsetY = bubbleH * 0.7;
+  const offsetY = 6;
   const height = offsetY + size * 0.93;
   const cx = width / 2;
   const cy = offsetY + size / 2;
@@ -312,29 +363,37 @@ function Gauge({ width, burnedKcal, eatenKcal, balanceKcal, status }: { width: n
         </Defs>
         <Circle cx={cx} cy={cy} r={discR} fill="url(#balanceDisc)" />
         <Path d={arcPath(cx, cy, r, ARC_START_DEG, burnedSweep)} stroke={empty ? theme.backgroundElement : ORANGE} strokeWidth={stroke} strokeLinecap="round" fill="none" />
-        <Path d={arcPath(cx, cy, r, eatenStart, eatenSweep)} stroke={empty ? theme.backgroundElement : GREEN} strokeWidth={stroke} strokeLinecap="round" fill="none" />
+        <Path d={arcPath(cx, cy, r, eatenStart, eatenSweep)} stroke={empty ? theme.backgroundElement : YELLOW} strokeWidth={stroke} strokeLinecap="round" fill="none" />
+        {showCallouts ? (
+          <>
         <Line x1={bubbleW * 0.55} y1={bubbleTop + bubbleH} x2={burnedDot.x} y2={burnedDot.y} stroke={ORANGE} strokeWidth={1.5} />
-        <Line x1={width - bubbleW * 0.55} y1={bubbleTop + bubbleH} x2={eatenDot.x} y2={eatenDot.y} stroke={GREEN} strokeWidth={1.5} />
+        <Line x1={width - bubbleW * 0.55} y1={bubbleTop + bubbleH} x2={eatenDot.x} y2={eatenDot.y} stroke={YELLOW} strokeWidth={1.5} />
         <Circle cx={burnedDot.x} cy={burnedDot.y} r={stroke * 0.32} fill="#FFFFFF" stroke={ORANGE} strokeWidth={2} />
-        <Circle cx={eatenDot.x} cy={eatenDot.y} r={stroke * 0.32} fill="#FFFFFF" stroke={GREEN} strokeWidth={2} />
+        <Circle cx={eatenDot.x} cy={eatenDot.y} r={stroke * 0.32} fill="#FFFFFF" stroke={YELLOW} strokeWidth={2} />
+          </>
+        ) : null}
       </Svg>
 
-      <View style={[styles.bubble, { left: 0, top: bubbleTop, width: bubbleW, height: bubbleH, backgroundColor: isDark ? 'rgba(255,122,0,0.14)' : '#FFF4EA', borderColor: 'rgba(255,122,0,0.35)' }]}>
+      {showCallouts ? (
+        <>
+      <Animated.View entering={FadeIn.duration(180)} exiting={FadeOut.duration(150)} style={[styles.bubble, { left: 0, top: bubbleTop, width: bubbleW, height: bubbleH, backgroundColor: isDark ? '#3A2414' : '#FFF4EA', borderColor: 'rgba(255,122,0,0.45)' }]}>
         <ThemedText style={[styles.bubbleTitle, { color: ORANGE }]} numberOfLines={1}>
           Calorie bruciate
         </ThemedText>
         <ThemedText style={styles.bubbleBody} themeColor="textSecondary">
           Corpo e attività
         </ThemedText>
-      </View>
-      <View style={[styles.bubble, { right: 0, top: bubbleTop, width: bubbleW, height: bubbleH, backgroundColor: isDark ? 'rgba(34,179,94,0.14)' : '#EEF9F2', borderColor: 'rgba(34,179,94,0.35)' }]}>
-        <ThemedText style={[styles.bubbleTitle, { color: GREEN }]} numberOfLines={1}>
+      </Animated.View>
+      <Animated.View entering={FadeIn.duration(180)} exiting={FadeOut.duration(150)} style={[styles.bubble, { right: 0, top: bubbleTop, width: bubbleW, height: bubbleH, backgroundColor: isDark ? '#3A3014' : '#FFF8E6', borderColor: 'rgba(246,178,27,0.55)' }]}>
+        <ThemedText style={[styles.bubbleTitle, { color: isDark ? YELLOW_TEXT.dark : YELLOW_TEXT.light }]} numberOfLines={1}>
           Calorie assunte
         </ThemedText>
         <ThemedText style={styles.bubbleBody} themeColor="textSecondary">
           Cibo e bevande
         </ThemedText>
-      </View>
+      </Animated.View>
+        </>
+      ) : null}
 
       <View style={[styles.center, { left: cx - discR, top: cy - discR, width: discR * 2, height: discR * 2 }]} pointerEvents="none">
         <View style={[styles.statusPill, { backgroundColor: statusColor(status.closeness, isDark ? 0.25 : 0.16, 45) }]}>
@@ -345,26 +404,73 @@ function Gauge({ width, burnedKcal, eatenKcal, balanceKcal, status }: { width: n
         </ThemedText>
         <ThemedText style={styles.centerUnit}>kcal</ThemedText>
       </View>
+
+      {showCallouts ? (
+        <Animated.View
+          entering={FadeIn.duration(180).delay(80)}
+          exiting={FadeOut.duration(150)}
+          style={[
+            styles.centerCallout,
+            {
+              left: (width - Math.min(width * 0.8, 270)) / 2,
+              width: Math.min(width * 0.8, 270),
+              top: cy + discR * 0.62,
+              backgroundColor: theme.backgroundElevated,
+              borderColor: statusColor(status.closeness, 0.6, 50),
+            },
+          ]}>
+          <ThemedText style={[styles.bubbleTitle, { color: statusColor(status.closeness, 1, isDark ? 62 : 34) }]}>Il numero al centro</ThemedText>
+          <ThemedText style={styles.calloutBody} themeColor="textSecondary">
+            Calorie assunte meno bruciate. L’obiettivo del piano per oggi è {signed(goalKcal)} kcal: più ti avvicini, più il centro passa dal rosso al verde.
+          </ThemedText>
+          <Pressable onPress={onMore} hitSlop={8}>
+            <ThemedText style={[styles.calloutLink, { color: theme.accent }]}>Come leggere il bilancio ›</ThemedText>
+          </Pressable>
+        </Animated.View>
+      ) : null}
     </View>
   );
 }
 
-function Column({ icon, color, value, pill, onPress }: { icon: IconName; color: string; value: string; pill: string; onPress: () => void }) {
+function StatColumn({
+  title,
+  titleColor,
+  tint,
+  icon,
+  value,
+  note,
+  onPress,
+}: {
+  title: string;
+  titleColor: string;
+  tint: string;
+  icon: IconName;
+  value: string;
+  note?: string;
+  onPress: () => void;
+}) {
   return (
     <Pressable style={styles.column} onPress={onPress}>
-      <View style={[styles.iconCircle, { backgroundColor: color + '1F' }]}>
-        <Icon name={icon} size={26} color={color} />
-      </View>
-      <ThemedText style={styles.columnValue}>{value}</ThemedText>
-      <ThemedText style={styles.columnUnit} themeColor="textSecondary">
-        kcal
-      </ThemedText>
-      <View style={[styles.columnPill, { backgroundColor: color + '1A' }]}>
-        <ThemedText style={[styles.columnPillText, { color }]} numberOfLines={1}>
-          {pill}
+      <View style={styles.columnTitleRow}>
+        <ThemedText style={[styles.columnTitle, { color: titleColor }]} numberOfLines={1}>
+          {title}
         </ThemedText>
-        <Icon name="info" size={12} color={color} />
+        <Icon name="info" size={12} color={titleColor} />
       </View>
+      <View style={[styles.iconCircle, { backgroundColor: tint + '1F' }]}>
+        <Icon name={icon} size={22} color={tint} />
+      </View>
+      <View style={styles.valueRow}>
+        <ThemedText style={styles.columnValue}>{value}</ThemedText>
+        <ThemedText style={styles.columnUnit} themeColor="textSecondary">
+          kcal
+        </ThemedText>
+      </View>
+      {note ? (
+        <ThemedText style={styles.columnNote} themeColor="textTertiary" numberOfLines={2}>
+          {note}
+        </ThemedText>
+      ) : null}
     </Pressable>
   );
 }
@@ -401,18 +507,19 @@ const styles = StyleSheet.create({
   statusPillText: { fontSize: 9.5, lineHeight: 12, fontWeight: '800', letterSpacing: 0.6 },
   centerValue: { fontWeight: '900', letterSpacing: -1.5 },
   centerUnit: { fontSize: 14, lineHeight: 17, fontWeight: '700' },
-  columns: { flexDirection: 'row', alignItems: 'stretch' },
-  column: { flex: 1, alignItems: 'center', gap: 4 },
-  divider: { width: StyleSheet.hairlineWidth, marginVertical: 8 },
-  iconCircle: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', marginBottom: 2 },
-  columnValue: { fontSize: 22, lineHeight: 26, fontWeight: '800', letterSpacing: -0.5 },
-  columnUnit: { fontSize: 12, lineHeight: 15, fontWeight: '600', marginTop: -4 },
-  columnPill: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 8, paddingVertical: 6, borderRadius: 999, marginTop: 4 },
-  columnPillText: { fontSize: 10.5, lineHeight: 13, fontWeight: '700' },
-  goalLabel: { fontSize: 13, lineHeight: 16, fontWeight: '600' },
-  goalValue: { fontSize: 17, lineHeight: 21, fontWeight: '800', letterSpacing: -0.3 },
-  goalNote: { paddingHorizontal: 8, paddingVertical: 6, borderRadius: 10, marginTop: 4 },
-  goalNoteText: { fontSize: 10, lineHeight: 13, fontWeight: '500', textAlign: 'center' },
+  columns: { flexDirection: 'row', alignItems: 'stretch', marginTop: Spacing.two, paddingVertical: Spacing.two },
+  column: { flex: 1, alignItems: 'center', gap: 8, paddingHorizontal: 4 },
+  columnTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  columnTitle: { fontSize: 12, lineHeight: 15, fontWeight: '700' },
+  valueRow: { flexDirection: 'row', alignItems: 'baseline', gap: 3 },
+  columnNote: { fontSize: 10, lineHeight: 13, fontWeight: '500', textAlign: 'center', marginTop: -2 },
+  centerCallout: { position: 'absolute', borderWidth: 1, borderRadius: 14, padding: 10, gap: 4, shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 6 },
+  calloutBody: { fontSize: 11.5, lineHeight: 15, fontWeight: '500' },
+  calloutLink: { fontSize: 12, lineHeight: 15, fontWeight: '700' },
+  divider: { width: StyleSheet.hairlineWidth, marginVertical: 4 },
+  iconCircle: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  columnValue: { fontSize: 19, lineHeight: 23, fontWeight: '800', letterSpacing: -0.4 },
+  columnUnit: { fontSize: 11, lineHeight: 14, fontWeight: '600' },
   motivation: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, padding: Spacing.three, borderRadius: 18 },
   motivationIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   motivationTitle: { fontSize: 15, lineHeight: 19, fontWeight: '800' },
