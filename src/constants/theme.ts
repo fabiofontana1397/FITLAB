@@ -58,8 +58,11 @@ export const Colors = {
     // Round header buttons (notifications, profile…).
     iconButton: '#F4F4F4',
     text: '#060606',
-    textSecondary: '#727272',
-    textTertiary: '#9D9D9D',
+    // The reference's #727272 / #9D9D9D read 4.0:1 / 2.5:1 on its own cards,
+    // below the 4.5:1 text minimum: same family, darkened until they pass
+    // (secondary 6.0:1 on cards, tertiary 5.3:1; both clear 4.5:1 on the page).
+    textSecondary: '#5E5E5E',
+    textTertiary: '#666666',
     accent: orange[500],
     accentPressed: orange[600],
     accentSoft: orange[50],

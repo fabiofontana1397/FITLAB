@@ -60,7 +60,14 @@ export function ScreenHeader({ eyebrow, title, showProfile = true, icon = 'profi
         ) : null}
       </View>
 
-      {showProfile ? <HeaderIconButton icon={icon} color={iconColor} onPress={onIconPress ?? (() => router.push('/profile'))} /> : null}
+      {showProfile ? (
+        <HeaderIconButton
+          icon={icon}
+          color={iconColor}
+          accessibilityLabel={icon === 'profile' ? 'Profilo' : undefined}
+          onPress={onIconPress ?? (() => router.push('/profile'))}
+        />
+      ) : null}
     </View>
   );
 }

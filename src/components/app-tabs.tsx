@@ -167,7 +167,12 @@ function TabButton({ label, icon, isFocused, ...props }: TabTriggerSlotProps & {
   }));
 
   return (
-    <Pressable {...props} style={({ pressed }) => [styles.tabButton, { flexGrow: isFocused ? 2.1 : 1 }, pressed && styles.pressed]}>
+    <Pressable
+      {...props}
+      accessibilityRole="tab"
+      accessibilityLabel={label}
+      accessibilityState={{ selected: !!isFocused }}
+      style={({ pressed }) => [styles.tabButton, { flexGrow: isFocused ? 2.1 : 1 }, pressed && styles.pressed]}>
       <Animated.View style={[styles.focusPill, { backgroundColor: theme.backgroundSelected }, pillStyle]} />
       <View style={styles.tabContent}>
         <Icon name={icon} size={20} color={color} />
