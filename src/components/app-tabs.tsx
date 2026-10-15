@@ -154,7 +154,7 @@ function FloatingTabBar({
 
 function TabButton({ label, icon, isFocused, ...props }: TabTriggerSlotProps & { label: string; icon: IconName }) {
   const theme = useTheme();
-  const color = isFocused ? theme.accent : theme.textTertiary;
+  const color = isFocused ? theme.text : theme.textSecondary;
   const focus = useSharedValue(isFocused ? 1 : 0);
 
   useEffect(() => {
@@ -163,21 +163,20 @@ function TabButton({ label, icon, isFocused, ...props }: TabTriggerSlotProps & {
 
   const pillStyle = useAnimatedStyle(() => ({
     opacity: focus.value,
-    transform: [{ scale: 0.7 + focus.value * 0.3 }],
-  }));
-  const iconStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: 1 + focus.value * 0.16 }, { translateY: focus.value * -1.5 }],
+    transform: [{ scale: 0.8 + focus.value * 0.2 }],
   }));
 
   return (
-    <Pressable {...props} style={({ pressed }) => [styles.tabButton, pressed && styles.pressed]}>
-      <Animated.View style={[styles.focusPill, { backgroundColor: theme.accentSoft }, pillStyle]} />
-      <Animated.View style={iconStyle}>
-        <Icon name={icon} size={19} color={color} />
-      </Animated.View>
-      <ThemedText type="caption" style={[styles.tabLabel, { color }]} numberOfLines={1}>
-        {label}
-      </ThemedText>
+    <Pressable {...props} style={({ pressed }) => [styles.tabButton, { flexGrow: isFocused ? 2.1 : 1 }, pressed && styles.pressed]}>
+      <Animated.View style={[styles.focusPill, { backgroundColor: theme.backgroundSelected }, pillStyle]} />
+      <View style={styles.tabContent}>
+        <Icon name={icon} size={20} color={color} />
+        {isFocused ? (
+          <ThemedText type="smallBold" style={[styles.tabLabel, { color }]} numberOfLines={1}>
+            {label}
+          </ThemedText>
+        ) : null}
+      </View>
     </Pressable>
   );
 }
@@ -207,15 +206,18 @@ const styles = StyleSheet.create({
   },
   barRow: {
     flexDirection: 'row',
-    paddingVertical: Spacing.one,
-    paddingHorizontal: Spacing.one,
+    padding: 5,
   },
   tabButton: {
-    flex: 1,
+    flexBasis: 0,
+    height: 56,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 2,
-    paddingVertical: 6,
+  },
+  tabContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   pressed: {
     opacity: 0.6,
@@ -224,11 +226,11 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     bottom: 0,
-    left: 6,
-    right: 6,
-    borderRadius: Radius.medium,
+    left: 0,
+    right: 0,
+    borderRadius: 28,
   },
   tabLabel: {
-    fontSize: 10,
+    fontSize: 13,
   },
 });

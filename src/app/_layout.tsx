@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
 
 import { WebChrome } from '@/components/web-chrome';
-import { INTER_FONTS } from '@/constants/fonts';
+import { APP_FONTS } from '@/constants/fonts';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useHandleAuthRedirect } from '@/hooks/use-handle-auth-redirect';
 import { useStoreHydrated } from '@/hooks/use-store-hydrated';
@@ -97,7 +97,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
-  const [fontsLoaded, fontError] = useFonts(INTER_FONTS);
+  const [fontsLoaded, fontError] = useFonts(APP_FONTS);
   useHandleAuthRedirect();
 
   useEffect(() => {
@@ -110,7 +110,7 @@ export default function RootLayout() {
     };
   }, []);
 
-  // Hold the first render until Inter is registered, so no screen flashes in
+  // Hold the first render until the app font is registered, so no screen flashes in
   // the system font. A load error falls through to the system font.
   if (!fontsLoaded && !fontError) return null;
 

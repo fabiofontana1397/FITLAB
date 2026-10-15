@@ -43,17 +43,23 @@ export const Palette = { orange, neutral };
 
 export const Colors = {
   light: {
-    background: neutral[50],
-    backgroundElevated: neutral[0],
-    backgroundElement: neutral[100],
-    backgroundSelected: neutral[200],
-    surfaceGlass: 'rgba(255,255,255,0.55)',
-    surfaceGlassStrong: 'rgba(255,255,255,0.75)',
+    // Greys sampled from the "clean dashboard" reference: soft grey page,
+    // near-white glass cards, a slightly darker grey for selected pills.
+    background: '#E9E9E8',
+    backgroundElevated: '#F7F7F7',
+    backgroundElement: '#EEEEEE',
+    backgroundSelected: '#E1E1E1',
+    surfaceGlass: 'rgba(247,247,247,0.72)',
+    surfaceGlassStrong: 'rgba(247,247,247,0.88)',
     border: 'rgba(14,14,17,0.08)',
     borderStrong: 'rgba(14,14,17,0.14)',
-    text: neutral[950],
-    textSecondary: neutral[600],
-    textTertiary: neutral[400],
+    // White hairline that gives cards their glass edge on the grey page.
+    cardEdge: 'rgba(255,255,255,0.85)',
+    // Round header buttons (notifications, profile…).
+    iconButton: '#F4F4F4',
+    text: '#060606',
+    textSecondary: '#727272',
+    textTertiary: '#9D9D9D',
     accent: orange[500],
     accentPressed: orange[600],
     accentSoft: orange[50],
@@ -96,6 +102,8 @@ export const Colors = {
     surfaceGlassStrong: 'rgba(28,29,34,0.78)',
     border: 'rgba(255,255,255,0.08)',
     borderStrong: 'rgba(255,255,255,0.16)',
+    cardEdge: 'rgba(255,255,255,0.08)',
+    iconButton: '#26272F',
     text: neutral[0],
     textSecondary: neutral[300],
     textTertiary: neutral[500],
@@ -157,10 +165,10 @@ export const Spacing = {
 } as const;
 
 export const Radius = {
-  small: 12,
-  medium: 18,
-  large: 24,
-  xlarge: 32,
+  small: 14,
+  medium: 20,
+  large: 28,
+  xlarge: 34,
   pill: 999,
 } as const;
 

@@ -1,10 +1,8 @@
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
 
-import { GlassSurface } from '@/components/glass/glass-surface';
 import { ThemedText } from '@/components/themed-text';
 import { Icon, type IconName } from '@/components/ui/icon';
-import { Radius } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 export type HeaderIconButtonProps = {
@@ -15,28 +13,34 @@ export type HeaderIconButtonProps = {
   accessibilityLabel?: string;
 };
 
-/** The circular glass button every screen header uses for its top-right
- * shortcut (profile, plan pages…). */
+/** The round white button every screen header uses for its top-right
+ * shortcut (profile, plan pages…): 44 pt, soft shadow, white edge. */
 export function HeaderIconButton({ icon, onPress, color, accessibilityLabel }: HeaderIconButtonProps) {
   const theme = useTheme();
   return (
-    <Pressable onPress={onPress} hitSlop={8} accessibilityRole="button" accessibilityLabel={accessibilityLabel}>
-      <GlassSurface level="card" radius={Radius.pill} style={styles.avatarWrap}>
-        <View style={styles.avatarInner}>
-          <Icon name={icon} size={22} color={color ?? theme.text} />
-        </View>
-      </GlassSurface>
+    <Pressable
+      onPress={onPress}
+      hitSlop={8}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      style={({ pressed }) => [
+        styles.iconButton,
+        { backgroundColor: theme.iconButton, borderColor: theme.cardEdge },
+        pressed && styles.pressed,
+      ]}>
+      <Icon name={icon} size={20} color={color ?? theme.text} />
     </Pressable>
   );
 }
 
 export type ScreenHeaderProps = {
+  /** Small grey line under the title (what the screen is about). */
   eyebrow?: string;
   title: string;
   showProfile?: boolean;
   /** Overrides the default profile-avatar button with a different icon
-   * (e.g. a plan-page shortcut) while keeping the exact same circular
-   * glass-button treatment every screen's header uses. */
+   * (e.g. a plan-page shortcut) while keeping the exact same round-button
+   * treatment every screen's header uses. */
   icon?: IconName;
   iconColor?: string;
   onIconPress?: () => void;
@@ -45,13 +49,15 @@ export type ScreenHeaderProps = {
 export function ScreenHeader({ eyebrow, title, showProfile = true, icon = 'profile', iconColor, onIconPress }: ScreenHeaderProps) {
   return (
     <View style={styles.row}>
-      <View style={{ gap: 2 }}>
+      <View style={{ gap: 3, flexShrink: 1 }}>
+        <ThemedText type="title" style={styles.title}>
+          {title}
+        </ThemedText>
         {eyebrow ? (
-          <ThemedText type="label" themeColor="textSecondary">
+          <ThemedText type="small" themeColor="textSecondary">
             {eyebrow}
           </ThemedText>
         ) : null}
-        <ThemedText type="display">{title}</ThemedText>
       </View>
 
       {showProfile ? <HeaderIconButton icon={icon} color={iconColor} onPress={onIconPress ?? (() => router.push('/profile'))} /> : null}
@@ -65,13 +71,30 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     justifyContent: 'space-between',
   },
-  avatarWrap: {
+  title: {
+    fontSize: 22,
+    lineHeight: 28,
+    letterSpacing: -0.4,
+  },
+  iconButton: {
     width: 44,
     height: 44,
-  },
-  avatarInner: {
-    flex: 1,
+    borderRadius: 22,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    ...Platform.select({
+      web: { boxShadow: '0px 6px 16px rgba(20,20,25,0.08)' },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        elevation: 2,
+      },
+    }),
+  },
+  pressed: {
+    opacity: 0.6,
   },
 });

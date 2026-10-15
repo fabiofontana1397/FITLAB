@@ -5,7 +5,7 @@ import type { PropsWithChildren } from 'react';
 // the Home Screen icon. These colors mirror Colors.light/dark.background in
 // src/constants/theme.ts (this file renders on the server and can't import it).
 const PAGE_BACKGROUND_CSS = `
-html,body{background-color:#F7F7F8}
+html,body{background-color:#E9E9E8}
 @media (prefers-color-scheme:dark){html,body{background-color:#000000}}
 `;
 
@@ -24,7 +24,7 @@ export default function Root({ children }: PropsWithChildren) {
         {/* Label under the Home Screen icon (the page <title> is empty) and the icon itself. */}
         <meta name="apple-mobile-web-app-title" content="FitLab" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-        <meta name="theme-color" content="#F7F7F8" media="(prefers-color-scheme: light)" />
+        <meta name="theme-color" content="#E9E9E8" media="(prefers-color-scheme: light)" />
         <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
         <ScrollViewStyleReset />
         <style id="page-background" dangerouslySetInnerHTML={{ __html: PAGE_BACKGROUND_CSS }} />
