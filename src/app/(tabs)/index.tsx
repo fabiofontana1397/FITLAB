@@ -254,27 +254,33 @@ export default function HomeScreen() {
 
         <View style={styles.oggiRow}>
           <Pressable onPress={() => setInfoTopic('burned')} style={styles.sideCol}>
-            <Icon name="flame" size={22} color={theme.accent} />
-            <ThemedText style={styles.sideValue}>{formatKcal(burnedKcal)}</ThemedText>
+            <View style={styles.sideIcon}>
+              <Icon name="flame" size={22} color={theme.accent} />
+            </View>
             <ThemedText style={styles.sideLabel} themeColor="textTertiary">
-              bruciate
+              Bruciate
             </ThemedText>
+            <ThemedText style={styles.sideValue} numberOfLines={1} adjustsFontSizeToFit>{formatKcal(burnedKcal)} kcal</ThemedText>
           </Pressable>
           <View style={[styles.sideDivider, { backgroundColor: theme.border }]} />
           <Pressable onPress={() => setDetailsFocus('day')} style={styles.sideCol}>
-            <Icon name="target" size={22} color={theme.textSecondary} />
+            <View style={styles.sideIcon}>
+              <Icon name="target" size={22} color={theme.textSecondary} />
+            </View>
             <ThemedText style={styles.sideLabel} themeColor="textTertiary">
               Obiettivo
             </ThemedText>
-            <ThemedText style={styles.sideValue}>{formatSignedKcal(dailyGoalKcal)} kcal</ThemedText>
+            <ThemedText style={styles.sideValue} numberOfLines={1} adjustsFontSizeToFit>{formatSignedKcal(dailyGoalKcal)} kcal</ThemedText>
           </Pressable>
           <View style={[styles.sideDivider, { backgroundColor: theme.border }]} />
           <Pressable onPress={() => setInfoTopic('eaten')} style={styles.sideCol}>
-            <Icon name="utensils" size={22} color={theme.brandGreen} />
-            <ThemedText style={styles.sideValue}>{formatKcal(eatenKcal)}</ThemedText>
+            <View style={styles.sideIcon}>
+              <Icon name="utensils" size={22} color={theme.brandGreen} />
+            </View>
             <ThemedText style={styles.sideLabel} themeColor="textTertiary">
-              assunte
+              Assunte
             </ThemedText>
+            <ThemedText style={styles.sideValue} numberOfLines={1} adjustsFontSizeToFit>{formatKcal(eatenKcal)} kcal</ThemedText>
           </Pressable>
         </View>
       </FlatCard>
@@ -646,17 +652,23 @@ const styles = StyleSheet.create({
   },
   oggiRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginTop: 6,
   },
   sideCol: {
     flex: 1,
     alignItems: 'center',
-    gap: 3,
+    gap: 4,
+  },
+  sideIcon: {
+    height: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   sideDivider: {
     width: 1,
-    height: 58,
+    height: 62,
+    alignSelf: 'center',
   },
   sideValue: {
     fontSize: 17,
