@@ -13,8 +13,9 @@ const LEVEL_INTENSITY: Record<GlassLevel, number> = {
   card: 42,
   raised: 60,
   overlay: 82,
-  // Popups: maximum blur of whatever sits behind the card, with only a faint tint on top.
-  frosted: 100,
+  // Popups: a light blur and a faint tint, so the boxes behind the card stay
+  // visible as soft shapes (about 10 px of blur on web) instead of vanishing.
+  frosted: 50,
 };
 
 const LEVEL_SHADOW: Record<GlassLevel, { opacity: number; radius: number; offsetY: number }> = {
@@ -79,8 +80,8 @@ export function GlassSurface({
   const frosted = level === 'frosted';
   const gradientColors = frosted
     ? isDark
-      ? (['rgba(255,255,255,0.22)', 'rgba(255,255,255,0.09)', 'rgba(255,255,255,0.05)'] as const)
-      : (['rgba(255,255,255,0.62)', 'rgba(255,255,255,0.34)', 'rgba(255,255,255,0.22)'] as const)
+      ? (['rgba(255,255,255,0.18)', 'rgba(255,255,255,0.07)', 'rgba(255,255,255,0.04)'] as const)
+      : (['rgba(255,255,255,0.48)', 'rgba(255,255,255,0.22)', 'rgba(255,255,255,0.10)'] as const)
     : isDark
       ? (['rgba(255,255,255,0.24)', 'rgba(255,255,255,0.07)', 'rgba(255,255,255,0.02)'] as const)
       : (['rgba(255,255,255,0.9)', 'rgba(255,255,255,0.45)', 'rgba(255,255,255,0.18)'] as const);
