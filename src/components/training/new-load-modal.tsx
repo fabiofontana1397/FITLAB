@@ -39,7 +39,7 @@ export function NewLoadModal({ visible, exerciseName, defaultReps, defaultWeight
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.backdrop}>
         <GlassSurface
-          level="overlay"
+          level="frosted"
           radius={Radius.xlarge}
           style={[styles.sheet, { paddingBottom: insets.bottom + Spacing.four }]}>
           {/* Keyed on open/closed so each opening starts from fresh defaults
@@ -166,7 +166,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'flex-end',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'transparent',
   },
   sheet: {
     width: '100%',

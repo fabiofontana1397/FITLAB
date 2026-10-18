@@ -61,7 +61,7 @@ export function PhotoDetailModal({ photo, allPhotos, entries, onClose }: PhotoDe
     <Modal visible={photo != null} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
         <Pressable onPress={(e) => e.stopPropagation()}>
-          <GlassSurface level="overlay" radius={Radius.xlarge} style={styles.card}>
+          <GlassSurface level="frosted" radius={Radius.xlarge} style={styles.card}>
             <View style={styles.header}>
               <View>
                 <ThemedText type="subtitle">{POSE_LABELS[photo.pose] ?? 'Foto'}</ThemedText>
@@ -121,7 +121,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: 'transparent',
     padding: Spacing.four,
   },
   card: {

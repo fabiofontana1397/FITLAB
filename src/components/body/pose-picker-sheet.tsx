@@ -24,7 +24,7 @@ export function PosePickerSheet({ visible, onClose, onSelect }: PosePickerSheetP
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.backdrop}>
-        <GlassSurface level="overlay" radius={Radius.xlarge} style={[styles.sheet, { paddingBottom: insets.bottom + Spacing.four }]}>
+        <GlassSurface level="frosted" radius={Radius.xlarge} style={[styles.sheet, { paddingBottom: insets.bottom + Spacing.four }]}>
           <View style={styles.header}>
             <ThemedText type="subtitle">Che posa è?</ThemedText>
             <Pressable onPress={onClose} hitSlop={8}>
@@ -49,7 +49,7 @@ const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'transparent',
   },
   sheet: {
     paddingHorizontal: Spacing.four,

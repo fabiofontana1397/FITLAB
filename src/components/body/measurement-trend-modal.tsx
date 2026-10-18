@@ -79,7 +79,7 @@ export function MeasurementTrendModal({ zone, label, entries, color, onClose }: 
     <Modal visible={zone != null} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
         <Pressable onPress={(e) => e.stopPropagation()}>
-          <GlassSurface level="overlay" radius={Radius.xlarge} style={styles.card}>
+          <GlassSurface level="frosted" radius={Radius.xlarge} style={styles.card}>
             <View style={styles.header}>
               <ThemedText type="subtitle">Andamento: {label}</ThemedText>
               <Pressable onPress={onClose} hitSlop={8}>
@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: 'transparent',
     padding: Spacing.four,
   },
   card: {

@@ -5,7 +5,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { ChatOrb } from '@/components/chat/chat-orb';
 import { CoachAura, PulseDot } from '@/components/home/coach-aura';
 import { ThemedText } from '@/components/themed-text';
-import { FlatCard } from '@/components/ui/flat-card';
+import { GlassSurface } from '@/components/glass/glass-surface';
 import { Icon } from '@/components/ui/icon';
 import { InsightCard } from '@/components/ui/insight-card';
 import { PrimaryButton } from '@/components/ui/primary-button';
@@ -59,7 +59,7 @@ export function HomeCoachCard({ isWorkoutDayIncomplete }: { isWorkoutDayIncomple
       <Modal visible={modalOpen} transparent animationType="fade" onRequestClose={() => setModalOpen(false)}>
         <Pressable style={styles.backdrop} onPress={() => setModalOpen(false)}>
           <Pressable onPress={(e) => e.stopPropagation()} style={styles.modalWrap}>
-            <FlatCard style={styles.modalCard}>
+            <GlassSurface level="frosted" radius={Radius.xlarge} style={styles.modalCard}>
               <View style={styles.modalHeaderRow}>
                 <ThemedText type="smallBold">Consigli del coach AI</ThemedText>
                 <Pressable onPress={() => setModalOpen(false)} hitSlop={8}>
@@ -83,7 +83,7 @@ export function HomeCoachCard({ isWorkoutDayIncomplete }: { isWorkoutDayIncomple
                   {isLoading ? 'Aggiornamento…' : 'Aggiorna consigli'}
                 </ThemedText>
               </Pressable>
-            </FlatCard>
+            </GlassSurface>
           </Pressable>
         </Pressable>
       </Modal>
@@ -168,7 +168,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: 'transparent',
     padding: Spacing.four,
   },
   modalWrap: {

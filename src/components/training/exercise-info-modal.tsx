@@ -47,7 +47,7 @@ export function ExerciseInfoModal({ visible, exerciseName, media, sets, reps, te
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.backdrop}>
         <GlassSurface
-          level="overlay"
+          level="frosted"
           radius={Radius.xlarge}
           style={[styles.sheet, { paddingBottom: insets.bottom + Spacing.four }]}>
           <View style={styles.header}>
@@ -158,7 +158,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'flex-end',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'transparent',
   },
   sheet: {
     width: '100%',

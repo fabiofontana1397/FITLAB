@@ -38,7 +38,7 @@ export function QuickWeightSheet({ visible, currentWeightKg, onClose, onSave }: 
       onRequestClose={onClose}
       onShow={() => setValue(String(currentWeightKg))}>
       <View style={styles.backdrop}>
-        <GlassSurface level="overlay" radius={Radius.xlarge} style={[styles.sheet, { paddingBottom: insets.bottom + Spacing.four }]}>
+        <GlassSurface level="frosted" radius={Radius.xlarge} style={[styles.sheet, { paddingBottom: insets.bottom + Spacing.four }]}>
           <View style={styles.header}>
             <ThemedText type="subtitle">Peso di oggi</ThemedText>
             <Pressable onPress={onClose} hitSlop={8}>
@@ -68,7 +68,7 @@ const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'transparent',
   },
   sheet: {
     paddingHorizontal: Spacing.four,

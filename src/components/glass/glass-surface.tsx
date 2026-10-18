@@ -6,13 +6,15 @@ import { Platform, StyleSheet, View, type LayoutChangeEvent, type StyleProp, typ
 import { Radius } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
-export type GlassLevel = 'subtle' | 'card' | 'raised' | 'overlay';
+export type GlassLevel = 'subtle' | 'card' | 'raised' | 'overlay' | 'frosted';
 
 const LEVEL_INTENSITY: Record<GlassLevel, number> = {
   subtle: 26,
   card: 42,
   raised: 60,
   overlay: 82,
+  // Popups: maximum blur of whatever sits behind the card, with only a faint tint on top.
+  frosted: 100,
 };
 
 const LEVEL_SHADOW: Record<GlassLevel, { opacity: number; radius: number; offsetY: number }> = {
@@ -20,6 +22,7 @@ const LEVEL_SHADOW: Record<GlassLevel, { opacity: number; radius: number; offset
   card: { opacity: 0.16, radius: 18, offsetY: 7 },
   raised: { opacity: 0.22, radius: 26, offsetY: 11 },
   overlay: { opacity: 0.32, radius: 36, offsetY: 16 },
+  frosted: { opacity: 0.16, radius: 40, offsetY: 18 },
 };
 
 export type GlassSurfaceProps = {
@@ -73,9 +76,14 @@ export function GlassSurface({
 
   // A brighter specular band along the top edge fading into a soft wash,
   // the way light catches the top of a curved glass surface.
-  const gradientColors = isDark
-    ? (['rgba(255,255,255,0.24)', 'rgba(255,255,255,0.07)', 'rgba(255,255,255,0.02)'] as const)
-    : (['rgba(255,255,255,0.9)', 'rgba(255,255,255,0.45)', 'rgba(255,255,255,0.18)'] as const);
+  const frosted = level === 'frosted';
+  const gradientColors = frosted
+    ? isDark
+      ? (['rgba(255,255,255,0.22)', 'rgba(255,255,255,0.09)', 'rgba(255,255,255,0.05)'] as const)
+      : (['rgba(255,255,255,0.62)', 'rgba(255,255,255,0.34)', 'rgba(255,255,255,0.22)'] as const)
+    : isDark
+      ? (['rgba(255,255,255,0.24)', 'rgba(255,255,255,0.07)', 'rgba(255,255,255,0.02)'] as const)
+      : (['rgba(255,255,255,0.9)', 'rgba(255,255,255,0.45)', 'rgba(255,255,255,0.18)'] as const);
   const gradientLocations = [0, 0.18, 1] as const;
 
   const shadow = LEVEL_SHADOW[level];
@@ -143,9 +151,13 @@ export function GlassSurface({
             StyleSheet.absoluteFill,
             {
               borderRadius: radius,
-              borderWidth: StyleSheet.hairlineWidth * 1.5,
-              borderColor: isDark ? 'rgba(255,255,255,0.16)' : 'rgba(14,14,17,0.10)',
-              borderTopColor: isDark ? 'rgba(255,255,255,0.30)' : 'rgba(255,255,255,0.9)',
+              borderWidth: frosted ? 1 : StyleSheet.hairlineWidth * 1.5,
+              borderColor: frosted
+                ? isDark ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.55)'
+                : isDark ? 'rgba(255,255,255,0.16)' : 'rgba(14,14,17,0.10)',
+              borderTopColor: frosted
+                ? isDark ? 'rgba(255,255,255,0.40)' : 'rgba(255,255,255,0.95)'
+                : isDark ? 'rgba(255,255,255,0.30)' : 'rgba(255,255,255,0.9)',
             },
           ]}
         />
