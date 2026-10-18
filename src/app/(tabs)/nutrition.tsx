@@ -1,10 +1,12 @@
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Platform, Pressable, StyleSheet, Switch, View } from 'react-native';
+import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 
 import { DietOverviewPopup } from '@/components/nutrition/diet-overview-popup';
 import { FoodSearchModal } from '@/components/nutrition/food-search-modal';
 import { MealPickerModal, mealSlotColor } from '@/components/nutrition/meal-picker-modal';
+import { PressableScale } from '@/components/motion/pressable-scale';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { PlanJourneyHero } from '@/components/training/plan-journey-hero';
@@ -30,10 +32,13 @@ import {
 } from '@/store/nutrition-store';
 import { isValidDietPlan, usePlanStore } from '@/store/plan-store';
 import { useUserStore } from '@/store/user-store';
+import { hapticSelection, hapticToggle } from '@/lib/haptics';
 
 const SCREEN_PADDING = 20;
 const CARD_RADIUS = 20;
 const CARD_PADDING = 14;
+// Opening a meal grows its card (and slides the ones below) instead of snapping.
+const MEAL_CARD_TRANSITION = LinearTransition.springify().damping(24).stiffness(220).mass(0.9);
 
 function withAlpha(hex: string, alpha: number): string {
   if (!/^#([0-9a-f]{6})$/i.test(hex)) return hex;
@@ -145,7 +150,7 @@ export default function NutritionScreen() {
   ];
 
   return (
-    <ScreenScroll contentContainerStyle={styles.page}>
+    <ScreenScroll reveal contentContainerStyle={styles.page}>
       <View style={styles.headerRow}>
         <ThemedText style={styles.pageTitle}>Nutrizione</ThemedText>
         <ProfileAvatarButton size={38} />
@@ -214,13 +219,13 @@ export default function NutritionScreen() {
         </Pressable>
       </View>
 
-      <Pressable onPress={() => setPickerOpen(true)} style={[styles.registerButton, { backgroundColor: theme.accent }]}>
+      <PressableScale onPress={() => setPickerOpen(true)} haptic="press" accessibilityRole="button" scaleTo={0.97} style={[styles.registerButton, { backgroundColor: theme.accent }]}>
         <View style={styles.registerPlus}>
           <Icon name="plus" size={20} color="#FFFFFF" />
         </View>
         <ThemedText style={styles.registerLabel}>Registra pasto</ThemedText>
         <Icon name="chevronRight" size={16} color="#FFFFFF" />
-      </Pressable>
+      </PressableScale>
 
       {planDayForSelectedDate ? (
         <View style={[styles.followRow, { backgroundColor: theme.backgroundElevated, borderColor: theme.border }]}>
@@ -229,7 +234,11 @@ export default function NutritionScreen() {
           </ThemedText>
           <Switch
             value={isFollowingPlan}
-            onValueChange={(on) => (on ? seedDayFromPlan(selectedDate, planDayForSelectedDate.meals) : unseedDay(selectedDate))}
+            onValueChange={(on) => {
+              hapticToggle(on);
+              if (on) seedDayFromPlan(selectedDate, planDayForSelectedDate.meals);
+              else unseedDay(selectedDate);
+            }}
             trackColor={{ false: theme.backgroundElement, true: theme.accent }}
             ios_backgroundColor={theme.backgroundElement}
             thumbColor="#FFFFFF"
@@ -247,8 +256,11 @@ export default function NutritionScreen() {
           const color = mealSlotColor(theme, meta.id);
 
           return (
-            <FlatCard key={meta.id} radius={CARD_RADIUS} style={styles.mealCard}>
-              <Pressable onPress={() => setExpandedSlot(expanded ? null : meta.id)} style={styles.mealHeaderRow}>
+            <FlatCard key={meta.id} radius={CARD_RADIUS} style={styles.mealCard} layout={MEAL_CARD_TRANSITION}>
+              <Pressable onPress={() => {
+                  hapticSelection();
+                  setExpandedSlot(expanded ? null : meta.id);
+                }} style={styles.mealHeaderRow}>
                 <View style={[styles.mealIcon, { backgroundColor: withAlpha(color, 0.14) }]}>
                   <Icon name={meta.icon} size={15} color={color} />
                 </View>
@@ -267,7 +279,7 @@ export default function NutritionScreen() {
               </Pressable>
 
               {expanded ? (
-                <View>
+                <Animated.View entering={FadeIn.duration(220).delay(70)} exiting={FadeOut.duration(110)}>
                   <View style={[styles.divider, { backgroundColor: theme.borderStrong }]} />
                   {slotEntries.map((entry) => {
                     const food = findFood(entry.foodId);
@@ -305,7 +317,7 @@ export default function NutritionScreen() {
                     style={[styles.addFoodButton, { backgroundColor: theme.backgroundElevated, borderColor: theme.border }]}>
                     <ThemedText style={[styles.addFoodText, { color: theme.accent }]}>+ Aggiungi alimento</ThemedText>
                   </Pressable>
-                </View>
+                </Animated.View>
               ) : null}
             </FlatCard>
           );

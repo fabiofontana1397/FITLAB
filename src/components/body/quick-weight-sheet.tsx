@@ -10,6 +10,7 @@ import { Icon } from '@/components/ui/icon';
 import { PrimaryButton } from '@/components/ui/primary-button';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { hapticSuccess } from '@/lib/haptics';
 
 export type QuickWeightSheetProps = {
   visible: boolean;
@@ -27,6 +28,7 @@ export function QuickWeightSheet({ visible, currentWeightKg, onClose, onSave }: 
     const num = parseFloat(value.replace(',', '.'));
     if (!Number.isFinite(num) || num <= 0) return;
     onSave(num);
+    hapticSuccess();
     onClose();
   };
 

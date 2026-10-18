@@ -1,7 +1,8 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { Pressable, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 
+import { PressableScale } from '@/components/motion/pressable-scale';
 import { Icon } from '@/components/ui/icon';
 import { useTheme } from '@/hooks/use-theme';
 import { useUserStore } from '@/store/user-store';
@@ -12,8 +13,9 @@ export function ProfileAvatarButton({ size = 36 }: { size?: number }) {
   const avatarUri = useUserStore((s) => s.avatarUri);
 
   return (
-    <Pressable
+    <PressableScale
       onPress={() => router.push('/profile')}
+      scaleTo={0.9}
       hitSlop={8}
       accessibilityRole="button"
       accessibilityLabel="Profilo"
@@ -23,7 +25,7 @@ export function ProfileAvatarButton({ size = 36 }: { size?: number }) {
       ) : (
         <Icon name="personFilled" size={Math.round(size * 0.6)} color={theme.background} />
       )}
-    </Pressable>
+    </PressableScale>
   );
 }
 

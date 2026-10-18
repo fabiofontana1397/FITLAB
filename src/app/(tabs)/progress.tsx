@@ -123,7 +123,7 @@ export default function ProgressScreen() {
   };
 
   return (
-    <ScreenScroll contentContainerStyle={styles.page}>
+    <ScreenScroll reveal contentContainerStyle={styles.page}>
       <View style={styles.headerRow}>
         <ThemedText style={styles.pageTitle}>Progressi</ThemedText>
         <ProfileAvatarButton size={37} />

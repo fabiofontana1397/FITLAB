@@ -4,13 +4,23 @@ import { useEffect, useRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import Animated, {
+  FadeIn,
+  FadeOut,
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withSpring,
+  withTiming,
+  type WithSpringConfig,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { GlassSurface } from '@/components/glass/glass-surface';
 import { ThemedText } from '@/components/themed-text';
 import { Icon, type IconName } from '@/components/ui/icon';
-import { SpringSnappy } from '@/constants/motion';
+import { SpringPressIn, SpringPressOut } from '@/constants/motion';
+import { hapticSelection } from '@/lib/haptics';
 import { BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
@@ -42,6 +52,10 @@ const BLUR_BANDS = {
   web: [1, 2, 3, 5, 8, 12, 17],
   default: [2, 3, 5, 8, 12, 17, 23],
 } as const;
+
+// Tab focus: settles quickly with just a whisper of overshoot on the pill.
+const SpringTab: WithSpringConfig = { damping: 19, mass: 0.7, stiffness: 230 };
+const SpringIconPop: WithSpringConfig = { damping: 9, mass: 0.5, stiffness: 300 };
 
 const TAB_ITEMS: { name: string; href: Href; label: string; icon: IconName }[] = [
   { name: 'index', href: '/', label: 'Home', icon: 'home' },
@@ -152,37 +166,77 @@ function FloatingTabBar({
   );
 }
 
-function TabButton({ label, icon, isFocused, ...props }: TabTriggerSlotProps & { label: string; icon: IconName }) {
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+function TabButton({
+  label,
+  icon,
+  isFocused,
+  onPressIn,
+  onPressOut,
+  ...props
+}: TabTriggerSlotProps & { label: string; icon: IconName }) {
   const theme = useTheme();
   const color = isFocused ? theme.text : theme.textSecondary;
   const focus = useSharedValue(isFocused ? 1 : 0);
+  const pressed = useSharedValue(0);
+  const iconPop = useSharedValue(1);
+  const wasFocused = useRef(isFocused);
 
   useEffect(() => {
-    focus.value = withSpring(isFocused ? 1 : 0, SpringSnappy);
-  }, [isFocused, focus]);
+    focus.value = withSpring(isFocused ? 1 : 0, SpringTab);
+    // A small "pop" on the icon the moment its tab becomes active.
+    if (isFocused && !wasFocused.current) {
+      iconPop.value = withSequence(withTiming(0.82, { duration: 90 }), withSpring(1, SpringIconPop));
+    }
+    wasFocused.current = isFocused;
+  }, [isFocused, focus, iconPop]);
+
+  // The active tab widens to make room for its label; animating the grow
+  // factor makes the neighbours slide over instead of jumping.
+  const buttonStyle = useAnimatedStyle(() => ({ flexGrow: 1 + focus.value * 1.1 }));
 
   const pillStyle = useAnimatedStyle(() => ({
     opacity: focus.value,
-    transform: [{ scale: 0.8 + focus.value * 0.2 }],
+    transform: [{ scaleX: 0.7 + focus.value * 0.3 }, { scaleY: 0.85 + focus.value * 0.15 }],
   }));
 
+  const contentStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: 1 - pressed.value * 0.08 }],
+  }));
+
+  const iconStyle = useAnimatedStyle(() => ({ transform: [{ scale: iconPop.value }] }));
+
   return (
-    <Pressable
+    <AnimatedPressable
       {...props}
+      onPressIn={(e) => {
+        pressed.value = withSpring(1, SpringPressIn);
+        if (!isFocused) hapticSelection();
+        onPressIn?.(e);
+      }}
+      onPressOut={(e) => {
+        pressed.value = withSpring(0, SpringPressOut);
+        onPressOut?.(e);
+      }}
       accessibilityRole="tab"
       accessibilityLabel={label}
       accessibilityState={{ selected: !!isFocused }}
-      style={({ pressed }) => [styles.tabButton, { flexGrow: isFocused ? 2.1 : 1 }, pressed && styles.pressed]}>
+      style={[styles.tabButton, buttonStyle]}>
       <Animated.View style={[styles.focusPill, { backgroundColor: theme.backgroundSelected }, pillStyle]} />
-      <View style={styles.tabContent}>
-        <Icon name={icon} size={20} color={color} />
+      <Animated.View style={[styles.tabContent, contentStyle]}>
+        <Animated.View style={iconStyle}>
+          <Icon name={icon} size={20} color={color} />
+        </Animated.View>
         {isFocused ? (
-          <ThemedText type="smallBold" style={[styles.tabLabel, { color }]} numberOfLines={1}>
-            {label}
-          </ThemedText>
+          <Animated.View entering={FadeIn.duration(220).delay(60)} exiting={FadeOut.duration(90)}>
+            <ThemedText type="smallBold" style={[styles.tabLabel, { color }]} numberOfLines={1}>
+              {label}
+            </ThemedText>
+          </Animated.View>
         ) : null}
-      </View>
-    </Pressable>
+      </Animated.View>
+    </AnimatedPressable>
   );
 }
 
@@ -223,9 +277,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-  },
-  pressed: {
-    opacity: 0.6,
   },
   focusPill: {
     position: 'absolute',

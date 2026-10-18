@@ -1,7 +1,10 @@
 import { BlurView } from 'expo-blur';
+import { useEffect } from 'react';
 import { Modal, Platform, Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import Animated, { interpolate, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
 import { GlassSurface } from '@/components/glass/glass-surface';
+import { SpringPopup } from '@/constants/motion';
 import { Radius, Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
@@ -36,13 +39,35 @@ export function GlassPopup({ visible, onClose, children, style, maxWidth = POPUP
           />
           <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? 'rgba(0,0,0,0.38)' : 'rgba(20,20,30,0.18)' }]} />
         </Pressable>
-        <View style={[styles.cardWrap, { maxWidth }]} pointerEvents="box-none">
+        <PopupCard style={[styles.cardWrap, { maxWidth }]}>
           <GlassSurface level="overlay" radius={Radius.xlarge} style={[styles.card, style]}>
             {children}
           </GlassSurface>
-        </View>
+        </PopupCard>
       </View>
     </Modal>
+  );
+}
+
+/** While the backdrop fades in, the card itself springs up from slightly
+ * smaller and lower — it lands, rather than just appearing. Mounted fresh on
+ * every open (the Modal unmounts its content when hidden). */
+function PopupCard({ style, children }: { style?: StyleProp<ViewStyle>; children: React.ReactNode }) {
+  const progress = useSharedValue(0);
+
+  useEffect(() => {
+    progress.value = withSpring(1, SpringPopup);
+  }, [progress]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(progress.value, [0, 0.5], [0, 1], 'clamp'),
+    transform: [{ translateY: (1 - progress.value) * 18 }, { scale: 0.94 + progress.value * 0.06 }],
+  }));
+
+  return (
+    <Animated.View style={[style, { pointerEvents: 'box-none' }, animatedStyle]}>
+      {children}
+    </Animated.View>
   );
 }
 

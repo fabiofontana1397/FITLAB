@@ -10,6 +10,7 @@ import { Icon } from '@/components/ui/icon';
 import { useTheme } from '@/hooks/use-theme';
 import { FOOD_DATABASE, findFood, searchFood, type FoodItem } from '@/lib/mock/food-database';
 import { useNutritionStore, type MealSlot } from '@/store/nutrition-store';
+import { hapticSuccess } from '@/lib/haptics';
 
 const PAGE_PADDING = 20;
 const CARD_RADIUS = 18;
@@ -111,6 +112,7 @@ function FoodSearchForm({ slot, date, editEntry, onClose, onSaved }: Omit<FoodSe
     if (!slot || !selected || ratio <= 0) return;
     if (editEntry) updateEntry(editEntry.id, selected.id, gramsNum);
     else addEntry(slot, selected.id, gramsNum, date);
+    hapticSuccess();
     onClose();
     onSaved?.();
   };

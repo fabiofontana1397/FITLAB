@@ -5,6 +5,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-na
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { hapticSelection } from '@/lib/haptics';
 
 export type SegmentOption<T extends string> = { value: T; label: string };
 
@@ -65,7 +66,10 @@ export function SegmentedControl<T extends string>({
           <Pressable
             key={option.value}
             onLayout={onItemLayout(option.value)}
-            onPress={() => onChange(option.value)}
+            onPress={() => {
+              if (option.value !== value) hapticSelection();
+              onChange(option.value);
+            }}
             style={styles.item}
             hitSlop={4}>
             <ThemedText

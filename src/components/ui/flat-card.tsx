@@ -1,4 +1,6 @@
-import { Platform, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Platform, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
+import type { ComponentProps } from 'react';
+import Animated from 'react-native-reanimated';
 
 import { Radius } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -11,23 +13,28 @@ export function FlatCard({
   tint,
   radius = Radius.large,
   style,
+  layout,
   children,
 }: {
   tint?: string;
   radius?: number;
   style?: StyleProp<ViewStyle>;
+  /** A Reanimated layout transition, for cards whose height changes (e.g.
+   * expanding) so the card and the ones below glide instead of jumping. */
+  layout?: ComponentProps<typeof Animated.View>['layout'];
   children?: React.ReactNode;
 }) {
   const theme = useTheme();
   return (
-    <View
+    <Animated.View
+      layout={layout}
       style={[
         styles.flatCard,
         { backgroundColor: tint ?? theme.backgroundElevated, borderRadius: radius, borderColor: theme.cardEdge },
         style,
       ]}>
       {children}
-    </View>
+    </Animated.View>
   );
 }
 

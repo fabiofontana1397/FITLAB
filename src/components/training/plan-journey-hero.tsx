@@ -1,6 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
+import { PressableScale } from '@/components/motion/pressable-scale';
 import { ThemedText } from '@/components/themed-text';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { useTheme } from '@/hooks/use-theme';
@@ -62,7 +63,7 @@ export function PlanJourneyHero({ totalMonths, goal, onPress, kind = 'training',
   const promise = GOAL_PROMISE[goal];
   const diet = kind === 'diet';
   return (
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={diet ? 'Scopri il tuo piano alimentare' : 'Scopri il tuo percorso'}>
+    <PressableScale onPress={onPress} scaleTo={0.985} accessibilityRole="button" accessibilityLabel={diet ? 'Scopri il tuo piano alimentare' : 'Scopri il tuo percorso'}>
       <LinearGradient colors={['#2B2B30', '#17171A', '#0E0E10']} locations={[0, 0.55, 1]} start={{ x: 1, y: 0 }} end={{ x: 0, y: 1 }} style={styles.card}>
         <View pointerEvents="none" style={styles.artBig}>
           <Icon name={diet ? 'utensils' : 'barbell'} size={diet ? 120 : 136} color="rgba(255,255,255,0.10)" />
@@ -80,13 +81,13 @@ export function PlanJourneyHero({ totalMonths, goal, onPress, kind = 'training',
           <ThemedText style={styles.body}>{diet ? DIET_BODY[goal] : promise.body}</ThemedText>
         </View>
         {action ? (
-          <Pressable onPress={action.onPress} accessibilityRole="button" style={({ pressed }) => [styles.actionButton, { opacity: pressed ? 0.88 : 1 }]}>
+          <PressableScale onPress={action.onPress} accessibilityRole="button" style={styles.actionButton}>
             <View style={[styles.actionIcon, { backgroundColor: theme.accentSoft }]}>
               <Icon name={action.icon} size={16} color={theme.accent} />
             </View>
             <ThemedText style={[styles.actionLabel, { color: theme.accent }]}>{action.label}</ThemedText>
             <Icon name="chevronRight" size={16} color={theme.accent} />
-          </Pressable>
+          </PressableScale>
         ) : (
           <View style={styles.cta}>
             <ThemedText style={[styles.ctaText, { color: theme.accent }]}>{diet ? 'Scopri il piano' : 'Scopri il programma'}</ThemedText>
@@ -94,7 +95,7 @@ export function PlanJourneyHero({ totalMonths, goal, onPress, kind = 'training',
           </View>
         )}
       </LinearGradient>
-    </Pressable>
+    </PressableScale>
   );
 }
 

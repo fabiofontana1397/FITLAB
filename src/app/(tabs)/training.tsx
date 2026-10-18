@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { PressableScale } from '@/components/motion/pressable-scale';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { DayCalendarModal } from '@/components/ui/day-calendar-modal';
@@ -115,7 +116,7 @@ export default function TrainingScreen() {
     selectedDate === today ? 'Allenamento di oggi' : `Allenamento del ${new Date(selectedDate).toLocaleDateString('it-IT', { day: 'numeric', month: 'long' })}`;
 
   return (
-    <ScreenScroll contentContainerStyle={styles.page}>
+    <ScreenScroll reveal contentContainerStyle={styles.page}>
       <View style={styles.headerRow}>
         <ThemedText style={styles.pageTitle}>Allenamento</ThemedText>
         <ProfileAvatarButton size={38} />
@@ -146,16 +147,18 @@ export default function TrainingScreen() {
         dayType={(date) => (trainingPlan ? weeklySplit[isoMondayIndex(date)]?.type : undefined)}
       />
 
-      <Pressable
+      <PressableScale
         onPress={() => setLogActivityVisible(true)}
         accessibilityRole="button"
-        style={({ pressed }) => [styles.registerButton, { backgroundColor: theme.brandGreen, opacity: pressed ? 0.88 : 1 }]}>
+        haptic="press"
+        scaleTo={0.97}
+        style={[styles.registerButton, { backgroundColor: theme.brandGreen }]}>
         <View style={styles.registerPlus}>
           <Icon name="plus" size={18} color={theme.brandGreen} />
         </View>
         <ThemedText style={styles.registerLabel}>Registra allenamento</ThemedText>
         <Icon name="chevronRight" size={16} color="#FFFFFF" />
-      </Pressable>
+      </PressableScale>
 
       <View style={styles.sectionRow}>
         <ThemedText style={styles.sectionTitle}>{dayHeading}</ThemedText>

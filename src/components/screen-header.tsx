@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
-import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 
+import { PressableScale } from '@/components/motion/pressable-scale';
 import { ThemedText } from '@/components/themed-text';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { useTheme } from '@/hooks/use-theme';
@@ -18,18 +19,15 @@ export type HeaderIconButtonProps = {
 export function HeaderIconButton({ icon, onPress, color, accessibilityLabel }: HeaderIconButtonProps) {
   const theme = useTheme();
   return (
-    <Pressable
+    <PressableScale
       onPress={onPress}
       hitSlop={8}
+      scaleTo={0.9}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
-      style={({ pressed }) => [
-        styles.iconButton,
-        { backgroundColor: theme.iconButton, borderColor: theme.cardEdge },
-        pressed && styles.pressed,
-      ]}>
+      style={[styles.iconButton, { backgroundColor: theme.iconButton, borderColor: theme.cardEdge }]}>
       <Icon name={icon} size={20} color={color ?? theme.text} />
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -100,8 +98,5 @@ const styles = StyleSheet.create({
         elevation: 2,
       },
     }),
-  },
-  pressed: {
-    opacity: 0.6,
   },
 });

@@ -6,6 +6,7 @@ import { Icon } from '@/components/ui/icon';
 import { useTheme } from '@/hooks/use-theme';
 import { dayOfMonth, isToday, weekdayShort } from '@/lib/mock/dates';
 import type { TrainingDayPlan } from '@/lib/planning/types';
+import { hapticSelection, hapticToggle } from '@/lib/haptics';
 
 export type TrainingWeekCardProps = {
   weekDates: string[];
@@ -37,7 +38,10 @@ export function TrainingWeekCard({ weekDates, selectedDate, onSelectDate, isDayC
           return (
             <Pressable
               key={date}
-              onPress={() => onSelectDate(date)}
+              onPress={() => {
+                if (!selected) hapticSelection();
+                onSelectDate(date);
+              }}
               style={[styles.col, selected && { backgroundColor: theme.accentSoft }]}>
               <ThemedText style={[styles.weekday, { color: selected ? theme.accent : theme.textTertiary }]}>{weekdayShort(date).charAt(0).toUpperCase() + weekdayShort(date).slice(1)}</ThemedText>
               <ThemedText style={styles.date}>{dayOfMonth(date)}</ThemedText>
@@ -45,6 +49,7 @@ export function TrainingWeekCard({ weekDates, selectedDate, onSelectDate, isDayC
                 <Pressable
                   onPress={(e) => {
                     e.stopPropagation();
+                    hapticToggle(!complete);
                     onSelectDate(date);
                     onToggleDayComplete(date);
                   }}

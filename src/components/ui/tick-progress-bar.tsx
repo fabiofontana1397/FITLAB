@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 
+import { AnimatedFill } from '@/components/motion/animated-fill';
 import { useTheme } from '@/hooks/use-theme';
 
 const TICK_SPACING = 10;
@@ -32,7 +33,7 @@ export function TickProgressBar({
 
   return (
     <View onLayout={onLayout} style={[styles.track, { height, borderRadius: height / 2, backgroundColor: theme.backgroundElement }]}>
-      <View style={{ width: fillWidth, height, borderRadius: height / 2, backgroundColor: fill }} />
+      <AnimatedFill progress={clamped} delay={150} style={{ height, borderRadius: height / 2, backgroundColor: fill }} />
       {Array.from({ length: tickCount }, (_, i) => {
         const x = (i + 1) * TICK_SPACING;
         return (

@@ -1,8 +1,10 @@
 import { Pressable, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
 import { ThemedText } from '@/components/themed-text';
 import { Icon, type IconName } from '@/components/ui/icon';
+import { SpringPressIn, SpringPressOut } from '@/constants/motion';
+import { hapticPress, hapticTap } from '@/lib/haptics';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -46,9 +48,13 @@ export function PrimaryButton({
     <Animated.View style={[animatedStyle, style]}>
       <Pressable
         disabled={disabled}
-        onPressIn={() => (pressed.value = withTiming(1, { duration: 100 }))}
-        onPressOut={() => (pressed.value = withTiming(0, { duration: 150 }))}
-        onPress={onPress}
+        onPressIn={() => (pressed.value = withSpring(1, SpringPressIn))}
+        onPressOut={() => (pressed.value = withSpring(0, SpringPressOut))}
+        onPress={() => {
+          if (variant === 'filled') hapticPress();
+          else hapticTap();
+          onPress?.();
+        }}
         style={[
           styles.base,
           dense && styles.baseDense,

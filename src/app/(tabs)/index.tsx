@@ -7,6 +7,8 @@ import { EnergyDetailsPopup } from '@/components/home/energy-details-popup';
 import { OggiGauge } from '@/components/home/oggi-gauge';
 import { HomeCoachCard } from '@/components/home/home-coach-card';
 import { DayCalendarModal } from '@/components/ui/day-calendar-modal';
+import { AnimatedFill, GrowBar } from '@/components/motion/animated-fill';
+import { PressableScale } from '@/components/motion/pressable-scale';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { FlatCard } from '@/components/ui/flat-card';
@@ -199,17 +201,18 @@ export default function HomeScreen() {
   const weekPill = weeklyProgress >= 1 ? 'Obiettivo raggiunto! 🎯' : weeklyProgress >= 0.6 ? 'Ci sei quasi!' : weeklyProgress >= 0.25 ? 'Stai andando bene' : 'Ogni giorno conta';
 
   return (
-    <ScreenScroll contentContainerStyle={styles.page}>
+    <ScreenScroll reveal contentContainerStyle={styles.page}>
       <View style={styles.headerRow}>
         <Image source={require('@/assets/images/logo-wordmark.png')} style={styles.logo} resizeMode="contain" />
         <View style={styles.headerIcons}>
-          <Pressable
+          <PressableScale
             onPress={() => setInfoTopic('notifications')}
             hitSlop={8}
+            scaleTo={0.9}
             accessibilityLabel="Notifiche"
             style={[styles.bell, { backgroundColor: theme.backgroundElevated, borderColor: theme.border }]}>
             <Icon name="bell" size={19} color={theme.text} />
-          </Pressable>
+          </PressableScale>
           <ProfileAvatarButton size={36} />
         </View>
       </View>
@@ -221,13 +224,13 @@ export default function HomeScreen() {
             Sei sulla strada giusta!
           </ThemedText>
         </View>
-        <Pressable
+        <PressableScale
           onPress={() => setCalendarOpen(true)}
           accessibilityLabel="Apri calendario"
           style={[styles.datePill, { backgroundColor: theme.backgroundElevated, borderColor: theme.border }]}>
           <Icon name="calendar" size={16} color={theme.text} />
           <ThemedText style={styles.datePillText}>{datePill}</ThemedText>
-        </Pressable>
+        </PressableScale>
       </View>
 
       <FlatCard radius={CARD_RADIUS} style={styles.oggiCard}>
@@ -328,11 +331,11 @@ export default function HomeScreen() {
           </View>
         </View>
         <View style={[styles.weekTrack, { backgroundColor: theme.accentSoft }]}>
-          <View style={[styles.weekFill, { width: `${Math.round(weeklyProgress * 100)}%`, backgroundColor: theme.accent }]} />
+          <AnimatedFill progress={weeklyProgress} delay={120} style={[styles.weekFill, { backgroundColor: theme.accent }]} />
         </View>
 
         <View style={styles.chartRow}>
-          {dayBalances.map((d) => {
+          {dayBalances.map((d, i) => {
             const tracked = d.balance != null;
             const barHeight = tracked ? Math.max(14, (Math.abs(d.balance as number) / maxAbsBalance) * 62) : 14;
             return (
@@ -340,11 +343,12 @@ export default function HomeScreen() {
                 {tracked ? (
                   <ThemedText style={[styles.barValue, { color: theme.accent }]}>{formatSignedKcal(d.balance as number)}</ThemedText>
                 ) : null}
-                <View
+                <GrowBar
+                  height={barHeight}
+                  delay={200 + i * 45}
                   style={[
                     styles.bar,
                     {
-                      height: barHeight,
                       backgroundColor: !tracked ? theme.backgroundElement : d.isToday ? theme.accent : withAlpha(theme.accent, 0.22),
                     },
                   ]}
@@ -484,7 +488,7 @@ function ActionTile({
   onPress: () => void;
 }) {
   return (
-    <Pressable onPress={onPress} style={[styles.actionWrap, glow(glowColor, 0.28)]}>
+    <PressableScale onPress={onPress} haptic="press" accessibilityRole="button" style={[styles.actionWrap, glow(glowColor, 0.28)]}>
       <LinearGradient colors={colors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.actionTile}>
         <View style={styles.actionIcon}>
           <Icon name={icon} size={22} color={iconColor} />
@@ -492,7 +496,7 @@ function ActionTile({
         <ThemedText style={styles.actionLabel}>{label}</ThemedText>
         <Icon name="chevronRight" size={15} color="#FFFFFF" />
       </LinearGradient>
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -541,7 +545,7 @@ function StatColumn({
             <View style={[styles.actualMarker, { left: `${markerPct}%`, backgroundColor: theme.accent }]} />
           </>
         ) : (
-          <View style={[styles.statFill, { width: `${Math.round(Math.min(Math.max(progress ?? 0, 0), 1) * 100)}%`, backgroundColor: barColor }]} />
+          <AnimatedFill progress={progress ?? 0} delay={160} style={[styles.statFill, { backgroundColor: barColor }]} />
         )}
       </View>
     </View>

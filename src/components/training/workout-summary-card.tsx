@@ -1,6 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 
+import { PressableScale } from '@/components/motion/pressable-scale';
 import { ThemedText } from '@/components/themed-text';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon } from '@/components/ui/icon';
@@ -74,8 +75,10 @@ export function WorkoutSummaryCard({ title, subtitle, minutes, kcal, onOpen, onS
         <Icon name="chevronRight" size={18} color={theme.textTertiary} />
       </Pressable>
 
-      <Pressable
+      <PressableScale
         onPress={onStart}
+        haptic="press"
+        accessibilityRole="button"
         style={[
           styles.startButton,
           { backgroundColor: theme.brandGreen },
@@ -89,7 +92,7 @@ export function WorkoutSummaryCard({ title, subtitle, minutes, kcal, onOpen, onS
         </View>
         <ThemedText style={styles.startLabel}>Inizia allenamento</ThemedText>
         <Icon name="chevronRight" size={16} color="#FFFFFF" />
-      </Pressable>
+      </PressableScale>
     </FlatCard>
   );
 }

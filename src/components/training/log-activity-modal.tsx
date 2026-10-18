@@ -10,6 +10,7 @@ import { PrimaryButton } from '@/components/ui/primary-button';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { ACTIVITY_INTENSITY_OPTIONS, ACTIVITY_TYPE_OPTIONS, estimateActivityKcal, type ActivityIntensity, type ActivityType } from '@/lib/nutrition/activity-log';
+import { hapticSuccess } from '@/lib/haptics';
 
 export type LogActivityModalProps = {
   visible: boolean;
@@ -57,6 +58,7 @@ function LogActivityForm({
   const handleSave = () => {
     if (!isValid) return;
     onSave(activityType, intensity, durationMinutes);
+    hapticSuccess();
     onClose();
   };
 

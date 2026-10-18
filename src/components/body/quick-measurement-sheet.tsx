@@ -10,6 +10,7 @@ import { Icon } from '@/components/ui/icon';
 import { PrimaryButton } from '@/components/ui/primary-button';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { hapticSuccess } from '@/lib/haptics';
 
 export type QuickMeasurementSheetProps = {
   visible: boolean;
@@ -30,6 +31,7 @@ export function QuickMeasurementSheet({ visible, label, currentValueCm, onClose,
     const num = parseFloat(value.replace(',', '.'));
     if (!Number.isFinite(num) || num <= 0) return;
     onSave(num);
+    hapticSuccess();
     onClose();
   };
 

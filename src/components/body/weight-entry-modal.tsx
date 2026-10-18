@@ -7,6 +7,7 @@ import { DayCalendarModal } from '@/components/ui/day-calendar-modal';
 import { Icon } from '@/components/ui/icon';
 import { useTheme } from '@/hooks/use-theme';
 import { daysAgoISO } from '@/lib/mock/dates';
+import { hapticSuccess } from '@/lib/haptics';
 
 const STEP_PX = 9; // width of one 0.1 kg tick
 const RANGE_KG = 15; // how far either side of the starting weight the wheel reaches
@@ -200,6 +201,7 @@ function WeightEntryForm({
       <Pressable
         onPress={() => {
           onSave(Math.round(weight * 10) / 10, selectedDate);
+          hapticSuccess();
           onClose();
         }}
         style={[styles.save, { backgroundColor: theme.accent }]}>
