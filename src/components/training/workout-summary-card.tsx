@@ -83,15 +83,15 @@ export function WorkoutSummaryCard({ title, subtitle, minutes, kcal, onOpen, onS
           styles.startButton,
           { backgroundColor: theme.brandGreen },
           Platform.select({
-            web: { boxShadow: '0px 6px 14px rgba(0,255,0,0.28)' },
-            default: { shadowColor: '#00FF00', shadowOpacity: 0.28, shadowRadius: 10, shadowOffset: { width: 0, height: 5 }, elevation: 3 },
+            web: { boxShadow: '0px 6px 14px rgba(34,179,94,0.28)' },
+            default: { shadowColor: '#22B35E', shadowOpacity: 0.28, shadowRadius: 10, shadowOffset: { width: 0, height: 5 }, elevation: 3 },
           }),
         ]}>
-        <View style={[styles.playCircle, { backgroundColor: theme.onBrandGreen }]}>
+        <View style={styles.playCircle}>
           <Icon name="play" size={14} color={theme.brandGreen} />
         </View>
-        <ThemedText style={[styles.startLabel, { color: theme.onBrandGreen }]}>Inizia allenamento</ThemedText>
-        <Icon name="chevronRight" size={16} color={theme.onBrandGreen} />
+        <ThemedText style={styles.startLabel}>Inizia allenamento</ThemedText>
+        <Icon name="chevronRight" size={16} color="#FFFFFF" />
       </PressableScale>
     </FlatCard>
   );

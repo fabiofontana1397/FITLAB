@@ -67,13 +67,14 @@ export const Colors = {
     accentPressed: orange[600],
     accentSoft: orange[50],
     onAccent: neutral[0],
-    // Pure neon green (0,255,0), the same as dark mode. Very light on white:
-    // use it for fills, icons and accents rather than small text.
-    success: '#00FF00',
+    // Pushed toward the same "highlighter marker" saturation as dark mode's
+    // neon green/yellow below, but held back a notch so they still read as
+    // text on a white background instead of washing out.
+    success: '#00A651',
     // Soft mint tint for "this card is a success/positive-status card" fills
     // (Home's today/result cards) — the flat-card counterpart to accentSoft,
     // same role but for the success color instead of the accent.
-    successSoft: 'rgba(0,255,0,0.14)',
+    successSoft: '#E3F7EC',
     warning: '#D9A600',
     danger: '#D6402C',
     // Used only for the calorie-delta bars (surplus/deficit) on the weekly
@@ -83,9 +84,7 @@ export const Colors = {
     calorieSurplus: '#0B72E0',
     calorieDeficit: '#C2178E',
     // Fixed brand greens/yellows from the Figma screens — unlike success/warning (neon in dark mode, chosen to read as *text*), these also have to work as solid fills behind white labels (e.g. the green "Registra allenamento" button), so they don't change per scheme.
-    brandGreen: '#00FF00',
-    // Neon green is too light for white on top (1.4:1): labels and icons on a green fill use near-black.
-    onBrandGreen: '#060606',
+    brandGreen: '#22B35E',
     brandYellow: '#F6B21B',
     tabBarBlur: 'light' as const,
     shadow: 'rgba(20,20,25,0.12)',
@@ -118,8 +117,8 @@ export const Colors = {
     // True neon-marker green/yellow — dark is the hero mode, and these read
     // as genuinely bright against near-black the way a highlighter does
     // under UV rather than the previous muted amber/jade.
-    success: '#00FF00',
-    successSoft: 'rgba(0,255,0,0.14)',
+    success: '#39FF14',
+    successSoft: 'rgba(57,255,20,0.14)',
     warning: '#FFE600',
     danger: '#FF6B57',
     // Used only for the calorie-delta bars (surplus/deficit) on the weekly
@@ -128,9 +127,7 @@ export const Colors = {
     // good/bad framing already carried by color elsewhere on that card.
     calorieSurplus: '#3AA0FF',
     calorieDeficit: '#FF3FD1',
-    brandGreen: '#00FF00',
-    // Neon green is too light for white on top (1.4:1): labels and icons on a green fill use near-black.
-    onBrandGreen: '#060606',
+    brandGreen: '#22B35E',
     brandYellow: '#F6B21B',
     tabBarBlur: 'dark' as const,
     shadow: 'rgba(0,0,0,0.5)',
