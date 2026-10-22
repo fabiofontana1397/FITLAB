@@ -6,6 +6,7 @@ import {
   fetchLatestInitialEstimate,
   insertNutritionTargetHistory,
 } from '@/lib/api/nutrition-targets';
+import { fetchAvatar, removeAvatar, uploadAvatar } from '@/lib/api/avatar';
 import { fetchProfile, upsertProfile } from '@/lib/api/profile';
 import type { Goal, Sex, Sport, UserProfile } from '@/lib/mock/types';
 import { withAuthRetry } from '@/lib/supabase/retry';
@@ -59,8 +60,10 @@ type UserState = UserProfile & {
    * against dailyCalorieTarget/macroTargetsG (the live `current_target`) to
    * see how far the Adaptive Nutrition Engine has actually nudged the plan. */
   initialEstimate: InitialEstimate;
-  /** Profile photo picked in Profilo (a data: URI, so it survives app restarts on every platform). Device-local for now: not synced to the server. */
+  /** Profile photo picked in Profilo (a data: URI, so it survives app restarts on every platform). Mirrored in the private storage bucket (see lib/api/avatar.ts) so every device shows it. */
   avatarUri: string | null;
+  /** True once this device has reconciled its photo with the server, so a photo removed elsewhere is cleared here instead of being uploaded again. */
+  avatarSynced: boolean;
   setAvatarUri: (uri: string | null) => void;
   finalizeOnboarding: (input: FinalizeOnboardingInput) => void;
   updateProfile: (partial: Partial<UserProfile>) => void;
@@ -95,7 +98,14 @@ export const useUserStore = create<UserState>()(
       ...DEFAULT_PROFILE,
       initialEstimate: null,
       avatarUri: null,
-      setAvatarUri: (uri) => set({ avatarUri: uri }),
+      avatarSynced: false,
+      setAvatarUri: (uri) => {
+        set({ avatarUri: uri, avatarSynced: true });
+        const userId = currentUserId();
+        if (!userId) return;
+        const request = uri ? uploadAvatar(userId, uri) : removeAvatar(userId);
+        request.catch((err) => console.warn('avatar sync failed', err));
+      },
       finalizeOnboarding: (input) => {
         const effectiveDate = daysAgoISO(0);
         set({ ...input, initialEstimate: { calories: input.dailyCalorieTarget, macroTargetsG: input.macroTargetsG, effectiveDate } });
@@ -147,8 +157,23 @@ export const useUserStore = create<UserState>()(
         } catch (err) {
           console.warn('user-store syncFromServer failed', err);
         }
+        // The photo: the server's copy wins. A photo that only exists on this device (picked
+        // before photos were synced) is uploaded once; after that, "none" on the server
+        // means it was removed on another device.
+        try {
+          const avatar = await withAuthRetry(() => fetchAvatar(userId));
+          if (avatar.status === 'found') set({ avatarUri: avatar.uri, avatarSynced: true });
+          else if (avatar.status === 'none') {
+            const local = get().avatarUri;
+            if (local && !get().avatarSynced) await uploadAvatar(userId, local);
+            else if (local) set({ avatarUri: null });
+            set({ avatarSynced: true });
+          }
+        } catch (err) {
+          console.warn('user-store avatar sync failed', err);
+        }
       },
-      clearLocal: () => set({ ...DEFAULT_PROFILE, initialEstimate: null, avatarUri: null }),
+      clearLocal: () => set({ ...DEFAULT_PROFILE, initialEstimate: null, avatarUri: null, avatarSynced: false }),
     }),
     { name: 'fitlab/user', storage: appJsonStorage }
   )
