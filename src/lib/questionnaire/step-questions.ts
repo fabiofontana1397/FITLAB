@@ -4,7 +4,7 @@
  * complete" in exactly one way.
  */
 import { parseNumericAnswer } from '@/lib/questionnaire/parse-answer';
-import { buildActivityQuestions, isQuestionVisible, TIME_REGEX, type OnboardingStep, type Question } from '@/lib/questionnaire/schema';
+import { buildActivityQuestions, isQuestionVisible, practicedActivities, TIME_REGEX, type OnboardingStep, type Question } from '@/lib/questionnaire/schema';
 
 // Spec §13 point 7: a "time" question isn't just non-empty, it must actually
 // parse as HH:MM — otherwise the free-text answer used to silently fall
@@ -27,7 +27,7 @@ export function isAnswered(question: Question, value: unknown): boolean {
 export function getStepQuestions(step: OnboardingStep, answers: Record<string, unknown>): Question[] {
   const questions =
     step.id === 'training'
-      ? [...step.questions, ...buildActivityQuestions((answers.activitiesPracticed as string[]) ?? [])]
+      ? [...step.questions, ...buildActivityQuestions(practicedActivities(answers.activitiesPracticed))]
       : step.questions;
   return questions.filter((q) => isQuestionVisible(q, answers));
 }

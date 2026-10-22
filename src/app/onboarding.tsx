@@ -15,6 +15,7 @@ import { useTheme } from '@/hooks/use-theme';
 import {
   ACTIVITY_TO_SPORT,
   buildActivityQuestions,
+  practicedActivities,
   findQuestion,
   labelFor,
   stepsForMode,
@@ -62,7 +63,7 @@ export default function OnboardingScreen() {
   const isResultsScreen = mode != null && screenIndex === activeSteps.length + 1;
   const step = !isIntroScreen && !isResultsScreen ? activeSteps[screenIndex - 1] : null;
   const stepQuestions = useMemo(() => (step ? getStepQuestions(step, answers) : []), [step, answers]);
-  const activitiesPracticed = useMemo(() => (answers.activitiesPracticed as string[]) ?? [], [answers.activitiesPracticed]);
+  const activitiesPracticed = useMemo(() => practicedActivities(answers.activitiesPracticed), [answers.activitiesPracticed]);
   const activityQuestions = useMemo(() => buildActivityQuestions(activitiesPracticed), [activitiesPracticed]);
 
   const canContinue = useMemo(() => {

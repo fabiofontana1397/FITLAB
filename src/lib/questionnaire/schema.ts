@@ -93,6 +93,18 @@ const ACTIVITY_OPTIONS: QuestionOption[] = [
   { value: 'running', label: 'Corsa' },
 ];
 
+/**
+ * The activities of an `activitiesPracticed` answer that are still offered. Answers
+ * saved by older questionnaires can hold others (tennis, cycling…): the screen only
+ * shows the current options, so those stayed selected out of sight and kept asking
+ * their own questions ("how often do you play tennis?").
+ */
+export function practicedActivities(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const offered = new Set(ACTIVITY_OPTIONS.map((o) => o.value));
+  return Array.from(new Set(raw.filter((a): a is string => typeof a === 'string' && offered.has(a))));
+}
+
 /** Maps `activitiesPracticed` answer values onto the app's Sport enum. */
 export const ACTIVITY_TO_SPORT: Record<string, 'gym' | 'functional' | 'running' | 'swimming' | 'tennis' | 'cycling' | 'other'> = {
   gym: 'gym',
@@ -177,7 +189,7 @@ const FOCUS_OPTIONS_BY_ACTIVITY: Record<string, QuestionOption[]> = {
  */
 export function buildActivityQuestions(activities: string[]): Question[] {
   const questions: Question[] = [];
-  for (const activity of activities) {
+  for (const activity of practicedActivities(activities)) {
     const label = ACTIVITY_OPTIONS.find((o) => o.value === activity)?.label ?? activity;
     questions.push({
       id: `freq_${activity}`,

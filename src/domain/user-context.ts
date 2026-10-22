@@ -15,7 +15,7 @@
  * the test harness (scripts/agent-tests) and, later, inside Edge Functions.
  */
 import { parseNumericAnswer } from '@/lib/questionnaire/parse-answer';
-import { ONBOARDING_STEPS, stepsForMode } from '@/lib/questionnaire/schema';
+import { ONBOARDING_STEPS, practicedActivities, stepsForMode } from '@/lib/questionnaire/schema';
 
 export type Answers = Record<string, unknown>;
 
@@ -208,9 +208,16 @@ export function cleanAnswersForMode(answers: Record<string, unknown>): Record<st
   const all = new Set(ONBOARDING_STEPS.flatMap((st) => st.questions.map((q) => q.id)));
   const keepTrainingDynamic = mode !== 'diet';
   const out: Record<string, unknown> = {};
+  const offered = new Set(practicedActivities(answers.activitiesPracticed));
   for (const [key, value] of Object.entries(answers)) {
     if (value === undefined) continue;
     const dynamic = key.startsWith('freq_') || key.startsWith('focus_');
+    // A frequency/focus answer of an activity that is no longer offered or selected is stale.
+    if (dynamic && !offered.has(key.slice(key.indexOf('_') + 1))) continue;
+    if (key === 'activitiesPracticed') {
+      out[key] = practicedActivities(value);
+      continue;
+    }
     if (dynamic ? keepTrainingDynamic : allowed.has(key) || !all.has(key)) out[key] = value;
   }
   return out;
