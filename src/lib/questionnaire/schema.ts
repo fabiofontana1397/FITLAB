@@ -78,19 +78,20 @@ export function isQuestionVisible(question: Question, answers: Record<string, un
 }
 
 /**
- * Options for question `activitiesPracticed`. Restricted to the two
- * activities the app can actually build a program for (TRAINABLE_ACTIVITIES
- * below) — every other sport (ciclismo, nuoto, tennis, functional, ecc.)
- * used to be selectable here too, but only ever produced a single
- * frequency question that fed nothing but a minor TDEE bump. Per explicit
- * product decision: for a questionnaire whose goal is building a sala pesi
- * program, that info is superfluous — collecting it added friction without
- * ever being used for anything the user could see. Values still map onto
- * the app's core `Sport` enum via ACTIVITY_TO_SPORT (lib/mock/training.ts).
+ * Options for question `activitiesPracticed`. Gym and running are the two the
+ * app builds a program for (TRAINABLE_ACTIVITIES below) and they come with their
+ * own follow-up questions; the other sports are just ticked here — no follow-ups,
+ * no program — and kept in the profile. Values map onto the app's `Sport` enum via
+ * ACTIVITY_TO_SPORT.
  */
 const ACTIVITY_OPTIONS: QuestionOption[] = [
   { value: 'gym', label: 'Palestra' },
   { value: 'running', label: 'Corsa' },
+  { value: 'functional', label: 'Allenamento funzionale' },
+  { value: 'cycling', label: 'Ciclismo' },
+  { value: 'swimming', label: 'Nuoto' },
+  { value: 'tennis', label: 'Tennis / Padel' },
+  { value: 'altro', label: 'Altro sport' },
 ];
 
 /**
@@ -190,6 +191,8 @@ const FOCUS_OPTIONS_BY_ACTIVITY: Record<string, QuestionOption[]> = {
 export function buildActivityQuestions(activities: string[]): Question[] {
   const questions: Question[] = [];
   for (const activity of practicedActivities(activities)) {
+    // Other sports are only recorded: nothing to ask, no program to build.
+    if (!TRAINABLE_ACTIVITIES.has(activity)) continue;
     const label = ACTIVITY_OPTIONS.find((o) => o.value === activity)?.label ?? activity;
     questions.push({
       id: `freq_${activity}`,
@@ -468,7 +471,15 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     id: 'training',
     title: 'Allenamento',
     subtitle: 'Costruiamo un programma vero e proprio per sala pesi e/o corsa.',
-    questions: [{ id: 'activitiesPracticed', type: 'multi', label: 'Quali attività pratichi?', options: ACTIVITY_OPTIONS }],
+    questions: [
+      {
+        id: 'activitiesPracticed',
+        type: 'multi',
+        label: 'Quali attività pratichi?',
+        helper: 'Palestra e corsa generano la tua scheda. Gli altri sport li salviamo nel profilo: per contarli nelle calorie registrali da "Registra allenamento".',
+        options: ACTIVITY_OPTIONS,
+      },
+    ],
   },
   {
     id: 'availability',
