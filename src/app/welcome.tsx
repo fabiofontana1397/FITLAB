@@ -1,8 +1,9 @@
 import { router } from 'expo-router';
-import { Image, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
+import { BrandWordmark } from '@/components/ui/brand-wordmark';
 import { PrimaryButton } from '@/components/ui/primary-button';
 import { Spacing } from '@/constants/theme';
 
@@ -12,7 +13,7 @@ export default function WelcomeScreen() {
       <View style={{ flex: 1 }} />
 
       <View style={styles.hero}>
-        <Image source={require('@/assets/images/logo-wordmark.png')} style={styles.logo} resizeMode="contain" />
+        <BrandWordmark tagline style={styles.logo} />
         <ThemedText type="default" themeColor="textSecondary" style={{ textAlign: 'center' }}>
           Il tuo personal operating system per corpo, allenamento e alimentazione.
         </ThemedText>

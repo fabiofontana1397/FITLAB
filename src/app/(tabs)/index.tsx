@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Image, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { EnergyDetailsPopup } from '@/components/home/energy-details-popup';
 import { OggiGauge } from '@/components/home/oggi-gauge';
@@ -13,6 +13,7 @@ import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon, type IconName } from '@/components/ui/icon';
+import { BrandWordmark } from '@/components/ui/brand-wordmark';
 import { ProfileAvatarButton } from '@/components/ui/profile-avatar-button';
 import { LoggedActivitiesCard } from '@/components/training/logged-activities-card';
 import { LogActivityModal } from '@/components/training/log-activity-modal';
@@ -203,7 +204,7 @@ export default function HomeScreen() {
   return (
     <ScreenScroll reveal contentContainerStyle={styles.page}>
       <View style={styles.headerRow}>
-        <Image source={require('@/assets/images/logo-wordmark.png')} style={styles.logo} resizeMode="contain" />
+        <BrandWordmark style={styles.logo} />
         <View style={styles.headerIcons}>
           <PressableScale
             onPress={() => setInfoTopic('notifications')}
