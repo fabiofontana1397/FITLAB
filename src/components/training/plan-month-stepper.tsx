@@ -75,7 +75,7 @@ export function PlanMonthStepper({ months, currentMonth, currentFraction, select
                 selected && done ? { borderWidth: 2, borderColor: theme.text } : null,
               ]}>
               {done ? (
-                <Icon name="check" size={24} color="#FFFFFF" />
+                <Icon name="check" size={24} color={theme.onBrandGreen} />
               ) : (
                 <ThemedText style={[styles.nodeNumber, { color: theme.textTertiary }]}>{m.monthIndex}</ThemedText>
               )}

@@ -298,10 +298,11 @@ export default function HomeScreen() {
           onPress={() => setRegisterMealOpen(true)}
         />
         <ActionTile
-          colors={['#34C77B', '#1FA85B']}
-          glowColor="#22B35E"
+          colors={['#4DFF4D', '#00FF00']}
+          glowColor="#00FF00"
           icon="barbell"
-          iconColor="#1FA85B"
+          iconColor="#00FF00"
+          dark
           label={'Registra\nallenamento'}
           onPress={() => setLogActivityOpen(true)}
         />
@@ -470,6 +471,8 @@ function withAlpha(hex: string, alpha: number): string {
   return `${hex}${Math.round(Math.min(Math.max(alpha, 0), 1) * 255).toString(16).padStart(2, '0')}`;
 }
 
+const ON_LIGHT = '#060606';
+
 /** One of the two big gradient buttons under the calorie card: white icon
  * tile, two-line label, chevron. */
 function ActionTile({
@@ -477,6 +480,7 @@ function ActionTile({
   glowColor,
   icon,
   iconColor,
+  dark = false,
   label,
   onPress,
 }: {
@@ -484,17 +488,19 @@ function ActionTile({
   glowColor: string;
   icon: IconName;
   iconColor: string;
+  /** Near-black label, chevron and icon disc, for a light fill (neon green) where white would not read. */
+  dark?: boolean;
   label: string;
   onPress: () => void;
 }) {
   return (
     <PressableScale onPress={onPress} haptic="press" accessibilityRole="button" style={[styles.actionWrap, glow(glowColor, 0.28)]}>
       <LinearGradient colors={colors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.actionTile}>
-        <View style={styles.actionIcon}>
+        <View style={[styles.actionIcon, dark && { backgroundColor: ON_LIGHT }]}>
           <Icon name={icon} size={22} color={iconColor} />
         </View>
-        <ThemedText style={styles.actionLabel}>{label}</ThemedText>
-        <Icon name="chevronRight" size={15} color="#FFFFFF" />
+        <ThemedText style={[styles.actionLabel, dark && { color: ON_LIGHT }]}>{label}</ThemedText>
+        <Icon name="chevronRight" size={15} color={dark ? ON_LIGHT : '#FFFFFF'} />
       </LinearGradient>
     </PressableScale>
   );

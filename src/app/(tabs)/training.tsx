@@ -153,11 +153,11 @@ export default function TrainingScreen() {
         haptic="press"
         scaleTo={0.97}
         style={[styles.registerButton, { backgroundColor: theme.brandGreen }]}>
-        <View style={styles.registerPlus}>
+        <View style={[styles.registerPlus, { backgroundColor: theme.onBrandGreen }]}>
           <Icon name="plus" size={18} color={theme.brandGreen} />
         </View>
-        <ThemedText style={styles.registerLabel}>Registra allenamento</ThemedText>
-        <Icon name="chevronRight" size={16} color="#FFFFFF" />
+        <ThemedText style={[styles.registerLabel, { color: theme.onBrandGreen }]}>Registra allenamento</ThemedText>
+        <Icon name="chevronRight" size={16} color={theme.onBrandGreen} />
       </PressableScale>
 
       <View style={styles.sectionRow}>
