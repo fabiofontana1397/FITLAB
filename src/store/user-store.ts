@@ -132,7 +132,8 @@ export const useUserStore = create<UserState>()(
             set(profile);
             // The profile is only written when the questionnaire is CONFIRMED (finalizeOnboarding),
             // so a calorie target means onboarding was completed — on this or another device.
-            if (profile.dailyCalorieTarget > 0 && !useAppStore.getState().hasOnboarded) useAppStore.getState().setHasOnboarded(true);
+            const app = useAppStore.getState();
+            if (profile.dailyCalorieTarget > 0 && !app.hasOnboarded && !app.redoingQuestionnaire) app.setHasOnboarded(true);
           }
           if (initialEstimateRow) {
             set({

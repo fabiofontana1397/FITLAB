@@ -56,7 +56,7 @@ export default function ProfileScreen() {
   const isGenerating = usePlanStore((s) => s.isGenerating);
   const appearance = useAppStore((s) => s.appearance);
   const setAppearance = useAppStore((s) => s.setAppearance);
-  const setHasOnboarded = useAppStore((s) => s.setHasOnboarded);
+  const startQuestionnaireRedo = useAppStore((s) => s.startQuestionnaireRedo);
   const logout = useAuthStore((s) => s.logout);
   const saveAnswers = useAnswersEditor();
 
@@ -82,7 +82,7 @@ export default function ProfileScreen() {
 
   const restartOnboarding = () => {
     setQuestionnaireOpen(false);
-    setHasOnboarded(false);
+    startQuestionnaireRedo();
     router.replace('/onboarding');
   };
 

@@ -67,7 +67,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
       useMonthlyCheckinStore.getState().clearLocal();
       useActivityLogStore.getState().clearLocal();
       useHealthStore.getState().clearLocal();
-      useAppStore.getState().setHasOnboarded(false);
+      useAppStore.setState({ hasOnboarded: false, redoingQuestionnaire: false });
     }
     wasAuthenticated.current = isAuthenticated;
   }, [isAuthenticated]);
