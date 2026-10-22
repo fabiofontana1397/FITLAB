@@ -65,6 +65,7 @@ export default function AdminUsersScreen() {
             {rows ? `${rows.length} account` : 'Caricamento…'}
           </ThemedText>
         </View>
+        <PrimaryButton label="Laboratorio di test" variant="outline" dense onPress={() => router.push('/admin/lab' as never)} />
         <PrimaryButton label="Aggiorna" icon="refresh" variant="outline" dense onPress={load} />
       </View>
 

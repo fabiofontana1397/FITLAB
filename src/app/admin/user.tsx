@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
+import { DietMonthsView, TrainingMonthsView } from '@/components/admin/plan-views';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Radius, Spacing } from '@/constants/theme';
 import { useAdminGuard } from '@/hooks/use-admin-guard';
@@ -194,118 +195,30 @@ function ProfileTab({ detail }: { detail: AdminUserDetail }) {
   );
 }
 
-// -------------------------------------------------------------------- diet --
-function MonthPills({ count, value, onChange }: { count: number; value: number; onChange: (i: number) => void }) {
-  const theme = useTheme();
-  return (
-    <View style={styles.tabs}>
-      {Array.from({ length: count }, (_, i) => (
-        <Pressable key={i} onPress={() => onChange(i)} style={[styles.tab, { backgroundColor: value === i ? theme.accent : theme.backgroundElement }]}>
-          <ThemedText type="small" style={{ color: value === i ? theme.onAccent : theme.text, fontWeight: '600' }}>
-            Mese {i + 1}
-          </ThemedText>
-        </Pressable>
-      ))}
-    </View>
-  );
-}
-
+// ------------------------------------------------------------ diet/training --
 function DietTab({ detail }: { detail: AdminUserDetail }) {
-  const [month, setMonth] = useState(0);
   const plan = detail.diet_plan;
   if (!plan) return <Empty text="Nessun piano alimentare." />;
-  const m = plan.plan[month];
   return (
     <View style={{ gap: Spacing.four }}>
       <ThemedText type="small" themeColor="textSecondary">
         Generato il {day(plan.generated_at)} · {plan.duration_months} mesi · obiettivo {plan.goal}
       </ThemedText>
-      <MonthPills count={plan.plan.length} value={month} onChange={setMonth} />
-      {m ? (
-        <>
-          <ThemedText type="smallBold">
-            {m.title} · {m.calorieTarget} kcal · P {m.macroTargetsG.protein} · C {m.macroTargetsG.carbs} · G {m.macroTargetsG.fats}
-          </ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            {m.focusNote}
-          </ThemedText>
-          {m.weeklySplit.map((d) => (
-            <FlatCard key={d.weekday} style={styles.card}>
-              <ThemedText type="smallBold">
-                {d.weekday}
-                {d.isTrainingDay ? ' · giorno di allenamento' : ''}
-                {d.calorieTarget ? ` · target ${d.calorieTarget} kcal` : ''}
-              </ThemedText>
-              {d.meals.map((meal) => (
-                <View key={meal.slotId} style={{ gap: 2, marginTop: Spacing.two }}>
-                  <ThemedText type="small" style={{ fontWeight: '700' }}>
-                    {meal.label} {meal.time} · {Math.round(meal.totalKcal)} kcal
-                    {meal.macros ? ` (P ${Math.round(meal.macros.protein)} · C ${Math.round(meal.macros.carbs)} · G ${Math.round(meal.macros.fats)})` : ''}
-                  </ThemedText>
-                  {meal.isFreeMeal ? (
-                    <ThemedText type="caption" themeColor="textSecondary">
-                      Pasto libero
-                    </ThemedText>
-                  ) : (
-                    <>
-                      {meal.recipe ? (
-                        <ThemedText type="caption" themeColor="textSecondary">
-                          {meal.recipe.name}
-                          {meal.recipe.flavorings.length ? ` — ${meal.recipe.flavorings.join(', ')}` : ''}
-                        </ThemedText>
-                      ) : null}
-                      <ThemedText type="caption">{meal.items.map((i) => `${i.name} ${i.quantityLabel}`).join(' · ')}</ThemedText>
-                    </>
-                  )}
-                </View>
-              ))}
-            </FlatCard>
-          ))}
-        </>
-      ) : null}
+      <DietMonthsView months={plan.plan} />
       <RawJson value={plan} />
     </View>
   );
 }
 
-// ---------------------------------------------------------------- training --
 function TrainingTab({ detail }: { detail: AdminUserDetail }) {
-  const [month, setMonth] = useState(0);
   const plan = detail.training_plan;
   if (!plan) return <Empty text="Nessun piano di allenamento." />;
-  const m = plan.plan[month];
   return (
     <View style={{ gap: Spacing.four }}>
       <ThemedText type="small" themeColor="textSecondary">
         Generato il {day(plan.generated_at)} · {plan.duration_months} mesi
       </ThemedText>
-      <MonthPills count={plan.plan.length} value={month} onChange={setMonth} />
-      {m ? (
-        <>
-          <ThemedText type="smallBold">{m.title}</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            {m.focusNote}
-          </ThemedText>
-          {m.weeklySplit.map((d) => (
-            <FlatCard key={d.weekday} style={styles.card}>
-              <ThemedText type="smallBold">
-                {d.weekday} · {d.title}
-              </ThemedText>
-              {d.note ? (
-                <ThemedText type="caption" themeColor="textSecondary">
-                  {d.note}
-                </ThemedText>
-              ) : null}
-              {(d.exercises ?? []).map((e) => (
-                <ThemedText key={e.id} type="caption">
-                  {e.name} — {e.sets}×{e.reps} · rec {e.restSec}s{e.suggestedKg != null ? ` · ${e.suggestedKg} kg` : ''}
-                  {e.needsManualReview ? ' · da rivedere' : ''}
-                </ThemedText>
-              ))}
-            </FlatCard>
-          ))}
-        </>
-      ) : null}
+      <TrainingMonthsView months={plan.plan} />
       <RawJson value={plan} />
     </View>
   );
