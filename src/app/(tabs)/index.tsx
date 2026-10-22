@@ -1,5 +1,5 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { useState } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 
@@ -13,6 +13,7 @@ import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon, type IconName } from '@/components/ui/icon';
+import { SectionHeader } from '@/components/ui/section-header';
 import { BrandWordmark } from '@/components/ui/brand-wordmark';
 import { ProfileAvatarButton } from '@/components/ui/profile-avatar-button';
 import { LoggedActivitiesCard } from '@/components/training/logged-activities-card';
@@ -66,7 +67,7 @@ function glow(color: string, alpha: number) {
   });
 }
 
-type InfoTopic = 'burned' | 'eaten' | 'notifications';
+type InfoTopic = 'burned' | 'eaten';
 
 export default function HomeScreen() {
   const theme = useTheme();
@@ -186,11 +187,6 @@ export default function HomeScreen() {
       title: 'Calorie assunte',
       body: `Il totale delle calorie registrate oggi tra i pasti, rispetto all'obiettivo di ${formatKcal(calorieTarget)} kcal del tuo piano alimentare. Restare vicino a questo obiettivo è ciò che determina se sei in deficit, surplus o mantenimento.`,
     },
-    notifications: {
-      icon: 'bell',
-      title: 'Notifiche',
-      body: 'Non hai nuove notifiche. Qui troverai promemoria su pasti, allenamenti e check-in.',
-    },
   };
 
   const viewDateObj = new Date(viewDate);
@@ -207,7 +203,7 @@ export default function HomeScreen() {
         <BrandWordmark style={styles.logo} />
         <View style={styles.headerIcons}>
           <PressableScale
-            onPress={() => setInfoTopic('notifications')}
+            onPress={() => router.push('/notification-settings' as Href)}
             hitSlop={8}
             scaleTo={0.9}
             accessibilityLabel="Notifiche"
@@ -308,7 +304,9 @@ export default function HomeScreen() {
         />
       </View>
 
-      <ThemedText style={[styles.sectionTitle, { marginTop: 24, marginBottom: 12 }]}>Questa settimana</ThemedText>
+      <View style={{ marginTop: 24 }}>
+        <SectionHeader title="Questa settimana" action="Riepilogo" onActionPress={() => router.push('/weekly-summary' as Href)} />
+      </View>
       <FlatCard radius={CARD_RADIUS} style={styles.weekCard}>
         <View style={styles.weekTitleRow}>
           <View style={styles.weekTitleLeft}>

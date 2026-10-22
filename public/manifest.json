@@ -1,0 +1,17 @@
+{
+  "id": "/",
+  "name": "FitLab — Nutrizione e allenamento",
+  "short_name": "FitLab",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#E9E9E8",
+  "theme_color": "#E9E9E8",
+  "icons": [
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

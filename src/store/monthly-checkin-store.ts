@@ -2,12 +2,14 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 import { fetchMonthlyCheckins, upsertMonthlyCheckin } from '@/lib/api/monthly-checkin';
+import type { MonthlyCheckin } from '@/lib/api/monthly-checkin';
 import { useAuthStore } from '@/store/auth-store';
 import { appJsonStorage } from '@/store/storage';
 
 type MonthlyCheckinState = {
   /** Month indices with a completed check-in — month N+1 unlocks once N is here. */
   completedMonths: number[];
+  checkins: MonthlyCheckin[];
   submitCheckin: (monthIndex: number, answers: Record<string, unknown>, weightTrendKg: number | null) => Promise<void>;
   syncFromServer: () => Promise<void>;
   /** Local-only reset on logout — see user-store.ts's clearLocal for why. */
@@ -22,8 +24,13 @@ export const useMonthlyCheckinStore = create<MonthlyCheckinState>()(
   persist(
     (set, get) => ({
       completedMonths: [],
+      checkins: [],
       submitCheckin: async (monthIndex, answers, weightTrendKg) => {
-        set({ completedMonths: [...new Set([...get().completedMonths, monthIndex])] });
+        const checkin: MonthlyCheckin = { monthIndex, answers, weightTrendKg, createdAt: new Date().toISOString() };
+        set({
+          completedMonths: [...new Set([...get().completedMonths, monthIndex])],
+          checkins: [...get().checkins.filter((item) => item.monthIndex !== monthIndex), checkin],
+        });
         const userId = currentUserId();
         if (!userId) return;
         await upsertMonthlyCheckin(userId, monthIndex, answers, weightTrendKg);
@@ -33,12 +40,12 @@ export const useMonthlyCheckinStore = create<MonthlyCheckinState>()(
         if (!userId) return;
         try {
           const rows = await fetchMonthlyCheckins(userId);
-          set({ completedMonths: rows.map((r) => r.monthIndex) });
+          set({ completedMonths: rows.map((r) => r.monthIndex), checkins: rows });
         } catch (err) {
           console.warn('monthly-checkin-store syncFromServer failed', err);
         }
       },
-      clearLocal: () => set({ completedMonths: [] }),
+      clearLocal: () => set({ completedMonths: [], checkins: [] }),
     }),
     { name: 'fitlab/monthly-checkins', storage: appJsonStorage }
   )
