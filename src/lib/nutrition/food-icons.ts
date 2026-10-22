@@ -1,0 +1,83 @@
+import type { ImageSourcePropType } from 'react-native';
+
+import { foodIconKey, type FoodIconKey } from '@/lib/nutrition/food-icon-keys';
+
+/**
+ * Food pictures for the meal tracker: Microsoft Fluent Emoji 3D
+ * (github.com/microsoft/fluentui-emoji, MIT licence), resized to 96 px in
+ * assets/images/food-icons. Which food gets which picture lives in food-icon-keys.ts.
+ */
+const ICONS = {
+  avocado: require('@/assets/images/food-icons/avocado.png'),
+  bacon: require('@/assets/images/food-icons/bacon.png'),
+  banana: require('@/assets/images/food-icons/banana.png'),
+  beans: require('@/assets/images/food-icons/beans.png'),
+  bellPepper: require('@/assets/images/food-icons/bell-pepper.png'),
+  blueberries: require('@/assets/images/food-icons/blueberries.png'),
+  bowl: require('@/assets/images/food-icons/bowl-with-spoon.png'),
+  bread: require('@/assets/images/food-icons/bread.png'),
+  broccoli: require('@/assets/images/food-icons/broccoli.png'),
+  butter: require('@/assets/images/food-icons/butter.png'),
+  canned: require('@/assets/images/food-icons/canned-food.png'),
+  carrot: require('@/assets/images/food-icons/carrot.png'),
+  cheese: require('@/assets/images/food-icons/cheese-wedge.png'),
+  cherries: require('@/assets/images/food-icons/cherries.png'),
+  chestnut: require('@/assets/images/food-icons/chestnut.png'),
+  chocolate: require('@/assets/images/food-icons/chocolate-bar.png'),
+  coconut: require('@/assets/images/food-icons/coconut.png'),
+  corn: require('@/assets/images/food-icons/ear-of-corn.png'),
+  croissant: require('@/assets/images/food-icons/croissant.png'),
+  cucumber: require('@/assets/images/food-icons/cucumber.png'),
+  custard: require('@/assets/images/food-icons/custard.png'),
+  drink: require('@/assets/images/food-icons/cup-with-straw.png'),
+  egg: require('@/assets/images/food-icons/egg.png'),
+  eggplant: require('@/assets/images/food-icons/eggplant.png'),
+  fish: require('@/assets/images/food-icons/fish.png'),
+  garlic: require('@/assets/images/food-icons/garlic.png'),
+  grains: require('@/assets/images/food-icons/sheaf-of-rice.png'),
+  grapes: require('@/assets/images/food-icons/grapes.png'),
+  greenApple: require('@/assets/images/food-icons/green-apple.png'),
+  honey: require('@/assets/images/food-icons/honey-pot.png'),
+  hotPepper: require('@/assets/images/food-icons/hot-pepper.png'),
+  jar: require('@/assets/images/food-icons/jar.png'),
+  kiwi: require('@/assets/images/food-icons/kiwi-fruit.png'),
+  leafy: require('@/assets/images/food-icons/leafy-green.png'),
+  lemon: require('@/assets/images/food-icons/lemon.png'),
+  mango: require('@/assets/images/food-icons/mango.png'),
+  meat: require('@/assets/images/food-icons/cut-of-meat.png'),
+  meatOnBone: require('@/assets/images/food-icons/meat-on-bone.png'),
+  melon: require('@/assets/images/food-icons/melon.png'),
+  milk: require('@/assets/images/food-icons/glass-of-milk.png'),
+  mushroom: require('@/assets/images/food-icons/brown-mushroom.png'),
+  octopus: require('@/assets/images/food-icons/octopus.png'),
+  olive: require('@/assets/images/food-icons/olive.png'),
+  onion: require('@/assets/images/food-icons/onion.png'),
+  orange: require('@/assets/images/food-icons/tangerine.png'),
+  oyster: require('@/assets/images/food-icons/oyster.png'),
+  pasta: require('@/assets/images/food-icons/spaghetti.png'),
+  peaPod: require('@/assets/images/food-icons/pea-pod.png'),
+  peach: require('@/assets/images/food-icons/peach.png'),
+  peanuts: require('@/assets/images/food-icons/peanuts.png'),
+  pear: require('@/assets/images/food-icons/pear.png'),
+  pineapple: require('@/assets/images/food-icons/pineapple.png'),
+  pizza: require('@/assets/images/food-icons/pizza.png'),
+  potato: require('@/assets/images/food-icons/potato.png'),
+  poultry: require('@/assets/images/food-icons/poultry-leg.png'),
+  redApple: require('@/assets/images/food-icons/red-apple.png'),
+  rice: require('@/assets/images/food-icons/cooked-rice.png'),
+  riceCracker: require('@/assets/images/food-icons/rice-cracker.png'),
+  salad: require('@/assets/images/food-icons/green-salad.png'),
+  salt: require('@/assets/images/food-icons/salt.png'),
+  seedling: require('@/assets/images/food-icons/seedling.png'),
+  shrimp: require('@/assets/images/food-icons/shrimp.png'),
+  squid: require('@/assets/images/food-icons/squid.png'),
+  strawberry: require('@/assets/images/food-icons/strawberry.png'),
+  sunflower: require('@/assets/images/food-icons/sunflower.png'),
+  sweetPotato: require('@/assets/images/food-icons/roasted-sweet-potato.png'),
+  tomato: require('@/assets/images/food-icons/tomato.png'),
+  watermelon: require('@/assets/images/food-icons/watermelon.png'),
+} satisfies Record<FoodIconKey, ImageSourcePropType>;
+
+export function foodIcon(foodId: string): ImageSourcePropType {
+  return ICONS[foodIconKey(foodId)];
+}
