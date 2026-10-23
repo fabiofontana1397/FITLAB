@@ -1,12 +1,10 @@
 import type { Href } from 'expo-router';
 import { Tabs, TabList, TabTrigger, TabSlot, type TabTriggerSlotProps } from 'expo-router/ui';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
-  FadeIn,
-  FadeOut,
   useAnimatedStyle,
   useSharedValue,
   withSequence,
@@ -16,18 +14,20 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { LiquidGlass, liquidLensStyle } from '@/components/glass/liquid-glass';
-import { ThemedText } from '@/components/themed-text';
+import { LiquidGlass } from '@/components/glass/liquid-glass';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { SpringPressIn, SpringPressOut } from '@/constants/motion';
 import { hapticSelection } from '@/lib/haptics';
-import { BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { BottomTabInset, Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 
-// Matches ChatFab's own DEFAULT_SIZE fallback, used before the bar's real
-// height has been measured for the very first frame.
-const DEFAULT_BAR_HEIGHT = 48;
+// The bar is a row of round glass bubbles, one per tab plus ChatFab's as the
+// last, each overlapping the next a little so they read as one chain of
+// droplets. ChatFab sits in the reserved last slot (see chat-fab.tsx), which
+// is why these are exported.
+export const TAB_BUBBLE = 54;
+export const TAB_BUBBLE_OVERLAP = 6;
 
 // Same total ScreenScroll already reserves as bottom padding (see
 // screen-scroll.tsx) so this mask's fade zone lines up with exactly the
@@ -58,8 +58,8 @@ const SpringTab: WithSpringConfig = { damping: 19, mass: 0.7, stiffness: 230 };
 const SpringIconPop: WithSpringConfig = { damping: 9, mass: 0.5, stiffness: 300 };
 
 const TAB_ITEMS: { name: string; href: Href; label: string; icon: IconName }[] = [
-  { name: 'index', href: '/', label: 'Home', icon: 'home' },
-  { name: 'training', href: '/training', label: 'Training', icon: 'training' },
+  { name: 'index', href: '/', label: 'Home', icon: 'tabHome' },
+  { name: 'training', href: '/training', label: 'Training', icon: 'tabTraining' },
   { name: 'nutrition', href: '/nutrition', label: 'Nutrizione', icon: 'nutrition' },
   { name: 'progress', href: '/progress', label: 'Progressi', icon: 'progress' },
 ];
@@ -71,9 +71,9 @@ export default function AppTabs({ onBarHeightChange }: { onBarHeightChange?: (he
       <ScrollFadeMask />
       <TabList asChild>
         <FloatingTabBar onBarHeightChange={onBarHeightChange}>
-          {TAB_ITEMS.map((item) => (
+          {TAB_ITEMS.map((item, i) => (
             <TabTrigger key={item.name} name={item.name} href={item.href} asChild>
-              <TabButton label={item.label} icon={item.icon} />
+              <TabButton label={item.label} icon={item.icon} first={i === 0} />
             </TabTrigger>
           ))}
         </FloatingTabBar>
@@ -121,7 +121,6 @@ function FloatingTabBar({
   onBarHeightChange?: (height: number) => void;
 }) {
   const insets = useSafeAreaInsets();
-  const [barHeight, setBarHeight] = useState<number | null>(null);
   const lastReportedHeight = useRef<number | null>(null);
 
   return (
@@ -131,34 +130,23 @@ function FloatingTabBar({
         { paddingBottom: Platform.select({ web: Math.max(insets.bottom, Spacing.four), default: insets.bottom || Spacing.three }) },
         { pointerEvents: 'box-none' },
       ]}>
-      <View style={styles.row}>
-        <LiquidGlass
-          variant="clear"
-          radius={Radius.xlarge}
-          style={styles.bar}
-          onLayout={(e) => {
-            // The row re-measures on every tab switch (the focused
-            // TabButton's own layout shifts slightly), which can report a
-            // height a fraction of a pixel off the last one purely from
-            // sub-pixel rounding. Propagating that non-change downstream
-            // used to re-render ChatFab/ChatOrb on every navigation, which
-            // read as the orb's colors "changing" when a tab was tapped —
-            // so only report height changes big enough to be real.
-            const height = e.nativeEvent.layout.height;
-            if (lastReportedHeight.current != null && Math.abs(height - lastReportedHeight.current) < 1) return;
-            lastReportedHeight.current = height;
-            setBarHeight(height);
-            onBarHeightChange?.(height);
-          }}>
-          <View style={styles.barRow}>{children}</View>
-        </LiquidGlass>
-        {/* Reserves the room ChatFab occupies (see _layout.tsx) — the FAB
-            itself is a fully independent overlay painted on top of this gap,
-            not a sibling here, so tapping it can't be misrouted by TabList's
-            own tap-resolution (see chat-fab.tsx for why that matters). Sized
-            to the FAB's own footprint (it matches this same bar height) plus
-            a visible gap, so the two never crowd or overlap each other. */}
-        <View style={{ width: (barHeight ?? DEFAULT_BAR_HEIGHT) + Spacing.two }} />
+      <View
+        style={styles.row}
+        onLayout={(e) => {
+          // Only report height changes big enough to be real: sub-pixel
+          // re-measurements on tab switches used to re-render ChatFab/ChatOrb
+          // on every navigation, which read as the orb's colors "changing".
+          const height = e.nativeEvent.layout.height;
+          if (lastReportedHeight.current != null && Math.abs(height - lastReportedHeight.current) < 1) return;
+          lastReportedHeight.current = height;
+          onBarHeightChange?.(height);
+        }}>
+        {children}
+        {/* Reserves ChatFab's bubble, the chain's last. The FAB itself is a
+            fully independent overlay painted over this slot, not a sibling
+            here, so tapping it can't be misrouted by TabList's own
+            tap-resolution (see chat-fab.tsx for why that matters). */}
+        <View style={{ width: TAB_BUBBLE - TAB_BUBBLE_OVERLAP, height: TAB_BUBBLE }} />
       </View>
     </View>
   );
@@ -169,14 +157,16 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 function TabButton({
   label,
   icon,
+  first,
   isFocused,
   onPressIn,
   onPressOut,
   ...props
-}: TabTriggerSlotProps & { label: string; icon: IconName }) {
+}: TabTriggerSlotProps & { label: string; icon: IconName; first?: boolean }) {
   const theme = useTheme();
   const isDark = useColorScheme() === 'dark';
-  const color = isFocused ? theme.text : theme.textSecondary;
+  // The active bubble is solid white in both schemes, so its icon is dark.
+  const color = isFocused ? '#060606' : theme.text;
   const focus = useSharedValue(isFocused ? 1 : 0);
   const pressed = useSharedValue(0);
   const iconPop = useSharedValue(1);
@@ -191,18 +181,12 @@ function TabButton({
     wasFocused.current = isFocused;
   }, [isFocused, focus, iconPop]);
 
-  // The active tab widens to make room for its label; animating the grow
-  // factor makes the neighbours slide over instead of jumping.
-  const buttonStyle = useAnimatedStyle(() => ({ flexGrow: 1 + focus.value * 1.1 }));
-
-  const pillStyle = useAnimatedStyle(() => ({
-    opacity: focus.value,
-    transform: [{ scaleX: 0.7 + focus.value * 0.3 }, { scaleY: 0.85 + focus.value * 0.15 }],
+  // The active bubble swells a touch over its neighbours; a press sinks it.
+  const bubbleStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: (1 + focus.value * 0.06) * (1 - pressed.value * 0.08) }],
   }));
 
-  const contentStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: 1 - pressed.value * 0.08 }],
-  }));
+  const activeStyle = useAnimatedStyle(() => ({ opacity: focus.value }));
 
   const iconStyle = useAnimatedStyle(() => ({ transform: [{ scale: iconPop.value }] }));
 
@@ -221,19 +205,18 @@ function TabButton({
       accessibilityRole="tab"
       accessibilityLabel={label}
       accessibilityState={{ selected: !!isFocused }}
-      style={[styles.tabButton, buttonStyle]}>
-      <Animated.View style={[styles.focusPill, liquidLensStyle(isDark), pillStyle]} />
-      <Animated.View style={[styles.tabContent, contentStyle]}>
-        <Animated.View style={iconStyle}>
-          <Icon name={icon} size={20} color={color} />
-        </Animated.View>
-        {isFocused ? (
-          <Animated.View entering={FadeIn.duration(220).delay(60)} exiting={FadeOut.duration(90)}>
-            <ThemedText type="smallBold" style={[styles.tabLabel, { color }]} numberOfLines={1}>
-              {label}
-            </ThemedText>
-          </Animated.View>
-        ) : null}
+      style={[styles.tabButton, first ? null : { marginLeft: -TAB_BUBBLE_OVERLAP }, { zIndex: isFocused ? 2 : 1 }, bubbleStyle]}>
+      <LiquidGlass variant="clear" radius={TAB_BUBBLE / 2} style={StyleSheet.absoluteFill} />
+      <Animated.View
+        style={[
+          StyleSheet.absoluteFill,
+          styles.activeBubble,
+          { backgroundColor: isDark ? 'rgba(255,255,255,0.94)' : '#FFFFFF' },
+          activeStyle,
+        ]}
+      />
+      <Animated.View style={iconStyle}>
+        <Icon name={icon} size={21} color={color} />
       </Animated.View>
     </AnimatedPressable>
   );
@@ -256,36 +239,17 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    width: '100%',
-    maxWidth: MaxContentWidth,
-  },
-  bar: {
-    flex: 1,
-  },
-  barRow: {
-    flexDirection: 'row',
-    padding: 5,
+    justifyContent: 'center',
   },
   tabButton: {
-    flexBasis: 0,
-    height: 56,
+    width: TAB_BUBBLE,
+    height: TAB_BUBBLE,
+    borderRadius: TAB_BUBBLE / 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  tabContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  focusPill: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: 0,
-    right: 0,
-    borderRadius: 28,
-  },
-  tabLabel: {
-    fontSize: 13,
+  activeBubble: {
+    borderRadius: TAB_BUBBLE / 2,
+    boxShadow: '0px 4px 14px rgba(20,20,25,0.16), inset 0px -1px 1px rgba(20,20,25,0.05)',
   },
 });
