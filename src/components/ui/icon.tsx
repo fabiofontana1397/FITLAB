@@ -12,9 +12,6 @@ type IonName = ComponentProps<typeof Ionicons>['name'];
 const ICONS = {
   home: { set: 'ion', name: 'home' },
   homeActive: { set: 'ion', name: 'home' },
-  // Thin outline glyphs for the tab bar's glass bubbles.
-  tabHome: { set: 'ion', name: 'home-outline' },
-  tabTraining: { set: 'ion', name: 'barbell-outline' },
   training: { set: 'mci', name: 'dumbbell' },
   nutrition: { set: 'mci', name: 'food-apple-outline' },
   body: { set: 'mci', name: 'human' },
