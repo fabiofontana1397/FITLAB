@@ -20,6 +20,7 @@ import { useEnsurePlan } from '@/hooks/use-ensure-plan';
 import { useTheme } from '@/hooks/use-theme';
 import { daysAgoISO, isoMondayIndex } from '@/lib/mock/dates';
 import { findFood } from '@/lib/mock/food-database';
+import { Brand, OnBrand } from '@/constants/theme';
 import { foodIcon } from '@/lib/nutrition/food-icons';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
 import {
@@ -222,10 +223,10 @@ export default function NutritionScreen() {
 
       <PressableScale onPress={() => setPickerOpen(true)} haptic="press" accessibilityRole="button" scaleTo={0.97} style={[styles.registerButton, { backgroundColor: theme.accent }]}>
         <View style={styles.registerPlus}>
-          <Icon name="plus" size={20} color="#FFFFFF" />
+          <Icon name="plus" size={20} color={OnBrand.text} />
         </View>
         <ThemedText style={styles.registerLabel}>Registra pasto</ThemedText>
-        <Icon name="chevronRight" size={16} color="#FFFFFF" />
+        <Icon name="chevronRight" size={16} color={OnBrand.text} />
       </PressableScale>
 
       {planDayForSelectedDate ? (
@@ -242,8 +243,8 @@ export default function NutritionScreen() {
             }}
             trackColor={{ false: theme.backgroundElement, true: theme.accent }}
             ios_backgroundColor={theme.backgroundElement}
-            thumbColor="#FFFFFF"
-            {...(Platform.OS === 'web' ? { activeThumbColor: '#FFFFFF' } : null)}
+            thumbColor={OnBrand.text}
+            {...(Platform.OS === 'web' ? { activeThumbColor: OnBrand.text } : null)}
             accessibilityLabel="Inserisci la dieta del giorno nei pasti"
           />
         </View>
@@ -397,8 +398,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 14,
     ...Platform.select({
-      web: { boxShadow: '0px 6px 14px #FF6A1347' },
-      default: { shadowColor: '#FF6A13', shadowOpacity: 0.28, shadowRadius: 10, shadowOffset: { width: 0, height: 5 }, elevation: 3 },
+      web: { boxShadow: `0px 6px 14px ${Brand.accentShadow}` },
+      default: { shadowColor: Brand.accentGlow, shadowOpacity: 0.28, shadowRadius: 10, shadowOffset: { width: 0, height: 5 }, elevation: 3 },
     }),
   },
   registerPlus: {
@@ -407,11 +408,11 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.22)',
+    backgroundColor: OnBrand.divider,
   },
   registerLabel: {
     flex: 1,
-    color: '#FFFFFF',
+    color: OnBrand.text,
     fontSize: 16,
     lineHeight: 20,
     fontWeight: '700',

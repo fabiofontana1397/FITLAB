@@ -52,7 +52,7 @@ export function MeasurementInfoModal({ zone, onClose }: MeasurementInfoModalProp
 
   return (
     <Modal visible={zone != null} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose}>
+      <Pressable style={[styles.backdrop, { backgroundColor: theme.scrim }]} onPress={onClose}>
         <Pressable onPress={(e) => e.stopPropagation()}>
           <GlassSurface level="overlay" radius={Radius.xlarge} style={styles.card}>
             <View style={styles.header}>
@@ -79,7 +79,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.45)',
     padding: Spacing.four,
   },
   card: {

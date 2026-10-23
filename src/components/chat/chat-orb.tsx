@@ -4,8 +4,10 @@ import { Accelerometer } from 'expo-sensors';
 import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 
+import { Brand, Palette } from '@/constants/theme';
+
 type Blob = {
-  colors: [string, string, string];
+  colors: readonly [string, string, string];
   /** Resting position as a fraction of the sphere's size, e.g. -0.15 is
    * 15% of the sphere left of center. Each color occupies its own region
    * of the sphere (like the reference photo) rather than every blob
@@ -29,9 +31,9 @@ type Blob = {
 // always falls outside the visible circle — you only ever see the
 // gradual-falloff interior of each field, never a closed edge.
 const BLOBS: Blob[] = [
-  { colors: ['#D9660F', '#FF7A1A', '#FFB454'], baseOffset: { x: -0.16, y: -0.22 }, orbitDuration: 4200, direction: 1, phase: 0, freqRatio: 0.8 },
-  { colors: ['#7A1E00', '#B33A0A', '#E8590C'], baseOffset: { x: 0.2, y: -0.26 }, orbitDuration: 5200, direction: -1, phase: 2.1, freqRatio: 1.2 },
-  { colors: ['#C24E12', '#FF7A1A', '#FFA83D'], baseOffset: { x: 0.24, y: 0.12 }, orbitDuration: 3600, direction: 1, phase: 4.2, freqRatio: 0.65 },
+  { colors: Brand.orbWarm, baseOffset: { x: -0.16, y: -0.22 }, orbitDuration: 4200, direction: 1, phase: 0, freqRatio: 0.8 },
+  { colors: Brand.orbDeep, baseOffset: { x: 0.2, y: -0.26 }, orbitDuration: 5200, direction: -1, phase: 2.1, freqRatio: 1.2 },
+  { colors: Brand.orbBright, baseOffset: { x: 0.24, y: 0.12 }, orbitDuration: 3600, direction: 1, phase: 4.2, freqRatio: 0.65 },
 ];
 
 // Gradient stops shared by every blob's radial fill — brightest at the
@@ -67,7 +69,7 @@ export function ChatOrb({ size }: { size: number }) {
   }));
 
   return (
-    <View style={{ width: size, height: size, borderRadius: size / 2, overflow: 'hidden', backgroundColor: '#FF7A00' }}>
+    <View style={{ width: size, height: size, borderRadius: size / 2, overflow: 'hidden', backgroundColor: Palette.orange[500] }}>
       <Animated.View style={[styles.layer, tiltStyle]}>
         {BLOBS.map((blob, i) => (
           <BlobLayer key={i} blob={blob} size={size} index={i} />
@@ -87,8 +89,8 @@ function Vignette({ size }: { size: number }) {
     <Svg width={size} height={size} style={StyleSheet.absoluteFill} pointerEvents="none">
       <Defs>
         <RadialGradient id="chatOrbVignette" cx="50%" cy="50%" r="50%">
-          <Stop offset="70%" stopColor="#000000" stopOpacity={0} />
-          <Stop offset="100%" stopColor="#000000" stopOpacity={0.22} />
+          <Stop offset="70%" stopColor={Palette.neutral[950]} stopOpacity={0} />
+          <Stop offset="100%" stopColor={Palette.neutral[950]} stopOpacity={0.22} />
         </RadialGradient>
       </Defs>
       <Circle cx={size / 2} cy={size / 2} r={size / 2} fill="url(#chatOrbVignette)" />

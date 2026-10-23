@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { StyleSheet, View, type LayoutChangeEvent, type StyleProp, type ViewStyle } from 'react-native';
 
 import { PressableScale, type PressableScaleProps } from '@/components/motion/pressable-scale';
-import { Radius } from '@/constants/theme';
+import { GlassMaterial, Radius, type GlassTone } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 // The material's look follows liquid-glass-js (github.com/dashersw/liquid-glass-js):
@@ -46,51 +46,12 @@ const BLUR_INTENSITY: Record<LiquidGlassVariant, number> = {
 // outer node (see the same split in glass-surface.tsx).
 const CHILD_LAYOUT_KEYS = ['gap', 'rowGap', 'columnGap', 'flexDirection', 'alignItems', 'justifyContent', 'flexWrap'] as const;
 
-type Tone = 'light' | 'dark' | 'tinted';
+type Tone = GlassTone;
 
-const TINT: Record<Tone, readonly [string, string]> = {
-  light: ['rgba(255,255,255,0.62)', 'rgba(255,255,255,0.26)'],
-  dark: ['rgba(255,255,255,0.14)', 'rgba(255,255,255,0.03)'],
-  tinted: ['rgba(255,255,255,0)', 'rgba(255,255,255,0)'],
-};
-
-// The specular sheen: light catching the upper half of a curved surface.
-const SPECULAR: Record<Tone, readonly [string, string]> = {
-  light: ['rgba(255,255,255,0.55)', 'rgba(255,255,255,0)'],
-  dark: ['rgba(255,255,255,0.14)', 'rgba(255,255,255,0)'],
-  tinted: ['rgba(255,255,255,0.34)', 'rgba(255,255,255,0)'],
-};
-
-// The rim, from the outside in: a bright top edge, a fainter caustic along
-// the bottom, a hairline all round, a glow that fades within a few points
-// of the edge, and a shade low inside that reads as the glass's thickness.
-const RIM: Record<Tone, string> = {
-  light: [
-    'inset 0px 1px 1px rgba(255,255,255,0.95)',
-    'inset 0px -1px 1px rgba(255,255,255,0.5)',
-    'inset 0px 0px 0px 0.5px rgba(255,255,255,0.75)',
-    'inset 0px 0px 6px rgba(255,255,255,0.4)',
-    'inset 0px -6px 10px -6px rgba(0,0,0,0.10)',
-  ].join(', '),
-  dark: [
-    'inset 0px 1px 1px rgba(255,255,255,0.30)',
-    'inset 0px -1px 1px rgba(255,255,255,0.10)',
-    'inset 0px 0px 0px 0.5px rgba(255,255,255,0.16)',
-    'inset 0px 0px 6px rgba(255,255,255,0.06)',
-    'inset 0px -6px 10px -6px rgba(0,0,0,0.35)',
-  ].join(', '),
-  tinted: [
-    'inset 0px 1px 1px rgba(255,255,255,0.65)',
-    'inset 0px -1px 1px rgba(255,255,255,0.25)',
-    'inset 0px 0px 0px 0.5px rgba(255,255,255,0.35)',
-    'inset 0px 0px 8px rgba(255,255,255,0.18)',
-  ].join(', '),
-};
-
-const DROP_SHADOW: Record<'light' | 'dark', string> = {
-  light: '0px 6px 18px rgba(20,20,25,0.10), 0px 1px 3px rgba(20,20,25,0.06)',
-  dark: '0px 8px 22px rgba(0,0,0,0.38), 0px 1px 3px rgba(0,0,0,0.30)',
-};
+const TINT = GlassMaterial.tint;
+const SPECULAR = GlassMaterial.specular;
+const RIM = GlassMaterial.rim;
+const DROP_SHADOW = GlassMaterial.dropShadow;
 
 /** Apple-style Liquid Glass for controls: tab bars, pill buttons, round
  * icon buttons, segmented tracks. Uses the system material where iOS 26
@@ -169,10 +130,8 @@ export function LiquidGlass({
  * blurs, so it can be animated freely. */
 export function liquidLensStyle(isDark: boolean): ViewStyle {
   return {
-    backgroundColor: isDark ? 'rgba(255,255,255,0.13)' : 'rgba(255,255,255,0.72)',
-    boxShadow: isDark
-      ? 'inset 0px 1px 1px rgba(255,255,255,0.28), inset 0px 0px 0px 0.5px rgba(255,255,255,0.14), 0px 2px 8px rgba(0,0,0,0.30)'
-      : 'inset 0px 1px 1px rgba(255,255,255,1), inset 0px -1px 1px rgba(255,255,255,0.6), inset 0px 0px 0px 0.5px rgba(255,255,255,0.9), 0px 2px 8px rgba(20,20,25,0.10)',
+    backgroundColor: GlassMaterial.lens[isDark ? 'dark' : 'light'].fill,
+    boxShadow: GlassMaterial.lens[isDark ? 'dark' : 'light'].shadow,
   };
 }
 

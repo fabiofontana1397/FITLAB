@@ -13,6 +13,7 @@ import Svg, { Circle } from 'react-native-svg';
 
 import { ThemedText } from '@/components/themed-text';
 import { Icon, type IconName } from '@/components/ui/icon';
+import { SessionColors } from '@/constants/theme';
 import { getExerciseMedia } from '@/lib/exercise-media/exercise-media';
 import { roundLoad } from '@/lib/planning/exercise-library';
 import type { TrainingExerciseEntry } from '@/lib/planning/types';
@@ -24,16 +25,17 @@ import {
 } from '@/store/training-progress-store';
 
 // Always dark, like a workout app on the gym floor: black canvas, graphite
-// tiles, neon green for done/go, orange for the countdown.
+// tiles, neon green for done/go, orange for the countdown. The palette itself
+// lives in constants/theme.ts (SessionColors) with the rest of the tokens.
 const C = {
-  bg: '#000000',
-  card: '#1C1C1E',
-  cardHigh: '#2C2C2E',
-  text: '#FFFFFF',
-  muted: '#8E8E93',
-  green: '#3DF56B',
-  greenDim: 'rgba(61,245,107,0.16)',
-  orange: '#FF7A00',
+  bg: SessionColors.background,
+  card: SessionColors.card,
+  cardHigh: SessionColors.cardHigh,
+  text: SessionColors.text,
+  muted: SessionColors.muted,
+  green: SessionColors.go,
+  greenDim: SessionColors.goSoft,
+  orange: SessionColors.accent,
 };
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
@@ -503,7 +505,7 @@ function NavButton({ icon, disabled, onPress, label }: { icon: IconName; disable
 function PrimaryAction({ icon, label, onPress }: { icon: IconName; label: string; onPress: () => void }) {
   return (
     <Pressable onPress={onPress} accessibilityRole="button" style={({ pressed }) => [styles.primary, { opacity: pressed ? 0.85 : 1 }]}>
-      <Icon name={icon} size={20} color="#000" />
+      <Icon name={icon} size={20} color={C.bg} />
       <ThemedText style={styles.primaryText}>{label}</ThemedText>
     </Pressable>
   );
@@ -587,7 +589,7 @@ const styles = StyleSheet.create({
     width: 128,
     height: 128,
     borderRadius: 24,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: SessionColors.text,
     overflow: 'hidden',
   },
   gif: {
@@ -698,7 +700,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   primaryText: {
-    color: '#000',
+    color: SessionColors.background,
     fontSize: 17,
     lineHeight: 22,
     fontWeight: '700',

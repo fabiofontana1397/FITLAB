@@ -2,6 +2,7 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
+import { OnBrand } from '@/constants/theme';
 import { ProgressRing } from '@/components/ui/progress-ring';
 import { useTheme } from '@/hooks/use-theme';
 import type { PlanPhaseKind } from '@/lib/planning/types';
@@ -75,7 +76,7 @@ export function PlanMonthStepper({ months, currentMonth, currentFraction, select
                 selected && done ? { borderWidth: 2, borderColor: theme.text } : null,
               ]}>
               {done ? (
-                <Icon name="check" size={24} color="#FFFFFF" />
+                <Icon name="check" size={24} color={OnBrand.text} />
               ) : (
                 <ThemedText style={[styles.nodeNumber, { color: theme.textTertiary }]}>{m.monthIndex}</ThemedText>
               )}

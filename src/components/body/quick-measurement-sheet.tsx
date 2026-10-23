@@ -42,7 +42,7 @@ export function QuickMeasurementSheet({ visible, label, currentValueCm, onClose,
       animationType="slide"
       onRequestClose={onClose}
       onShow={() => setValue(String(currentValueCm))}>
-      <View style={styles.backdrop}>
+      <View style={[styles.backdrop, { backgroundColor: theme.scrim }]}>
         <GlassSurface level="overlay" radius={Radius.xlarge} style={[styles.sheet, { paddingBottom: insets.bottom + Spacing.four }]}>
           <View style={styles.header}>
             <ThemedText type="subtitle">Nuova misura: {label}</ThemedText>
@@ -73,7 +73,6 @@ const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.4)',
   },
   sheet: {
     paddingHorizontal: Spacing.four,

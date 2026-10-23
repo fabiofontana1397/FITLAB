@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { GlassPopup } from '@/components/glass/glass-popup';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
+import { OnBrand } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { isoMondayIndex } from '@/lib/mock/dates';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
@@ -84,7 +85,7 @@ export function MealPickerModal({ visible, date, onClose, onPick }: MealPickerMo
                 </ThemedText>
               </View>
               <View style={[styles.plus, { backgroundColor: theme.accent }]}>
-                <Icon name="plus" size={16} color="#FFFFFF" />
+                <Icon name="plus" size={16} color={OnBrand.text} />
               </View>
             </Pressable>
           );

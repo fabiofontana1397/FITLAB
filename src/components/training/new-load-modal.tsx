@@ -37,7 +37,7 @@ export function NewLoadModal({ visible, exerciseName, defaultReps, defaultWeight
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.backdrop}>
+      <View style={[styles.backdrop, { backgroundColor: theme.scrim }]}>
         <GlassSurface
           level="overlay"
           radius={Radius.xlarge}
@@ -166,7 +166,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'flex-end',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.4)',
   },
   sheet: {
     width: '100%',

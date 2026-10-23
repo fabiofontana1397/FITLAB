@@ -7,6 +7,7 @@ import { GlassSurface } from '@/components/glass/glass-surface';
 import { SpringPopup } from '@/constants/motion';
 import { Radius, Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useTheme } from '@/hooks/use-theme';
 
 const POPUP_MAX_WIDTH = 380;
 
@@ -26,6 +27,7 @@ export type GlassPopupProps = {
  * and the "Registra pasto" meal picker. */
 export function GlassPopup({ visible, onClose, children, style, maxWidth = POPUP_MAX_WIDTH }: GlassPopupProps) {
   const isDark = useColorScheme() === 'dark';
+  const theme = useTheme();
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
@@ -37,7 +39,7 @@ export function GlassPopup({ visible, onClose, children, style, maxWidth = POPUP
             blurMethod="dimezisBlurViewSdk31Plus"
             style={StyleSheet.absoluteFill}
           />
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? 'rgba(0,0,0,0.38)' : 'rgba(20,20,30,0.18)' }]} />
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.scrimSoft }]} />
         </Pressable>
         <PopupCard style={[styles.cardWrap, { maxWidth }]}>
           <GlassSurface level="overlay" radius={Radius.xlarge} style={[styles.card, style]}>

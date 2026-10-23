@@ -27,7 +27,7 @@ import { GlassSurface } from '@/components/glass/glass-surface';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
 import { SpringSheet } from '@/constants/motion';
-import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Radius, SheetShadow, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { goBackOr } from '@/lib/navigation/go-back';
 
@@ -141,7 +141,7 @@ export function SheetScreen({ title, eyebrow, children, fallbackHref = '/', cont
 
   return (
     <View style={styles.overlay}>
-      <Animated.View style={[StyleSheet.absoluteFill, styles.backdrop, backdropStyle]}>
+      <Animated.View style={[StyleSheet.absoluteFill, styles.backdrop, { backgroundColor: theme.scrim }, backdropStyle]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={close} accessibilityLabel="Chiudi" />
       </Animated.View>
 
@@ -181,7 +181,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   backdrop: {
-    backgroundColor: 'rgba(0,0,0,0.45)',
   },
   sheet: {
     position: 'absolute',
@@ -194,7 +193,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: Radius.xlarge,
     borderTopRightRadius: Radius.xlarge,
     overflow: 'hidden',
-    boxShadow: '0px -10px 34px rgba(0,0,0,0.28)',
+    boxShadow: SheetShadow,
   },
   header: {
     flexDirection: 'row',

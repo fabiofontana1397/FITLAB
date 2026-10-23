@@ -41,7 +41,7 @@ export function TickProgressBar({
             key={i}
             style={[
               styles.tick,
-              { left: x, backgroundColor: x < fillWidth ? 'rgba(0,0,0,0.14)' : 'rgba(255,106,19,0.16)' },
+              { left: x, backgroundColor: x < fillWidth ? theme.tickOnFill : theme.tickOnTrack },
             ]}
           />
         );

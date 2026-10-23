@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { GlassPopup } from '@/components/glass/glass-popup';
 import { ThemedText } from '@/components/themed-text';
 import { Icon, type IconName } from '@/components/ui/icon';
+import { OnBrand } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { Goal } from '@/lib/mock/types';
 import type { DietMonthPlan, DietPlan, PlanPhaseKind } from '@/lib/planning/types';
@@ -115,7 +116,7 @@ export function DietOverviewPopup({ visible, onClose, plan, goal, currentMonth }
                       { backgroundColor: done ? theme.brandGreen : current ? theme.accent : theme.backgroundElement },
                     ]}>
                     {done ? (
-                      <Icon name="check" size={13} color="#FFFFFF" />
+                      <Icon name="check" size={13} color={OnBrand.text} />
                     ) : (
                       <ThemedText style={[styles.monthDotText, { color: current ? theme.onAccent : theme.textTertiary }]}>
                         {m.monthIndex}

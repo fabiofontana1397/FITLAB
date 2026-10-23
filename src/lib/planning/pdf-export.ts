@@ -21,6 +21,13 @@ function formatItem(item: PlanMealItem): string {
   return `${base} — in alternativa: ${subs}`;
 }
 
+/**
+ * Print stylesheet for the exported PDF. The colours below are deliberately
+ * NOT theme tokens and deliberately do not follow the app's light/dark
+ * setting: this is ink on paper (or on a white PDF page), so it is always
+ * dark text on a light sheet no matter how the phone is set. The one shared
+ * value is the brand orange, which matches Palette.orange[500].
+ */
 const BRAND_STYLE = `
   .brand { display: flex; align-items: baseline; gap: 8px; margin-bottom: 14px; }
   .brand-mark { font-size: 20px; font-weight: 800; letter-spacing: 0.5px; color: #16171b; }

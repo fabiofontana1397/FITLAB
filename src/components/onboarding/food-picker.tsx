@@ -84,7 +84,7 @@ export function FoodPicker({ question, value, onChange }: FoodPickerProps) {
 
       {/* a long list needs a solid card: text showing through a translucent one is hard to read */}
       <Modal visible={open} transparent animationType="fade" onRequestClose={close} statusBarTranslucent>
-        <View style={styles.backdrop}>
+        <View style={[styles.backdrop, { backgroundColor: theme.scrim }]}>
           <Pressable style={StyleSheet.absoluteFill} onPress={close} accessibilityLabel="Chiudi" />
           <View style={[styles.card, { backgroundColor: theme.backgroundElevated, borderColor: theme.border }]}>
         <View style={styles.header}>
@@ -153,7 +153,7 @@ export function FoodPicker({ question, value, onChange }: FoodPickerProps) {
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.four, backgroundColor: 'rgba(0,0,0,0.55)' },
+  backdrop: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.four },
   card: { width: '100%', maxWidth: 420, maxHeight: '90%', borderRadius: Radius.xlarge, borderWidth: 1, padding: Spacing.four, gap: Spacing.three },
   selector: { borderWidth: 1.5, borderColor: 'transparent' },
   selectorInner: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, paddingHorizontal: Spacing.three, paddingVertical: 14 },

@@ -21,6 +21,7 @@ import { useUserContext } from '@/hooks/use-user-context';
 import { useTheme } from '@/hooks/use-theme';
 import { addDaysISO, currentWeekDates, daysAgoISO, isoMondayIndex } from '@/lib/mock/dates';
 import { sessionKcal as plannedSessionKcal, sessionMinutes as plannedSessionMinutes } from '@/domain/energy';
+import { OnBrand } from '@/constants/theme';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
 import type { Goal } from '@/lib/mock/types';
 import type { TrainingDayPlan } from '@/lib/planning/types';
@@ -157,7 +158,7 @@ export default function TrainingScreen() {
           <Icon name="plus" size={18} color={theme.brandGreen} />
         </View>
         <ThemedText style={styles.registerLabel}>Registra allenamento</ThemedText>
-        <Icon name="chevronRight" size={16} color="#FFFFFF" />
+        <Icon name="chevronRight" size={16} color={OnBrand.text} />
       </PressableScale>
 
       <View style={styles.sectionRow}>
@@ -297,13 +298,13 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: OnBrand.text,
     alignItems: 'center',
     justifyContent: 'center',
   },
   registerLabel: {
     flex: 1,
-    color: '#FFFFFF',
+    color: OnBrand.text,
     fontSize: 15.5,
     lineHeight: 20,
     fontWeight: '700',

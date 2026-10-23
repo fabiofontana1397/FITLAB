@@ -86,7 +86,7 @@ export default function ChatScreen() {
 
   return (
     <View style={styles.overlay}>
-      <Animated.View pointerEvents="box-none" style={[styles.backdrop, backdropStyle]} />
+      <Animated.View pointerEvents="box-none" style={[styles.backdrop, { backgroundColor: theme.scrim }, backdropStyle]} />
       <Animated.View style={[styles.sheet, sheetStyle]}>
         <KeyboardAvoidingView
           style={[styles.container, { backgroundColor: theme.background }]}
@@ -179,7 +179,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.45)',
   },
   sheet: {
     flex: 1,

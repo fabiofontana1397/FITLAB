@@ -59,7 +59,7 @@ export function PhotoDetailModal({ photo, allPhotos, entries, onClose }: PhotoDe
 
   return (
     <Modal visible={photo != null} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose}>
+      <Pressable style={[styles.backdrop, { backgroundColor: theme.scrim }]} onPress={onClose}>
         <Pressable onPress={(e) => e.stopPropagation()}>
           <GlassSurface level="overlay" radius={Radius.xlarge} style={styles.card}>
             <View style={styles.header}>
@@ -121,7 +121,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.6)',
     padding: Spacing.four,
   },
   card: {

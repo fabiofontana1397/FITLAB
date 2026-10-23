@@ -17,9 +17,6 @@ import { TimingQuick } from '@/constants/motion';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
-// Top color of the light grey wash below, reused so the top-edge fade blends
-// into it instead of painting a differently-tinted band.
-const LIGHT_WASH_TOP = '#F2F2F1';
 // Scroll distance over which the top-edge fade comes in.
 const TOP_FADE_SCROLL = 24;
 
@@ -83,14 +80,15 @@ export const ScreenScroll = forwardRef<ScrollView, ScreenScrollProps>(function S
       ))
     : children;
 
-  const topFadeColor = isLight ? LIGHT_WASH_TOP : theme.background;
+  // The fade blends into the wash's own top colour, not a differently-tinted band.
+  const topFadeColor = isLight ? theme.washTop : theme.background;
 
   return (
     <View style={[styles.root, { backgroundColor: theme.background }]}>
       {/* Soft top-to-bottom grey wash behind every light screen. */}
       {isLight ? (
         <LinearGradient
-          colors={[LIGHT_WASH_TOP, theme.background, '#DEDEDD']}
+          colors={[theme.washTop, theme.background, theme.washBottom]}
           locations={[0, 0.45, 1]}
           style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]}
         />

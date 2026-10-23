@@ -9,7 +9,7 @@ import { FlatCard } from '@/components/ui/flat-card';
 import { Icon } from '@/components/ui/icon';
 import { InsightCard } from '@/components/ui/insight-card';
 import { PrimaryButton } from '@/components/ui/primary-button';
-import { Radius, Spacing } from '@/constants/theme';
+import { Brand, Radius, Spacing } from '@/constants/theme';
 import { useCoachInsights } from '@/hooks/use-coach-insights';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -27,26 +27,26 @@ export function HomeCoachCard({ isWorkoutDayIncomplete }: { isWorkoutDayIncomple
 
   return (
     <>
-      <View style={styles.card} onLayout={(e) => setLayout({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height })}>
+      <View style={[styles.card, { backgroundColor: theme.spotlight }]} onLayout={(e) => setLayout({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height })}>
         <CoachAura width={layout.width} height={layout.height} />
-        <View pointerEvents="none" style={[styles.rim, { borderColor: 'rgba(255,122,0,0.28)' }]} />
+        <View pointerEvents="none" style={[styles.rim, { borderColor: theme.accentRim }]} />
         <Pressable style={styles.headerRow} onPress={() => setModalOpen(true)} hitSlop={4}>
           <View style={styles.orbHalo}>
             <ChatOrb size={30} />
           </View>
           <View style={{ flex: 1 }}>
-            <ThemedText style={styles.title}>AI Coach</ThemedText>
-            <ThemedText style={styles.subtitle}>Il tuo consiglio di oggi</ThemedText>
+            <ThemedText style={[styles.title, { color: theme.spotlightText }]}>AI Coach</ThemedText>
+            <ThemedText style={[styles.subtitle, { color: theme.spotlightTextFaint }]}>Il tuo consiglio di oggi</ThemedText>
           </View>
-          <View style={styles.pill}>
-            <PulseDot color="#FF7A00" />
-            <ThemedText style={styles.pillLabel}>Nuovo insight</ThemedText>
+          <View style={[styles.pill, { backgroundColor: theme.accentSoft }]}>
+            <PulseDot color={theme.accent} />
+            <ThemedText style={[styles.pillLabel, { color: theme.accent }]}>Nuovo insight</ThemedText>
           </View>
         </Pressable>
-        <ThemedText numberOfLines={1} style={styles.headline}>
+        <ThemedText numberOfLines={1} style={[styles.headline, { color: theme.spotlightText }]}>
           {topInsight?.headline ?? 'Nessun consiglio ancora'}
         </ThemedText>
-        <ThemedText style={styles.body} numberOfLines={3}>
+        <ThemedText style={[styles.body, { color: theme.spotlightTextMuted }]} numberOfLines={3}>
           {topInsight?.body ?? 'Apri per generare un consiglio personalizzato dal coach AI.'}
         </ThemedText>
         <PrimaryButton
@@ -57,7 +57,7 @@ export function HomeCoachCard({ isWorkoutDayIncomplete }: { isWorkoutDayIncomple
       </View>
 
       <Modal visible={modalOpen} transparent animationType="fade" onRequestClose={() => setModalOpen(false)}>
-        <Pressable style={styles.backdrop} onPress={() => setModalOpen(false)}>
+        <Pressable style={[styles.backdrop, { backgroundColor: theme.scrim }]} onPress={() => setModalOpen(false)}>
           <Pressable onPress={(e) => e.stopPropagation()} style={styles.modalWrap}>
             <FlatCard style={styles.modalCard}>
               <View style={styles.modalHeaderRow}>
@@ -93,7 +93,6 @@ export function HomeCoachCard({ isWorkoutDayIncomplete }: { isWorkoutDayIncomple
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#15161A',
     borderRadius: Radius.large,
     padding: Spacing.four,
     gap: Spacing.two + 2,
@@ -110,14 +109,13 @@ const styles = StyleSheet.create({
   },
   orbHalo: {
     borderRadius: 999,
-    shadowColor: '#FF7A00',
+    shadowColor: Brand.accentGlow,
     shadowOpacity: 0.7,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 0 },
     elevation: 6,
   },
   subtitle: {
-    color: 'rgba(255,255,255,0.55)',
     fontSize: 11,
     lineHeight: 14,
     fontWeight: '500',
@@ -128,7 +126,6 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   title: {
-    color: '#FFFFFF',
     fontSize: 13,
     lineHeight: 17,
     fontWeight: '700',
@@ -137,26 +134,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(255,122,0,0.18)',
     paddingHorizontal: Spacing.two,
     paddingVertical: 3,
     borderRadius: Radius.pill,
   },
   pillLabel: {
-    color: '#FF7A00',
     fontSize: 10,
     lineHeight: 13,
     fontWeight: '700',
   },
   headline: {
     marginTop: Spacing.one,
-    color: '#FFFFFF',
     fontSize: 17,
     lineHeight: 22,
     fontWeight: '800',
   },
   body: {
-    color: 'rgba(255,255,255,0.72)',
     fontSize: 13,
     lineHeight: 18,
     fontWeight: '500',
@@ -168,7 +161,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.45)',
     padding: Spacing.four,
   },
   modalWrap: {

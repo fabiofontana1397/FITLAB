@@ -27,6 +27,7 @@ import { sumActivityKcalForDate, useWeeklyEnergy } from '@/hooks/use-weekly-ener
 import { useTheme } from '@/hooks/use-theme';
 import { currentWeekDates, dayOfMonth, daysAgoISO, isoMondayIndex } from '@/lib/mock/dates';
 import { dayEnergy } from '@/domain/energy';
+import { Brand, OnBrand } from '@/constants/theme';
 import { useUserContext } from '@/hooks/use-user-context';
 import { WEEKDAY_LABELS } from '@/lib/planning/exercise-library';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
@@ -288,18 +289,18 @@ export default function HomeScreen() {
 
       <View style={styles.actionsRow}>
         <ActionTile
-          colors={['#FF8A1F', '#FF5E00']}
-          glowColor="#FF6A13"
+          colors={Brand.accentGradientSoft}
+          glowColor={Brand.accentGlow}
           icon="utensils"
-          iconColor="#FF6A13"
+          iconColor={Brand.accentGlow}
           label={'Registra\npasto'}
           onPress={() => setRegisterMealOpen(true)}
         />
         <ActionTile
-          colors={['#34C77B', '#1FA85B']}
-          glowColor="#22B35E"
+          colors={Brand.successGradient}
+          glowColor={Brand.successGlow}
           icon="barbell"
-          iconColor="#1FA85B"
+          iconColor={Brand.successGradient[1]}
           label={'Registra\nallenamento'}
           onPress={() => setLogActivityOpen(true)}
         />
@@ -494,7 +495,7 @@ function ActionTile({
           <Icon name={icon} size={22} color={iconColor} />
         </View>
         <ThemedText style={styles.actionLabel}>{label}</ThemedText>
-        <Icon name="chevronRight" size={15} color="#FFFFFF" />
+        <Icon name="chevronRight" size={15} color={OnBrand.text} />
       </LinearGradient>
     </PressableScale>
   );
@@ -696,13 +697,13 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 12,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: OnBrand.text,
     alignItems: 'center',
     justifyContent: 'center',
   },
   actionLabel: {
     flex: 1,
-    color: '#FFFFFF',
+    color: OnBrand.text,
     fontSize: 12.5,
     lineHeight: 17,
     fontWeight: '700',
