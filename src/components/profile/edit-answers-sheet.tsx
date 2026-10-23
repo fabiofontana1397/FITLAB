@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { ScrollDefaults } from '@/constants/scroll';
 import { GlassSurface } from '@/components/glass/glass-surface';
 import { QuestionBlock } from '@/components/onboarding/question-block';
 import { ThemedText } from '@/components/themed-text';
@@ -58,7 +59,7 @@ export function EditAnswersSheet({ group, answers, onClose, onSave }: EditAnswer
           <View style={styles.closeButton} />
         </View>
 
-        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <ScrollView {...ScrollDefaults} contentContainerStyle={styles.scrollContent}>
           <View style={styles.inner}>
             <GlassSurface level="subtle" radius={Radius.large} style={styles.hint}>
               <Icon name="sparkle" size={16} color={theme.accent} />

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { FlatList, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 
+import { HorizontalScrollDefaults } from '@/constants/scroll';
 import { AppTextInput } from '@/components/ui/app-text';
 import Animated, {
   Easing,
@@ -119,8 +120,7 @@ export default function ChatScreen() {
 
           {messages.length <= 1 ? (
             <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
+              {...HorizontalScrollDefaults}
               style={styles.chipsScroll}
               contentContainerStyle={styles.chipsRow}>
               {SUGGESTED_PROMPTS.map((prompt) => (

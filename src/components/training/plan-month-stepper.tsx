@@ -1,5 +1,6 @@
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
+import { HorizontalScrollDefaults } from '@/constants/scroll';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
 import { OnBrand } from '@/constants/theme';
@@ -97,7 +98,7 @@ export function PlanMonthStepper({ months, currentMonth, currentFraction, select
 
   if (scrolls) {
     return (
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
+      <ScrollView {...HorizontalScrollDefaults} contentContainerStyle={styles.row}>
         {columns}
       </ScrollView>
     );

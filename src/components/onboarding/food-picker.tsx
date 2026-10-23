@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
+import { ScrollDefaults } from '@/constants/scroll';
 import { GlassSurface } from '@/components/glass/glass-surface';
 import { ThemedText } from '@/components/themed-text';
 import { AppTextInput } from '@/components/ui/app-text';
@@ -107,7 +108,7 @@ export function FoodPicker({ question, value, onChange }: FoodPickerProps) {
           style={[styles.search, { color: theme.text, backgroundColor: theme.backgroundElement, borderColor: theme.border }]}
         />
 
-        <ScrollView style={styles.list} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        <ScrollView {...ScrollDefaults} style={styles.list}>
           {groups.length === 0 ? (
             <ThemedText type="caption" themeColor="textSecondary">
               Nessun alimento trovato.

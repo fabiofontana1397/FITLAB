@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Reveal, ScrollRevealContext } from '@/components/motion/reveal';
 import { TimingQuick } from '@/constants/motion';
+import { ScrollDefaults } from '@/constants/scroll';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -98,8 +99,7 @@ export const ScreenScroll = forwardRef<ScrollView, ScreenScrollProps>(function S
           ref={ref}
           style={styles.scrollView}
           contentContainerStyle={{ flexGrow: 1, alignItems: 'center' }}
-          showsVerticalScrollIndicator={false}
-          scrollEventThrottle={16}
+          {...ScrollDefaults}
           {...rest}
           onScroll={onScroll}
           onLayout={(e) => {

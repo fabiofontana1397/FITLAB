@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
+import { ScrollDefaults } from '@/constants/scroll';
 import { ChatOrb } from '@/components/chat/chat-orb';
 import { CoachAura, PulseDot } from '@/components/home/coach-aura';
 import { ThemedText } from '@/components/themed-text';
@@ -66,7 +67,7 @@ export function HomeCoachCard({ isWorkoutDayIncomplete }: { isWorkoutDayIncomple
                   <Icon name="close" size={20} color={theme.textTertiary} />
                 </Pressable>
               </View>
-              <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
+              <ScrollView {...ScrollDefaults} style={styles.modalScroll}>
                 <View style={{ gap: Spacing.three }}>
                   {insights.length === 0 ? (
                     <ThemedText type="caption" themeColor="textSecondary">

@@ -23,6 +23,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { ScrollDefaults } from '@/constants/scroll';
 import { GlassSurface } from '@/components/glass/glass-surface';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
@@ -165,10 +166,9 @@ export function SheetScreen({ title, eyebrow, children, fallbackHref = '/', cont
         </View>
 
         <ScrollView
+          {...ScrollDefaults}
           style={styles.scroll}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + Spacing.six }, contentContainerStyle]}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled">
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + Spacing.six }, contentContainerStyle]}>
           {children}
         </ScrollView>
       </Animated.View>

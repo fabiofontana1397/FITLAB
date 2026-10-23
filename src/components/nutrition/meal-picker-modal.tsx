@@ -1,5 +1,6 @@
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
+import { ScrollDefaults } from '@/constants/scroll';
 import { GlassPopup } from '@/components/glass/glass-popup';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
@@ -62,7 +63,7 @@ export function MealPickerModal({ visible, date, onClose, onPick }: MealPickerMo
         </Pressable>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} style={styles.scroll} contentContainerStyle={styles.list}>
+      <ScrollView {...ScrollDefaults} style={styles.scroll} contentContainerStyle={styles.list}>
         {slots.map((slot) => {
           const color = mealSlotColor(theme, slot.id);
           const logged = sumMacros(entriesForSlot(entries, slot.id, date));

@@ -1,6 +1,7 @@
 import { Image, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { ScrollDefaults } from '@/constants/scroll';
 import { GlassSurface } from '@/components/glass/glass-surface';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
@@ -59,7 +60,7 @@ export function ExerciseInfoModal({ visible, exerciseName, media, sets, reps, te
             </Pressable>
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false}>
+          <ScrollView {...ScrollDefaults}>
             <View style={[styles.detailsCard, { backgroundColor: theme.backgroundElement }]}>
               <DetailRow icon="repsHash" label="Serie e ripetizioni" value={`${sets} serie × ${reps} rip.`} />
               <DetailRow icon="hourglass" label="Modalità di esecuzione" value={tempo} />

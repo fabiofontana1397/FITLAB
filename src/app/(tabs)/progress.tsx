@@ -2,6 +2,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useMemo, useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
+import { HorizontalScrollDefaults } from '@/constants/scroll';
 import { BodySilhouette, type MeasurementZone } from '@/components/body/body-silhouette';
 import { MeasurementInfoModal } from '@/components/body/measurement-info-modal';
 import { MeasurementTrendModal } from '@/components/body/measurement-trend-modal';
@@ -373,7 +374,7 @@ export default function ProgressScreen() {
           photosByDay.map(([date, dayPhotos]) => (
             <FlatCard key={date} radius={CARD_RADIUS} style={styles.photoDayCard}>
               <ThemedText style={styles.measureLabel}>{formatFullDay(date)}</ThemedText>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+              <ScrollView {...HorizontalScrollDefaults} contentContainerStyle={{ gap: 8 }}>
                 {dayPhotos.map((photo) => (
                   <Pressable key={photo.id} onPress={() => setDetailPhoto(photo)}>
                     <Image source={{ uri: photo.uri }} style={styles.photoThumb} />

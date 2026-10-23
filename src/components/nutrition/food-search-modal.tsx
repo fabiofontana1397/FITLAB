@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { FlatList, Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
 
+import { ListDefaults } from '@/constants/scroll';
 import { AppTextInput } from '@/components/ui/app-text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -177,12 +178,11 @@ function FoodSearchForm({ slot, date, editEntry, onClose, onSaved }: Omit<FoodSe
       </View>
 
       <FlatList
+        {...ListDefaults}
         data={list}
         keyExtractor={(item) => item.id}
         style={styles.list}
         contentContainerStyle={styles.listContent}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
         renderItem={({ item }) => {
           const isSelected = selected?.id === item.id;
           if (isSelected) {

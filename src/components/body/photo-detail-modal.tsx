@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Image, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
+import { ScrollDefaults } from '@/constants/scroll';
 import { GlassSurface } from '@/components/glass/glass-surface';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
@@ -76,7 +77,7 @@ export function PhotoDetailModal({ photo, allPhotos, entries, onClose }: PhotoDe
 
             <Image source={{ uri: photo.uri }} style={styles.image} resizeMode="cover" />
 
-            <ScrollView style={styles.insightScroll}>
+            <ScrollView {...ScrollDefaults} style={styles.insightScroll}>
               <View style={styles.insightRow}>
                 <Icon name="sparkle" size={16} color={theme.accent} />
                 <ThemedText type="small" themeColor="textSecondary" style={{ flex: 1 }}>

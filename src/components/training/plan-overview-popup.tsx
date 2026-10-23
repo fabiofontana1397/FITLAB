@@ -1,5 +1,6 @@
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
+import { ScrollDefaults } from '@/constants/scroll';
 import { GlassPopup } from '@/components/glass/glass-popup';
 import { ThemedText } from '@/components/themed-text';
 import { Icon, type IconName } from '@/components/ui/icon';
@@ -77,7 +78,7 @@ export function PlanOverviewPopup({ visible, onClose, plan, goal, currentMonth }
         </Pressable>
       </View>
 
-      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+      <ScrollView {...ScrollDefaults} style={styles.scroll} contentContainerStyle={styles.content}>
         <Section icon="target" title={`Obiettivo: ${copy.name}`}>
           <Body>
             {`Un percorso di ${plan.durationMonths} ${plan.durationMonths === 1 ? 'mese' : 'mesi'} costruito sulle risposte del tuo questionario: obiettivo, livello, giorni disponibili, attrezzatura ed eventuali dolori o infortuni. ${copy.why}`}

@@ -11,6 +11,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 
+import { ScrollDefaults } from '@/constants/scroll';
 import { ThemedText } from '@/components/themed-text';
 import { FadeInView } from '@/components/ui/fade-in-view';
 import { Icon } from '@/components/ui/icon';
@@ -133,7 +134,7 @@ export default function OnboardingRoadmapScreen() {
         style={{ flex: 1 }}>
         {pages.map((page) => (
           <View key={page.id} style={{ width, height: '100%' }}>
-            <ScrollView contentContainerStyle={styles.pageInner} showsVerticalScrollIndicator={false}>
+            <ScrollView {...ScrollDefaults} contentContainerStyle={styles.pageInner}>
               <View style={{ gap: Spacing.one }}>
                 <ThemedText type="label" themeColor="textSecondary">
                   {page.kicker}

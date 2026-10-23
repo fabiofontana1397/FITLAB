@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { ScrollDefaults } from '@/constants/scroll';
 import { GlassSurface } from '@/components/glass/glass-surface';
 import { ThemedText } from '@/components/themed-text';
 import { FadeInView } from '@/components/ui/fade-in-view';
@@ -57,7 +58,7 @@ export function QuestionnaireSheet({ visible, onClose, groups, answers, mode, on
           </Pressable>
         </View>
 
-        <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + Spacing.five }]} showsVerticalScrollIndicator={false}>
+        <ScrollView {...ScrollDefaults} contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + Spacing.five }]}>
           <View style={styles.inner}>
             <OutcomeBanner saving={saving} isGenerating={isGenerating} outcome={outcome} />
 
