@@ -145,33 +145,35 @@ export function SheetScreen({ title, eyebrow, children, fallbackHref = '/', cont
         <Pressable style={StyleSheet.absoluteFill} onPress={close} accessibilityLabel="Chiudi" />
       </Animated.View>
 
-      <Animated.View style={[styles.sheet, { top, backgroundColor: theme.background }, sheetStyle]}>
-        <View style={styles.header} {...dragHandlers.panHandlers}>
-          <View style={styles.headingText}>
-            <ThemedText type="display">{title}</ThemedText>
-            {eyebrow ? (
-              <ThemedText type="caption" themeColor="textSecondary">
-                {eyebrow}
-              </ThemedText>
-            ) : null}
+      <View style={[styles.sheetArea, { top }]}>
+        <Animated.View style={[styles.sheet, { backgroundColor: theme.background }, sheetStyle]}>
+          <View style={styles.header} {...dragHandlers.panHandlers}>
+            <View style={styles.headingText}>
+              <ThemedText type="display">{title}</ThemedText>
+              {eyebrow ? (
+                <ThemedText type="caption" themeColor="textSecondary">
+                  {eyebrow}
+                </ThemedText>
+              ) : null}
+            </View>
+            <Pressable onPress={close} hitSlop={8} accessibilityRole="button" accessibilityLabel="Chiudi">
+              <GlassSurface level="card" radius={Radius.pill} style={styles.closeButton}>
+                <View style={styles.closeInner}>
+                  <Icon name="close" size={18} color={theme.text} />
+                </View>
+              </GlassSurface>
+            </Pressable>
           </View>
-          <Pressable onPress={close} hitSlop={8} accessibilityRole="button" accessibilityLabel="Chiudi">
-            <GlassSurface level="card" radius={Radius.pill} style={styles.closeButton}>
-              <View style={styles.closeInner}>
-                <Icon name="close" size={18} color={theme.text} />
-              </View>
-            </GlassSurface>
-          </Pressable>
-        </View>
 
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + Spacing.six }, contentContainerStyle]}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled">
-          {children}
-        </ScrollView>
-      </Animated.View>
+          <ScrollView
+            style={styles.scroll}
+            contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + Spacing.six }, contentContainerStyle]}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled">
+            {children}
+          </ScrollView>
+        </Animated.View>
+      </View>
     </View>
   );
 }
@@ -183,14 +185,28 @@ const styles = StyleSheet.create({
   backdrop: {
     backgroundColor: 'rgba(0,0,0,0.45)',
   },
-  sheet: {
+  // The space the sheet occupies, from under the status bar to the bottom
+  // edge. It must not carry `alignSelf`: on web an align-self on an
+  // absolutely positioned element makes the browser size it from its content
+  // instead of from `top`/`bottom`, so the sheet grew past the bottom of the
+  // screen — its header pushed up under the status bar and the ScrollView
+  // inside stretched to its full content height, which left it with nothing
+  // to scroll. The width cap and the centering on a wide window belong to
+  // the card inside instead (same split as the tab bar in app-tabs.tsx).
+  // Plain (not animated) so this style compiles to a class and `box-none`
+  // survives: beside the card, the backdrop underneath stays tappable.
+  sheetArea: {
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
+    alignItems: 'center',
+    pointerEvents: 'box-none',
+  },
+  sheet: {
+    flex: 1,
     width: '100%',
     maxWidth: MaxContentWidth,
-    alignSelf: 'center',
     borderTopLeftRadius: Radius.xlarge,
     borderTopRightRadius: Radius.xlarge,
     overflow: 'hidden',
