@@ -16,7 +16,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { GlassSurface } from '@/components/glass/glass-surface';
+import { LiquidGlass, liquidLensStyle } from '@/components/glass/liquid-glass';
 import { ThemedText } from '@/components/themed-text';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { SpringPressIn, SpringPressOut } from '@/constants/motion';
@@ -132,12 +132,10 @@ function FloatingTabBar({
         { pointerEvents: 'box-none' },
       ]}>
       <View style={styles.row}>
-        <GlassSurface
-          level="overlay"
-          intensity={16}
+        <LiquidGlass
+          variant="clear"
           radius={Radius.xlarge}
           style={styles.bar}
-          nativeGlass
           onLayout={(e) => {
             // The row re-measures on every tab switch (the focused
             // TabButton's own layout shifts slightly), which can report a
@@ -153,7 +151,7 @@ function FloatingTabBar({
             onBarHeightChange?.(height);
           }}>
           <View style={styles.barRow}>{children}</View>
-        </GlassSurface>
+        </LiquidGlass>
         {/* Reserves the room ChatFab occupies (see _layout.tsx) — the FAB
             itself is a fully independent overlay painted on top of this gap,
             not a sibling here, so tapping it can't be misrouted by TabList's
@@ -177,6 +175,7 @@ function TabButton({
   ...props
 }: TabTriggerSlotProps & { label: string; icon: IconName }) {
   const theme = useTheme();
+  const isDark = useColorScheme() === 'dark';
   const color = isFocused ? theme.text : theme.textSecondary;
   const focus = useSharedValue(isFocused ? 1 : 0);
   const pressed = useSharedValue(0);
@@ -223,7 +222,7 @@ function TabButton({
       accessibilityLabel={label}
       accessibilityState={{ selected: !!isFocused }}
       style={[styles.tabButton, buttonStyle]}>
-      <Animated.View style={[styles.focusPill, { backgroundColor: theme.backgroundSelected }, pillStyle]} />
+      <Animated.View style={[styles.focusPill, liquidLensStyle(isDark), pillStyle]} />
       <Animated.View style={[styles.tabContent, contentStyle]}>
         <Animated.View style={iconStyle}>
           <Icon name={icon} size={20} color={color} />

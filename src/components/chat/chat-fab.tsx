@@ -3,7 +3,7 @@ import { Platform, Pressable, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ChatOrb } from '@/components/chat/chat-orb';
-import { GlassSurface } from '@/components/glass/glass-surface';
+import { LiquidGlass } from '@/components/glass/liquid-glass';
 import { Radius, Spacing } from '@/constants/theme';
 
 const DEFAULT_SIZE = 48;
@@ -35,14 +35,13 @@ export function ChatFab({ size }: { size?: number | null }) {
       onPress={() => router.push('/chat')}
       style={[styles.wrapper, { bottom: bottomOffset }]}
       hitSlop={8}>
-      <GlassSurface
-        level="raised"
+      <LiquidGlass
+        variant="clear"
         radius={Radius.pill}
         style={[styles.button, { width: buttonSize, height: buttonSize }]}
-        bordered={false}
-        nativeGlass>
+        interactive>
         <ChatOrb size={orbSize} />
-      </GlassSurface>
+      </LiquidGlass>
     </Pressable>
   );
 }
