@@ -43,11 +43,12 @@ export const Palette = { orange, neutral };
 
 export const Colors = {
   light: {
-    // Greys sampled from the "clean dashboard" reference: soft grey page,
-    // near-white glass cards, a slightly darker grey for selected pills.
+    // Greys sampled from the Liquid Glass reference: soft grey page, milky
+    // translucent glass cards only a shade lighter than it (their white rim
+    // does the separating), recessed wells a shade darker.
     background: '#E9E9E8',
-    backgroundElevated: '#F7F7F7',
-    backgroundElement: '#EEEEEE',
+    backgroundElevated: 'rgba(255,255,255,0.42)',
+    backgroundElement: '#E4E4E3',
     backgroundSelected: '#E1E1E1',
     surfaceGlass: 'rgba(247,247,247,0.72)',
     surfaceGlassStrong: 'rgba(247,247,247,0.88)',
@@ -98,14 +99,14 @@ export const Colors = {
     // used for inset wells/tracks *inside* a card, now reads as a subtly
     // recessed shade relative to the card surface, which is the right way
     // around for an elevation hierarchy).
-    backgroundElevated: neutral[800],
+    backgroundElevated: 'rgba(255,255,255,0.10)',
     backgroundElement: neutral[850],
     backgroundSelected: '#26272F',
     surfaceGlass: 'rgba(28,29,34,0.55)',
     surfaceGlassStrong: 'rgba(28,29,34,0.78)',
     border: 'rgba(255,255,255,0.08)',
     borderStrong: 'rgba(255,255,255,0.16)',
-    cardEdge: 'rgba(255,255,255,0.08)',
+    cardEdge: 'rgba(255,255,255,0.12)',
     iconButton: '#26272F',
     text: neutral[0],
     textSecondary: neutral[300],

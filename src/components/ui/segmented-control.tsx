@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { LayoutChangeEvent, Platform, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { LayoutChangeEvent, Pressable, ScrollView, StyleSheet } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
-import { LiquidGlass } from '@/components/glass/liquid-glass';
+import { LiquidGlass, liquidLensStyle } from '@/components/glass/liquid-glass';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { hapticSelection } from '@/lib/haptics';
 
@@ -24,6 +25,7 @@ export function SegmentedControl<T extends string>({
   scrollable,
 }: SegmentedControlProps<T>) {
   const theme = useTheme();
+  const isDark = useColorScheme() === 'dark';
   const [widths, setWidths] = useState<Record<string, number>>({});
   const [positions, setPositions] = useState<Record<string, number>>({});
   const indicatorX = useSharedValue(0);
@@ -53,9 +55,7 @@ export function SegmentedControl<T extends string>({
   const content = (
     <LiquidGlass radius={Radius.pill} style={styles.track}>
       {activeWidth != null && (
-        <Animated.View style={[styles.indicator, indicatorStyle, { shadowColor: theme.accent }]}>
-          <LiquidGlass radius={Radius.pill} tintColor={theme.accent} floating={false} style={StyleSheet.absoluteFill} />
-        </Animated.View>
+        <Animated.View style={[styles.indicator, liquidLensStyle(isDark), indicatorStyle]} />
       )}
       {options.map((option) => {
         const active = option.value === value;
@@ -71,7 +71,7 @@ export function SegmentedControl<T extends string>({
             hitSlop={4}>
             <ThemedText
               type="smallBold"
-              style={{ color: active ? theme.onAccent : theme.textSecondary }}>
+              style={{ color: active ? theme.text : theme.textSecondary }}>
               {option.label}
             </ThemedText>
           </Pressable>
@@ -112,9 +112,5 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: 0,
     borderRadius: Radius.pill,
-    ...Platform.select({
-      web: { boxShadow: '0px 3px 8px rgba(255,106,0,0.35)' },
-      default: { shadowOpacity: 0.35, shadowRadius: 8, shadowOffset: { width: 0, height: 3 } },
-    }),
   },
 });

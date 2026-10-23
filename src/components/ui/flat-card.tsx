@@ -1,14 +1,21 @@
-import { Platform, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
+import { StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 import type { ComponentProps } from 'react';
 import Animated from 'react-native-reanimated';
 
 import { Radius } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 
-/** Near-white card with a white glass edge and a wide, very soft shadow — the
- * app's card language (clean grey page, floating light cards), deliberately
- * distinct from GlassSurface's translucent Liquid Glass. `tint` overrides the
- * default neutral fill for category-colored cards. */
+// A milky glass pane: a bright top edge, a white glow just inside the rim
+// that fades toward the middle, and a wide, faint shadow under it.
+const CARD_SHADOW = {
+  light: 'inset 0px 1px 0px rgba(255,255,255,0.95), inset 0px 0px 22px rgba(255,255,255,0.5), 0px 10px 30px rgba(20,20,25,0.06)',
+  dark: 'inset 0px 1px 0px rgba(255,255,255,0.12), inset 0px 0px 22px rgba(255,255,255,0.03), 0px 10px 30px rgba(0,0,0,0.45)',
+} as const;
+
+/** Milky Liquid Glass card: a translucent pane a shade lighter than the
+ * page, set off by its white rim and inner glow — the app's card language.
+ * `tint` overrides the default glass fill for category-colored cards. */
 export function FlatCard({
   tint,
   radius = Radius.large,
@@ -25,12 +32,18 @@ export function FlatCard({
   children?: React.ReactNode;
 }) {
   const theme = useTheme();
+  const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
   return (
     <Animated.View
       layout={layout}
       style={[
         styles.flatCard,
-        { backgroundColor: tint ?? theme.backgroundElevated, borderRadius: radius, borderColor: theme.cardEdge },
+        {
+          backgroundColor: tint ?? theme.backgroundElevated,
+          borderRadius: radius,
+          borderColor: theme.cardEdge,
+          boxShadow: CARD_SHADOW[scheme],
+        },
         style,
       ]}>
       {children}
@@ -42,15 +55,5 @@ const styles = StyleSheet.create({
   flatCard: {
     overflow: 'hidden',
     borderWidth: 1,
-    ...Platform.select({
-      web: { boxShadow: '0px 12px 32px rgba(20,20,25,0.07)' },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.07,
-        shadowRadius: 16,
-        elevation: 2,
-      },
-    }),
   },
 });
