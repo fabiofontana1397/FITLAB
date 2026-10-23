@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
-import { Platform, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
-import { PressableScale } from '@/components/motion/pressable-scale';
+import { LiquidGlassButton } from '@/components/glass/liquid-glass';
 import { ThemedText } from '@/components/themed-text';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { useTheme } from '@/hooks/use-theme';
@@ -14,20 +14,14 @@ export type HeaderIconButtonProps = {
   accessibilityLabel?: string;
 };
 
-/** The round white button every screen header uses for its top-right
- * shortcut (profile, plan pages…): 44 pt, soft shadow, white edge. */
+/** The round glass button every screen header uses for its top-right
+ * shortcut (profile, plan pages…): 44 pt Liquid Glass. */
 export function HeaderIconButton({ icon, onPress, color, accessibilityLabel }: HeaderIconButtonProps) {
   const theme = useTheme();
   return (
-    <PressableScale
-      onPress={onPress}
-      hitSlop={8}
-      scaleTo={0.9}
-      accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel}
-      style={[styles.iconButton, { backgroundColor: theme.iconButton, borderColor: theme.cardEdge }]}>
+    <LiquidGlassButton onPress={onPress} hitSlop={8} scaleTo={0.9} accessibilityLabel={accessibilityLabel} size={44}>
       <Icon name={icon} size={20} color={color ?? theme.text} />
-    </PressableScale>
+    </LiquidGlassButton>
   );
 }
 
@@ -80,23 +74,5 @@ const styles = StyleSheet.create({
     fontSize: 22,
     lineHeight: 28,
     letterSpacing: -0.4,
-  },
-  iconButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...Platform.select({
-      web: { boxShadow: '0px 6px 16px rgba(20,20,25,0.08)' },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.08,
-        shadowRadius: 8,
-        elevation: 2,
-      },
-    }),
   },
 });

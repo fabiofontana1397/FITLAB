@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { LayoutChangeEvent, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { LayoutChangeEvent, Platform, Pressable, ScrollView, StyleSheet } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
+import { LiquidGlass } from '@/components/glass/liquid-glass';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -50,15 +51,11 @@ export function SegmentedControl<T extends string>({
   };
 
   const content = (
-    <View style={[styles.track, { backgroundColor: theme.backgroundElement }]}>
+    <LiquidGlass radius={Radius.pill} style={styles.track}>
       {activeWidth != null && (
-        <Animated.View
-          style={[
-            styles.indicator,
-            indicatorStyle,
-            { backgroundColor: theme.accent, shadowColor: theme.accent },
-          ]}
-        />
+        <Animated.View style={[styles.indicator, indicatorStyle, { shadowColor: theme.accent }]}>
+          <LiquidGlass radius={Radius.pill} tintColor={theme.accent} floating={false} style={StyleSheet.absoluteFill} />
+        </Animated.View>
       )}
       {options.map((option) => {
         const active = option.value === value;
@@ -80,7 +77,7 @@ export function SegmentedControl<T extends string>({
           </Pressable>
         );
       })}
-    </View>
+    </LiquidGlass>
   );
 
   if (scrollable) {
@@ -97,7 +94,6 @@ export function SegmentedControl<T extends string>({
 const styles = StyleSheet.create({
   track: {
     flexDirection: 'row',
-    borderRadius: Radius.pill,
     padding: Spacing.half,
     position: 'relative',
   },
@@ -109,10 +105,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // Positioned inside the glass's content box, which already sits inside
+  // the track's padding — the same box the items measure themselves in.
   indicator: {
     position: 'absolute',
-    top: Spacing.half,
-    bottom: Spacing.half,
+    top: 0,
+    bottom: 0,
     borderRadius: Radius.pill,
     ...Platform.select({
       web: { boxShadow: '0px 3px 8px rgba(255,106,0,0.35)' },

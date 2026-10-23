@@ -7,6 +7,7 @@ import { EnergyDetailsPopup } from '@/components/home/energy-details-popup';
 import { OggiGauge } from '@/components/home/oggi-gauge';
 import { HomeCoachCard } from '@/components/home/home-coach-card';
 import { DayCalendarModal } from '@/components/ui/day-calendar-modal';
+import { LiquidGlassButton } from '@/components/glass/liquid-glass';
 import { AnimatedFill, GrowBar } from '@/components/motion/animated-fill';
 import { PressableScale } from '@/components/motion/pressable-scale';
 import { ScreenScroll } from '@/components/screen-scroll';
@@ -202,14 +203,14 @@ export default function HomeScreen() {
       <View style={styles.headerRow}>
         <BrandWordmark style={styles.logo} />
         <View style={styles.headerIcons}>
-          <PressableScale
+          <LiquidGlassButton
             onPress={() => router.push('/notification-settings' as Href)}
             hitSlop={8}
             scaleTo={0.9}
             accessibilityLabel="Notifiche"
-            style={[styles.bell, { backgroundColor: theme.backgroundElevated, borderColor: theme.border }]}>
+            size={36}>
             <Icon name="bell" size={19} color={theme.text} />
-          </PressableScale>
+          </LiquidGlassButton>
           <ProfileAvatarButton size={36} />
         </View>
       </View>
@@ -221,13 +222,13 @@ export default function HomeScreen() {
             Sei sulla strada giusta!
           </ThemedText>
         </View>
-        <PressableScale
+        <LiquidGlassButton
           onPress={() => setCalendarOpen(true)}
           accessibilityLabel="Apri calendario"
-          style={[styles.datePill, { backgroundColor: theme.backgroundElevated, borderColor: theme.border }]}>
+          glassStyle={styles.datePill}>
           <Icon name="calendar" size={16} color={theme.text} />
           <ThemedText style={styles.datePillText}>{datePill}</ThemedText>
-        </PressableScale>
+        </LiquidGlassButton>
       </View>
 
       <FlatCard radius={CARD_RADIUS} style={styles.oggiCard}>
@@ -570,14 +571,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
-  bell: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: StyleSheet.hairlineWidth,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   greetingRow: {
     marginTop: 12,
     flexDirection: 'row',
@@ -600,10 +593,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 7,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 10,
-    borderRadius: 14,
-    borderWidth: StyleSheet.hairlineWidth,
   },
   datePillText: {
     fontSize: 13,
