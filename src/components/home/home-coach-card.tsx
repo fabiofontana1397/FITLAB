@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { ScrollDefaults } from '@/constants/scroll';
-import { ChatOrb } from '@/components/chat/chat-orb';
+import { CoachOrb } from '@/components/chat/coach-orb';
 import { CoachAura, PulseDot } from '@/components/home/coach-aura';
 import { ThemedText } from '@/components/themed-text';
 import { FlatCard } from '@/components/ui/flat-card';
@@ -35,7 +35,7 @@ export function HomeCoachCard({ isWorkoutDayIncomplete }: { isWorkoutDayIncomple
         <View pointerEvents="none" style={[styles.rim, { borderColor: theme.accentRim }]} />
         <Pressable style={styles.headerRow} onPress={() => setModalOpen(true)} hitSlop={4}>
           <View style={styles.orbHalo}>
-            <ChatOrb size={30} />
+            <CoachOrb size={30} />
           </View>
           <View style={{ flex: 1 }}>
             <ThemedText style={[styles.title, { color: theme.spotlightText }]}>AI Coach</ThemedText>

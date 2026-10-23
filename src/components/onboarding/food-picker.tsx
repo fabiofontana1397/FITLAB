@@ -10,7 +10,7 @@ import { PrimaryButton } from '@/components/ui/primary-button';
 import { Radius, Spacing } from '@/constants/theme';
 import { useMotionPreference } from '@/hooks/use-motion-preference';
 import { useTheme } from '@/hooks/use-theme';
-import { normalizePreferred, PICKER_PROMPT, PICKER_TITLE } from '@/lib/questionnaire/food-preferences';
+import { COMPONENT_ICON, PICKER_PROMPT, PICKER_TITLE, normalizePreferred } from '@/lib/questionnaire/food-preferences';
 import type { Question } from '@/lib/questionnaire/schema';
 import type { AnswerValue } from '@/store/onboarding-store';
 
@@ -64,6 +64,7 @@ export function FoodPicker({ question, value, onChange }: FoodPickerProps) {
       <Pressable onPress={() => setOpen(true)} accessibilityRole="button" accessibilityLabel={question.label}>
         <GlassSurface level="card" radius={Radius.medium} style={[styles.selector, selected.size > 0 && { borderColor: theme.accent, borderWidth: 1.5 }]}>
           <View style={styles.selectorInner}>
+            <Icon name={COMPONENT_ICON[component]} size={18} color={selected.size > 0 ? theme.accent : theme.textTertiary} />
             <ThemedText type="small" style={{ flex: 1 }} themeColor={selected.size > 0 ? undefined : 'textSecondary'}>
               {selected.size > 0 ? `${selected.size} ${selected.size === 1 ? 'alimento selezionato' : 'alimenti selezionati'}` : PICKER_PROMPT[component]}
             </ThemedText>
