@@ -8,9 +8,11 @@
     "scheme": "fitlab",
     "userInterfaceStyle": "automatic",
     "ios": {
+      "bundleIdentifier": "com.fitlab.app",
       "icon": "./assets/images/icon.png"
     },
     "android": {
+      "package": "com.fitlab.app",
       "adaptiveIcon": {
         "backgroundColor": "#FAFBFB",
         "foregroundImage": "./assets/images/android-icon-foreground.png",

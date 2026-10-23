@@ -1,56 +1,94 @@
-# Welcome to your Expo app 👋
+# FITLAB
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+App di nutrizione e allenamento: dal questionario di onboarding genera dieta e
+piano di allenamento coerenti fra loro, poi li ricalibra mese per mese sui
+progressi reali. Expo (SDK 57) su iOS, Android e web, con Supabase come
+backend.
 
-## Get started
+## Requisiti
 
-1. Install dependencies
+- **Node ≥ 22.13** (requisito di Expo SDK 57; il deploy Vercel gira su Node 24.x)
+- [Docker](https://docs.docker.com/get-docker/), per lo stack Supabase locale
 
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Avvio
 
 ```bash
-npm run reset-project
+npm ci
+cp .env.example .env     # poi riempi i valori (vedi sotto)
+npm run supabase:start   # stampa API URL e anon key da incollare in .env
+npm start                # oppure: npm run web / npm run ios / npm run android
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+`npm run supabase:start` applica le migration in `supabase/migrations/`
+(`0001`→`0021`) ed esegue `supabase/seed.sql`. Per ripartire da zero:
+`npm run supabase:reset`.
 
-### Other setup steps
+## Variabili d'ambiente
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+| Variabile | Obbligatoria | Note |
+|---|---|---|
+| `EXPO_PUBLIC_SUPABASE_URL` | **sì** | serve anche **a build time** (vedi avvertenza) |
+| `EXPO_PUBLIC_SUPABASE_ANON_KEY` | **sì** | serve anche **a build time** |
+| `EXPO_PUBLIC_VAPID_PUBLIC_KEY` | no | chiave pubblica VAPID per le web push |
+| `EXPO_PUBLIC_AI_COACH` | no | `true` accende chat, insight e analisi foto (consuma crediti Claude) |
 
-## Learn more
+> **Attenzione:** `src/lib/supabase/client.ts` lancia un errore se la coppia
+> URL/anon key manca, e l'export statico pre-renderizza ogni rotta in Node —
+> quindi `npx expo export --platform web` **fallisce** senza quelle due
+> variabili. Su Vercel devono esistere su *tutti* i target (Production,
+> Preview, Development), non solo in Production.
 
-To learn more about developing your project with Expo, look at the following resources:
+Le Edge Functions hanno un template separato: `supabase/functions/.env.example`
+→ copiare in `supabase/.env.local` (`ANTHROPIC_API_KEY`, `VOYAGE_API_KEY`).
+`SUPABASE_URL` e le chiavi sono iniettate automaticamente dal runtime locale.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## Struttura
 
-## Join the community
+| Percorso | Contenuto |
+|---|---|
+| `src/app/` | rotte Expo Router (file-based; **non** `app/` nella root) |
+| `src/domain/` | funzioni pure: modello energetico, target, motore dei piani, ricalibrazione |
+| `src/lib/planning/` | dieta secondo il framework Fit Lab, planner di allenamento |
+| `src/components/`, `src/store/`, `src/hooks/` | UI, stato Zustand, hook |
+| `supabase/migrations/`, `supabase/functions/` | schema Postgres, Edge Functions Deno |
+| `scripts/agent-tests/` | harness di test dei piani generati |
 
-Join our community of developers creating universal apps.
+Alias TypeScript: `@/*` → `src/*`, `@/assets/*` → `assets/*`.
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## Controlli
+
+```bash
+npm run lint         # eslint-config-expo
+npx tsc --noEmit     # typecheck
+npm run agents:test  # 22 questionari finti + simulazione della ricalibrazione
+npx expo-doctor      # coerenza della configurazione Expo
+```
+
+`npm run agents:test` riscrive `scripts/agent-tests/reports/latest.md`, che è
+tracciato: il contenuto dipende dalla data odierna, quindi genera un diff anche
+quando non è cambiato nulla nel codice.
+
+## Deploy web
+
+Vercel builda con `npx expo export --platform web` (configurato in
+`vercel.json`) e pubblica `dist/`. I file in `public/` — manifest PWA, service
+worker, icone — finiscono nella root dell'export.
+
+Le web push richiedono una configurazione a parte: vedi
+[`supabase/PWA_NOTIFICATIONS_SETUP.md`](supabase/PWA_NOTIFICATIONS_SETUP.md).
+
+## Build nativi
+
+`ios` e `android` non sono in repository: sono generati da Continuous Native
+Generation. Identificatori già impostati in `app.json`
+(`com.fitlab.app` su entrambe le piattaforme). I plugin HealthKit e Health
+Connect richiedono un development build, non Expo Go. Per EAS serve prima un
+`eas init` (nessun `extra.eas.projectId` è configurato).
+
+## Documentazione
+
+- [`FITLAB_SPEC.md`](FITLAB_SPEC.md) — specifiche tecniche complete
+- [`docs/ARCHITECTURE-AGENTS.md`](docs/ARCHITECTURE-AGENTS.md) — dominio dei piani e ciclo mensile
+- [`docs/DATA-FLOW.md`](docs/DATA-FLOW.md) — dal questionario all'app
+- [`docs/DIET-ENGINE.md`](docs/DIET-ENGINE.md) — motore della dieta
+- [`docs/ADMIN.md`](docs/ADMIN.md) — pannello admin
