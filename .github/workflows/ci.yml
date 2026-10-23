@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # 24.x mirrors the Node version the Vercel project builds on. Expo
+      # SDK 57 requires >= 22.13, so contributors on 22.x are covered too.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.x
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run lint
+
+      - run: npx tsc --noEmit
+
+      - run: npm run agents:test
+
+      # Same command Vercel runs. The static export pre-renders every route
+      # in Node, which loads the Supabase client — hence the placeholders:
+      # they only have to be non-empty for the build to get that far, and no
+      # request is made during the export.
+      - name: Web export
+        run: npx expo export --platform web
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-anon-key
