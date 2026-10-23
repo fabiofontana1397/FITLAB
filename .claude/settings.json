@@ -5,7 +5,8 @@
   "permissions": {
     "allow": [
       "Bash(git push:*)",
-      "Bash(git merge:*)"
+      "Bash(git merge:*)",
+      "Bash(gh api -X PUT repos/fabiofontana1397/FITLAB/pulls/*/merge*)"
     ]
   }
 }
