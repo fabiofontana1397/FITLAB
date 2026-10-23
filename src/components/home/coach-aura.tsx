@@ -1,9 +1,10 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
 
+import { TimingPulse, loopTiming } from '@/constants/motion';
 import { Brand } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -69,7 +70,7 @@ function AuraField({ field, index, width, height }: { field: Field; index: numbe
   const t = useSharedValue(0);
 
   useEffect(() => {
-    t.value = withRepeat(withTiming(1, { duration: field.duration, easing: Easing.linear }), -1, false);
+    t.value = withRepeat(withTiming(1, loopTiming(field.duration)), -1, false);
   }, [t, field.duration]);
 
   const size = width * field.scale;
@@ -105,7 +106,7 @@ function AuraField({ field, index, width, height }: { field: Field; index: numbe
 export function PulseDot({ color, size = 6 }: { color: string; size?: number }) {
   const p = useSharedValue(0);
   useEffect(() => {
-    p.value = withRepeat(withTiming(1, { duration: 1400, easing: Easing.out(Easing.quad) }), -1, false);
+    p.value = withRepeat(withTiming(1, TimingPulse), -1, false);
   }, [p]);
   const ring = useAnimatedStyle(() => ({ opacity: 0.6 * (1 - p.value), transform: [{ scale: 1 + p.value * 1.6 }] }));
   return (

@@ -11,6 +11,8 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 
+import { SpringCountPop, TimingCountdown, TimingTap } from '@/constants/motion';
+import { useMotionPreference } from '@/hooks/use-motion-preference';
 import { ThemedText } from '@/components/themed-text';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { SessionColors } from '@/constants/theme';
@@ -69,8 +71,9 @@ function clock(totalSec: number): string {
  * is ticked once all its sets are done, so closing halfway resumes where the
  * user stopped. */
 export function WorkoutSessionModal({ visible, onClose, title, exercises, date }: WorkoutSessionModalProps) {
+  const { modalAnimation } = useMotionPreference();
   return (
-    <Modal visible={visible} animationType="fade" presentationStyle="fullScreen" onRequestClose={onClose} statusBarTranslucent>
+    <Modal visible={visible} animationType={modalAnimation('fade')} presentationStyle="fullScreen" onRequestClose={onClose} statusBarTranslucent>
       {/* Mounted only while open, so every opening starts from a fresh session state. */}
       {visible && exercises.length > 0 ? <SessionView onClose={onClose} title={title} exercises={exercises} date={date} /> : null}
     </Modal>
@@ -333,7 +336,7 @@ function SetsRing({ total, done, children }: { total: number; done: number; chil
   const prevDone = useRef(done);
 
   useEffect(() => {
-    if (done > prevDone.current) pop.value = withSequence(withTiming(1.06, { duration: 140 }), withSpring(1, { damping: 10, stiffness: 200 }));
+    if (done > prevDone.current) pop.value = withSequence(withTiming(1.06, TimingTap), withSpring(1, SpringCountPop));
     prevDone.current = done;
   }, [done, pop]);
 
@@ -405,9 +408,9 @@ function Countdown({ onDone }: { onDone: () => void }) {
 
   useEffect(() => {
     progress.value = 0;
-    progress.value = withTiming(1, { duration: 950 });
+    progress.value = withTiming(1, TimingCountdown);
     pop.value = 0.6;
-    pop.value = withSpring(1, { damping: 12, stiffness: 180 });
+    pop.value = withSpring(1, SpringCountPop);
     const id = setTimeout(() => {
       if (count > 1) setCount(count - 1);
       else onDone();

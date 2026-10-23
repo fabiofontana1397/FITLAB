@@ -2,8 +2,9 @@ import { useEffect, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Accelerometer } from 'expo-sensors';
 import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 
+import { loopTiming, TimingQuick } from '@/constants/motion';
 import { Brand, Palette } from '@/constants/theme';
 
 type Blob = {
@@ -108,16 +109,26 @@ function useTiltShift() {
   const tiltX = useSharedValue(0);
   const tiltY = useSharedValue(0);
   const subscriptionRef = useRef<{ remove: () => void } | null>(null);
+  // The tilt is driven by the accelerometer, not by an animation, so
+  // Reanimated's own Reduce Motion handling never sees it: without this
+  // check the orb would keep swaying under the thumb for someone who has
+  // asked the system for less movement.
+  const reduceMotion = useReducedMotion();
 
   useEffect(() => {
+    if (reduceMotion) {
+      tiltX.value = 0;
+      tiltY.value = 0;
+      return;
+    }
     let cancelled = false;
     Accelerometer.isAvailableAsync()
       .then((isAvailable) => {
         if (cancelled || !isAvailable) return;
         Accelerometer.setUpdateInterval(100);
         subscriptionRef.current = Accelerometer.addListener(({ x, y }) => {
-          tiltX.value = withTiming(Math.max(-1, Math.min(1, x)) * TILT_RANGE, { duration: 220 });
-          tiltY.value = withTiming(Math.max(-1, Math.min(1, y)) * -TILT_RANGE, { duration: 220 });
+          tiltX.value = withTiming(Math.max(-1, Math.min(1, x)) * TILT_RANGE, TimingQuick);
+          tiltY.value = withTiming(Math.max(-1, Math.min(1, y)) * -TILT_RANGE, TimingQuick);
         });
       })
       .catch(() => {
@@ -131,7 +142,7 @@ function useTiltShift() {
       subscriptionRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [reduceMotion]);
 
   return { tiltX, tiltY };
 }
@@ -140,7 +151,7 @@ function BlobLayer({ blob, size, index }: { blob: Blob; size: number; index: num
   const orbit = useSharedValue(0);
 
   useEffect(() => {
-    orbit.value = withRepeat(withTiming(1, { duration: blob.orbitDuration, easing: Easing.linear }), -1, false);
+    orbit.value = withRepeat(withTiming(1, loopTiming(blob.orbitDuration)), -1, false);
   }, [orbit, blob.orbitDuration]);
 
   // A wiggle around its resting spot big enough to actually be seen

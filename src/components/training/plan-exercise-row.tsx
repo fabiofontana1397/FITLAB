@@ -8,7 +8,7 @@ import { FlatCard } from '@/components/ui/flat-card';
 import { ThemedText } from '@/components/themed-text';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { TrendChart } from '@/components/ui/trend-chart';
-import { SpringSnappy } from '@/constants/motion';
+import { SpringSnappy, TimingTap } from '@/constants/motion';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { getExerciseMedia } from '@/lib/exercise-media/exercise-media';
@@ -150,7 +150,7 @@ function CompletionToggle({ completed, onToggle }: { completed: boolean; onToggl
   const scale = useSharedValue(1);
 
   useEffect(() => {
-    scale.value = withSequence(withTiming(0.72, { duration: 90 }), withSpring(1, SpringSnappy));
+    scale.value = withSequence(withTiming(0.72, TimingTap), withSpring(1, SpringSnappy));
     // Only animate in response to the completed flag actually flipping, not the initial mount value.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [completed]);

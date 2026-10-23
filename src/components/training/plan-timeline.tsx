@@ -12,7 +12,7 @@ import Animated, {
 import { GlassSurface } from '@/components/glass/glass-surface';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
-import { SpringSnappy, TimingSlow } from '@/constants/motion';
+import { SpringSnappy, TimingPulse, TimingSlow } from '@/constants/motion';
 import { Radius } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -91,7 +91,7 @@ function MonthNode({
 
   useEffect(() => {
     if (!isCurrent) return;
-    pulse.value = withRepeat(withTiming(1, { duration: 1300 }), -1, false);
+    pulse.value = withRepeat(withTiming(1, TimingPulse), -1, false);
   }, [isCurrent, pulse]);
 
   useEffect(() => {

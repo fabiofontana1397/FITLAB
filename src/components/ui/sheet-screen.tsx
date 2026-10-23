@@ -13,7 +13,6 @@ import {
   type ViewStyle,
 } from 'react-native';
 import Animated, {
-  Easing,
   interpolate,
   runOnJS,
   useAnimatedStyle,
@@ -27,7 +26,7 @@ import { ScrollDefaults } from '@/constants/scroll';
 import { GlassSurface } from '@/components/glass/glass-surface';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
-import { SpringSheet } from '@/constants/motion';
+import { SpringSheet, TimingExit } from '@/constants/motion';
 import { MaxContentWidth, Radius, SheetShadow, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { goBackOr } from '@/lib/navigation/go-back';
@@ -94,7 +93,7 @@ export function SheetScreen({ title, eyebrow, children, fallbackHref = '/', cont
     if (closing) return;
     setClosing(true);
     moveTo(
-      withTiming(height, { duration: 240, easing: Easing.in(Easing.cubic) }, (finished) => {
+      withTiming(height, TimingExit, (finished) => {
         if (finished) runOnJS(goBackOr)(fallbackHref);
       })
     );

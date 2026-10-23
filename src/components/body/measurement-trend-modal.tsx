@@ -6,6 +6,7 @@ import { GlassSurface } from '@/components/glass/glass-surface';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
 import { Radius, Spacing } from '@/constants/theme';
+import { useMotionPreference } from '@/hooks/use-motion-preference';
 import { useTheme } from '@/hooks/use-theme';
 import { formatDayMonth } from '@/lib/mock/dates';
 import type { BodyMetricSnapshot } from '@/lib/mock/types';
@@ -63,6 +64,7 @@ export type MeasurementTrendModalProps = {
  * plotted over every entry logged so far, with real axes instead of a bare
  * sparkline. */
 export function MeasurementTrendModal({ zone, label, entries, color, onClose }: MeasurementTrendModalProps) {
+  const { modalAnimation } = useMotionPreference();
   const theme = useTheme();
   if (!zone) return null;
 
@@ -76,7 +78,7 @@ export function MeasurementTrendModal({ zone, label, entries, color, onClose }: 
   const chart = hasEnoughData ? buildChart(values) : null;
 
   return (
-    <Modal visible={zone != null} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={zone != null} transparent animationType={modalAnimation('fade')} onRequestClose={onClose}>
       <Pressable style={[styles.backdrop, { backgroundColor: theme.scrim }]} onPress={onClose}>
         <Pressable onPress={(e) => e.stopPropagation()}>
           <GlassSurface level="overlay" radius={Radius.xlarge} style={styles.card}>

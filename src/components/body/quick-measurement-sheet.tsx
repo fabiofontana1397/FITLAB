@@ -9,6 +9,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
 import { PrimaryButton } from '@/components/ui/primary-button';
 import { Radius, Spacing } from '@/constants/theme';
+import { useMotionPreference } from '@/hooks/use-motion-preference';
 import { useTheme } from '@/hooks/use-theme';
 import { hapticSuccess } from '@/lib/haptics';
 
@@ -23,6 +24,7 @@ export type QuickMeasurementSheetProps = {
 /** Same small bottom-sheet pattern as QuickWeightSheet, generalized to any
  * cm measurement (Spalle, Petto, Bicipite, Vita, Fianchi, Coscia). */
 export function QuickMeasurementSheet({ visible, label, currentValueCm, onClose, onSave }: QuickMeasurementSheetProps) {
+  const { modalAnimation } = useMotionPreference();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const [value, setValue] = useState(String(currentValueCm));
@@ -39,7 +41,7 @@ export function QuickMeasurementSheet({ visible, label, currentValueCm, onClose,
     <Modal
       visible={visible}
       transparent
-      animationType="slide"
+      animationType={modalAnimation('slide')}
       onRequestClose={onClose}
       onShow={() => setValue(String(currentValueCm))}>
       <View style={[styles.backdrop, { backgroundColor: theme.scrim }]}>

@@ -11,6 +11,7 @@ import { Icon } from '@/components/ui/icon';
 import { InsightCard } from '@/components/ui/insight-card';
 import { PrimaryButton } from '@/components/ui/primary-button';
 import { Brand, Radius, Spacing } from '@/constants/theme';
+import { useMotionPreference } from '@/hooks/use-motion-preference';
 import { useCoachInsights } from '@/hooks/use-coach-insights';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -20,6 +21,7 @@ import { useTheme } from '@/hooks/use-theme';
  * avatar and slowly drifting orange light behind the text (coach-aura.tsx).
  * Shows the latest generated insight and opens the full list in a popup. */
 export function HomeCoachCard({ isWorkoutDayIncomplete }: { isWorkoutDayIncomplete: boolean }) {
+  const { modalAnimation } = useMotionPreference();
   const theme = useTheme();
   const { insights, isLoading, refresh } = useCoachInsights();
   const [modalOpen, setModalOpen] = useState(false);
@@ -57,7 +59,7 @@ export function HomeCoachCard({ isWorkoutDayIncomplete }: { isWorkoutDayIncomple
         />
       </View>
 
-      <Modal visible={modalOpen} transparent animationType="fade" onRequestClose={() => setModalOpen(false)}>
+      <Modal visible={modalOpen} transparent animationType={modalAnimation('fade')} onRequestClose={() => setModalOpen(false)}>
         <Pressable style={[styles.backdrop, { backgroundColor: theme.scrim }]} onPress={() => setModalOpen(false)}>
           <Pressable onPress={(e) => e.stopPropagation()} style={styles.modalWrap}>
             <FlatCard style={styles.modalCard}>

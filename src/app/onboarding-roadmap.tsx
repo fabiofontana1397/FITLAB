@@ -11,6 +11,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 
+import { TimingPulse } from '@/constants/motion';
 import { ScrollDefaults } from '@/constants/scroll';
 import { ThemedText } from '@/components/themed-text';
 import { FadeInView } from '@/components/ui/fade-in-view';
@@ -205,7 +206,7 @@ function GeneratingPlanView() {
   const [messageIndex, setMessageIndex] = useState(0);
 
   useEffect(() => {
-    pulse.value = withRepeat(withTiming(1, { duration: 1100 }), -1, true);
+    pulse.value = withRepeat(withTiming(1, TimingPulse), -1, true);
   }, [pulse]);
 
   useEffect(() => {

@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon } from '@/components/ui/icon';
+import { useMotionPreference } from '@/hooks/use-motion-preference';
 import { useTheme } from '@/hooks/use-theme';
 import { FOOD_DATABASE, findFood, searchFood, type FoodItem } from '@/lib/mock/food-database';
 import { useNutritionStore, type MealSlot } from '@/store/nutrition-store';
@@ -46,8 +47,9 @@ function macroText(food: FoodItem, ratio: number): string {
  * selection / grams back to defaults (or to the entry being edited) on each
  * open, without syncing that reset through an effect. */
 export function FoodSearchModal({ visible, slot, date, editEntry, onClose, onSaved }: FoodSearchModalProps) {
+  const { modalAnimation } = useMotionPreference();
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} animationType={modalAnimation('slide')} onRequestClose={onClose}>
       <FoodSearchForm key={visible ? (editEntry?.id ?? 'add') : 'closed'} slot={slot} date={date} editEntry={editEntry} onClose={onClose} onSaved={onSaved} />
     </Modal>
   );

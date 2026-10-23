@@ -7,6 +7,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
 import { PrimaryButton } from '@/components/ui/primary-button';
 import { Radius, Spacing } from '@/constants/theme';
+import { useMotionPreference } from '@/hooks/use-motion-preference';
 import { useTheme } from '@/hooks/use-theme';
 import { analyzePhoto } from '@/lib/api/photo-analysis';
 import { AI_COACH_ENABLED } from '@/lib/assistant/ai-config';
@@ -27,6 +28,7 @@ export type PhotoDetailModalProps = {
  * calls real Claude vision on the actual pixels — not automatic on every
  * open, since (unlike the quick tip) it's a genuine per-call cost/latency. */
 export function PhotoDetailModal({ photo, allPhotos, entries, onClose }: PhotoDetailModalProps) {
+  const { modalAnimation } = useMotionPreference();
   const theme = useTheme();
   const [aiObservation, setAiObservation] = useState<string | null>(null);
   const [aiState, setAiState] = useState<'idle' | 'loading' | 'error'>('idle');
@@ -59,7 +61,7 @@ export function PhotoDetailModal({ photo, allPhotos, entries, onClose }: PhotoDe
   };
 
   return (
-    <Modal visible={photo != null} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={photo != null} transparent animationType={modalAnimation('fade')} onRequestClose={onClose}>
       <Pressable style={[styles.backdrop, { backgroundColor: theme.scrim }]} onPress={onClose}>
         <Pressable onPress={(e) => e.stopPropagation()}>
           <GlassSurface level="overlay" radius={Radius.xlarge} style={styles.card}>

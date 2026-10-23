@@ -8,6 +8,7 @@ import { AppTextInput } from '@/components/ui/app-text';
 import { Icon } from '@/components/ui/icon';
 import { PrimaryButton } from '@/components/ui/primary-button';
 import { Radius, Spacing } from '@/constants/theme';
+import { useMotionPreference } from '@/hooks/use-motion-preference';
 import { useTheme } from '@/hooks/use-theme';
 import { normalizePreferred, PICKER_PROMPT, PICKER_TITLE } from '@/lib/questionnaire/food-preferences';
 import type { Question } from '@/lib/questionnaire/schema';
@@ -27,6 +28,7 @@ const normalize = (text: string) => text.toLowerCase().normalize('NFD').replace(
  * favours them every month.
  */
 export function FoodPicker({ question, value, onChange }: FoodPickerProps) {
+  const { modalAnimation } = useMotionPreference();
   const theme = useTheme();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -84,7 +86,7 @@ export function FoodPicker({ question, value, onChange }: FoodPickerProps) {
       ) : null}
 
       {/* a long list needs a solid card: text showing through a translucent one is hard to read */}
-      <Modal visible={open} transparent animationType="fade" onRequestClose={close} statusBarTranslucent>
+      <Modal visible={open} transparent animationType={modalAnimation('fade')} onRequestClose={close} statusBarTranslucent>
         <View style={[styles.backdrop, { backgroundColor: theme.scrim }]}>
           <Pressable style={StyleSheet.absoluteFill} onPress={close} accessibilityLabel="Chiudi" />
           <View style={[styles.card, { backgroundColor: theme.backgroundElevated, borderColor: theme.border }]}>

@@ -8,6 +8,7 @@ import { ThemedText } from '@/components/themed-text';
 import { FadeInView } from '@/components/ui/fade-in-view';
 import { Icon } from '@/components/ui/icon';
 import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { useMotionPreference } from '@/hooks/use-motion-preference';
 import type { SaveOutcome } from '@/hooks/use-answers-editor';
 import { useTheme } from '@/hooks/use-theme';
 import { mealTimeline, summaryRows, type ProfileGroup, type SummaryRow } from '@/lib/questionnaire/profile-sections';
@@ -36,11 +37,12 @@ export type QuestionnaireSheetProps = {
 
 /** "Il tuo questionario": every answer grouped by topic, each group with its own "Modifica". Opened from Profilo. */
 export function QuestionnaireSheet({ visible, onClose, groups, answers, mode, onEdit, onRestart, saving, isGenerating, outcome, children }: QuestionnaireSheetProps) {
+  const { modalAnimation } = useMotionPreference();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+    <Modal visible={visible} animationType={modalAnimation('slide')} presentationStyle="pageSheet" onRequestClose={onClose}>
       <View style={[styles.root, { backgroundColor: theme.background, paddingTop: Platform.OS === 'android' ? insets.top : 0 }]}>
         <View style={[styles.header, { borderBottomColor: theme.border }]}>
           <View style={{ flex: 1 }}>

@@ -6,6 +6,7 @@ import Animated, { interpolate, useAnimatedStyle, useSharedValue, withSpring } f
 import { GlassSurface } from '@/components/glass/glass-surface';
 import { SpringPopup } from '@/constants/motion';
 import { Radius, Spacing } from '@/constants/theme';
+import { useMotionPreference } from '@/hooks/use-motion-preference';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -26,11 +27,12 @@ export type GlassPopupProps = {
  * outside the card dismisses it. Used for calendars, "Registra allenamento"
  * and the "Registra pasto" meal picker. */
 export function GlassPopup({ visible, onClose, children, style, maxWidth = POPUP_MAX_WIDTH }: GlassPopupProps) {
+  const { modalAnimation } = useMotionPreference();
   const isDark = useColorScheme() === 'dark';
   const theme = useTheme();
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
+    <Modal visible={visible} transparent animationType={modalAnimation('fade')} onRequestClose={onClose} statusBarTranslucent>
       <View style={styles.root}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose}>
           <BlurView

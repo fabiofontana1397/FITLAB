@@ -13,7 +13,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Reveal, ScrollRevealContext } from '@/components/motion/reveal';
-import { TimingQuick } from '@/constants/motion';
+import { TimingScreen } from '@/constants/motion';
 import { ScrollDefaults } from '@/constants/scroll';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -49,7 +49,7 @@ export const ScreenScroll = forwardRef<ScrollView, ScreenScrollProps>(function S
     if (!isFocused) return;
     if (hasBeenFocused.current && !reduceMotion) {
       focusProgress.value = 0;
-      focusProgress.value = withTiming(1, { ...TimingQuick, duration: 300 });
+      focusProgress.value = withTiming(1, TimingScreen);
     }
     hasBeenFocused.current = true;
   }, [isFocused, reduceMotion, focusProgress]);
