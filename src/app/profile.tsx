@@ -9,18 +9,17 @@ import { GlassSurface } from '@/components/glass/glass-surface';
 import { EditAnswersSheet } from '@/components/profile/edit-answers-sheet';
 import { IntegrationsSection } from '@/components/profile/integrations-section';
 import { MODE_LABEL, OutcomeBanner, QuestionnaireSheet } from '@/components/profile/questionnaire-sheet';
-import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { PrimaryButton } from '@/components/ui/primary-button';
 import { SectionHeader } from '@/components/ui/section-header';
 import { SegmentedControl } from '@/components/ui/segmented-control';
+import { SheetScreen } from '@/components/ui/sheet-screen';
 import { Radius, Spacing } from '@/constants/theme';
 import { useAnswersEditor, type SaveOutcome } from '@/hooks/use-answers-editor';
 import { useTheme } from '@/hooks/use-theme';
 import { latestSnapshot } from '@/lib/mock/body';
 import { sportIcon, sportMeta } from '@/lib/mock';
-import { goBackOr } from '@/lib/navigation/go-back';
 import { answerText, findGroup, groupsForMode, type ProfileGroup } from '@/lib/questionnaire/profile-sections';
 import type { OnboardingMode } from '@/lib/questionnaire/schema';
 import { useAppStore, type AppearanceMode } from '@/store/app-store';
@@ -122,18 +121,7 @@ export default function ProfileScreen() {
   const editor = <EditAnswersSheet key={editing?.id ?? 'closed'} group={editing} answers={answers} onClose={() => setEditing(null)} onSave={onSave} />;
 
   return (
-    <ScreenScroll>
-      <View style={styles.header}>
-        <ThemedText type="title">Profilo</ThemedText>
-        <Pressable onPress={() => goBackOr('/')} hitSlop={8}>
-          <GlassSurface level="card" radius={Radius.pill} style={styles.closeButton}>
-            <View style={styles.closeInner}>
-              <Icon name="close" size={18} color={theme.text} />
-            </View>
-          </GlassSurface>
-        </Pressable>
-      </View>
-
+    <SheetScreen title="Profilo">
       <GlassSurface level="raised" radius={Radius.xlarge} style={styles.identityCard}>
         <View style={styles.identityTop}>
           <Pressable onPress={onAvatarPress} accessibilityRole="button" accessibilityLabel="Cambia foto profilo">
@@ -301,7 +289,7 @@ export default function ProfileScreen() {
           />
         ) : null}
       </GlassPopup>
-    </ScreenScroll>
+    </SheetScreen>
   );
 }
 
@@ -339,20 +327,6 @@ function MenuItem({ icon, label, onPress, danger }: { icon: IconName; label: str
 }
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  closeButton: {
-    width: 40,
-    height: 40,
-  },
-  closeInner: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   questionnaireCard: {
     padding: Spacing.four,
     gap: Spacing.three,

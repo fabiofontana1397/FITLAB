@@ -1,12 +1,11 @@
-import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, StyleSheet, Switch, TextInput, View } from 'react-native';
 
-import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon } from '@/components/ui/icon';
 import { PrimaryButton } from '@/components/ui/primary-button';
+import { SheetScreen } from '@/components/ui/sheet-screen';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import {
@@ -79,15 +78,7 @@ export default function NotificationSettingsScreen() {
   };
 
   return (
-    <ScreenScroll>
-      <View style={styles.header}>
-        <View style={styles.heading}>
-          <ThemedText type="title">Promemoria</ThemedText>
-          <ThemedText type="caption" themeColor="textSecondary">Scegli quando FitLab ti accompagna durante la giornata.</ThemedText>
-        </View>
-        <Icon name="bell" size={22} color={theme.accent} />
-      </View>
-
+    <SheetScreen title="Promemoria" eyebrow="Scegli quando FitLab ti accompagna durante la giornata.">
       <FlatCard style={styles.card}>
         <View style={styles.sectionHeading}>
           <View style={[styles.iconBox, { backgroundColor: theme.accentSoft }]}><Icon name="nutrition" size={18} color={theme.accent} /></View>
@@ -125,9 +116,8 @@ export default function NotificationSettingsScreen() {
       </FlatCard>
 
       <PrimaryButton label={busy ? 'Salvataggio…' : 'Salva preferenze'} disabled={busy} onPress={onSave} />
-      <PrimaryButton label="Torna indietro" variant="ghost" onPress={() => router.back()} />
       <ThemedText type="caption" themeColor="textTertiary" style={styles.footnote}>Gli orari seguono il fuso orario del dispositivo. Puoi modificare o revocare il permesso dalle impostazioni di iPhone.</ThemedText>
-    </ScreenScroll>
+    </SheetScreen>
   );
 }
 
@@ -163,7 +153,6 @@ function PreferenceRow({ title, description, value, onChange }: { title: string;
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.three },
   heading: { flex: 1, gap: 4 },
   card: { padding: Spacing.four, gap: Spacing.three, borderRadius: Radius.large },
   sectionHeading: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },

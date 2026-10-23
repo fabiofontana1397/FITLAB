@@ -44,6 +44,15 @@ export const SpringPressOut: WithSpringConfig = {
   stiffness: 260,
 };
 
+/** Sheets rising from the bottom edge: firm, with no bounce at the top —
+ * a bouncing sheet reads as a toy, and the overshoot would show the page
+ * behind through the gap under it. */
+export const SpringSheet: WithSpringConfig = {
+  damping: 26,
+  mass: 0.9,
+  stiffness: 200,
+};
+
 /** Popups landing in the middle of the screen. */
 export const SpringPopup: WithSpringConfig = {
   damping: 20,
