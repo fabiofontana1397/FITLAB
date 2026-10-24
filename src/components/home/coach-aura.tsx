@@ -1,12 +1,16 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
+
+import { TimingPulse, loopTiming } from '@/constants/motion';
+import { Brand } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 
 type Field = {
   /** [edge, mid, center] of the radial fill. */
-  colors: [string, string, string];
+  colors: readonly [string, string, string];
   /** Resting center as a fraction of the card (0..1). */
   anchor: { x: number; y: number };
   /** Diameter as a fraction of the card's width. */
@@ -25,9 +29,9 @@ type Field = {
 // the left), wandering slowly on Lissajous paths so they keep blending into
 // one another without ever repeating the exact same picture.
 const FIELDS: Field[] = [
-  { colors: ['#7A1E00', '#E8590C', '#FF8A1F'], anchor: { x: 0.95, y: 0.95 }, scale: 0.95, wander: 0.14, duration: 6400, direction: 1, phase: 0, freqRatio: 0.8, opacity: 0.75 },
-  { colors: ['#5A1600', '#B33A0A', '#FF7A1A'], anchor: { x: 0.8, y: 0.05 }, scale: 0.7, wander: 0.16, duration: 7800, direction: -1, phase: 2.1, freqRatio: 1.3, opacity: 0.45 },
-  { colors: ['#C24E12', '#FF7A1A', '#FFB454'], anchor: { x: 0.45, y: 1.1 }, scale: 0.6, wander: 0.18, duration: 5200, direction: 1, phase: 4.2, freqRatio: 0.65, opacity: 0.4 },
+  { colors: Brand.auraWarm, anchor: { x: 0.95, y: 0.95 }, scale: 0.95, wander: 0.14, duration: 6400, direction: 1, phase: 0, freqRatio: 0.8, opacity: 0.75 },
+  { colors: Brand.auraDeep, anchor: { x: 0.8, y: 0.05 }, scale: 0.7, wander: 0.16, duration: 7800, direction: -1, phase: 2.1, freqRatio: 1.3, opacity: 0.45 },
+  { colors: Brand.auraBright, anchor: { x: 0.45, y: 1.1 }, scale: 0.6, wander: 0.18, duration: 5200, direction: 1, phase: 4.2, freqRatio: 0.65, opacity: 0.4 },
 ];
 
 const STOPS = [
@@ -43,6 +47,7 @@ const STOPS = [
  * (no touches), sized from the card's own layout.
  */
 export function CoachAura({ width, height }: { width: number; height: number }) {
+  const theme = useTheme();
   if (width <= 0 || height <= 0) return null;
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
@@ -51,7 +56,7 @@ export function CoachAura({ width, height }: { width: number; height: number }) 
       ))}
       {/* Keeps the left half (headline and text) dark and readable while the light lives on the right. */}
       <LinearGradient
-        colors={['rgba(21,22,26,0.92)', 'rgba(21,22,26,0.55)', 'rgba(21,22,26,0)']}
+        colors={theme.spotlightScrim}
         locations={[0, 0.5, 1]}
         start={{ x: 0, y: 0.5 }}
         end={{ x: 1, y: 0.5 }}
@@ -65,7 +70,7 @@ function AuraField({ field, index, width, height }: { field: Field; index: numbe
   const t = useSharedValue(0);
 
   useEffect(() => {
-    t.value = withRepeat(withTiming(1, { duration: field.duration, easing: Easing.linear }), -1, false);
+    t.value = withRepeat(withTiming(1, loopTiming(field.duration)), -1, false);
   }, [t, field.duration]);
 
   const size = width * field.scale;
@@ -101,7 +106,7 @@ function AuraField({ field, index, width, height }: { field: Field; index: numbe
 export function PulseDot({ color, size = 6 }: { color: string; size?: number }) {
   const p = useSharedValue(0);
   useEffect(() => {
-    p.value = withRepeat(withTiming(1, { duration: 1400, easing: Easing.out(Easing.quad) }), -1, false);
+    p.value = withRepeat(withTiming(1, TimingPulse), -1, false);
   }, [p]);
   const ring = useAnimatedStyle(() => ({ opacity: 0.6 * (1 - p.value), transform: [{ scale: 1 + p.value * 1.6 }] }));
   return (

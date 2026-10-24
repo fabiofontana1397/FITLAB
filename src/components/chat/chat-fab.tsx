@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { Platform, Pressable, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ChatOrb } from '@/components/chat/chat-orb';
+import { CoachOrb } from '@/components/chat/coach-orb';
 import { LiquidGlass } from '@/components/glass/liquid-glass';
 import { Radius, Spacing } from '@/constants/theme';
 
@@ -40,7 +40,7 @@ export function ChatFab({ size }: { size?: number | null }) {
         radius={Radius.pill}
         style={[styles.button, { width: buttonSize, height: buttonSize }]}
         interactive>
-        <ChatOrb size={orbSize} />
+        <CoachOrb size={orbSize} />
       </LiquidGlass>
     </Pressable>
   );

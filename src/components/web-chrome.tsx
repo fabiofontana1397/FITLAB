@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { OnBrand } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 /** True when the page runs as the iPhone Home Screen web app (no Safari bars around it). */
@@ -55,7 +56,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 1000,
-    backgroundColor: '#000000',
+    backgroundColor: OnBrand.statusBarBand,
     pointerEvents: 'none',
   },
 });

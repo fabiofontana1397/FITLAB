@@ -1,8 +1,54 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import {
+  Apple,
+  Carrot,
+  Cookie,
+  Droplet,
+  Drumstick,
+  GlassWater,
+  Moon,
+  ScanBarcode,
+  Sun,
+  Sunrise,
+  Utensils,
+  Wheat,
+  type LucideIcon,
+} from 'lucide-react-native';
 import type { ComponentProps } from 'react';
 
 type MCIName = ComponentProps<typeof MaterialCommunityIcons>['name'];
 type IonName = ComponentProps<typeof Ionicons>['name'];
+
+/**
+ * Lucide covers everything to do with food.
+ *
+ * The rest of the app draws from Ionicons and Material Community Icons,
+ * which mix filled and outlined shapes; across the nutrition screens that
+ * read as a jumble (a solid drumstick next to an outlined barley stalk
+ * next to a water drop). Lucide is one consistent stroke weight, and has a
+ * genuine glyph for each food group rather than the nearest approximation
+ * — barley standing in for carbohydrates, a water drop for fats.
+ *
+ * Individual foods in the meal log are lucide too, but are drawn by
+ * FoodGlyph (components/nutrition/food-glyph.tsx) rather than through this
+ * registry: there are 68 of them, chosen per food, and tinted by the food's
+ * dominant macro.
+ */
+const LUCIDE_ICONS = {
+  protein: Drumstick,
+  carbs: Wheat,
+  fats: Droplet,
+  nutrition: Apple,
+  utensils: Utensils,
+  water: GlassWater,
+  barcode: ScanBarcode,
+  mealSun: Sunrise,
+  mealMidday: Sun,
+  mealMoon: Moon,
+  mealSnack: Cookie,
+  // The one food group with no macro glyph of its own.
+  foodVeg: Carrot,
+} satisfies Record<string, LucideIcon>;
 
 /**
  * Semantic icon names used across the app. Keeping a single mapping here
@@ -13,7 +59,6 @@ const ICONS = {
   home: { set: 'ion', name: 'home' },
   homeActive: { set: 'ion', name: 'home' },
   training: { set: 'mci', name: 'dumbbell' },
-  nutrition: { set: 'mci', name: 'food-apple-outline' },
   body: { set: 'mci', name: 'human' },
   progress: { set: 'mci', name: 'chart-line' },
   profile: { set: 'ion', name: 'person-circle-outline' },
@@ -38,10 +83,6 @@ const ICONS = {
   plus: { set: 'ion', name: 'add' },
   calendar: { set: 'ion', name: 'calendar-outline' },
   target: { set: 'mci', name: 'target' },
-  protein: { set: 'mci', name: 'food-drumstick-outline' },
-  carbs: { set: 'mci', name: 'barley' },
-  fats: { set: 'mci', name: 'water-outline' },
-  water: { set: 'ion', name: 'water-outline' },
   sleep: { set: 'ion', name: 'moon-outline' },
   heart: { set: 'ion', name: 'heart-outline' },
   scale: { set: 'mci', name: 'scale-bathroom' },
@@ -62,10 +103,6 @@ const ICONS = {
   trash: { set: 'ion', name: 'trash-outline' },
   footsteps: { set: 'mci', name: 'shoe-print' },
   moon: { set: 'ion', name: 'moon' },
-  mealSun: { set: 'ion', name: 'sunny' },
-  mealMidday: { set: 'ion', name: 'partly-sunny' },
-  mealMoon: { set: 'ion', name: 'moon' },
-  mealSnack: { set: 'ion', name: 'star' },
   chevronUp: { set: 'ion', name: 'chevron-up' },
   download: { set: 'ion', name: 'download-outline' },
   refresh: { set: 'ion', name: 'refresh-outline' },
@@ -79,9 +116,7 @@ const ICONS = {
   repsHash: { set: 'mci', name: 'pound' },
   crossedArrows: { set: 'mci', name: 'arrow-decision-outline' },
   barbell: { set: 'ion', name: 'barbell' },
-  utensils: { set: 'mci', name: 'silverware-fork-knife' },
   barChart: { set: 'ion', name: 'stats-chart' },
-  barcode: { set: 'mci', name: 'barcode-scan' },
   star: { set: 'ion', name: 'star' },
   clock: { set: 'ion', name: 'time-outline' },
   personFilled: { set: 'ion', name: 'person' },
@@ -93,7 +128,7 @@ const ICONS = {
   watch: { set: 'mci', name: 'watch-variant' },
 } as const satisfies Record<string, { set: 'mci' | 'ion'; name: MCIName | IonName }>;
 
-export type IconName = keyof typeof ICONS;
+export type IconName = keyof typeof ICONS | keyof typeof LUCIDE_ICONS;
 
 export type IconProps = {
   name: IconName;
@@ -102,7 +137,14 @@ export type IconProps = {
 };
 
 export function Icon({ name, size = 22, color }: IconProps) {
-  const entry = ICONS[name];
+  if (name in LUCIDE_ICONS) {
+    const Glyph = LUCIDE_ICONS[name as keyof typeof LUCIDE_ICONS];
+    // 1.9 at 22px matches the visual weight of the Ionicons outline
+    // glyphs it sits beside; lucide's own default (2) reads heavier at
+    // the small sizes this app uses most.
+    return <Glyph size={size} color={color} strokeWidth={1.9} />;
+  }
+  const entry = ICONS[name as keyof typeof ICONS];
   if (entry.set === 'mci') {
     return <MaterialCommunityIcons name={entry.name as MCIName} size={size} color={color} />;
   }

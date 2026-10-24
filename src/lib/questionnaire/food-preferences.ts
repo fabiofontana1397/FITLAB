@@ -6,6 +6,7 @@
  * Answers hold catalog food ids. Older answers hold broad codes ("chicken", "rice"…): normalizePreferred() turns
  * them into the catalog foods they meant, so nobody has to answer again.
  */
+import type { IconName } from '@/components/ui/icon';
 import { FITLAB_FOODS, type FitLabFood } from '@/lib/planning/fitlab/foods';
 
 export type FoodComponent = 'protein' | 'carb' | 'fat' | 'fruit' | 'veg';
@@ -18,6 +19,15 @@ export const PREFERENCE_QUESTION_ID: Record<FoodComponent, string> = {
   fat: 'preferredFats',
   fruit: 'preferredFruit',
   veg: 'preferredVegetables',
+};
+
+/** The lucide food glyph for each meal component (see components/ui/icon.tsx). */
+export const COMPONENT_ICON: Record<FoodComponent, IconName> = {
+  protein: 'protein',
+  carb: 'carbs',
+  fat: 'fats',
+  fruit: 'nutrition',
+  veg: 'foodVeg',
 };
 
 export const COMPONENT_LABEL: Record<FoodComponent, string> = {

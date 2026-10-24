@@ -6,7 +6,9 @@ import Animated, { interpolate, useAnimatedStyle, useSharedValue, withSpring } f
 import { GlassSurface } from '@/components/glass/glass-surface';
 import { SpringPopup } from '@/constants/motion';
 import { Radius, Spacing } from '@/constants/theme';
+import { useMotionPreference } from '@/hooks/use-motion-preference';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useTheme } from '@/hooks/use-theme';
 
 const POPUP_MAX_WIDTH = 380;
 
@@ -25,10 +27,12 @@ export type GlassPopupProps = {
  * outside the card dismisses it. Used for calendars, "Registra allenamento"
  * and the "Registra pasto" meal picker. */
 export function GlassPopup({ visible, onClose, children, style, maxWidth = POPUP_MAX_WIDTH }: GlassPopupProps) {
+  const { modalAnimation } = useMotionPreference();
   const isDark = useColorScheme() === 'dark';
+  const theme = useTheme();
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
+    <Modal visible={visible} transparent animationType={modalAnimation('fade')} onRequestClose={onClose} statusBarTranslucent>
       <View style={styles.root}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose}>
           <BlurView
@@ -37,7 +41,7 @@ export function GlassPopup({ visible, onClose, children, style, maxWidth = POPUP
             blurMethod="dimezisBlurViewSdk31Plus"
             style={StyleSheet.absoluteFill}
           />
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? 'rgba(0,0,0,0.38)' : 'rgba(20,20,30,0.18)' }]} />
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.scrimSoft }]} />
         </Pressable>
         <PopupCard style={[styles.cardWrap, { maxWidth }]}>
           <GlassSurface level="overlay" radius={Radius.xlarge} style={[styles.card, style]}>

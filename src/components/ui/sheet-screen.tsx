@@ -13,7 +13,6 @@ import {
   type ViewStyle,
 } from 'react-native';
 import Animated, {
-  Easing,
   interpolate,
   runOnJS,
   useAnimatedStyle,
@@ -23,11 +22,12 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { ScrollDefaults } from '@/constants/scroll';
 import { GlassSurface } from '@/components/glass/glass-surface';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
-import { SpringSheet } from '@/constants/motion';
-import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { SpringSheet, TimingExit } from '@/constants/motion';
+import { MaxContentWidth, Radius, SheetShadow, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { goBackOr } from '@/lib/navigation/go-back';
 
@@ -93,7 +93,7 @@ export function SheetScreen({ title, eyebrow, children, fallbackHref = '/', cont
     if (closing) return;
     setClosing(true);
     moveTo(
-      withTiming(height, { duration: 240, easing: Easing.in(Easing.cubic) }, (finished) => {
+      withTiming(height, TimingExit, (finished) => {
         if (finished) runOnJS(goBackOr)(fallbackHref);
       })
     );
@@ -141,7 +141,7 @@ export function SheetScreen({ title, eyebrow, children, fallbackHref = '/', cont
 
   return (
     <View style={styles.overlay}>
-      <Animated.View style={[StyleSheet.absoluteFill, styles.backdrop, backdropStyle]}>
+      <Animated.View style={[StyleSheet.absoluteFill, styles.backdrop, { backgroundColor: theme.scrim }, backdropStyle]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={close} accessibilityLabel="Chiudi" />
       </Animated.View>
 
@@ -166,10 +166,9 @@ export function SheetScreen({ title, eyebrow, children, fallbackHref = '/', cont
           </View>
 
           <ScrollView
+            {...ScrollDefaults}
             style={styles.scroll}
-            contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + Spacing.six }, contentContainerStyle]}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled">
+            contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + Spacing.six }, contentContainerStyle]}>
             {children}
           </ScrollView>
         </Animated.View>
@@ -183,7 +182,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   backdrop: {
-    backgroundColor: 'rgba(0,0,0,0.45)',
   },
   // The space the sheet occupies, from under the status bar to the bottom
   // edge. It must not carry `alignSelf`: on web an align-self on an
@@ -210,7 +208,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: Radius.xlarge,
     borderTopRightRadius: Radius.xlarge,
     overflow: 'hidden',
-    boxShadow: '0px -10px 34px rgba(0,0,0,0.28)',
+    boxShadow: SheetShadow,
   },
   header: {
     flexDirection: 'row',

@@ -1,10 +1,12 @@
 import { Image, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { ScrollDefaults } from '@/constants/scroll';
 import { GlassSurface } from '@/components/glass/glass-surface';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
 import { Radius, Spacing } from '@/constants/theme';
+import { useMotionPreference } from '@/hooks/use-motion-preference';
 import { useTheme } from '@/hooks/use-theme';
 import type { ExerciseMedia } from '@/lib/exercise-media/exercise-media';
 
@@ -39,13 +41,14 @@ export type ExerciseInfoModalProps = {
 };
 
 export function ExerciseInfoModal({ visible, exerciseName, media, sets, reps, tempo, restLabel, onClose }: ExerciseInfoModalProps) {
+  const { modalAnimation } = useMotionPreference();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const tempoPhases = describeTempo(tempo);
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.backdrop}>
+    <Modal visible={visible} transparent animationType={modalAnimation('slide')} onRequestClose={onClose}>
+      <View style={[styles.backdrop, { backgroundColor: theme.scrim }]}>
         <GlassSurface
           level="overlay"
           radius={Radius.xlarge}
@@ -59,7 +62,7 @@ export function ExerciseInfoModal({ visible, exerciseName, media, sets, reps, te
             </Pressable>
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false}>
+          <ScrollView {...ScrollDefaults}>
             <View style={[styles.detailsCard, { backgroundColor: theme.backgroundElement }]}>
               <DetailRow icon="repsHash" label="Serie e ripetizioni" value={`${sets} serie × ${reps} rip.`} />
               <DetailRow icon="hourglass" label="Modalità di esecuzione" value={tempo} />
@@ -158,7 +161,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'flex-end',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.4)',
   },
   sheet: {
     width: '100%',

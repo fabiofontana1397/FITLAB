@@ -1,83 +1,151 @@
-import type { ImageSourcePropType } from 'react-native';
+import {
+  Amphora,
+  Apple,
+  Avocado,
+  Banana,
+  Bean,
+  Beef,
+  Broccoli,
+  Candy,
+  Carrot,
+  Cherry,
+  Citrus,
+  Cookie,
+  CookingPot,
+  Croissant,
+  CupSoda,
+  Cylinder,
+  Dessert,
+  Droplet,
+  Droplets,
+  Drumstick,
+  Egg,
+  Fish,
+  FishSymbol,
+  Flame,
+  Flower,
+  Grape,
+  Ham,
+  IceCreamBowl,
+  LeafyGreen,
+  Milk,
+  Nut,
+  Pizza,
+  Salad,
+  Sandwich,
+  Shell,
+  Shrimp,
+  Soup,
+  Sprout,
+  Vegan,
+  Wheat,
+  type LucideIcon,
+} from 'lucide-react-native';
 
+import { findFood } from '@/lib/mock/food-database';
 import { foodIconKey, type FoodIconKey } from '@/lib/nutrition/food-icon-keys';
 
 /**
- * Food pictures for the meal tracker: Microsoft Fluent Emoji 3D
- * (github.com/microsoft/fluentui-emoji, MIT licence), resized to 96 px in
- * assets/images/food-icons. Which food gets which picture lives in food-icon-keys.ts.
+ * The glyph each food gets in the meal tracker, from lucide.
+ *
+ * Which food gets which key lives in food-icon-keys.ts and is unchanged;
+ * this file only decides what each key looks like. Lucide has fewer food
+ * shapes than there are keys, so some keys share a glyph (every citrus and
+ * melon is the citrus slice, most stone fruit is the apple). The colour is
+ * what tells those apart — see `foodMacro` below.
  */
-const ICONS = {
-  avocado: require('@/assets/images/food-icons/avocado.png'),
-  bacon: require('@/assets/images/food-icons/bacon.png'),
-  banana: require('@/assets/images/food-icons/banana.png'),
-  beans: require('@/assets/images/food-icons/beans.png'),
-  bellPepper: require('@/assets/images/food-icons/bell-pepper.png'),
-  blueberries: require('@/assets/images/food-icons/blueberries.png'),
-  bowl: require('@/assets/images/food-icons/bowl-with-spoon.png'),
-  bread: require('@/assets/images/food-icons/bread.png'),
-  broccoli: require('@/assets/images/food-icons/broccoli.png'),
-  butter: require('@/assets/images/food-icons/butter.png'),
-  canned: require('@/assets/images/food-icons/canned-food.png'),
-  carrot: require('@/assets/images/food-icons/carrot.png'),
-  cheese: require('@/assets/images/food-icons/cheese-wedge.png'),
-  cherries: require('@/assets/images/food-icons/cherries.png'),
-  chestnut: require('@/assets/images/food-icons/chestnut.png'),
-  chocolate: require('@/assets/images/food-icons/chocolate-bar.png'),
-  coconut: require('@/assets/images/food-icons/coconut.png'),
-  corn: require('@/assets/images/food-icons/ear-of-corn.png'),
-  croissant: require('@/assets/images/food-icons/croissant.png'),
-  cucumber: require('@/assets/images/food-icons/cucumber.png'),
-  custard: require('@/assets/images/food-icons/custard.png'),
-  drink: require('@/assets/images/food-icons/cup-with-straw.png'),
-  egg: require('@/assets/images/food-icons/egg.png'),
-  eggplant: require('@/assets/images/food-icons/eggplant.png'),
-  fish: require('@/assets/images/food-icons/fish.png'),
-  garlic: require('@/assets/images/food-icons/garlic.png'),
-  grains: require('@/assets/images/food-icons/sheaf-of-rice.png'),
-  grapes: require('@/assets/images/food-icons/grapes.png'),
-  greenApple: require('@/assets/images/food-icons/green-apple.png'),
-  honey: require('@/assets/images/food-icons/honey-pot.png'),
-  hotPepper: require('@/assets/images/food-icons/hot-pepper.png'),
-  jar: require('@/assets/images/food-icons/jar.png'),
-  kiwi: require('@/assets/images/food-icons/kiwi-fruit.png'),
-  leafy: require('@/assets/images/food-icons/leafy-green.png'),
-  lemon: require('@/assets/images/food-icons/lemon.png'),
-  mango: require('@/assets/images/food-icons/mango.png'),
-  meat: require('@/assets/images/food-icons/cut-of-meat.png'),
-  meatOnBone: require('@/assets/images/food-icons/meat-on-bone.png'),
-  melon: require('@/assets/images/food-icons/melon.png'),
-  milk: require('@/assets/images/food-icons/glass-of-milk.png'),
-  mushroom: require('@/assets/images/food-icons/brown-mushroom.png'),
-  octopus: require('@/assets/images/food-icons/octopus.png'),
-  olive: require('@/assets/images/food-icons/olive.png'),
-  onion: require('@/assets/images/food-icons/onion.png'),
-  orange: require('@/assets/images/food-icons/tangerine.png'),
-  oyster: require('@/assets/images/food-icons/oyster.png'),
-  pasta: require('@/assets/images/food-icons/spaghetti.png'),
-  peaPod: require('@/assets/images/food-icons/pea-pod.png'),
-  peach: require('@/assets/images/food-icons/peach.png'),
-  peanuts: require('@/assets/images/food-icons/peanuts.png'),
-  pear: require('@/assets/images/food-icons/pear.png'),
-  pineapple: require('@/assets/images/food-icons/pineapple.png'),
-  pizza: require('@/assets/images/food-icons/pizza.png'),
-  potato: require('@/assets/images/food-icons/potato.png'),
-  poultry: require('@/assets/images/food-icons/poultry-leg.png'),
-  redApple: require('@/assets/images/food-icons/red-apple.png'),
-  rice: require('@/assets/images/food-icons/cooked-rice.png'),
-  riceCracker: require('@/assets/images/food-icons/rice-cracker.png'),
-  salad: require('@/assets/images/food-icons/green-salad.png'),
-  salt: require('@/assets/images/food-icons/salt.png'),
-  seedling: require('@/assets/images/food-icons/seedling.png'),
-  shrimp: require('@/assets/images/food-icons/shrimp.png'),
-  squid: require('@/assets/images/food-icons/squid.png'),
-  strawberry: require('@/assets/images/food-icons/strawberry.png'),
-  sunflower: require('@/assets/images/food-icons/sunflower.png'),
-  sweetPotato: require('@/assets/images/food-icons/roasted-sweet-potato.png'),
-  tomato: require('@/assets/images/food-icons/tomato.png'),
-  watermelon: require('@/assets/images/food-icons/watermelon.png'),
-} satisfies Record<FoodIconKey, ImageSourcePropType>;
+const GLYPHS = {
+  avocado: Avocado,
+  bacon: Ham,
+  banana: Banana,
+  beans: Bean,
+  bellPepper: LeafyGreen,
+  blueberries: Grape,
+  bowl: IceCreamBowl,
+  bread: Sandwich,
+  broccoli: Broccoli,
+  butter: Droplets,
+  // Every food behind this key is tinned fish (tuna, sardines, anchovies, salmon).
+  canned: Fish,
+  carrot: Carrot,
+  cheese: Milk,
+  cherries: Cherry,
+  chestnut: Nut,
+  chocolate: Candy,
+  coconut: Nut,
+  corn: Wheat,
+  croissant: Croissant,
+  cucumber: LeafyGreen,
+  custard: Dessert,
+  drink: CupSoda,
+  egg: Egg,
+  eggplant: LeafyGreen,
+  fish: Fish,
+  garlic: Sprout,
+  grains: Wheat,
+  grapes: Grape,
+  greenApple: Apple,
+  honey: Droplet,
+  hotPepper: Flame,
+  jar: Cylinder,
+  kiwi: Citrus,
+  leafy: LeafyGreen,
+  lemon: Citrus,
+  mango: Apple,
+  meat: Beef,
+  meatOnBone: Ham,
+  melon: Citrus,
+  milk: Milk,
+  mushroom: Vegan,
+  octopus: FishSymbol,
+  olive: Amphora,
+  onion: Sprout,
+  orange: Citrus,
+  oyster: Shell,
+  pasta: CookingPot,
+  peaPod: Bean,
+  peach: Apple,
+  peanuts: Nut,
+  pear: Apple,
+  pineapple: Citrus,
+  pizza: Pizza,
+  potato: Wheat,
+  poultry: Drumstick,
+  redApple: Apple,
+  rice: Soup,
+  riceCracker: Cookie,
+  salad: Salad,
+  salt: Droplets,
+  seedling: Sprout,
+  shrimp: Shrimp,
+  squid: FishSymbol,
+  strawberry: Cherry,
+  sunflower: Flower,
+  sweetPotato: Carrot,
+  tomato: Cherry,
+  watermelon: Citrus,
+} satisfies Record<FoodIconKey, LucideIcon>;
 
-export function foodIcon(foodId: string): ImageSourcePropType {
-  return ICONS[foodIconKey(foodId)];
+export function foodGlyph(foodId: string): LucideIcon {
+  return GLYPHS[foodIconKey(foodId)];
+}
+
+export type FoodMacro = 'protein' | 'carbs' | 'fats';
+
+/**
+ * The macro that supplies most of a food's calories (protein and carbs at
+ * 4 kcal/g, fat at 9). The meal tracker tints each food's glyph with that
+ * macro's colour, the same colours as the macro rings above it on the
+ * Nutrition screen — so chicken, pasta and oil read as three different
+ * things even where lucide draws them with similar shapes, and the row
+ * says something true about the food rather than only decorating it.
+ *
+ * `null` for a food that is no longer in the database (an old entry).
+ */
+export function foodMacro(foodId: string): FoodMacro | null {
+  const food = findFood(foodId);
+  if (!food) return null;
+  const kcal = { protein: food.protein100 * 4, carbs: food.carbs100 * 4, fats: food.fats100 * 9 };
+  if (kcal.protein + kcal.carbs + kcal.fats === 0) return null;
+  return (Object.keys(kcal) as FoodMacro[]).reduce((best, k) => (kcal[k] > kcal[best] ? k : best));
 }
