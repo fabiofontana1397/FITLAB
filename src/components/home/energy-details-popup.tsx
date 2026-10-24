@@ -1,5 +1,6 @@
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
+import { ScrollDefaults } from '@/constants/scroll';
 import { GlassPopup } from '@/components/glass/glass-popup';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
@@ -171,7 +172,7 @@ export function EnergyDetailsPopup({
         </Pressable>
       </View>
 
-      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+      <ScrollView {...ScrollDefaults} style={styles.scroll} contentContainerStyle={styles.content}>
         <Section title={`Il tuo obiettivo: ${copy.name}`}>
           <Body>{copy.why}</Body>
         </Section>

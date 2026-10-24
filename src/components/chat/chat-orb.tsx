@@ -2,10 +2,13 @@ import { useEffect, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Accelerometer } from 'expo-sensors';
 import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
+
+import { loopTiming, TimingQuick } from '@/constants/motion';
+import { Brand, Palette } from '@/constants/theme';
 
 type Blob = {
-  colors: [string, string, string];
+  colors: readonly [string, string, string];
   /** Resting position as a fraction of the sphere's size, e.g. -0.15 is
    * 15% of the sphere left of center. Each color occupies its own region
    * of the sphere (like the reference photo) rather than every blob
@@ -29,9 +32,9 @@ type Blob = {
 // always falls outside the visible circle — you only ever see the
 // gradual-falloff interior of each field, never a closed edge.
 const BLOBS: Blob[] = [
-  { colors: ['#D9660F', '#FF7A1A', '#FFB454'], baseOffset: { x: -0.16, y: -0.22 }, orbitDuration: 4200, direction: 1, phase: 0, freqRatio: 0.8 },
-  { colors: ['#7A1E00', '#B33A0A', '#E8590C'], baseOffset: { x: 0.2, y: -0.26 }, orbitDuration: 5200, direction: -1, phase: 2.1, freqRatio: 1.2 },
-  { colors: ['#C24E12', '#FF7A1A', '#FFA83D'], baseOffset: { x: 0.24, y: 0.12 }, orbitDuration: 3600, direction: 1, phase: 4.2, freqRatio: 0.65 },
+  { colors: Brand.orbWarm, baseOffset: { x: -0.16, y: -0.22 }, orbitDuration: 4200, direction: 1, phase: 0, freqRatio: 0.8 },
+  { colors: Brand.orbDeep, baseOffset: { x: 0.2, y: -0.26 }, orbitDuration: 5200, direction: -1, phase: 2.1, freqRatio: 1.2 },
+  { colors: Brand.orbBright, baseOffset: { x: 0.24, y: 0.12 }, orbitDuration: 3600, direction: 1, phase: 4.2, freqRatio: 0.65 },
 ];
 
 // Gradient stops shared by every blob's radial fill — brightest at the
@@ -67,7 +70,7 @@ export function ChatOrb({ size }: { size: number }) {
   }));
 
   return (
-    <View style={{ width: size, height: size, borderRadius: size / 2, overflow: 'hidden', backgroundColor: '#FF7A00' }}>
+    <View style={{ width: size, height: size, borderRadius: size / 2, overflow: 'hidden', backgroundColor: Palette.orange[500] }}>
       <Animated.View style={[styles.layer, tiltStyle]}>
         {BLOBS.map((blob, i) => (
           <BlobLayer key={i} blob={blob} size={size} index={i} />
@@ -87,8 +90,8 @@ function Vignette({ size }: { size: number }) {
     <Svg width={size} height={size} style={StyleSheet.absoluteFill} pointerEvents="none">
       <Defs>
         <RadialGradient id="chatOrbVignette" cx="50%" cy="50%" r="50%">
-          <Stop offset="70%" stopColor="#000000" stopOpacity={0} />
-          <Stop offset="100%" stopColor="#000000" stopOpacity={0.22} />
+          <Stop offset="70%" stopColor={Palette.neutral[950]} stopOpacity={0} />
+          <Stop offset="100%" stopColor={Palette.neutral[950]} stopOpacity={0.22} />
         </RadialGradient>
       </Defs>
       <Circle cx={size / 2} cy={size / 2} r={size / 2} fill="url(#chatOrbVignette)" />
@@ -106,16 +109,26 @@ function useTiltShift() {
   const tiltX = useSharedValue(0);
   const tiltY = useSharedValue(0);
   const subscriptionRef = useRef<{ remove: () => void } | null>(null);
+  // The tilt is driven by the accelerometer, not by an animation, so
+  // Reanimated's own Reduce Motion handling never sees it: without this
+  // check the orb would keep swaying under the thumb for someone who has
+  // asked the system for less movement.
+  const reduceMotion = useReducedMotion();
 
   useEffect(() => {
+    if (reduceMotion) {
+      tiltX.value = 0;
+      tiltY.value = 0;
+      return;
+    }
     let cancelled = false;
     Accelerometer.isAvailableAsync()
       .then((isAvailable) => {
         if (cancelled || !isAvailable) return;
         Accelerometer.setUpdateInterval(100);
         subscriptionRef.current = Accelerometer.addListener(({ x, y }) => {
-          tiltX.value = withTiming(Math.max(-1, Math.min(1, x)) * TILT_RANGE, { duration: 220 });
-          tiltY.value = withTiming(Math.max(-1, Math.min(1, y)) * -TILT_RANGE, { duration: 220 });
+          tiltX.value = withTiming(Math.max(-1, Math.min(1, x)) * TILT_RANGE, TimingQuick);
+          tiltY.value = withTiming(Math.max(-1, Math.min(1, y)) * -TILT_RANGE, TimingQuick);
         });
       })
       .catch(() => {
@@ -129,7 +142,7 @@ function useTiltShift() {
       subscriptionRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [reduceMotion]);
 
   return { tiltX, tiltY };
 }
@@ -138,7 +151,7 @@ function BlobLayer({ blob, size, index }: { blob: Blob; size: number; index: num
   const orbit = useSharedValue(0);
 
   useEffect(() => {
-    orbit.value = withRepeat(withTiming(1, { duration: blob.orbitDuration, easing: Easing.linear }), -1, false);
+    orbit.value = withRepeat(withTiming(1, loopTiming(blob.orbitDuration)), -1, false);
   }, [orbit, blob.orbitDuration]);
 
   // A wiggle around its resting spot big enough to actually be seen

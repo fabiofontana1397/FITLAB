@@ -19,7 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LiquidGlass, liquidLensStyle } from '@/components/glass/liquid-glass';
 import { ThemedText } from '@/components/themed-text';
 import { Icon, type IconName } from '@/components/ui/icon';
-import { SpringPressIn, SpringPressOut } from '@/constants/motion';
+import { SpringIconPop, SpringPressIn, SpringPressOut, TimingTap } from '@/constants/motion';
 import { hapticSelection } from '@/lib/haptics';
 import { BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -55,7 +55,6 @@ const BLUR_BANDS = {
 
 // Tab focus: settles quickly with just a whisper of overshoot on the pill.
 const SpringTab: WithSpringConfig = { damping: 19, mass: 0.7, stiffness: 230 };
-const SpringIconPop: WithSpringConfig = { damping: 9, mass: 0.5, stiffness: 300 };
 
 const TAB_ITEMS: { name: string; href: Href; label: string; icon: IconName }[] = [
   { name: 'index', href: '/', label: 'Home', icon: 'home' },
@@ -186,7 +185,7 @@ function TabButton({
     focus.value = withSpring(isFocused ? 1 : 0, SpringTab);
     // A small "pop" on the icon the moment its tab becomes active.
     if (isFocused && !wasFocused.current) {
-      iconPop.value = withSequence(withTiming(0.82, { duration: 90 }), withSpring(1, SpringIconPop));
+      iconPop.value = withSequence(withTiming(0.82, TimingTap), withSpring(1, SpringIconPop));
     }
     wasFocused.current = isFocused;
   }, [isFocused, focus, iconPop]);

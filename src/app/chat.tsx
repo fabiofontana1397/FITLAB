@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { FlatList, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 
+import { SpringPanel, TimingExit } from '@/constants/motion';
+import { HorizontalScrollDefaults } from '@/constants/scroll';
 import { AppTextInput } from '@/components/ui/app-text';
 import Animated, {
-  Easing,
   interpolate,
   runOnJS,
   useAnimatedStyle,
@@ -41,7 +42,7 @@ export default function ChatScreen() {
   const originY = height - (insets.bottom + BottomTabInset + GENIE_ORIGIN_OFFSET.bottom);
 
   useEffect(() => {
-    progress.value = withSpring(1, { damping: 15, stiffness: 110, mass: 0.9 });
+    progress.value = withSpring(1, SpringPanel);
     loadHistory();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -52,7 +53,7 @@ export default function ChatScreen() {
     // reanimated idiom, not the kind of dependency mutation this lint rule
     // is guarding against.
     // eslint-disable-next-line react-hooks/immutability
-    progress.value = withTiming(0, { duration: 260, easing: Easing.in(Easing.cubic) }, (finished) => {
+    progress.value = withTiming(0, TimingExit, (finished) => {
       if (finished) runOnJS(goBackOr)('/');
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -86,7 +87,7 @@ export default function ChatScreen() {
 
   return (
     <View style={styles.overlay}>
-      <Animated.View pointerEvents="box-none" style={[styles.backdrop, backdropStyle]} />
+      <Animated.View pointerEvents="box-none" style={[styles.backdrop, { backgroundColor: theme.scrim }, backdropStyle]} />
       <Animated.View style={[styles.sheet, sheetStyle]}>
         <KeyboardAvoidingView
           style={[styles.container, { backgroundColor: theme.background }]}
@@ -119,8 +120,7 @@ export default function ChatScreen() {
 
           {messages.length <= 1 ? (
             <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
+              {...HorizontalScrollDefaults}
               style={styles.chipsScroll}
               contentContainerStyle={styles.chipsRow}>
               {SUGGESTED_PROMPTS.map((prompt) => (
@@ -179,7 +179,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.45)',
   },
   sheet: {
     flex: 1,

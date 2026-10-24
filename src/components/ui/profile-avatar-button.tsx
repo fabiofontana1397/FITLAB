@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { LiquidGlassButton } from '@/components/glass/liquid-glass';
 import { Icon } from '@/components/ui/icon';
+import { GlassMaterial } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { useUserStore } from '@/store/user-store';
@@ -32,7 +33,7 @@ export function ProfileAvatarButton({ size = 36 }: { size?: number }) {
             style={[
               StyleSheet.absoluteFill,
               styles.sheen,
-              { boxShadow: isDark ? 'inset 0px 1px 1px rgba(255,255,255,0.25)' : 'inset 0px 1px 1px rgba(255,255,255,0.6)' },
+              { boxShadow: GlassMaterial.buttonInset[isDark ? 'dark' : 'light'] },
             ]}
           />
         </View>

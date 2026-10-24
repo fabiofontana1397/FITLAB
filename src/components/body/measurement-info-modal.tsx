@@ -4,6 +4,7 @@ import { GlassSurface } from '@/components/glass/glass-surface';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
 import { Radius, Spacing } from '@/constants/theme';
+import { useMotionPreference } from '@/hooks/use-motion-preference';
 import { useTheme } from '@/hooks/use-theme';
 import { BodySilhouette, type MeasurementZone } from './body-silhouette';
 
@@ -46,13 +47,14 @@ export type MeasurementInfoModalProps = {
 };
 
 export function MeasurementInfoModal({ zone, onClose }: MeasurementInfoModalProps) {
+  const { modalAnimation } = useMotionPreference();
   const theme = useTheme();
   if (!zone) return null;
   const copy = COPY[zone];
 
   return (
-    <Modal visible={zone != null} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose}>
+    <Modal visible={zone != null} transparent animationType={modalAnimation('fade')} onRequestClose={onClose}>
+      <Pressable style={[styles.backdrop, { backgroundColor: theme.scrim }]} onPress={onClose}>
         <Pressable onPress={(e) => e.stopPropagation()}>
           <GlassSurface level="overlay" radius={Radius.xlarge} style={styles.card}>
             <View style={styles.header}>
@@ -79,7 +81,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.45)',
     padding: Spacing.four,
   },
   card: {

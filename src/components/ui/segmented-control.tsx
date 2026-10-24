@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { LayoutChangeEvent, Pressable, ScrollView, StyleSheet } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
+import { TimingQuick } from '@/constants/motion';
+import { HorizontalScrollDefaults } from '@/constants/scroll';
 import { LiquidGlass, liquidLensStyle } from '@/components/glass/liquid-glass';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
@@ -36,8 +38,8 @@ export function SegmentedControl<T extends string>({
 
   useEffect(() => {
     if (activeWidth != null && activeX != null) {
-      indicatorX.value = withTiming(activeX, { duration: 220 });
-      indicatorWidth.value = withTiming(activeWidth, { duration: 220 });
+      indicatorX.value = withTiming(activeX, TimingQuick);
+      indicatorWidth.value = withTiming(activeWidth, TimingQuick);
     }
   }, [activeWidth, activeX, indicatorX, indicatorWidth]);
 
@@ -82,7 +84,7 @@ export function SegmentedControl<T extends string>({
 
   if (scrollable) {
     return (
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }}>
+      <ScrollView {...HorizontalScrollDefaults} contentContainerStyle={{ flexGrow: 1 }}>
         {content}
       </ScrollView>
     );

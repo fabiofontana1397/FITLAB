@@ -1,12 +1,15 @@
 import { ScrollViewStyleReset } from 'expo-router/html';
 import type { PropsWithChildren } from 'react';
 
+import { PageBackground } from '@/constants/page-background';
+
 // Root HTML of the static web export — the page iPhones open from Safari or
-// the Home Screen icon. These colors mirror Colors.light/dark.background in
-// src/constants/theme.ts (this file renders on the server and can't import it).
+// the Home Screen icon. This file renders in a bare Node pass and cannot
+// import constants/theme.ts, so the page colour comes from the dependency-free
+// module that theme.ts builds `background` from.
 const PAGE_BACKGROUND_CSS = `
-html,body{background-color:#E9E9E8}
-@media (prefers-color-scheme:dark){html,body{background-color:#000000}}
+html,body{background-color:${PageBackground.light}}
+@media (prefers-color-scheme:dark){html,body{background-color:${PageBackground.dark}}}
 `;
 
 export default function Root({ children }: PropsWithChildren) {
@@ -25,8 +28,8 @@ export default function Root({ children }: PropsWithChildren) {
         <meta name="apple-mobile-web-app-title" content="FitLab" />
         <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-        <meta name="theme-color" content="#E9E9E8" media="(prefers-color-scheme: light)" />
-        <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+        <meta name="theme-color" content={PageBackground.light} media="(prefers-color-scheme: light)" />
+        <meta name="theme-color" content={PageBackground.dark} media="(prefers-color-scheme: dark)" />
         <ScrollViewStyleReset />
         <style id="page-background" dangerouslySetInnerHTML={{ __html: PAGE_BACKGROUND_CSS }} />
       </head>

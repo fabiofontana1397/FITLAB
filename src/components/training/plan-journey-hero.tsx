@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 import { PressableScale } from '@/components/motion/pressable-scale';
 import { ThemedText } from '@/components/themed-text';
 import { Icon, type IconName } from '@/components/ui/icon';
+import { OnBrand } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { Goal } from '@/lib/mock/types';
 
@@ -65,23 +66,23 @@ export function PlanJourneyHero({ totalMonths, goal, onPress, kind = 'training',
   const label = diet ? 'Scopri il tuo piano alimentare' : 'Scopri il tuo percorso';
   const copy = (
     <>
-      <ThemedText style={styles.tag}>IL TUO PERCORSO</ThemedText>
+      <ThemedText style={[styles.tag, { color: theme.spotlightTextMuted }]}>IL TUO PERCORSO</ThemedText>
       <View style={styles.copy}>
-        <ThemedText style={styles.months}>
+        <ThemedText style={[styles.months, { color: theme.spotlightText }]}>
           {totalMonths} {totalMonths === 1 ? 'mese' : 'mesi'}
         </ThemedText>
-        <ThemedText style={styles.headline}>per una versione {promise.adjective} di te.</ThemedText>
-        <ThemedText style={styles.body}>{diet ? DIET_BODY[goal] : promise.body}</ThemedText>
+        <ThemedText style={[styles.headline, { color: theme.spotlightText }]}>per una versione {promise.adjective} di te.</ThemedText>
+        <ThemedText style={[styles.body, { color: theme.spotlightTextMuted }]}>{diet ? DIET_BODY[goal] : promise.body}</ThemedText>
       </View>
     </>
   );
   const card = (
-    <LinearGradient colors={['#2B2B30', '#17171A', '#0E0E10']} locations={[0, 0.55, 1]} start={{ x: 1, y: 0 }} end={{ x: 0, y: 1 }} style={styles.card}>
+    <LinearGradient colors={theme.spotlightGradient} locations={[0, 0.55, 1]} start={{ x: 1, y: 0 }} end={{ x: 0, y: 1 }} style={styles.card}>
       <View pointerEvents="none" style={styles.artBig}>
-        <Icon name={diet ? 'utensils' : 'barbell'} size={diet ? 120 : 136} color="rgba(255,255,255,0.10)" />
+        <Icon name={diet ? 'utensils' : 'barbell'} size={diet ? 120 : 136} color={OnBrand.artwork} />
       </View>
       <View pointerEvents="none" style={styles.artSmall}>
-        <Icon name={diet ? 'nutrition' : 'training'} size={60} color="rgba(255,255,255,0.08)" />
+        <Icon name={diet ? 'nutrition' : 'training'} size={60} color={OnBrand.artworkFaint} />
       </View>
 
       {action ? (
@@ -92,7 +93,7 @@ export function PlanJourneyHero({ totalMonths, goal, onPress, kind = 'training',
         copy
       )}
       {action ? (
-        <PressableScale onPress={action.onPress} accessibilityRole="button" style={styles.actionButton}>
+        <PressableScale onPress={action.onPress} accessibilityRole="button" style={[styles.actionButton, { backgroundColor: theme.spotlightAction }]}>
           <View style={[styles.actionIcon, { backgroundColor: theme.accentSoft }]}>
             <Icon name={action.icon} size={16} color={theme.accent} />
           </View>
@@ -142,7 +143,6 @@ const styles = StyleSheet.create({
     transform: [{ rotate: '12deg' }],
   },
   tag: {
-    color: 'rgba(255,255,255,0.85)',
     fontSize: 12,
     lineHeight: 16,
     fontWeight: '700',
@@ -153,14 +153,12 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   months: {
-    color: '#FFFFFF',
     fontSize: 32,
     lineHeight: 37,
     fontWeight: '800',
     letterSpacing: -0.8,
   },
   headline: {
-    color: '#FFFFFF',
     fontSize: 18,
     lineHeight: 23,
     fontWeight: '600',
@@ -168,7 +166,6 @@ const styles = StyleSheet.create({
   },
   body: {
     marginTop: 4,
-    color: 'rgba(255,255,255,0.78)',
     fontSize: 12.5,
     lineHeight: 17,
     fontWeight: '500',
@@ -192,7 +189,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: '#FFFFFF',
   },
   actionIcon: {
     width: 26,
