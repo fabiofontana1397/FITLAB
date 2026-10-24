@@ -2,6 +2,7 @@ import { Image } from 'expo-image';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { FoodGlyph } from '@/components/nutrition/food-glyph';
+import { cornerSafeInset } from '@/components/nutrition/photo-fit';
 import { useTheme } from '@/hooks/use-theme';
 import { foodPhoto } from '@/lib/nutrition/food-photos';
 
@@ -55,6 +56,10 @@ export function FoodThumb({ foodId, variant = 'row' }: { foodId: string; variant
   const size = useFoodThumbSize(variant);
   const photo = foodPhoto(foodId);
 
+  // A quarter of the side, on iOS's continuous curve: the same rounding the
+  // system gives app icons and list thumbnails, at any size.
+  const radius = Math.round(size * 0.24);
+
   return (
     <View
       aria-hidden
@@ -63,15 +68,14 @@ export function FoodThumb({ foodId, variant = 'row' }: { foodId: string; variant
         {
           width: size,
           height: size,
-          // A quarter of the side, on iOS's continuous curve: the same rounding
-          // the system gives app icons and list thumbnails, at any size.
-          borderRadius: Math.round(size * 0.24),
+          borderRadius: radius,
           backgroundColor: theme.backgroundElement,
         },
+        photo ? { padding: cornerSafeInset(radius) } : null,
       ]}>
       {photo ? (
-        // Square packshots on white: cover-fit fills the tile edge to edge.
-        <Image source={photo} style={StyleSheet.absoluteFill} contentFit="cover" transition={0} accessibilityIgnoresInvertColors />
+        // Always the whole photo, scaled down to fit (see photo-fit.ts).
+        <Image source={photo} style={styles.photo} contentFit="contain" contentPosition="center" transition={0} accessibilityIgnoresInvertColors />
       ) : (
         <FoodGlyph foodId={foodId} size={Math.round(size * 0.5)} />
       )}
@@ -80,6 +84,10 @@ export function FoodThumb({ foodId, variant = 'row' }: { foodId: string; variant
 }
 
 const styles = StyleSheet.create({
+  photo: {
+    width: '100%',
+    height: '100%',
+  },
   tile: {
     overflow: 'hidden',
     borderCurve: 'continuous',
