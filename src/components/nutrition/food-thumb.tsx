@@ -1,8 +1,8 @@
 import { Image } from 'expo-image';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
-import { FoodGlyph } from '@/components/nutrition/food-glyph';
 import { useTheme } from '@/hooks/use-theme';
+import { foodIcon } from '@/lib/nutrition/food-icons';
 import { foodPhoto } from '@/lib/nutrition/food-photos';
 
 /**
@@ -45,15 +45,24 @@ export function useFoodThumbSize(variant: FoodThumbVariant): number {
 }
 
 /**
- * What a food looks like in the meal tracker: its photo when there is one
- * (lib/nutrition/food-photos.ts), otherwise its lucide glyph tinted by its
- * main macro, on a tile sized for the space available. Decorative — the
- * food's name always sits beside it — so it is hidden from screen readers.
+ * A 3D food picture keeps this share of the tile, so it sits in the tile the
+ * way an app icon's artwork sits in its rounded square instead of touching
+ * the corners the rounding would clip.
+ */
+const ICON_SCALE = 0.78;
+
+/**
+ * What a food looks like in the meal tracker, on a tile sized for the space
+ * available: its photo when there is one (lib/nutrition/food-photos.ts),
+ * filling the tile; otherwise its 3D picture (lib/nutrition/food-icons.ts),
+ * which has one for every food. Decorative — the food's name always sits
+ * beside it — so it is hidden from screen readers.
  */
 export function FoodThumb({ foodId, variant = 'row' }: { foodId: string; variant?: FoodThumbVariant }) {
   const theme = useTheme();
   const size = useFoodThumbSize(variant);
   const photo = foodPhoto(foodId);
+  const icon = Math.round(size * ICON_SCALE);
 
   return (
     <View
@@ -70,10 +79,10 @@ export function FoodThumb({ foodId, variant = 'row' }: { foodId: string; variant
         },
       ]}>
       {photo ? (
-        // Square packshots on white: cover-fit fills the tile edge to edge.
+        // Square close-ups cut to the food: cover-fit fills the tile edge to edge.
         <Image source={photo} style={StyleSheet.absoluteFill} contentFit="cover" transition={0} accessibilityIgnoresInvertColors />
       ) : (
-        <FoodGlyph foodId={foodId} size={Math.round(size * 0.5)} />
+        <Image source={foodIcon(foodId)} style={{ width: icon, height: icon }} contentFit="contain" transition={0} />
       )}
     </View>
   );

@@ -29,10 +29,8 @@ type IonName = ComponentProps<typeof Ionicons>['name'];
  * genuine glyph for each food group rather than the nearest approximation
  * — barley standing in for carbohydrates, a water drop for fats.
  *
- * Individual foods in the meal log are lucide too, but are drawn by
- * FoodGlyph (components/nutrition/food-glyph.tsx) rather than through this
- * registry: there are 68 of them, chosen per food, and tinted by the food's
- * dominant macro.
+ * Individual foods in the meal log are pictures, not icons: FoodThumb
+ * (components/nutrition/food-thumb.tsx) shows a photo or 3D image of each.
  */
 const LUCIDE_ICONS = {
   protein: Drumstick,

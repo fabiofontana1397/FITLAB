@@ -1,8 +1,9 @@
 # Food photos (meal tracker)
 
-49 WebP packshots, 192 × 192, white background. Which food shows which
-photo is decided in `src/lib/nutrition/food-photos.ts`; a food with no
-fitting photo keeps its lucide glyph.
+49 WebP close-ups, 192 × 192, each cut square to fill its tile edge to
+edge. Which food shows which photo is decided in
+`src/lib/nutrition/food-photos.ts`; a food with no fitting photo shows its
+Fluent Emoji 3D picture (`assets/images/food-icons`) instead.
 
 ## Where they come from
 
@@ -18,10 +19,14 @@ showed chickpeas, `spaghetti.webp` rice, `burro.webp` ricotta) and most had
 another food's name printed in them.
 
 These files were re-cut from the board rebuilt out of those crops: each
-food is taken from above its own printed label, with the label left out
-and the square re-centred on the food. The board's columns had also been
-cropped narrower than its cells, so some foods remain cut along one side;
-at thumbnail size that reads as a close-up.
+food is taken from above its own printed label, with the label left out.
+The rebuilt board is not continuous — every 320 px down it changes source
+crop, and the two halves of a food do not line up — so each square is cut
+from inside one crop only, never across a join. Within it the square is
+as tall as the crop allows and centred on the coloured part of the food
+(the rice, not the white bowl), with no padding added: the food reaches
+the tile's edges. Carrot and aubergine use the whole vegetable rather than
+its slices.
 
 Seven foods of the batch are not here because the original crops lost
 almost all of the board's last row: olio extravergine, burro, limone,
