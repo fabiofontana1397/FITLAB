@@ -80,7 +80,8 @@
     "knowledge:ingest": "tsx scripts/ingest-knowledge.ts",
     "agents:test": "tsx scripts/agent-tests/run.ts",
     "agents:excel": "tsx scripts/agent-tests/export-excel.ts",
-    "catalog:import": "tsx scripts/catalog/import-catalog.ts"
+    "catalog:import": "tsx scripts/catalog/import-catalog.ts",
+    "meals:check": "tsx scripts/check-meal-images.ts"
   },
   "private": true
 }
