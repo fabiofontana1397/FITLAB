@@ -26,6 +26,7 @@ import { useHealthEnergy } from '@/hooks/use-health-energy';
 import { sumActivityKcalForDate, useWeeklyEnergy } from '@/hooks/use-weekly-energy';
 import { useTheme } from '@/hooks/use-theme';
 import { currentWeekDates, dayOfMonth, daysAgoISO, isoMondayIndex } from '@/lib/mock/dates';
+import { calorieBalance, readBalance } from '@/domain/calorie-balance';
 import { dayEnergy } from '@/domain/energy';
 import { Brand, OnBrand } from '@/constants/theme';
 import { useUserContext } from '@/hooks/use-user-context';
@@ -136,7 +137,7 @@ export default function HomeScreen() {
   const trainingBurnKcal = energy.exercise;
   const burnedKcal = energy.total;
   const eatenKcal = todaysTotals.kcal;
-  const balanceKcal = eatenKcal - burnedKcal;
+  const balanceKcal = calorieBalance(eatenKcal, burnedKcal);
 
   // Current calendar week (Mon–Sun) from the shared pipeline, so Home,
   // Progressi and Nutrizione can never disagree on the numbers.
@@ -197,6 +198,22 @@ export default function HomeScreen() {
     viewDateObj.toLocaleDateString('it-IT', { month: 'short' }).replace('.', '')
   )}`;
   const dailyGoalKcal = weeklyGoalKcal / 7;
+  // The gauge's semi-ring reads today's balance against the same daily goal the "Obiettivo" column shows.
+  const balanceReading = readBalance({ eatenKcal, burnedKcal, goalKcal: dailyGoalKcal });
+  const balanceCaption =
+    balanceReading.status === 'missing'
+      ? 'nessun pasto'
+      : balanceReading.reached && balanceReading.goalKind !== 'maintenance'
+        ? 'obiettivo raggiunto'
+        : balanceReading.status === 'even'
+          ? 'in pari'
+          : balanceReading.status === 'deficit'
+            ? 'in deficit'
+            : 'in surplus';
+  const balanceA11y =
+    balanceReading.status === 'missing'
+      ? `Nessun pasto registrato. Bruciate ${formatKcal(burnedKcal)} kcal. Obiettivo ${formatSignedKcal(dailyGoalKcal)} kcal.`
+      : `Bilancio ${formatSignedKcal(balanceKcal)} kcal, ${balanceCaption}. Obiettivo ${formatSignedKcal(dailyGoalKcal)} kcal. Bruciate ${formatKcal(burnedKcal)}, assunte ${formatKcal(eatenKcal)} kcal.`;
   const weekPill = weeklyProgress >= 1 ? 'Obiettivo raggiunto! 🎯' : weeklyProgress >= 0.6 ? 'Ci sei quasi!' : weeklyProgress >= 0.25 ? 'Stai andando bene' : 'Ogni giorno conta';
 
   return (
@@ -243,14 +260,15 @@ export default function HomeScreen() {
           </Pressable>
         </View>
 
-        <Pressable onPress={() => setDetailsFocus('day')} style={styles.gaugeWrap}>
+        <Pressable onPress={() => setDetailsFocus('day')} style={styles.gaugeWrap} accessibilityRole="button" accessibilityLabel={balanceA11y}>
           <OggiGauge
             burnedKcal={burnedKcal}
             eatenKcal={eatenKcal}
             burnedColor={theme.accent}
             eatenColor={theme.brandGreen}
+            reading={balanceReading}
             value={formatSignedKcal(balanceKcal)}
-            caption={balanceKcal >= 0 ? 'in surplus' : 'in deficit'}
+            caption={balanceCaption}
           />
         </Pressable>
 
@@ -642,6 +660,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   gaugeWrap: {
+    alignSelf: 'stretch',
     alignItems: 'center',
     marginTop: 4,
   },

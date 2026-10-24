@@ -202,6 +202,15 @@ export const Colors = {
     /** Ticks notched into a progress bar, over and before the fill. */
     tickOnFill: 'rgba(0,0,0,0.14)',
     tickOnTrack: 'rgba(255,106,19,0.16)',
+
+    // Calorie-balance scales (Home's semi-ring, components/home/balance-tone.ts).
+    // Toward the goal: very faint far from it, then mid, strong, and a full
+    // green only once the goal is reached. Hex only — they are interpolated.
+    balanceGoalScale: ['#CDEFD9', '#86D4A6', '#3DBA72', '#14904F'] as const,
+    // Away from the goal, on the surplus side: the weekly chart's surplus blue.
+    balanceSurplusScale: ['#CFE3FA', '#0B72E0'] as const,
+    // Away from the goal on the deficit side (only reachable on a surplus goal): its deficit magenta.
+    balanceDeficitScale: ['#F6D3EA', '#C2178E'] as const,
   },
   dark: {
     background: PageBackground.dark,
@@ -273,6 +282,12 @@ export const Colors = {
     // black ones do in light mode.
     tickOnFill: 'rgba(0,0,0,0.22)',
     tickOnTrack: 'rgba(255,255,255,0.12)',
+
+    // Same roles as light; the faint ends sit just above the dark track
+    // instead of just below white, and the full ends stay clear of neon.
+    balanceGoalScale: ['#1E4A31', '#2D7D4F', '#3FBF73', '#5BEA91'] as const,
+    balanceSurplusScale: ['#1C3550', '#3AA0FF'] as const,
+    balanceDeficitScale: ['#4A1D3F', '#FF3FD1'] as const,
   },
 } as const;
 

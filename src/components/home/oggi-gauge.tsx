@@ -1,155 +1,257 @@
-import { StyleSheet, View } from 'react-native';
-import Svg, { Circle, G, Path } from 'react-native-svg';
+import { useEffect, useState } from 'react';
+import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
+import Animated, { useAnimatedProps, useSharedValue, withTiming } from 'react-native-reanimated';
+import Svg, { Circle, Line, Path } from 'react-native-svg';
 
+import { balanceTone } from '@/components/home/balance-tone';
 import { ThemedText } from '@/components/themed-text';
+import { TimingFill } from '@/constants/motion';
 import { OnBrand, Palette } from '@/constants/theme';
+import { balancePosition, type BalanceReading } from '@/domain/calorie-balance';
 import { useTheme } from '@/hooks/use-theme';
 
-// Angles are clockwise from 12 o'clock. The Figma gauge leaves a wide open
-// gap at the bottom and a narrow one where orange meets green; these are
-// the *path* gaps (the round caps close the visible gap a bit further).
-// The middle gap is where both arrow knobs sit, facing each other, so it is
-// wide enough to leave a sliver of track between them.
+const AnimatedPath = Animated.createAnimatedComponent(Path);
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+
+// ─── Geometry ──────────────────────────────────────────────────────────────
+// Drawn in a fixed 260-wide coordinate space and scaled to the card, so the
+// two rings stay concentric and in proportion on every iPhone width.
+// Angles are degrees clockwise from 12 o'clock — so on both rings the right
+// side is a deficit, the left a surplus, and the top is equilibrium.
+const BASE_W = 260;
+const CX = BASE_W / 2;
+
+/** Main ring: intake vs burned, open at the bottom like the original gauge. */
+const MAIN_R = 72;
+const MAIN_STROKE = 13;
 const BOTTOM_GAP_DEG = 84;
-const MID_GAP_DEG = 18;
+const MAIN_HALF_SPAN = 180 - BOTTOM_GAP_DEG / 2; // ±138°
 const MIN_SWEEP_DEG = 10;
-const ARC_START_DEG = 180 + BOTTOM_GAP_DEG / 2;
 
-function polar(cx: number, cy: number, r: number, deg: number) {
-  const rad = (deg * Math.PI) / 180;
-  return { x: cx + r * Math.sin(rad), y: cy - r * Math.cos(rad) };
+/** Semi-ring: the balance against the goal, hugging the top of the main ring. */
+const SEMI_STROKE = 6;
+const RING_GAP = 9;
+const SEMI_R = MAIN_R + MAIN_STROKE / 2 + RING_GAP + SEMI_STROKE / 2;
+const SEMI_HALF_SPAN = 90;
+
+/** Where the "obiettivo" label hangs: just past the goal notch's outer end. */
+const GOAL_LABEL_R = SEMI_R + SEMI_STROKE / 2 + 8;
+/** Room above the semi-ring for that label. */
+const TOP_PAD = 20;
+const CY = TOP_PAD + SEMI_R + SEMI_STROKE / 2;
+const BASE_H = CY + MAIN_R * Math.cos(((180 - MAIN_HALF_SPAN) * Math.PI) / 180) + MAIN_STROKE / 2 + 4;
+
+function px(r: number, deg: number) {
+  'worklet';
+  return CX + r * Math.sin((deg * Math.PI) / 180);
+}
+function py(r: number, deg: number) {
+  'worklet';
+  return CY - r * Math.cos((deg * Math.PI) / 180);
 }
 
-function arcPath(cx: number, cy: number, r: number, startDeg: number, sweepDeg: number): string {
-  const start = polar(cx, cy, r, startDeg);
-  const end = polar(cx, cy, r, startDeg + sweepDeg);
-  const largeArc = sweepDeg > 180 ? 1 : 0;
-  return `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArc} 1 ${end.x} ${end.y}`;
+/** An arc between two angles, drawn clockwise whichever order they come in. */
+function arc(r: number, fromDeg: number, toDeg: number): string {
+  'worklet';
+  const a = Math.min(fromDeg, toDeg);
+  const b = Math.max(fromDeg, toDeg);
+  const large = b - a > 180 ? 1 : 0;
+  return `M ${px(r, a)} ${py(r, a)} A ${r} ${r} 0 ${large} 1 ${px(r, b)} ${py(r, b)}`;
 }
 
-/**
- * The white knob with a chevron that rides the leading tip of an arc and
- * points the way that arc grows, like the tip of an Activity ring.
- * `clockwise` is the direction of travel along the ring.
- */
-function ArrowKnob({ cx, cy, r, deg, clockwise, radius, color }: {
-  cx: number;
-  cy: number;
-  r: number;
-  deg: number;
-  clockwise: boolean;
-  radius: number;
-  color: string;
-}) {
-  const { x, y } = polar(cx, cy, r, deg);
-  // For a point at `deg` clockwise from 12 o'clock, the clockwise tangent
-  // points at `deg` degrees from the +x axis in SVG's y-down space; the
-  // chevron below is drawn pointing along +x and rotated onto it.
-  const heading = clockwise ? deg : deg + 180;
-  const a = radius * 0.24;
-  const b = radius * 0.42;
-  return (
-    <G transform={`translate(${x} ${y})`}>
-      {/* Soft drop shadow, nudged down like light from above. */}
-      <Circle r={radius + 0.5} cy={0.9} fill={Palette.neutral[950]} opacity={0.18} />
-      <Circle r={radius} fill={OnBrand.text} />
-      <Path
-        d={`M ${-a} ${-b} L ${a} 0 L ${-a} ${b}`}
-        transform={`rotate(${heading})`}
-        stroke={color}
-        strokeWidth={radius * 0.26}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-    </G>
-  );
+/** Where intake meets burned on the main ring: each arc is sized by its share of the two together. */
+function junctionDeg(burnedKcal: number, eatenKcal: number): number {
+  const total = burnedKcal + eatenKcal;
+  const span = MAIN_HALF_SPAN * 2;
+  const burnedSweep = total > 0 ? span * (burnedKcal / total) : span / 2;
+  return -MAIN_HALF_SPAN + Math.min(Math.max(burnedSweep, MIN_SWEEP_DEG), span - MIN_SWEEP_DEG);
 }
 
 export type OggiGaugeProps = {
-  size?: number;
-  strokeWidth?: number;
   burnedKcal: number;
   eatenKcal: number;
   burnedColor: string;
   eatenColor: string;
+  /** The day's balance read against its goal (domain/calorie-balance.ts). */
+  reading: BalanceReading;
+  /** The balance as displayed in the centre, already formatted. */
   value: string;
   caption: string;
 };
 
-/** Two-tone gauge: the orange arc is calories burned, the green arc calories
- * eaten, each sized by its share of the two together — so the ring itself
- * shows at a glance which side of the balance the day is on, while the
- * centre spells out the exact surplus/deficit.
+/**
+ * "Calorie di oggi": two coordinated indicators read from one balance.
  *
- * Burned grows clockwise from the left end, eaten counter-clockwise from the
- * right end; each carries an arrow knob on its growing tip, so the two
- * knobs meet in the middle gap pushing against each other. */
-export function OggiGauge({ size = 176, strokeWidth = 15, burnedKcal, eatenKcal, burnedColor, eatenColor, value, caption }: OggiGaugeProps) {
+ * 1. The main ring compares burned (orange, growing clockwise from the left
+ *    end) with intake (green, from the right end), each arc proportional to
+ *    its share of the two. Where they meet is the day's balance: at the top
+ *    when they are equal, right of it in a deficit, left in a surplus.
+ * 2. The semi-ring above reads that same balance against the goal, on a
+ *    symmetric kcal range: equilibrium at the top, deficit to the right,
+ *    surplus to the left, with a notch where the goal sits.
+ *
+ * Both markers are the same knob in the same colour (balanceTone), sitting on
+ * the same side of the top, so they read as one value at two scales — the
+ * main ring's coarse split, and the semi-ring's reading against the goal.
+ */
+export function OggiGauge({ burnedKcal, eatenKcal, burnedColor, eatenColor, reading, value, caption }: OggiGaugeProps) {
   const theme = useTheme();
-  const total = burnedKcal + eatenKcal;
-  const available = 360 - BOTTOM_GAP_DEG - MID_GAP_DEG;
-  const burnedShare = total > 0 ? burnedKcal / total : 0.5;
-  const burnedSweep = Math.min(Math.max(available * burnedShare, MIN_SWEEP_DEG), available - MIN_SWEEP_DEG);
-  const eatenSweep = available - burnedSweep;
+  const [width, setWidth] = useState(BASE_W);
+  const k = Math.min(1.15, width / BASE_W);
 
-  const c = size / 2;
-  const r = (size - strokeWidth) / 2;
-  const burnedStart = ARC_START_DEG;
-  const eatenStart = burnedStart + burnedSweep + MID_GAP_DEG;
-  const empty = total <= 0;
-  // As wide as the stroke itself, so the knob reads as the arc's rounded tip.
-  const knobRadius = strokeWidth / 2;
+  const empty = burnedKcal + eatenKcal <= 0;
+  const missing = reading.status === 'missing';
+  const tone = balanceTone(reading, theme);
+
+  const targetJunction = junctionDeg(burnedKcal, eatenKcal);
+  const { position } = balancePosition(reading.balanceKcal, reading.halfRangeKcal);
+  const targetSemi = missing ? 0 : position * SEMI_HALF_SPAN;
+  const goalDeg = balancePosition(reading.goalKcal, reading.halfRangeKcal).position * SEMI_HALF_SPAN;
+
+  // Both markers glide to new values together; under Reduce Motion
+  // Reanimated jumps straight to the end value on its own.
+  const junction = useSharedValue(0);
+  const semi = useSharedValue(0);
+  useEffect(() => {
+    junction.value = withTiming(targetJunction, TimingFill);
+    semi.value = withTiming(targetSemi, TimingFill);
+  }, [targetJunction, targetSemi, junction, semi]);
+
+  const burnedArc = useAnimatedProps(() => ({ d: arc(MAIN_R, -MAIN_HALF_SPAN, junction.value) }));
+  const eatenArc = useAnimatedProps(() => ({ d: arc(MAIN_R, junction.value, MAIN_HALF_SPAN) }));
+  const semiFill = useAnimatedProps(() => ({
+    d: arc(SEMI_R, 0, semi.value),
+    strokeOpacity: Math.abs(semi.value) < 1 ? 0 : 1,
+  }));
+  const junctionShadow = useAnimatedProps(() => ({ cx: px(MAIN_R, junction.value), cy: py(MAIN_R, junction.value) + 0.9 }));
+  const junctionAt = useAnimatedProps(() => ({ cx: px(MAIN_R, junction.value), cy: py(MAIN_R, junction.value) }));
+  const semiShadow = useAnimatedProps(() => ({ cx: px(SEMI_R, semi.value), cy: py(SEMI_R, semi.value) + 0.9 }));
+  const semiAt = useAnimatedProps(() => ({ cx: px(SEMI_R, semi.value), cy: py(SEMI_R, semi.value) }));
+
+  const junctionKnob = MAIN_STROKE / 2 + 1.5;
+  const semiKnob = SEMI_STROKE / 2 + 3.5;
+  // The equilibrium notch is dropped when the goal notch would sit on top of it (a maintenance goal).
+  const showZeroNotch = Math.abs(goalDeg) > 5;
+
+  const onLayout = (e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width);
+  const label = (fontSize: number) => ({ fontSize: Math.max(8.5, fontSize * k), lineHeight: Math.max(11, (fontSize + 3) * k) });
 
   return (
-    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center', marginBottom: -size * 0.14 }}>
-      <Svg width={size} height={size} style={StyleSheet.absoluteFill}>
-        <Path
-          d={arcPath(c, c, r, burnedStart, burnedSweep)}
-          stroke={empty ? theme.backgroundElement : burnedColor}
-          strokeWidth={strokeWidth}
-          strokeLinecap="round"
-          fill="none"
-        />
-        <Path
-          d={arcPath(c, c, r, eatenStart, eatenSweep)}
-          stroke={empty ? theme.backgroundElement : eatenColor}
-          strokeWidth={strokeWidth}
-          strokeLinecap="round"
-          fill="none"
-        />
-        {/* No direction to show on an empty day. */}
-        {empty ? null : (
-          <>
-            <ArrowKnob cx={c} cy={c} r={r} deg={burnedStart + burnedSweep} clockwise radius={knobRadius} color={burnedColor} />
-            <ArrowKnob cx={c} cy={c} r={r} deg={eatenStart} clockwise={false} radius={knobRadius} color={eatenColor} />
-          </>
-        )}
-      </Svg>
-      <ThemedText style={styles.value}>{value}</ThemedText>
-      <ThemedText style={styles.unit}>kcal</ThemedText>
-      <ThemedText style={styles.caption} themeColor="textTertiary">
-        {caption}
-      </ThemedText>
+    <View style={styles.root} onLayout={onLayout}>
+      <View style={{ width: BASE_W * k, height: BASE_H * k, marginBottom: -22 * k }}>
+        <Svg width={BASE_W * k} height={BASE_H * k} viewBox={`0 0 ${BASE_W} ${BASE_H}`} style={StyleSheet.absoluteFill}>
+          {/* Semi-ring: track, the balance's fill from equilibrium, notches. */}
+          <Path d={arc(SEMI_R, -SEMI_HALF_SPAN, SEMI_HALF_SPAN)} stroke={theme.backgroundElement} strokeWidth={SEMI_STROKE} strokeLinecap="round" fill="none" />
+          {missing ? null : <AnimatedPath animatedProps={semiFill} stroke={tone} strokeWidth={SEMI_STROKE} strokeLinecap="round" fill="none" />}
+          {showZeroNotch ? (
+            <Line
+              x1={px(SEMI_R - SEMI_STROKE / 2 - 2, 0)}
+              y1={py(SEMI_R - SEMI_STROKE / 2 - 2, 0)}
+              x2={px(SEMI_R + SEMI_STROKE / 2 + 2, 0)}
+              y2={py(SEMI_R + SEMI_STROKE / 2 + 2, 0)}
+              stroke={theme.textTertiary}
+              strokeWidth={1.5}
+              strokeLinecap="round"
+            />
+          ) : null}
+          <Line
+            x1={px(SEMI_R - SEMI_STROKE / 2 - 2, goalDeg)}
+            y1={py(SEMI_R - SEMI_STROKE / 2 - 2, goalDeg)}
+            x2={px(SEMI_R + SEMI_STROKE / 2 + 5, goalDeg)}
+            y2={py(SEMI_R + SEMI_STROKE / 2 + 5, goalDeg)}
+            stroke={theme.text}
+            strokeWidth={2}
+            strokeLinecap="round"
+          />
+
+          {/* Main ring: burned from the left end, intake from the right, meeting at the junction. */}
+          <AnimatedPath animatedProps={burnedArc} stroke={empty ? theme.backgroundElement : burnedColor} strokeWidth={MAIN_STROKE} strokeLinecap="round" fill="none" />
+          <AnimatedPath animatedProps={eatenArc} stroke={empty ? theme.backgroundElement : eatenColor} strokeWidth={MAIN_STROKE} strokeLinecap="round" fill="none" />
+
+          {/* The two markers: one knob design, one colour — the same balance at two scales. */}
+          {empty ? null : (
+            <>
+              <AnimatedCircle animatedProps={junctionShadow} r={junctionKnob + 0.5} fill={Palette.neutral[950]} opacity={0.18} />
+              <AnimatedCircle animatedProps={junctionAt} r={junctionKnob} fill={OnBrand.text} />
+              <AnimatedCircle animatedProps={junctionAt} r={junctionKnob * 0.45} fill={tone} />
+            </>
+          )}
+          {missing ? null : (
+            <>
+              <AnimatedCircle animatedProps={semiShadow} r={semiKnob + 0.5} fill={Palette.neutral[950]} opacity={0.18} />
+              <AnimatedCircle animatedProps={semiAt} r={semiKnob} fill={OnBrand.text} />
+              <AnimatedCircle animatedProps={semiAt} r={semiKnob * 0.45} fill={tone} />
+            </>
+          )}
+        </Svg>
+
+        {/* Short, quiet labels for the semi-ring: its two directions and the goal. */}
+        <ThemedText
+          themeColor="textTertiary"
+          style={[styles.end, label(9.5), { right: (CX + 80) * k, top: (CY + 7) * k, textAlign: 'right' }]}>
+          Surplus
+        </ThemedText>
+        <ThemedText themeColor="textTertiary" style={[styles.end, label(9.5), { left: (CX + 80) * k, top: (CY + 7) * k }]}>
+          Deficit
+        </ThemedText>
+        {/* Anchored on the notch's outer end and grown away from the ring, so it
+            never sits on the track or on the marker when the day is on target. */}
+        <ThemedText
+          themeColor="textSecondary"
+          style={[
+            styles.goalText,
+            label(9),
+            { top: (py(GOAL_LABEL_R, goalDeg) - 14) * k },
+            goalDeg > 8
+              ? { left: px(GOAL_LABEL_R, goalDeg) * k }
+              : goalDeg < -8
+                ? { right: (BASE_W - px(GOAL_LABEL_R, goalDeg)) * k, textAlign: 'right' }
+                : { left: 0, right: 0, textAlign: 'center' },
+          ]}>
+          obiettivo
+        </ThemedText>
+
+        {/* The number: the balance itself, inside the main ring. */}
+        <View pointerEvents="none" style={[styles.centre, { top: (CY - 38) * k, height: 76 * k }]}>
+          <ThemedText style={[styles.value, { fontSize: 28 * k, lineHeight: 32 * k }]}>{value}</ThemedText>
+          <ThemedText style={[styles.unit, { fontSize: 11 * k, lineHeight: 14 * k }]}>kcal</ThemedText>
+          <ThemedText style={[styles.caption, { fontSize: 10 * k, lineHeight: 13 * k, color: missing ? theme.textTertiary : theme.textSecondary }]}>{caption}</ThemedText>
+        </View>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: {
+    alignSelf: 'stretch',
+    alignItems: 'center',
+  },
+  end: {
+    position: 'absolute',
+    fontWeight: '600',
+    letterSpacing: 0.2,
+  },
+  goalText: {
+    position: 'absolute',
+    fontWeight: '700',
+    letterSpacing: 0.2,
+  },
+  centre: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   value: {
-    fontSize: 28,
-    lineHeight: 32,
     fontWeight: '800',
     letterSpacing: -0.5,
   },
   unit: {
-    fontSize: 11,
-    lineHeight: 14,
     fontWeight: '500',
   },
   caption: {
-    fontSize: 10,
-    lineHeight: 13,
-    fontWeight: '500',
+    fontWeight: '600',
   },
 });
