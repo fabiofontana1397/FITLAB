@@ -294,11 +294,9 @@ export default function NutritionScreen() {
                           setEditingEntry(entry);
                           setActiveSlot(meta.id);
                         }}>
-                        <View aria-hidden style={[styles.foodIconWrap, { backgroundColor: theme.backgroundElement }]}>
-                          <FoodThumb foodId={entry.foodId} />
-                        </View>
+                        <FoodThumb foodId={entry.foodId} variant="row" />
                         <View style={styles.foodLeft}>
-                          <ThemedText style={styles.foodName} numberOfLines={1}>
+                          <ThemedText style={styles.foodName} numberOfLines={2}>
                             {food?.name ?? entry.foodId}
                           </ThemedText>
                           <ThemedText style={styles.foodGrams} themeColor="textSecondary">
@@ -566,16 +564,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 10,
+    // HIG list row: 12 pt between the leading image and the text.
+    gap: 12,
     paddingVertical: 5,
-  },
-  foodIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   foodLeft: {
     flex: 1,

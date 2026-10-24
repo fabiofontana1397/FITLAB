@@ -6,6 +6,7 @@ import { AppTextInput } from '@/components/ui/app-text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
+import { FoodThumb } from '@/components/nutrition/food-thumb';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon } from '@/components/ui/icon';
 import { useMotionPreference } from '@/hooks/use-motion-preference';
@@ -191,6 +192,7 @@ function FoodSearchForm({ slot, date, editEntry, onClose, onSaved }: Omit<FoodSe
             return (
               <FlatCard radius={CARD_RADIUS} style={styles.selectedCard}>
                 <View style={styles.rowTop}>
+                  <FoodThumb foodId={item.id} variant="hero" />
                   <View style={styles.rowLeft}>
                     <ThemedText style={styles.foodName}>{item.name}</ThemedText>
                     <ThemedText style={styles.foodMacros} themeColor="textSecondary">
@@ -230,6 +232,7 @@ function FoodSearchForm({ slot, date, editEntry, onClose, onSaved }: Omit<FoodSe
           return (
             <Pressable onPress={() => handlePick(item)}>
               <FlatCard radius={CARD_RADIUS} style={styles.simpleCard}>
+                <FoodThumb foodId={item.id} variant="row" />
                 <View style={styles.rowLeft}>
                   <ThemedText style={styles.foodName}>{item.name}</ThemedText>
                   <ThemedText style={styles.foodMacros} themeColor="textSecondary">
@@ -353,15 +356,16 @@ const styles = StyleSheet.create({
   simpleCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingLeft: 14,
+    // HIG list row: 12 pt between the leading image and the text.
+    gap: 12,
+    paddingLeft: 10,
     paddingRight: 10,
-    minHeight: 51,
+    paddingVertical: 8,
   },
   rowTop: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
+    alignItems: 'center',
+    gap: 12,
   },
   rowLeft: {
     flex: 1,
