@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import { Platform, Pressable, StyleSheet, Switch, View } from 'react-native';
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 
-import { FoodGlyph } from '@/components/nutrition/food-glyph';
+import { FoodThumb } from '@/components/nutrition/food-thumb';
 import { DietOverviewPopup } from '@/components/nutrition/diet-overview-popup';
 import { FoodSearchModal } from '@/components/nutrition/food-search-modal';
 import { MealPickerModal, mealSlotColor } from '@/components/nutrition/meal-picker-modal';
@@ -295,7 +295,7 @@ export default function NutritionScreen() {
                           setActiveSlot(meta.id);
                         }}>
                         <View aria-hidden style={[styles.foodIconWrap, { backgroundColor: theme.backgroundElement }]}>
-                          <FoodGlyph foodId={entry.foodId} size={20} />
+                          <FoodThumb foodId={entry.foodId} />
                         </View>
                         <View style={styles.foodLeft}>
                           <ThemedText style={styles.foodName} numberOfLines={1}>
@@ -573,6 +573,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 12,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
   },
