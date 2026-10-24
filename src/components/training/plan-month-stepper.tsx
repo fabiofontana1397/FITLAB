@@ -150,8 +150,8 @@ const styles = StyleSheet.create({
   },
   phaseLabel: {
     marginTop: 2,
-    fontSize: 11.5,
-    lineHeight: 15,
+    fontSize: 12,
+    lineHeight: 16,
     fontWeight: '500',
     textAlign: 'center',
   },

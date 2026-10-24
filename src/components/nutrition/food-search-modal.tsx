@@ -311,7 +311,7 @@ const styles = StyleSheet.create({
   hint: {
     marginTop: 8,
     paddingHorizontal: PAGE_PADDING,
-    fontSize: 11.5,
+    fontSize: 13,
   },
   tabsTrack: {
     flexDirection: 'row',
@@ -374,8 +374,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   foodMacros: {
-    fontSize: 10.5,
-    lineHeight: 14,
+    fontSize: 12,
+    lineHeight: 16,
     fontWeight: '500',
   },
   foodGrams: {

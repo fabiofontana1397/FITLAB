@@ -57,7 +57,7 @@ export function MeasurementInfoModal({ zone, onClose }: MeasurementInfoModalProp
           <GlassSurface level="overlay" radius={Radius.xlarge} style={styles.card}>
             <View style={styles.header}>
               <ThemedText type="subtitle">Come misurare: {copy.title}</ThemedText>
-              <Pressable onPress={onClose} hitSlop={8}>
+              <Pressable onPress={onClose} hitSlop={11} accessibilityRole="button" accessibilityLabel="Chiudi">
                 <Icon name="close" size={22} color={theme.text} />
               </Pressable>
             </View>

@@ -54,7 +54,7 @@ export function ExerciseInfoModal({ visible, exerciseName, media, sets, reps, te
             <ThemedText type="subtitle" style={{ flex: 1 }}>
               {exerciseName}
             </ThemedText>
-            <Pressable onPress={onClose} hitSlop={8}>
+            <Pressable onPress={onClose} hitSlop={11} accessibilityRole="button" accessibilityLabel="Chiudi">
               <Icon name="close" size={22} color={theme.text} />
             </Pressable>
           </View>

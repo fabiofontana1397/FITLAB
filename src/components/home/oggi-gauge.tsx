@@ -88,13 +88,13 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   unit: {
-    fontSize: 11,
-    lineHeight: 14,
+    fontSize: 12,
+    lineHeight: 16,
     fontWeight: '500',
   },
   caption: {
-    fontSize: 10,
-    lineHeight: 13,
+    fontSize: 12,
+    lineHeight: 16,
     fontWeight: '500',
   },
 });

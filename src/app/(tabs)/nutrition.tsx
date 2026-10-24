@@ -459,8 +459,8 @@ const styles = StyleSheet.create({
   },
   statusText: {
     flexShrink: 1,
-    fontSize: 11.5,
-    lineHeight: 15,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '700',
   },
   calorieBar: {
@@ -538,8 +538,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   mealTime: {
-    fontSize: 11.5,
-    lineHeight: 15,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '500',
   },
   mealTotalsCol: {
@@ -551,7 +551,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   mealMacros: {
-    fontSize: 11,
+    fontSize: 12,
     lineHeight: 15,
     fontWeight: '500',
   },
@@ -610,8 +610,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   addFoodText: {
-    fontSize: 11.5,
-    lineHeight: 15,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '700',
   },
   followRow: {

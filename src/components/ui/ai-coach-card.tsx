@@ -90,8 +90,8 @@ const styles = StyleSheet.create({
   },
   betaText: {
     color: '#CBBEFF',
-    fontSize: 9,
-    lineHeight: 11,
+    fontSize: 11,
+    lineHeight: 15,
     fontWeight: '700',
     letterSpacing: 0.4,
   },
@@ -103,8 +103,8 @@ const styles = StyleSheet.create({
   },
   compactBody: {
     color: 'rgba(255,255,255,0.65)',
-    fontSize: 11.5,
-    lineHeight: 15,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '500',
   },
   compactChevron: {

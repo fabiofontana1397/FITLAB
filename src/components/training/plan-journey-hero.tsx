@@ -62,44 +62,67 @@ export function PlanJourneyHero({ totalMonths, goal, onPress, kind = 'training',
   const theme = useTheme();
   const promise = GOAL_PROMISE[goal];
   const diet = kind === 'diet';
-  return (
-    <PressableScale onPress={onPress} scaleTo={0.985} accessibilityRole="button" accessibilityLabel={diet ? 'Scopri il tuo piano alimentare' : 'Scopri il tuo percorso'}>
-      <LinearGradient colors={['#2B2B30', '#17171A', '#0E0E10']} locations={[0, 0.55, 1]} start={{ x: 1, y: 0 }} end={{ x: 0, y: 1 }} style={styles.card}>
-        <View pointerEvents="none" style={styles.artBig}>
-          <Icon name={diet ? 'utensils' : 'barbell'} size={diet ? 120 : 136} color="rgba(255,255,255,0.10)" />
-        </View>
-        <View pointerEvents="none" style={styles.artSmall}>
-          <Icon name={diet ? 'nutrition' : 'training'} size={60} color="rgba(255,255,255,0.08)" />
-        </View>
+  const label = diet ? 'Scopri il tuo piano alimentare' : 'Scopri il tuo percorso';
+  const copy = (
+    <>
+      <ThemedText style={styles.tag}>IL TUO PERCORSO</ThemedText>
+      <View style={styles.copy}>
+        <ThemedText style={styles.months}>
+          {totalMonths} {totalMonths === 1 ? 'mese' : 'mesi'}
+        </ThemedText>
+        <ThemedText style={styles.headline}>per una versione {promise.adjective} di te.</ThemedText>
+        <ThemedText style={styles.body}>{diet ? DIET_BODY[goal] : promise.body}</ThemedText>
+      </View>
+    </>
+  );
+  const card = (
+    <LinearGradient colors={['#2B2B30', '#17171A', '#0E0E10']} locations={[0, 0.55, 1]} start={{ x: 1, y: 0 }} end={{ x: 0, y: 1 }} style={styles.card}>
+      <View pointerEvents="none" style={styles.artBig}>
+        <Icon name={diet ? 'utensils' : 'barbell'} size={diet ? 120 : 136} color="rgba(255,255,255,0.10)" />
+      </View>
+      <View pointerEvents="none" style={styles.artSmall}>
+        <Icon name={diet ? 'nutrition' : 'training'} size={60} color="rgba(255,255,255,0.08)" />
+      </View>
 
-        <ThemedText style={styles.tag}>IL TUO PERCORSO</ThemedText>
-        <View style={styles.copy}>
-          <ThemedText style={styles.months}>
-            {totalMonths} {totalMonths === 1 ? 'mese' : 'mesi'}
-          </ThemedText>
-          <ThemedText style={styles.headline}>per una versione {promise.adjective} di te.</ThemedText>
-          <ThemedText style={styles.body}>{diet ? DIET_BODY[goal] : promise.body}</ThemedText>
-        </View>
-        {action ? (
-          <PressableScale onPress={action.onPress} accessibilityRole="button" style={styles.actionButton}>
-            <View style={[styles.actionIcon, { backgroundColor: theme.accentSoft }]}>
-              <Icon name={action.icon} size={16} color={theme.accent} />
-            </View>
-            <ThemedText style={[styles.actionLabel, { color: theme.accent }]}>{action.label}</ThemedText>
-            <Icon name="chevronRight" size={16} color={theme.accent} />
-          </PressableScale>
-        ) : (
-          <View style={styles.cta}>
-            <ThemedText style={[styles.ctaText, { color: theme.accent }]}>{diet ? 'Scopri il piano' : 'Scopri il programma'}</ThemedText>
-            <Icon name="chevronRight" size={15} color={theme.accent} />
+      {action ? (
+        <PressableScale onPress={onPress} scaleTo={0.985} accessibilityRole="button" accessibilityLabel={label} style={styles.copyPress}>
+          {copy}
+        </PressableScale>
+      ) : (
+        copy
+      )}
+      {action ? (
+        <PressableScale onPress={action.onPress} accessibilityRole="button" style={styles.actionButton}>
+          <View style={[styles.actionIcon, { backgroundColor: theme.accentSoft }]}>
+            <Icon name={action.icon} size={16} color={theme.accent} />
           </View>
-        )}
-      </LinearGradient>
+          <ThemedText style={[styles.actionLabel, { color: theme.accent }]}>{action.label}</ThemedText>
+          <Icon name="chevronRight" size={16} color={theme.accent} />
+        </PressableScale>
+      ) : (
+        <View style={styles.cta}>
+          <ThemedText style={[styles.ctaText, { color: theme.accent }]}>{diet ? 'Scopri il piano' : 'Scopri il programma'}</ThemedText>
+          <Icon name="chevronRight" size={15} color={theme.accent} />
+        </View>
+      )}
+    </LinearGradient>
+  );
+
+  // With its own action button the card can't also be one big button (on
+  // web that nests a <button> in a <button>, which browsers and screen
+  // readers mangle): only the copy opens the overview then.
+  if (action) return card;
+  return (
+    <PressableScale onPress={onPress} scaleTo={0.985} accessibilityRole="button" accessibilityLabel={label}>
+      {card}
     </PressableScale>
   );
 }
 
 const styles = StyleSheet.create({
+  copyPress: {
+    gap: 8,
+  },
   card: {
     borderRadius: 20,
     padding: 16,
@@ -120,8 +143,8 @@ const styles = StyleSheet.create({
   },
   tag: {
     color: 'rgba(255,255,255,0.85)',
-    fontSize: 10,
-    lineHeight: 13,
+    fontSize: 12,
+    lineHeight: 16,
     fontWeight: '700',
     letterSpacing: 1.1,
   },

@@ -94,7 +94,7 @@ export function FoodPicker({ question, value, onChange }: FoodPickerProps) {
               {selected.size > 0 ? `${selected.size} selezionati` : 'Seleziona quelli che ti piacciono'}
             </ThemedText>
           </View>
-          <Pressable onPress={close} hitSlop={8} accessibilityLabel="Chiudi">
+          <Pressable onPress={close} hitSlop={11} accessibilityLabel="Chiudi">
             <Icon name="close" size={22} color={theme.text} />
           </Pressable>
         </View>

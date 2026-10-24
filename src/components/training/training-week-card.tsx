@@ -99,8 +99,8 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
   weekday: {
-    fontSize: 11.5,
-    lineHeight: 14,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '600',
   },
   date: {

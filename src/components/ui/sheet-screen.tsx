@@ -27,7 +27,7 @@ import { GlassSurface } from '@/components/glass/glass-surface';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
 import { SpringSheet } from '@/constants/motion';
-import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { Layout, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { goBackOr } from '@/lib/navigation/go-back';
 
@@ -148,14 +148,16 @@ export function SheetScreen({ title, eyebrow, children, fallbackHref = '/', cont
       <Animated.View style={[styles.sheet, { top, backgroundColor: theme.background }, sheetStyle]}>
         <View style={styles.header} {...dragHandlers.panHandlers}>
           <View style={styles.headingText}>
-            <ThemedText type="display">{title}</ThemedText>
+            <ThemedText type="display" style={styles.title} accessibilityRole="header">
+              {title}
+            </ThemedText>
             {eyebrow ? (
-              <ThemedText type="caption" themeColor="textSecondary">
+              <ThemedText type="small" themeColor="textSecondary">
                 {eyebrow}
               </ThemedText>
             ) : null}
           </View>
-          <Pressable onPress={close} hitSlop={8} accessibilityRole="button" accessibilityLabel="Chiudi">
+          <Pressable onPress={close} hitSlop={6} accessibilityRole="button" accessibilityLabel="Chiudi" style={styles.closeHit}>
             <GlassSurface level="card" radius={Radius.pill} style={styles.closeButton}>
               <View style={styles.closeInner}>
                 <Icon name="close" size={18} color={theme.text} />
@@ -166,7 +168,7 @@ export function SheetScreen({ title, eyebrow, children, fallbackHref = '/', cont
 
         <ScrollView
           style={styles.scroll}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + Spacing.six }, contentContainerStyle]}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + Spacing.five }, contentContainerStyle]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled">
           {children}
@@ -201,17 +203,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: Spacing.three,
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.four,
+    paddingHorizontal: Layout.screenGutter,
+    paddingTop: Layout.screenGutter,
     paddingBottom: Spacing.three,
   },
   headingText: {
     flexShrink: 1,
-    gap: 4,
+    gap: 2,
+  },
+  // A sheet's title sits a step below a full screen's Large Title, like the
+  // system's own page sheets: present, but not shouting over its content.
+  title: {
+    fontSize: 28,
+    lineHeight: 34,
+    letterSpacing: -0.6,
+  },
+  closeHit: {
+    alignSelf: 'flex-start',
   },
   closeButton: {
-    width: 40,
-    height: 40,
+    width: 36,
+    height: 36,
   },
   closeInner: {
     flex: 1,
@@ -223,7 +235,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.five,
+    paddingHorizontal: Layout.screenGutter,
+    gap: Layout.sectionGap,
   },
 });

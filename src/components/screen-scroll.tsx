@@ -14,7 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Reveal, ScrollRevealContext } from '@/components/motion/reveal';
 import { TimingQuick } from '@/constants/motion';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BottomTabInset, Layout, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 // Top color of the light grey wash below, reused so the top-edge fade blends
@@ -147,8 +147,8 @@ const styles = StyleSheet.create({
   inner: {
     width: '100%',
     maxWidth: MaxContentWidth,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.five,
+    paddingHorizontal: Layout.screenGutter,
+    gap: Layout.sectionGap,
   },
   topFade: {
     position: 'absolute',

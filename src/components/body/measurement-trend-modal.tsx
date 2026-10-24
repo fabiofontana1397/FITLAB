@@ -82,7 +82,7 @@ export function MeasurementTrendModal({ zone, label, entries, color, onClose }: 
           <GlassSurface level="overlay" radius={Radius.xlarge} style={styles.card}>
             <View style={styles.header}>
               <ThemedText type="subtitle">Andamento: {label}</ThemedText>
-              <Pressable onPress={onClose} hitSlop={8}>
+              <Pressable onPress={onClose} hitSlop={11} accessibilityRole="button" accessibilityLabel="Chiudi">
                 <Icon name="close" size={22} color={theme.text} />
               </Pressable>
             </View>
@@ -109,7 +109,7 @@ export function MeasurementTrendModal({ zone, label, entries, color, onClose }: 
                 {chart.yTicks.map((tick, i) => (
                   <Text
                     key={i}
-                    style={{ position: 'absolute', left: 0, width: PADDING_LEFT - 6, top: tick.y - 7, fontSize: 10, color: theme.textTertiary, textAlign: 'right' }}>
+                    style={{ position: 'absolute', left: 0, width: PADDING_LEFT - 6, top: tick.y - 7, fontSize: 11, color: theme.textTertiary, textAlign: 'right' }}>
                     {tick.label}
                   </Text>
                 ))}
@@ -122,7 +122,7 @@ export function MeasurementTrendModal({ zone, label, entries, color, onClose }: 
                       left: chart.xy[i].x - 22,
                       width: 44,
                       top: CHART_HEIGHT - PADDING_BOTTOM + 6,
-                      fontSize: 9,
+                      fontSize: 11,
                       color: theme.textTertiary,
                       textAlign: 'center',
                     }}>
@@ -136,7 +136,7 @@ export function MeasurementTrendModal({ zone, label, entries, color, onClose }: 
                     left: chart.xy[chart.xy.length - 1].x - 22,
                     width: 44,
                     top: chart.xy[chart.xy.length - 1].y - 20,
-                    fontSize: 10,
+                    fontSize: 11,
                     fontWeight: '700',
                     textAlign: 'center',
                     color,

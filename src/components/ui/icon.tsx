@@ -60,6 +60,7 @@ const ICONS = {
   minus: { set: 'ion', name: 'remove-circle-outline' },
   addCircle: { set: 'ion', name: 'add-circle' },
   trash: { set: 'ion', name: 'trash-outline' },
+  logout: { set: 'ion', name: 'log-out-outline' },
   footsteps: { set: 'mci', name: 'shoe-print' },
   moon: { set: 'ion', name: 'moon' },
   mealSun: { set: 'ion', name: 'sunny' },

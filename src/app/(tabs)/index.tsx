@@ -671,8 +671,8 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
   },
   sideLabel: {
-    fontSize: 11.5,
-    lineHeight: 15,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '500',
   },
   actionsRow: {
@@ -757,8 +757,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   weekPillText: {
-    fontSize: 10.5,
-    lineHeight: 14,
+    fontSize: 12,
+    lineHeight: 16,
     fontWeight: '700',
   },
   weekTrack: {
@@ -784,8 +784,8 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   barValue: {
-    fontSize: 11,
-    lineHeight: 14,
+    fontSize: 12,
+    lineHeight: 16,
     fontWeight: '700',
   },
   bar: {
@@ -799,15 +799,15 @@ const styles = StyleSheet.create({
   dayLabel: {
     flex: 1,
     textAlign: 'center',
-    fontSize: 10.5,
-    lineHeight: 14,
+    fontSize: 12,
+    lineHeight: 16,
     fontWeight: '500',
   },
   chartMonth: {
     marginTop: 6,
     textAlign: 'center',
-    fontSize: 10,
-    lineHeight: 13,
+    fontSize: 12,
+    lineHeight: 16,
     fontWeight: '500',
   },
   statsCard: {
