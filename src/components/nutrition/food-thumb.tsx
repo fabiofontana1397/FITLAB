@@ -45,24 +45,24 @@ export function useFoodThumbSize(variant: FoodThumbVariant): number {
 }
 
 /**
- * A 3D food picture keeps this share of the tile, so it sits in the tile the
- * way an app icon's artwork sits in its rounded square instead of touching
- * the corners the rounding would clip.
+ * The picture keeps this share of the tile, so the whole food sits inside it
+ * the way an app icon's artwork sits in its rounded square: never cropped,
+ * never touching the corners the rounding would clip.
  */
-const ICON_SCALE = 0.78;
+const PICTURE_SCALE = 0.82;
 
 /**
  * What a food looks like in the meal tracker, on a tile sized for the space
  * available: its photo when there is one (lib/nutrition/food-photos.ts),
- * filling the tile; otherwise its 3D picture (lib/nutrition/food-icons.ts),
- * which has one for every food. Decorative — the food's name always sits
- * beside it — so it is hidden from screen readers.
+ * otherwise its 3D picture (lib/nutrition/food-icons.ts), which exists for
+ * every food. Both are cut out on a transparent background and shown whole.
+ * Decorative — the food's name always sits beside it — so it is hidden from
+ * screen readers.
  */
 export function FoodThumb({ foodId, variant = 'row' }: { foodId: string; variant?: FoodThumbVariant }) {
   const theme = useTheme();
   const size = useFoodThumbSize(variant);
-  const photo = foodPhoto(foodId);
-  const icon = Math.round(size * ICON_SCALE);
+  const picture = Math.round(size * PICTURE_SCALE);
 
   return (
     <View
@@ -78,12 +78,13 @@ export function FoodThumb({ foodId, variant = 'row' }: { foodId: string; variant
           backgroundColor: theme.backgroundElement,
         },
       ]}>
-      {photo ? (
-        // Square close-ups cut to the food: cover-fit fills the tile edge to edge.
-        <Image source={photo} style={StyleSheet.absoluteFill} contentFit="cover" transition={0} accessibilityIgnoresInvertColors />
-      ) : (
-        <Image source={foodIcon(foodId)} style={{ width: icon, height: icon }} contentFit="contain" transition={0} />
-      )}
+      <Image
+        source={foodPhoto(foodId) ?? foodIcon(foodId)}
+        style={{ width: picture, height: picture }}
+        contentFit="contain"
+        transition={0}
+        accessibilityIgnoresInvertColors
+      />
     </View>
   );
 }

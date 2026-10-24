@@ -1,7 +1,8 @@
 # Food photos (meal tracker)
 
-49 WebP close-ups, 192 × 192, each cut square to fill its tile edge to
-edge. Which food shows which photo is decided in
+49 WebP cut-outs, 256 × 256 with a transparent background: each food
+whole, centred, shown inside its tile without cropping. Which food shows
+which photo is decided in
 `src/lib/nutrition/food-photos.ts`; a food with no fitting photo shows its
 Fluent Emoji 3D picture (`assets/images/food-icons`) instead.
 
@@ -19,14 +20,15 @@ showed chickpeas, `spaghetti.webp` rice, `burro.webp` ricotta) and most had
 another food's name printed in them.
 
 These files were re-cut from the board rebuilt out of those crops: each
-food is taken from above its own printed label, with the label left out.
-The rebuilt board is not continuous — every 320 px down it changes source
-crop, and the two halves of a food do not line up — so each square is cut
-from inside one crop only, never across a join. Within it the square is
-as tall as the crop allows and centred on the coloured part of the food
-(the rice, not the white bowl), with no padding added: the food reaches
-the tile's edges. Carrot and aubergine use the whole vegetable rather than
-its slices.
+food is the whole cell above its own printed label, with the label left
+out, and its white backdrop removed with the BiRefNet (general, lite)
+segmentation model through rembg; specks the model left apart from the
+food are dropped. The rebuilt board is not continuous — every 320 px down
+it changes source crop and the two sides of the join do not line up — so
+a thin join can show across some foods, and in the bowl rows the slice of
+rim above the join is left out. The board's columns had also been cropped
+narrower than its cells, so some foods keep a straight edge where the
+batch itself cut them.
 
 Seven foods of the batch are not here because the original crops lost
 almost all of the board's last row: olio extravergine, burro, limone,
