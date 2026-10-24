@@ -191,8 +191,8 @@ const styles = StyleSheet.create({
   },
   tag: {
     color: OnBrand.textMuted,
-    fontSize: 10,
-    lineHeight: 13,
+    fontSize: 12,
+    lineHeight: 16,
     fontWeight: '700',
     letterSpacing: 1.1,
   },
@@ -283,8 +283,8 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     color: OnBrand.textMuted,
-    fontSize: 10.5,
-    lineHeight: 13,
+    fontSize: 12,
+    lineHeight: 16,
     fontWeight: '600',
   },
 });

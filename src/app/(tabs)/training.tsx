@@ -320,8 +320,8 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
   statusText: {
-    fontSize: 11.5,
-    lineHeight: 15,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '700',
   },
   trendButton: {

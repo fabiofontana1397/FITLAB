@@ -116,7 +116,7 @@ function WeightEntryForm({
         <View style={[styles.rulerBadge, { backgroundColor: theme.backgroundElement }]}>
           <Icon name="scale" size={24} color={theme.text} />
         </View>
-        <Pressable onPress={onClose} hitSlop={8} style={styles.close}>
+        <Pressable onPress={onClose} hitSlop={11} accessibilityRole="button" accessibilityLabel="Chiudi" style={styles.close}>
           <Icon name="close" size={22} color={theme.text} />
         </Pressable>
       </View>

@@ -11,11 +11,12 @@ import { IntegrationsSection } from '@/components/profile/integrations-section';
 import { MODE_LABEL, OutcomeBanner, QuestionnaireSheet } from '@/components/profile/questionnaire-sheet';
 import { ThemedText } from '@/components/themed-text';
 import { Icon, type IconName } from '@/components/ui/icon';
+import { ListGroup, ListRow } from '@/components/ui/list-group';
 import { PrimaryButton } from '@/components/ui/primary-button';
 import { SectionHeader } from '@/components/ui/section-header';
 import { SegmentedControl } from '@/components/ui/segmented-control';
 import { SheetScreen } from '@/components/ui/sheet-screen';
-import { Radius, Spacing } from '@/constants/theme';
+import { Layout, Radius, Spacing } from '@/constants/theme';
 import { useAnswersEditor, type SaveOutcome } from '@/hooks/use-answers-editor';
 import { useTheme } from '@/hooks/use-theme';
 import { latestSnapshot } from '@/lib/mock/body';
@@ -44,7 +45,7 @@ const APPEARANCE_OPTIONS: { value: AppearanceMode; label: string }[] = [
   { value: 'dark', label: 'Scuro' },
 ];
 
-const AVATAR_SIZE = 88;
+const AVATAR_SIZE = 72;
 
 export default function ProfileScreen() {
   const theme = useTheme();
@@ -142,11 +143,11 @@ export default function ProfileScreen() {
             <ThemedText type="title" numberOfLines={1}>
               {currentUser.name || 'Il tuo profilo'}
             </ThemedText>
-            <ThemedText type="caption" themeColor="textSecondary">
+            <ThemedText type="small" themeColor="textSecondary">
               {[currentUser.age > 0 ? `${currentUser.age} anni` : null, sexLabel].filter(Boolean).join(' · ') || 'Completa i tuoi dati'}
             </ThemedText>
           </View>
-          <Pressable onPress={() => setEditing(findGroup('identity'))} hitSlop={8} accessibilityLabel="Modifica profilo">
+          <Pressable onPress={() => setEditing(findGroup('identity'))} hitSlop={4} accessibilityRole="button" accessibilityLabel="Modifica profilo">
             <View style={[styles.editButton, { backgroundColor: theme.backgroundElement }]}>
               <Icon name="edit" size={17} color={theme.text} />
             </View>
@@ -217,8 +218,8 @@ export default function ProfileScreen() {
         <SegmentedControl options={APPEARANCE_OPTIONS} value={appearance} onChange={setAppearance} />
       </View>
 
-      <View style={{ gap: Spacing.two }}>
-        <ThemedText type="subtitle">Questionario</ThemedText>
+      <View style={{ gap: Spacing.three }}>
+        <ThemedText type="subtitle" accessibilityRole="header">Questionario</ThemedText>
         <OutcomeBanner saving={saving && !questionnaireOpen} isGenerating={isGenerating && !questionnaireOpen} outcome={questionnaireOpen ? null : outcome} />
         <GlassSurface level="card" radius={Radius.large} style={styles.questionnaireCard}>
           <View style={styles.questionnaireTop}>
@@ -236,8 +237,8 @@ export default function ProfileScreen() {
             Le risposte da cui nascono i tuoi piani. Modificale quando cambia qualcosa: aggiorniamo i piani solo se serve.
           </ThemedText>
           <PrimaryButton label="Vedi e modifica il questionario" icon="edit" onPress={() => setQuestionnaireOpen(true)} />
-          <Pressable onPress={restartOnboarding} hitSlop={8}>
-            <ThemedText type="caption" style={{ textAlign: 'center', color: theme.accent, fontWeight: '700' }}>
+          <Pressable onPress={restartOnboarding} accessibilityRole="button" style={styles.textButton}>
+            <ThemedText type="smallBold" style={{ color: theme.accent }}>
               Rifai il questionario da capo
             </ThemedText>
           </Pressable>
@@ -246,15 +247,9 @@ export default function ProfileScreen() {
 
       <IntegrationsSection />
 
-      <Pressable onPress={handleLogout} hitSlop={8}>
-        <ThemedText type="caption" style={{ textAlign: 'center', color: theme.danger }}>
-          Esci
-        </ThemedText>
-      </Pressable>
-
-      <ThemedText type="caption" themeColor="textTertiary" style={{ textAlign: 'center' }}>
-        FITLAB · v0.1.0 prototype
-      </ThemedText>
+      <ListGroup footer="FITLAB · v0.1.0 prototype">
+        <ListRow icon="logout" title="Esci" destructive iconTint={theme.backgroundElement} onPress={handleLogout} />
+      </ListGroup>
 
       <QuestionnaireSheet
         visible={questionnaireOpen}
@@ -317,9 +312,9 @@ function MenuItem({ icon, label, onPress, danger }: { icon: IconName; label: str
   const theme = useTheme();
   const color = danger ? theme.danger : theme.text;
   return (
-    <Pressable onPress={onPress} style={[styles.menuItem, { backgroundColor: theme.backgroundElement }]}>
-      <Icon name={icon} size={18} color={color} />
-      <ThemedText type="smallBold" style={{ color }}>
+    <Pressable onPress={onPress} accessibilityRole="button" style={[styles.menuItem, { backgroundColor: theme.backgroundElement }]}>
+      <Icon name={icon} size={20} color={color} />
+      <ThemedText type="default" style={{ color, fontWeight: '600' }}>
         {label}
       </ThemedText>
     </Pressable>
@@ -328,8 +323,15 @@ function MenuItem({ icon, label, onPress, danger }: { icon: IconName; label: str
 
 const styles = StyleSheet.create({
   questionnaireCard: {
-    padding: Spacing.four,
+    padding: Layout.cardPadding,
     gap: Spacing.three,
+  },
+  textButton: {
+    minHeight: Layout.minTouch,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: -Spacing.two,
+    marginBottom: -Spacing.two,
   },
   questionnaireTop: {
     flexDirection: 'row',
@@ -344,8 +346,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   identityCard: {
-    padding: Spacing.four,
-    gap: Spacing.four,
+    padding: Layout.cardPadding,
+    gap: Spacing.three + 4,
   },
   identityTop: {
     flexDirection: 'row',
@@ -376,9 +378,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   editButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -419,10 +421,11 @@ const styles = StyleSheet.create({
     borderRadius: Radius.pill,
   },
   menuItem: {
+    minHeight: Layout.minTouch + 8,
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.three,
-    padding: Spacing.three,
+    paddingHorizontal: Spacing.three,
     borderRadius: Radius.medium,
   },
 });

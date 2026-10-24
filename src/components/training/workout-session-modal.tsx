@@ -212,7 +212,7 @@ function SessionView({ onClose, title, exercises, date }: Omit<WorkoutSessionMod
   return (
     <View style={[styles.root, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 16 }]}>
       <View style={styles.header}>
-        <Pressable onPress={onClose} hitSlop={8} accessibilityLabel="Chiudi allenamento" style={styles.close}>
+        <Pressable onPress={onClose} hitSlop={11} accessibilityLabel="Chiudi allenamento" style={styles.close}>
           <Icon name="close" size={20} color={C.text} />
         </Pressable>
         <ThemedText style={styles.workoutTitle} numberOfLines={1}>
@@ -614,8 +614,8 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     color: C.muted,
-    fontSize: 11.5,
-    lineHeight: 14,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '600',
   },
   infoValue: {

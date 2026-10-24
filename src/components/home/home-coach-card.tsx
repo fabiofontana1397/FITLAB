@@ -65,7 +65,7 @@ export function HomeCoachCard({ isWorkoutDayIncomplete }: { isWorkoutDayIncomple
             <FlatCard style={styles.modalCard}>
               <View style={styles.modalHeaderRow}>
                 <ThemedText type="smallBold">Consigli del coach AI</ThemedText>
-                <Pressable onPress={() => setModalOpen(false)} hitSlop={8}>
+                <Pressable onPress={() => setModalOpen(false)} hitSlop={11} accessibilityRole="button" accessibilityLabel="Chiudi">
                   <Icon name="close" size={20} color={theme.textTertiary} />
                 </Pressable>
               </View>
@@ -119,8 +119,8 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   subtitle: {
-    fontSize: 11,
-    lineHeight: 14,
+    fontSize: 12,
+    lineHeight: 16,
     fontWeight: '500',
   },
   headerRow: {
@@ -142,8 +142,8 @@ const styles = StyleSheet.create({
     borderRadius: Radius.pill,
   },
   pillLabel: {
-    fontSize: 10,
-    lineHeight: 13,
+    fontSize: 12,
+    lineHeight: 16,
     fontWeight: '700',
   },
   headline: {

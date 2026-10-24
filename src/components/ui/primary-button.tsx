@@ -5,7 +5,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { SpringPressIn, SpringPressOut } from '@/constants/motion';
 import { hapticPress, hapticTap } from '@/lib/haptics';
-import { Radius, Spacing } from '@/constants/theme';
+import { Layout, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 export type PrimaryButtonProps = {
@@ -65,7 +65,7 @@ export function PrimaryButton({
           },
         ]}>
         {icon ? <Icon name={icon} size={18} color={textColor} /> : null}
-        <ThemedText type="smallBold" numberOfLines={1} style={{ color: textColor }}>
+        <ThemedText type="smallBold" numberOfLines={1} style={[dense ? styles.labelDense : styles.label, { color: textColor }]}>
           {label}
         </ThemedText>
         {trailingIcon ? <Icon name={trailingIcon} size={18} color={textColor} /> : null}
@@ -80,12 +80,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.two,
-    paddingVertical: Spacing.three,
+    // 50 pt: the height of iOS's large filled buttons, comfortably past the
+    // 44 pt touch minimum even when the label is a single short word.
+    minHeight: 50,
+    paddingVertical: 12,
     paddingHorizontal: Spacing.four,
     borderRadius: Radius.pill,
   },
   baseDense: {
+    minHeight: Layout.minTouch,
     paddingVertical: 10,
-    paddingHorizontal: Spacing.two,
+    paddingHorizontal: Spacing.three,
+  },
+  label: {
+    fontSize: 16,
+    lineHeight: 21,
+    fontWeight: '600',
+  },
+  labelDense: {
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: '600',
   },
 });

@@ -274,7 +274,7 @@ export default function ProgressScreen() {
             </Pressable>
           ))}
         {entries.length === 0 ? (
-          <ThemedText style={styles.hint} themeColor="textTertiary">
+          <ThemedText style={[styles.hint, styles.emptyHint]} themeColor="textTertiary">
             Nessuna registrazione: tocca + per aggiungere il tuo peso.
           </ThemedText>
         ) : null}
@@ -493,8 +493,8 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   deltaText: {
-    fontSize: 11,
-    lineHeight: 14,
+    fontSize: 12,
+    lineHeight: 16,
     fontWeight: '600',
   },
   addWeight: {
@@ -545,8 +545,8 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   miniLabel: {
-    fontSize: 11.5,
-    lineHeight: 15,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '500',
   },
   chartCard: {
@@ -671,10 +671,14 @@ const styles = StyleSheet.create({
     lineHeight: 17,
     fontWeight: '700',
   },
+  emptyHint: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
   hint: {
     textAlign: 'center',
-    fontSize: 11.5,
-    lineHeight: 16,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '500',
   },
   photoDayCard: {
@@ -690,7 +694,7 @@ const styles = StyleSheet.create({
     width: 84,
     textAlign: 'center',
     marginTop: 4,
-    fontSize: 11,
-    lineHeight: 14,
+    fontSize: 12,
+    lineHeight: 16,
   },
 });

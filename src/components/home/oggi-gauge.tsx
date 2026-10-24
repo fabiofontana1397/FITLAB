@@ -134,7 +134,7 @@ export function OggiGauge({ burnedKcal, eatenKcal, burnedColor, eatenColor, read
   const showZeroNotch = Math.abs(goalDeg) > 5;
 
   const onLayout = (e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width);
-  const label = (fontSize: number) => ({ fontSize: Math.max(8.5, fontSize * k), lineHeight: Math.max(11, (fontSize + 3) * k) });
+  const label = (fontSize: number) => ({ fontSize: Math.max(11, fontSize * k), lineHeight: Math.max(14, (fontSize + 3) * k) });
 
   return (
     <View style={styles.root} onLayout={onLayout}>
@@ -188,10 +188,10 @@ export function OggiGauge({ burnedKcal, eatenKcal, burnedColor, eatenColor, read
         {/* Short, quiet labels for the semi-ring: its two directions and the goal. */}
         <ThemedText
           themeColor="textTertiary"
-          style={[styles.end, label(9.5), { right: (CX + 80) * k, top: (CY + 7) * k, textAlign: 'right' }]}>
+          style={[styles.end, label(11), { right: (CX + 80) * k, top: (CY + 7) * k, textAlign: 'right' }]}>
           Surplus
         </ThemedText>
-        <ThemedText themeColor="textTertiary" style={[styles.end, label(9.5), { left: (CX + 80) * k, top: (CY + 7) * k }]}>
+        <ThemedText themeColor="textTertiary" style={[styles.end, label(11), { left: (CX + 80) * k, top: (CY + 7) * k }]}>
           Deficit
         </ThemedText>
         {/* Anchored on the notch's outer end and grown away from the ring, so it
@@ -200,7 +200,7 @@ export function OggiGauge({ burnedKcal, eatenKcal, burnedColor, eatenColor, read
           themeColor="textSecondary"
           style={[
             styles.goalText,
-            label(9),
+            label(11),
             { top: (py(GOAL_LABEL_R, goalDeg) - 14) * k },
             goalDeg > 8
               ? { left: px(GOAL_LABEL_R, goalDeg) * k }
@@ -214,8 +214,8 @@ export function OggiGauge({ burnedKcal, eatenKcal, burnedColor, eatenColor, read
         {/* The number: the balance itself, inside the main ring. */}
         <View pointerEvents="none" style={[styles.centre, { top: (CY - 38) * k, height: 76 * k }]}>
           <ThemedText style={[styles.value, { fontSize: 28 * k, lineHeight: 32 * k }]}>{value}</ThemedText>
-          <ThemedText style={[styles.unit, { fontSize: 11 * k, lineHeight: 14 * k }]}>kcal</ThemedText>
-          <ThemedText style={[styles.caption, { fontSize: 10 * k, lineHeight: 13 * k, color: missing ? theme.textTertiary : theme.textSecondary }]}>{caption}</ThemedText>
+          <ThemedText style={[styles.unit, { fontSize: 12 * k, lineHeight: 16 * k }]}>kcal</ThemedText>
+          <ThemedText style={[styles.caption, { fontSize: 12 * k, lineHeight: 16 * k, color: missing ? theme.textTertiary : theme.textSecondary }]}>{caption}</ThemedText>
         </View>
       </View>
     </View>

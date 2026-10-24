@@ -167,7 +167,7 @@ export function EnergyDetailsPopup({
         <ThemedText type="subtitle" style={{ flex: 1 }}>
           {focus === 'week' ? 'Il tuo obiettivo settimanale' : 'Il tuo bilancio energetico'}
         </ThemedText>
-        <Pressable onPress={onClose} hitSlop={8}>
+        <Pressable onPress={onClose} hitSlop={11} accessibilityRole="button" accessibilityLabel="Chiudi">
           <Icon name="close" size={22} color={theme.text} />
         </Pressable>
       </View>
@@ -276,7 +276,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   note: {
-    fontSize: 11,
+    fontSize: 12,
     lineHeight: 15,
     fontWeight: '500',
   },

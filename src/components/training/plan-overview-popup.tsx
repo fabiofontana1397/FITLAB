@@ -73,7 +73,7 @@ export function PlanOverviewPopup({ visible, onClose, plan, goal, currentMonth }
         <ThemedText type="subtitle" style={{ flex: 1 }}>
           Il tuo programma
         </ThemedText>
-        <Pressable onPress={onClose} hitSlop={8} accessibilityLabel="Chiudi">
+        <Pressable onPress={onClose} hitSlop={11} accessibilityLabel="Chiudi">
           <Icon name="close" size={22} color={theme.text} />
         </Pressable>
       </View>
@@ -279,7 +279,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   monthTag: {
-    fontSize: 11.5,
+    fontSize: 13,
     fontWeight: '700',
   },
 });

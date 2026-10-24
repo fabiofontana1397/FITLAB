@@ -15,7 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Reveal, ScrollRevealContext } from '@/components/motion/reveal';
 import { TimingScreen } from '@/constants/motion';
 import { ScrollDefaults } from '@/constants/scroll';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BottomTabInset, Layout, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 // Scroll distance over which the top-edge fade comes in.
@@ -145,8 +145,8 @@ const styles = StyleSheet.create({
   inner: {
     width: '100%',
     maxWidth: MaxContentWidth,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.five,
+    paddingHorizontal: Layout.screenGutter,
+    gap: Layout.sectionGap,
   },
   topFade: {
     position: 'absolute',

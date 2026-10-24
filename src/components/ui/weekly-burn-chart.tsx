@@ -143,12 +143,12 @@ export function WeeklyBurnChart({
             <View style={{ width: GUTTER_WIDTH, height }}>
               <Text
                 numberOfLines={1}
-                style={{ position: 'absolute', left: 0, width: GUTTER_WIDTH - 4, top: PADDING_TOP - 6, fontSize: 9, color: axisColor, textAlign: 'right' }}>
+                style={{ position: 'absolute', left: 0, width: GUTTER_WIDTH - 4, top: PADDING_TOP - 6, fontSize: 11, color: axisColor, textAlign: 'right' }}>
                 {maxLabel}
               </Text>
               <Text
                 numberOfLines={1}
-                style={{ position: 'absolute', left: 0, width: GUTTER_WIDTH - 4, top: zeroY - 6, fontSize: 9, color: axisColor, textAlign: 'right' }}>
+                style={{ position: 'absolute', left: 0, width: GUTTER_WIDTH - 4, top: zeroY - 6, fontSize: 11, color: axisColor, textAlign: 'right' }}>
                 0
               </Text>
               <Text
@@ -158,7 +158,7 @@ export function WeeklyBurnChart({
                   left: 0,
                   width: GUTTER_WIDTH - 4,
                   top: height - PADDING_BOTTOM - 6,
-                  fontSize: 9,
+                  fontSize: 11,
                   color: axisColor,
                   textAlign: 'right',
                 }}>
@@ -194,7 +194,7 @@ export function WeeklyBurnChart({
                         left: bar.colX - 22,
                         width: 44,
                         top: bar.labelY,
-                        fontSize: 9,
+                        fontSize: 11,
                         fontWeight: '700',
                         textAlign: 'center',
                         color: bar.delta >= 0 ? surplusColor : deficitColor,
@@ -220,7 +220,7 @@ export function WeeklyBurnChart({
                           justifyContent: 'center',
                           marginBottom: Spacing.one,
                         }}>
-                        <ThemedText type="caption" style={{ color: todayBadgeTextColor, fontWeight: '700', fontSize: 11 }}>
+                        <ThemedText type="caption" style={{ color: todayBadgeTextColor, fontWeight: '700', fontSize: 12 }}>
                           {day.label}
                         </ThemedText>
                       </View>
@@ -242,7 +242,7 @@ export function WeeklyBurnChart({
 
           {/* Period caption — the current week's fixed Monday-Sunday range,
               e.g. "14-20 settembre". */}
-          <Text style={{ textAlign: 'center', fontSize: 11, fontWeight: '600', color: axisColor, height: PERIOD_LABEL_HEIGHT, marginTop: Spacing.one }}>
+          <Text style={{ textAlign: 'center', fontSize: 12, fontWeight: '600', color: axisColor, height: PERIOD_LABEL_HEIGHT, marginTop: Spacing.one }}>
             {periodLabel}
           </Text>
 

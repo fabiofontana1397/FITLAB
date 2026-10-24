@@ -337,6 +337,19 @@ export const Spacing = {
   six: 64,
 } as const;
 
+/** Semantic layout rhythm, so screens and sheets share one set of edges and
+ * gaps instead of each picking from the raw scale. 20 pt gutters match the
+ * iPhone's own grouped screens; 24 pt between sections reads as a clear
+ * break without leaving holes, and 12 pt holds related cards together. */
+export const Layout = {
+  screenGutter: 20,
+  sectionGap: 24,
+  cardPadding: 20,
+  cardGap: 12,
+  /** Minimum side of anything tappable (Apple HIG: 44 × 44 pt). */
+  minTouch: 44,
+} as const;
+
 export const Radius = {
   small: 14,
   medium: 20,
