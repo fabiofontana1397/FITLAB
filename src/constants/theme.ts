@@ -43,38 +43,44 @@ export const Palette = { orange, neutral };
 
 export const Colors = {
   light: {
-    // Greys sampled from the Liquid Glass reference: soft grey page, milky
-    // translucent glass cards only a shade lighter than it (their white rim
-    // does the separating), recessed wells a shade darker.
-    background: '#E9E9E8',
-    backgroundElevated: 'rgba(255,255,255,0.42)',
-    backgroundElement: '#E4E4E3',
-    backgroundSelected: '#E1E1E1',
-    surfaceGlass: 'rgba(247,247,247,0.72)',
-    surfaceGlassStrong: 'rgba(247,247,247,0.88)',
-    border: 'rgba(14,14,17,0.08)',
-    borderStrong: 'rgba(14,14,17,0.14)',
-    // White hairline that gives cards their glass edge on the grey page.
-    cardEdge: 'rgba(255,255,255,0.85)',
-    // Round header buttons (notifications, profile…).
-    iconButton: '#F4F4F4',
-    text: '#060606',
-    // The reference's #727272 / #9D9D9D read 4.0:1 / 2.5:1 on its own cards,
-    // below the 4.5:1 text minimum: same family, darkened until they pass
-    // (secondary 6.0:1 on cards, tertiary 5.3:1; both clear 4.5:1 on the page).
-    textSecondary: '#5E5E5E',
-    textTertiary: '#666666',
-    accent: orange[500],
-    accentPressed: orange[600],
-    accentSoft: orange[50],
-    onAccent: neutral[0],
-    // Pushed toward the same "highlighter marker" saturation as dark mode's
-    // neon green/yellow below, but held back a notch so they still read as
-    // text on a white background instead of washing out.
+    // Apple-inspired premium light scheme: a near-white page, cards a shade
+    // lighter set off by a delicate hairline rather than by shadow, and a
+    // single orange accent carrying calories, progress and nutrition.
+    background: '#F2F2F2',
+    // Card surface. Opaque (not translucent glass): the reference language
+    // is flat surfaces with a hairline, which stays legible over anything.
+    backgroundElevated: '#F7F7F7',
+    // Wells and tracks *inside* a card: a shade darker than the card.
+    backgroundElement: '#EAEAEA',
+    backgroundSelected: '#E4E4E4',
+    surfaceGlass: '#F7F7F7',
+    surfaceGlassStrong: '#FFFFFF',
+    border: 'rgba(28,28,30,0.08)',
+    borderStrong: 'rgba(28,28,30,0.16)',
+    // The card hairline (FlatCard's border) — delicate but visible on the page.
+    cardEdge: '#E6E6E6',
+    // Round header buttons (notifications, profile…): white on the grey page.
+    iconButton: '#FFFFFF',
+    text: '#1C1C1E',
+    // The brief's #858585 reads 3.4:1 on the page, under the 4.5:1 minimum
+    // for text, so the same neutral family is darkened until it passes:
+    // secondary 6.2:1, tertiary 4.6:1. #858585 itself survives only where
+    // it is decoration, never type.
+    textSecondary: '#5E5E63',
+    textTertiary: '#767676',
+    accent: '#FB4C01',
+    accentPressed: '#D63E00',
+    // Orange reads 3.1:1 as a fill colour, fine for graphics and large type
+    // but not for the small orange labels ("Dettagli", KPI captions), which
+    // use this darker step (4.9:1) instead.
+    accentText: '#C43A00',
+    accentSoft: '#FFEDE4',
+    onAccent: '#FFFFFF',
+    // Pure #00FF00 is unusable as text on a light page (1.4:1), so the
+    // positive state keeps a green that passes as type; the bright one is
+    // reserved for fills and dots.
     success: '#00A651',
-    // Soft mint tint for "this card is a success/positive-status card" fills
-    // (Home's today/result cards) — the flat-card counterpart to accentSoft,
-    // same role but for the success color instead of the accent.
+    successBright: '#00C853',
     successSoft: '#E3F7EC',
     warning: '#D9A600',
     danger: '#D6402C',
@@ -84,11 +90,11 @@ export const Colors = {
     // good/bad framing already carried by color elsewhere on that card.
     calorieSurplus: '#0B72E0',
     calorieDeficit: '#C2178E',
-    // Fixed brand greens/yellows from the Figma screens — unlike success/warning (neon in dark mode, chosen to read as *text*), these also have to work as solid fills behind white labels (e.g. the green "Registra allenamento" button), so they don't change per scheme.
+    // Fixed brand greens/yellows from the Figma screens — unlike success/warning, these also have to work as solid fills behind white labels (e.g. the green "Registra allenamento" button), so they don't change per scheme.
     brandGreen: '#22B35E',
     brandYellow: '#F6B21B',
     tabBarBlur: 'light' as const,
-    shadow: 'rgba(20,20,25,0.12)',
+    shadow: 'rgba(28,28,30,0.10)',
   },
   dark: {
     background: neutral[950],
@@ -111,14 +117,18 @@ export const Colors = {
     text: neutral[0],
     textSecondary: neutral[300],
     textTertiary: neutral[500],
-    accent: orange[500],
-    accentPressed: orange[300],
-    accentSoft: 'rgba(255,122,0,0.16)',
+    accent: '#FB4C01',
+    accentPressed: '#FF7A2E',
+    // On near-black the accent itself clears 4.5:1 only from this lighter
+    // step up, so small orange type uses it instead.
+    accentText: '#FF8A4C',
+    accentSoft: 'rgba(251,76,1,0.18)',
     onAccent: neutral[0],
     // True neon-marker green/yellow — dark is the hero mode, and these read
     // as genuinely bright against near-black the way a highlighter does
     // under UV rather than the previous muted amber/jade.
     success: '#39FF14',
+    successBright: '#39FF14',
     successSoft: 'rgba(57,255,20,0.14)',
     warning: '#FFE600',
     danger: '#FF6B57',

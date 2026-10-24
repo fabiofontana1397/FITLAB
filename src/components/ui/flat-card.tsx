@@ -6,16 +6,17 @@ import { Radius } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 
-// A milky glass pane: a bright top edge, a white glow just inside the rim
-// that fades toward the middle, and a wide, faint shadow under it.
+// Barely-there depth: the hairline does the separating, the shadow only
+// lifts the card off the page by a hair. Anything heavier reads as a
+// business dashboard rather than a native iOS surface.
 const CARD_SHADOW = {
-  light: 'inset 0px 1px 0px rgba(255,255,255,0.95), inset 0px 0px 22px rgba(255,255,255,0.5), 0px 10px 30px rgba(20,20,25,0.06)',
-  dark: 'inset 0px 1px 0px rgba(255,255,255,0.12), inset 0px 0px 22px rgba(255,255,255,0.03), 0px 10px 30px rgba(0,0,0,0.45)',
+  light: '0px 1px 2px rgba(28,28,30,0.04), 0px 6px 16px rgba(28,28,30,0.03)',
+  dark: '0px 1px 2px rgba(0,0,0,0.5)',
 } as const;
 
-/** Milky Liquid Glass card: a translucent pane a shade lighter than the
- * page, set off by its white rim and inner glow — the app's card language.
- * `tint` overrides the default glass fill for category-colored cards. */
+/** The app's card: a flat surface a shade lighter than the page, set off by
+ * a delicate hairline and an almost imperceptible shadow.
+ * `tint` overrides the default fill for category-colored cards. */
 export function FlatCard({
   tint,
   radius = Radius.large,

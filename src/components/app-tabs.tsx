@@ -2,7 +2,6 @@ import type { Href } from 'expo-router';
 import { Tabs, TabList, TabTrigger, TabSlot, type TabTriggerSlotProps } from 'expo-router/ui';
 import { useEffect, useRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
-import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   FadeIn,
@@ -16,7 +15,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { LiquidGlass, liquidLensStyle } from '@/components/glass/liquid-glass';
+import { LiquidGlass } from '@/components/glass/liquid-glass';
 import { ThemedText } from '@/components/themed-text';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { SpringPressIn, SpringPressOut } from '@/constants/motion';
@@ -33,25 +32,6 @@ const DEFAULT_BAR_HEIGHT = 48;
 // screen-scroll.tsx) so this mask's fade zone lines up with exactly the
 // area every screen already keeps clear for the floating bar.
 const FADE_HEIGHT = BottomTabInset + Spacing.six;
-
-// A single BlurView turns on at full strength the instant content crosses
-// its top edge — a visible seam, since there's nothing to ramp through.
-// Slicing the fade zone into several non-overlapping horizontal stripes,
-// each a little stronger than the one above it, approximates a blur that
-// gradually deepens instead of cutting on. Each stripe is drawn ONLY across
-// its own slice (never down to the bottom of the mask) — stacking them
-// cumulatively was the previous approach, but compositing multiple
-// translucent tinted BlurViews on top of each other visibly brightened
-// scrolled content ("i colori si accendono") instead of just blurring it,
-// worst right above the bar where every band overlapped at once. Seven
-// stripes starting from a barely-there first step (rather than four
-// starting stronger) so even that very first step is too small to read as
-// a seam. web/native use different absolute scales for `intensity`, so
-// each is its own progression.
-const BLUR_BANDS = {
-  web: [1, 2, 3, 5, 8, 12, 17],
-  default: [2, 3, 5, 8, 12, 17, 23],
-} as const;
 
 // Tab focus: settles quickly with just a whisper of overshoot on the pill.
 const SpringTab: WithSpringConfig = { damping: 19, mass: 0.7, stiffness: 230 };
@@ -82,33 +62,20 @@ export default function AppTabs({ onBarHeightChange }: { onBarHeightChange?: (he
   );
 }
 
-/** Blurs, then fades, scrolled content well before it would reach the
- * floating bar, instead of it staying crisp and peeking through the bar's
- * translucent glass — text only turns fully legible once the user has
- * scrolled it above this zone, clear of the bar entirely. Sits above the
+/** Fades scrolled content into the page colour before it reaches the
+ * floating bar, so nothing is ever half-legible behind it. Sits above the
  * screen content but below the bar itself, and never intercepts touches
- * (the scroll view underneath keeps handling them). */
+ * (the scroll view underneath keeps handling them). A plain colour ramp:
+ * the bar is opaque now, so there is nothing to blur content through. */
 function ScrollFadeMask() {
   const theme = useTheme();
-  const isDark = useColorScheme() === 'dark';
-  const bands = Platform.OS === 'web' ? BLUR_BANDS.web : BLUR_BANDS.default;
-  const stripeHeight = FADE_HEIGHT / bands.length;
   return (
     <View pointerEvents="none" style={[styles.fadeMask, { height: FADE_HEIGHT }]}>
-      {bands.map((intensity, i) => (
-        <BlurView
-          key={i}
-          intensity={intensity}
-          tint={isDark ? 'dark' : 'light'}
-          blurMethod="dimezisBlurViewSdk31Plus"
-          style={{ position: 'absolute', top: stripeHeight * i, left: 0, right: 0, height: stripeHeight }}
-        />
-      ))}
-      {/* Spans the full mask height (not just its lower portion) so the
-          color ramp itself has no flat, fully-opaque stretch right above
-          the bar — that flat zone next to the bar's own translucent glass
-          was the other half of the reported hard edge. */}
-      <LinearGradient colors={['transparent', theme.background]} locations={[0, 1]} style={StyleSheet.absoluteFill} />
+      <LinearGradient
+        colors={['transparent', theme.background, theme.background]}
+        locations={[0, 0.55, 1]}
+        style={StyleSheet.absoluteFill}
+      />
     </View>
   );
 }
@@ -133,7 +100,6 @@ function FloatingTabBar({
       ]}>
       <View style={styles.row}>
         <LiquidGlass
-          variant="clear"
           radius={Radius.xlarge}
           style={styles.bar}
           onLayout={(e) => {
@@ -222,7 +188,9 @@ function TabButton({
       accessibilityLabel={label}
       accessibilityState={{ selected: !!isFocused }}
       style={[styles.tabButton, buttonStyle]}>
-      <Animated.View style={[styles.focusPill, liquidLensStyle(isDark), pillStyle]} />
+      <Animated.View
+        style={[styles.focusPill, { backgroundColor: isDark ? 'rgba(255,255,255,0.12)' : theme.backgroundElement }, pillStyle]}
+      />
       <Animated.View style={[styles.tabContent, contentStyle]}>
         <Animated.View style={iconStyle}>
           <Icon name={icon} size={20} color={color} />

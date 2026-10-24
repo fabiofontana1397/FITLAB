@@ -17,9 +17,8 @@ import { TimingQuick } from '@/constants/motion';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
-// Top color of the light grey wash below, reused so the top-edge fade blends
-// into it instead of painting a differently-tinted band.
-const LIGHT_WASH_TOP = '#F2F2F1';
+// The page is a single flat near-white in light mode — no wash — so the
+// top-edge fade simply dissolves into the page color itself.
 // Scroll distance over which the top-edge fade comes in.
 const TOP_FADE_SCROLL = 24;
 
@@ -32,7 +31,6 @@ export const ScreenScroll = forwardRef<ScrollView, ScreenScrollProps>(function S
   const { height: windowHeight } = useWindowDimensions();
   const reduceMotion = useReducedMotion();
   const isFocused = useIsFocused();
-  const isLight = theme.tabBarBlur === 'light';
 
   const scrollY = useSharedValue(0);
   const viewportHeight = useSharedValue(windowHeight);
@@ -83,18 +81,10 @@ export const ScreenScroll = forwardRef<ScrollView, ScreenScrollProps>(function S
       ))
     : children;
 
-  const topFadeColor = isLight ? LIGHT_WASH_TOP : theme.background;
+  const topFadeColor = theme.background;
 
   return (
     <View style={[styles.root, { backgroundColor: theme.background }]}>
-      {/* Soft top-to-bottom grey wash behind every light screen. */}
-      {isLight ? (
-        <LinearGradient
-          colors={[LIGHT_WASH_TOP, theme.background, '#DEDEDD']}
-          locations={[0, 0.45, 1]}
-          style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]}
-        />
-      ) : null}
       <ScrollRevealContext.Provider value={revealContext}>
         <Animated.ScrollView
           ref={ref}
@@ -112,7 +102,7 @@ export const ScreenScroll = forwardRef<ScrollView, ScreenScrollProps>(function S
             style={[
               styles.inner,
               {
-                paddingTop: insets.top + Platform.select({ web: Spacing.five, default: Spacing.two }),
+                paddingTop: insets.top + Platform.select({ web: Spacing.three, default: Spacing.two }),
                 paddingBottom: BottomTabInset + Spacing.six,
               },
               contentContainerStyle,

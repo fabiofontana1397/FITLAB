@@ -53,7 +53,7 @@ export function SegmentedControl<T extends string>({
   };
 
   const content = (
-    <LiquidGlass radius={Radius.pill} style={styles.track}>
+    <LiquidGlass variant="clear" radius={Radius.pill} style={styles.track}>
       {activeWidth != null && (
         <Animated.View style={[styles.indicator, liquidLensStyle(isDark), indicatorStyle]} />
       )}
