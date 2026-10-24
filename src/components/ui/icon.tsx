@@ -29,11 +29,10 @@ type IonName = ComponentProps<typeof Ionicons>['name'];
  * genuine glyph for each food group rather than the nearest approximation
  * — barley standing in for carbohydrates, a water drop for fats.
  *
- * This is NOT the per-food artwork in the meal log: individual foods keep
- * their Fluent Emoji pictures (lib/nutrition/food-icons.ts), which
- * distinguish about seventy foods in colour. Lucide has roughly a dozen
- * food glyphs in a single colour, so using it there would merge foods that
- * the pictures currently tell apart.
+ * Individual foods in the meal log are lucide too, but are drawn by
+ * FoodGlyph (components/nutrition/food-glyph.tsx) rather than through this
+ * registry: there are 68 of them, chosen per food, and tinted by the food's
+ * dominant macro.
  */
 const LUCIDE_ICONS = {
   protein: Drumstick,

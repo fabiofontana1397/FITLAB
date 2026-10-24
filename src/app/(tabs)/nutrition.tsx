@@ -1,8 +1,9 @@
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Image, Platform, Pressable, StyleSheet, Switch, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Switch, View } from 'react-native';
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 
+import { FoodGlyph } from '@/components/nutrition/food-glyph';
 import { DietOverviewPopup } from '@/components/nutrition/diet-overview-popup';
 import { FoodSearchModal } from '@/components/nutrition/food-search-modal';
 import { MealPickerModal, mealSlotColor } from '@/components/nutrition/meal-picker-modal';
@@ -21,7 +22,6 @@ import { useTheme } from '@/hooks/use-theme';
 import { daysAgoISO, isoMondayIndex } from '@/lib/mock/dates';
 import { findFood } from '@/lib/mock/food-database';
 import { Brand, OnBrand } from '@/constants/theme';
-import { foodIcon } from '@/lib/nutrition/food-icons';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
 import {
   entriesForSlot,
@@ -294,8 +294,8 @@ export default function NutritionScreen() {
                           setEditingEntry(entry);
                           setActiveSlot(meta.id);
                         }}>
-                        <View style={[styles.foodIconWrap, { backgroundColor: theme.backgroundElement }]}>
-                          <Image source={foodIcon(entry.foodId)} style={styles.foodIcon} accessibilityIgnoresInvertColors />
+                        <View aria-hidden style={[styles.foodIconWrap, { backgroundColor: theme.backgroundElement }]}>
+                          <FoodGlyph foodId={entry.foodId} size={20} />
                         </View>
                         <View style={styles.foodLeft}>
                           <ThemedText style={styles.foodName} numberOfLines={1}>
@@ -575,10 +575,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  foodIcon: {
-    width: 26,
-    height: 26,
   },
   foodLeft: {
     flex: 1,
