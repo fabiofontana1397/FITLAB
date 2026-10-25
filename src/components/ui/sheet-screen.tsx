@@ -54,6 +54,8 @@ export type SheetScreenProps = {
    * refresh while the sheet is open, starts with an empty history stack. */
   fallbackHref?: Href;
   contentContainerStyle?: StyleProp<ViewStyle>;
+  /** False for a sheet whose content fits on one screen: it is laid out in the available height and does not scroll. */
+  scroll?: boolean;
 };
 
 /**
@@ -68,7 +70,7 @@ export type SheetScreenProps = {
  * same way on iOS, Android and web rather than leaving the sheet to each
  * platform's own modal presentation.
  */
-export function SheetScreen({ title, eyebrow, children, fallbackHref = '/', contentContainerStyle }: SheetScreenProps) {
+export function SheetScreen({ title, eyebrow, children, fallbackHref = '/', contentContainerStyle, scroll = true }: SheetScreenProps) {
   const theme = useTheme();
   const dark = useColorScheme() === 'dark';
   const insets = useSafeAreaInsets();
@@ -177,12 +179,16 @@ export function SheetScreen({ title, eyebrow, children, fallbackHref = '/', cont
             <Icon name="close" size={20} color={theme.text} />
           </Pressable>
 
-          <ScrollView
-            {...ScrollDefaults}
-            style={styles.scroll}
-            contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + Spacing.five }, contentContainerStyle]}>
-            {children}
-          </ScrollView>
+          {scroll ? (
+            <ScrollView
+              {...ScrollDefaults}
+              style={styles.scroll}
+              contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + Spacing.five }, contentContainerStyle]}>
+              {children}
+            </ScrollView>
+          ) : (
+            <View style={[styles.scroll, styles.scrollContent, { paddingBottom: insets.bottom + Spacing.three }, contentContainerStyle]}>{children}</View>
+          )}
         </Animated.View>
       </View>
     </View>

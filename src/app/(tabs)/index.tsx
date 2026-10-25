@@ -29,7 +29,7 @@ import { useHealthEnergy } from '@/hooks/use-health-energy';
 import { sumActivityKcalForDate, useWeeklyEnergy } from '@/hooks/use-weekly-energy';
 import { useTheme } from '@/hooks/use-theme';
 import { currentWeekDates, dayOfMonth, daysAgoISO, isoMondayIndex } from '@/lib/mock/dates';
-import { balanceCaption as captionFor, calorieBalance, readBalance } from '@/domain/calorie-balance';
+import { balanceCaption as captionFor, balanceSideLabel, calorieBalance, readBalance } from '@/domain/calorie-balance';
 import { dayEnergy } from '@/domain/energy';
 import { Brand, OnBrand } from '@/constants/theme';
 import { useUserContext } from '@/hooks/use-user-context';
@@ -243,7 +243,8 @@ export default function HomeScreen() {
             eatenColor={theme.brandGreen}
             reading={balanceReading}
             value={formatSignedKcal(balanceKcal)}
-            caption={balanceCaption}
+            goalLabel={`/${formatSignedKcal(dailyGoalKcal)} kcal`}
+            caption={balanceSideLabel(balanceReading)}
           />
         </Pressable>
 
@@ -661,7 +662,7 @@ const styles = StyleSheet.create({
   gaugeWrap: {
     alignSelf: 'stretch',
     alignItems: 'center',
-    marginTop: 4,
+    marginTop: 10,
   },
   oggiRow: {
     flexDirection: 'row',

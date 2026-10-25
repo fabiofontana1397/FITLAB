@@ -15,7 +15,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { explain } from '@/lib/energy-guide/explain';
-import { BALANCE_SCALE, balanceCaption, balancePosition, balanceSide, calorieBalance, readBalance } from '@/domain/calorie-balance';
+import { BALANCE_SCALE, balanceCaption, balanceSideLabel, balancePosition, balanceSide, calorieBalance, readBalance } from '@/domain/calorie-balance';
 import { applyDemoPreset, buildDemoDay, clampDemoValues, DEMO_CONFIG, stepValue, type DemoValues } from '@/lib/energy-guide/demo-example';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -65,7 +65,7 @@ test('3. intake above expenditure reads as a surplus', () => {
   assert.ok(balancePosition(day.balanceKcal, day.reading.halfRangeKcal).position < 0);
   // A surplus against the example's deficit goal is away from the goal.
   assert.equal(day.reading.towardGoal, false);
-  assert.match(explain(day)[1].text, /ti allontani/);
+  assert.match(explain(day)[1].text, /lato opposto/);
 });
 
 test('3b. the presets land in their zones and keep the movement', () => {
@@ -142,6 +142,13 @@ test('6. the example starts from the same state on every opening', () => {
   buildDemoDay({ eatenKcal: 3000, extraActivityKcal: 500 });
   assert.equal(JSON.stringify(DEMO_CONFIG), snapshot, 'the config is never mutated');
   assert.deepEqual(buildDemoDay(DEMO_CONFIG.initial), buildDemoDay({ ...DEMO_CONFIG.initial }));
+});
+
+test('the gauge\'s grey word names the side of equilibrium', () => {
+  assert.equal(balanceSideLabel(at(burned - 400).reading), 'deficit');
+  assert.equal(balanceSideLabel(at(burned).reading), 'equilibrio');
+  assert.equal(balanceSideLabel(at(burned + 400).reading), 'surplus');
+  assert.equal(balanceSideLabel(readBalance({ eatenKcal: 0, burnedKcal: 2000, goalKcal: -300 })), 'nessun pasto');
 });
 
 test('8. Home formulas unchanged: readBalance, balancePosition and the caption match the original code', () => {

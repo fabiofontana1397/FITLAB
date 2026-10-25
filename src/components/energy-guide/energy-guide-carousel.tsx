@@ -1,25 +1,25 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, View, type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
-import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
+import { useMemo, useRef, useState } from 'react';
+import { ScrollView, StyleSheet, View, useWindowDimensions, type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+import { useReducedMotion } from 'react-native-reanimated';
 
 import { CalorieComparisonChart } from '@/components/energy-guide/calorie-comparison-chart';
-import { DemoControls } from '@/components/energy-guide/demo-controls';
 import { EnergyBalanceChart } from '@/components/energy-guide/energy-balance-chart';
 import { EnergyExpenditureChart } from '@/components/energy-guide/energy-expenditure-chart';
 import { FitLabChartDemo } from '@/components/energy-guide/fitlab-chart-demo';
 import { ThemedText } from '@/components/themed-text';
-import { TimingQuick } from '@/constants/motion';
 import { FlatCard } from '@/components/ui/flat-card';
 import { PrimaryButton } from '@/components/ui/primary-button';
 import { useTheme } from '@/hooks/use-theme';
-import { applyDemoPreset, buildDemoDay, clampDemoValues, DEMO_CONFIG, type DemoDay, type DemoValues } from '@/lib/energy-guide/demo-example';
+import { buildDemoDay, DEMO_CONFIG, type DemoDay, type DemoValues } from '@/lib/energy-guide/demo-example';
 import { formatKcal } from '@/lib/format-kcal';
 
 type Page = {
   id: string;
   title: string;
   body: (day: DemoDay) => string;
-  chart: (day: DemoDay, play: boolean) => React.ReactNode;
+  /** Short phones skip the intro line (the chart's own notes say it). */
+  skipBodyWhenCompact?: boolean;
+  chart: (day: DemoDay, play: boolean, compact: boolean) => React.ReactNode;
 };
 
 const PAGES: Page[] = [
@@ -27,21 +27,21 @@ const PAGES: Page[] = [
     id: 'compare',
     title: 'Calorie assunte e consumate',
     body: () =>
-      'Le calorie assunte sono quelle di cibi e bevande che registri. Le calorie consumate sono tutta l’energia che il corpo usa nella giornata. Il grafico di FitLab parte dal confronto tra queste due.',
+      'Assunte: le calorie di cibi e bevande che registri. Consumate: tutta l’energia che il corpo usa nella giornata. Il grafico di FitLab parte da questo confronto.',
     chart: (day, play) => <CalorieComparisonChart eatenKcal={day.eatenKcal} burnedKcal={day.burnedKcal} play={play} />,
   },
   {
     id: 'expenditure',
     title: 'Da dove arrivano le calorie consumate?',
     body: () =>
-      'Il consumo della giornata ha due parti. Il totale è la loro somma e niente di più: l’allenamento fa già parte del movimento, quindi non viene aggiunto una seconda volta.',
+      'Il consumo ha due parti e il totale è la loro somma: l’allenamento è già dentro il movimento, non viene contato due volte.',
     chart: (day, play) => <EnergyExpenditureChart basalKcal={day.basalKcal} movementKcal={day.movementKcal} trainingKcal={day.trainingKcal} play={play} />,
   },
   {
     id: 'balance',
     title: 'Deficit, equilibrio e surplus',
     body: (day) =>
-      `Il bilancio è calorie assunte meno calorie consumate. Se consumi di più sei in deficit, se assumi di più sei in surplus. In questo esempio consideriamo “in equilibrio” uno scarto entro ±${formatKcal(day.toleranceKcal)} kcal: è una convenzione di lettura, non una soglia fisiologica.`,
+      `Il bilancio è calorie assunte meno calorie consumate: se consumi di più sei in deficit, se assumi di più in surplus. Qui “equilibrio” è uno scarto entro ±${formatKcal(day.toleranceKcal)} kcal: una convenzione di lettura, non una soglia fisiologica.`,
     chart: (day, play) => (
       <EnergyBalanceChart balanceKcal={day.balanceKcal} halfRangeKcal={day.reading.halfRangeKcal} toleranceKcal={day.toleranceKcal} play={play} />
     ),
@@ -49,9 +49,9 @@ const PAGES: Page[] = [
   {
     id: 'fitlab',
     title: 'Come leggere il grafico di FitLab',
-    body: () =>
-      'Ecco il grafico della Home con i numeri dell’esempio. Anello e semicerchio raccontano lo stesso bilancio a due scale: il confronto tra le due quantità e la distanza dal tuo obiettivo.',
-    chart: (day, play) => <FitLabChartDemo day={day} play={play} />,
+    body: () => 'Il grafico della Home, con i numeri dell’esempio.',
+    skipBodyWhenCompact: true,
+    chart: (day, play, compact) => <FitLabChartDemo day={day} play={play} compact={compact} />,
   },
 ];
 
@@ -59,41 +59,25 @@ export const ENERGY_GUIDE_PAGE_COUNT = PAGES.length;
 
 /**
  * "Come leggere il grafico": four swipeable pages explaining Home's calorie
- * chart on a worked example.
+ * chart on a worked example, all on one screen (nothing scrolls vertically).
  *
- * The example lives in this component's state only (never in a store), so
- * it starts fresh on every opening; every page derives its numbers from the
- * same buildDemoDay(values), so a change on the controls shows up on all of
- * them at once and swiping back and forth always lands on agreeing charts.
- * A page's animation plays the first time it is shown and is not replayed
- * when swiping back to it.
+ * The example's numbers come from the `values` prop (the demo config unless
+ * given others, never a store) and every page derives from the same
+ * buildDemoDay(values), so a change shows up on all of them at once and
+ * swiping back and forth always lands on agreeing charts. A page's animation
+ * plays the first time it is shown and is not replayed when swiping back.
  */
-export function EnergyGuideCarousel({ onDone }: { onDone: () => void }) {
+export function EnergyGuideCarousel({ onDone, values = DEMO_CONFIG.initial }: { onDone: () => void; values?: DemoValues }) {
   const theme = useTheme();
   const reduceMotion = useReducedMotion();
+  // Short phones (iPhone SE and the like): the page gives up its footnote and the Home columns to stay on one screen.
+  const compact = useWindowDimensions().height < 740;
   const scrollRef = useRef<ScrollView>(null);
   const [width, setWidth] = useState(0);
   const [index, setIndex] = useState(0);
   const [visited, setVisited] = useState<boolean[]>(() => PAGES.map((_, i) => i === 0));
-  const [values, setValues] = useState<DemoValues>(DEMO_CONFIG.initial);
   const day = useMemo(() => buildDemoDay(values), [values]);
   const isLast = index === PAGES.length - 1;
-
-  // The pager takes the height of the page on screen, so the controls sit
-  // right under a short chart instead of under the tallest page.
-  const [heights, setHeights] = useState<number[]>(() => PAGES.map(() => 0));
-  const pagerHeight = useSharedValue(0);
-  const shownHeight = heights[index];
-  useEffect(() => {
-    if (shownHeight <= 0) return;
-    const first = pagerHeight.get() === 0;
-    pagerHeight.set(first || reduceMotion ? shownHeight : withTiming(shownHeight, TimingQuick));
-  }, [shownHeight, reduceMotion, pagerHeight]);
-  const pagerStyle = useAnimatedStyle(() => (pagerHeight.value > 0 ? { height: pagerHeight.value } : {}));
-  const measurePage = (i: number) => (e: LayoutChangeEvent) => {
-    const h = Math.ceil(e.nativeEvent.layout.height);
-    setHeights((hs) => (hs[i] === h ? hs : hs.map((old, j) => (j === i ? h : old))));
-  };
 
   const show = (next: number) => {
     const clamped = Math.max(0, Math.min(next, PAGES.length - 1));
@@ -124,7 +108,7 @@ export function EnergyGuideCarousel({ onDone }: { onDone: () => void }) {
 
   return (
     <View style={styles.root}>
-      <Animated.View onLayout={onLayout} style={[styles.pager, pagerStyle]}>
+      <View onLayout={onLayout} style={styles.pager}>
         {width > 0 ? (
           <ScrollView
             ref={scrollRef}
@@ -134,13 +118,11 @@ export function EnergyGuideCarousel({ onDone }: { onDone: () => void }) {
             showsHorizontalScrollIndicator={false}
             scrollEventThrottle={32}
             onScroll={onScroll}
-            onMomentumScrollEnd={onScroll}
-            contentContainerStyle={styles.pagerContent}>
+            onMomentumScrollEnd={onScroll}>
             {PAGES.map((page, i) => (
               <View
                 key={page.id}
                 testID={`energy-guide-page-${i}`}
-                onLayout={measurePage(i)}
                 style={[styles.page, { width }]}
                 accessibilityElementsHidden={i !== index}
                 importantForAccessibility={i === index ? 'auto' : 'no-hide-descendants'}>
@@ -152,35 +134,30 @@ export function EnergyGuideCarousel({ onDone }: { onDone: () => void }) {
                     <ThemedText style={[styles.badgeText, { color: theme.accent }]}>Esempio</ThemedText>
                   </View>
                 </View>
-                <ThemedText type="title" accessibilityRole="header">
+                <ThemedText style={styles.title} accessibilityRole="header">
                   {page.title}
                 </ThemedText>
-                <ThemedText style={styles.body} themeColor="textSecondary">
-                  {page.body(day)}
-                </ThemedText>
-                <FlatCard style={styles.card}>{page.chart(day, visited[i])}</FlatCard>
+                {compact && page.skipBodyWhenCompact ? null : (
+                  <ThemedText style={styles.body} themeColor="textSecondary">
+                    {page.body(day)}
+                  </ThemedText>
+                )}
+                <FlatCard style={[styles.card, compact && styles.cardCompact]}>{page.chart(day, visited[i], compact)}</FlatCard>
+                {compact ? null : (
+                  <ThemedText style={styles.footnote} themeColor="textTertiary">
+                    Valori dimostrativi, non sono i tuoi dati. Le calorie consumate sono una stima.
+                  </ThemedText>
+                )}
               </View>
             ))}
           </ScrollView>
         ) : null}
-      </Animated.View>
+      </View>
 
       <View style={styles.dots}>
         {PAGES.map((page, i) => (
           <View key={page.id} style={[styles.dot, i === index ? { backgroundColor: theme.accent, width: 18 } : { backgroundColor: theme.textTertiary, opacity: 0.35, width: 7 }]} />
         ))}
-      </View>
-
-      <View style={styles.controls}>
-        <DemoControls
-          values={values}
-          onChange={(v) => setValues(clampDemoValues(v))}
-          onPreset={(preset) => setValues((v) => applyDemoPreset(v, preset))}
-          onReset={() => setValues(DEMO_CONFIG.initial)}
-        />
-        <ThemedText style={styles.footnote} themeColor="textTertiary">
-          Valori dimostrativi: non sono i tuoi dati e non vengono salvati. Le calorie consumate sono sempre una stima.
-        </ThemedText>
       </View>
 
       <View style={styles.nav}>
@@ -193,13 +170,12 @@ export function EnergyGuideCarousel({ onDone }: { onDone: () => void }) {
 
 const styles = StyleSheet.create({
   root: {
-    gap: 14,
+    flex: 1,
+    gap: 12,
   },
   pager: {
+    flex: 1,
     overflow: 'hidden',
-  },
-  pagerContent: {
-    alignItems: 'flex-start',
   },
   page: {
     gap: 8,
@@ -220,14 +196,28 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     fontWeight: '700',
   },
+  title: {
+    fontSize: 21,
+    lineHeight: 26,
+    fontWeight: '700',
+    letterSpacing: -0.4,
+  },
   body: {
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 13.5,
+    lineHeight: 19,
     fontWeight: '500',
   },
   card: {
-    marginTop: 8,
-    padding: 18,
+    marginTop: 4,
+    padding: 14,
+  },
+  cardCompact: {
+    padding: 10,
+  },
+  footnote: {
+    fontSize: 12,
+    lineHeight: 15,
+    fontWeight: '500',
   },
   dots: {
     flexDirection: 'row',
@@ -237,14 +227,6 @@ const styles = StyleSheet.create({
   dot: {
     height: 7,
     borderRadius: 4,
-  },
-  controls: {
-    gap: 8,
-  },
-  footnote: {
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: '500',
   },
   nav: {
     flexDirection: 'row',

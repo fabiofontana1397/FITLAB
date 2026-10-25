@@ -14,35 +14,27 @@ export function explain(day: DemoDay): { key: string; text: string; tone: Explai
   const kcal = formatKcal(balanceKcal);
   const side =
     reading.status === 'even'
-      ? 'quasi in cima, al centro: assunte e consumate si equivalgono'
+      ? 'in cima, al centro: assunte e consumate si equivalgono'
       : reading.status === 'deficit'
-        ? `a destra del centro: hai consumato ${kcal} kcal più di quante ne hai assunte`
-        : `a sinistra del centro: hai assunto ${kcal} kcal più di quante ne hai consumate`;
+        ? `a destra del centro: consumi ${kcal} kcal più di quante ne assumi`
+        : `a sinistra del centro: assumi ${kcal} kcal più di quante ne consumi`;
 
   const toGoal = goalKcal - balanceKcal;
+  const goal = formatSignedKcal(goalKcal);
   const goalText = reading.reached
     ? reading.goalKind === 'maintenance'
-      ? 'Il semicerchio in alto confronta il bilancio con l’obiettivo: sei in linea con il mantenimento.'
-      : `Il semicerchio in alto confronta il bilancio con l’obiettivo di ${formatSignedKcal(goalKcal)} kcal: il marker ha raggiunto il triangolo dell’obiettivo, o l’ha superato.`
+      ? 'Il triangolo è nella zona verde: sei in linea con il mantenimento.'
+      : `Il triangolo è nella zona verde dell’obiettivo (${goal} kcal): obiettivo raggiunto.`
     : reading.towardGoal
-      ? `Il semicerchio in alto confronta il bilancio con l’obiettivo di ${formatSignedKcal(goalKcal)} kcal: sei sulla strada giusta, mancano ${formatKcal(toGoal)} kcal al triangolo dell’obiettivo.`
-      : `Il semicerchio in alto confronta il bilancio con l’obiettivo di ${formatSignedKcal(goalKcal)} kcal: il marker è dal lato opposto al triangolo dell’obiettivo, ti allontani dall’obiettivo.`;
+      ? `Il triangolo si avvicina alla zona verde dell’obiettivo (${goal} kcal): mancano ${formatKcal(toGoal)} kcal.`
+      : `Il triangolo è dal lato opposto alla zona verde dell’obiettivo (${goal} kcal): ti allontani.`;
 
   return [
     {
       key: 'arcs',
-      text: `L’arco arancione sono le calorie consumate, quello verde le assunte: ognuno occupa la sua quota del totale. Il punto in cui si incontrano è ${side}.`,
+      text: `Arancione: consumate. Verde: assunte. Il pallino dove si incontrano è ${side}.`,
       tone: 'burned',
     },
-    { key: 'goal', text: goalText, tone: 'neutral' },
-    {
-      key: 'colour',
-      text: reading.towardGoal
-        ? 'Il colore del marker è verde quando vai verso l’obiettivo, più pieno quanto più ti avvicini.'
-        : reading.balanceKcal > 0
-          ? 'Il colore del marker diventa blu quando sei in surplus mentre l’obiettivo è un deficit.'
-          : 'Il colore del marker diventa magenta quando sei in deficit mentre l’obiettivo è un surplus.',
-      tone: reading.towardGoal ? 'goal' : reading.balanceKcal > 0 ? 'surplus' : 'deficit',
-    },
+    { key: 'goal', text: goalText, tone: 'goal' },
   ];
 }

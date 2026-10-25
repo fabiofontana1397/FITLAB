@@ -60,12 +60,19 @@ const SESSION = {
   user: USER,
 };
 
-async function openApp(browser: Browser, base: string, reducedMotion: 'reduce' | 'no-preference'): Promise<Page> {
-  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, reducedMotion });
-  await context.addInitScript((session: object) => {
-    localStorage.setItem('sb-127-auth-token', JSON.stringify(session));
+/** `seedPastMeals`: meals logged on the two days before today, to see their rings in the week strip. */
+async function openApp(browser: Browser, base: string, reducedMotion: 'reduce' | 'no-preference', viewport = { width: 390, height: 844 }, seedPastMeals = false): Promise<Page> {
+  const context = await browser.newContext({ viewport, deviceScaleFactor: 2, reducedMotion });
+  // A plain string, so the test runner's transpiler adds no helpers to what runs in the page.
+  await context.addInitScript(`
+    localStorage.setItem('sb-127-auth-token', ${JSON.stringify(JSON.stringify(SESSION))});
     localStorage.setItem('fitlab/app', JSON.stringify({ state: { hasOnboarded: true, redoingQuestionnaire: false, appearance: 'light' }, version: 0 }));
-  }, SESSION);
+    if (${seedPastMeals}) {
+      var iso = function (n) { var d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10); };
+      var entries = [1, 2].map(function (n) { return { id: 'seed-' + n, date: iso(n), slot: 'pranzo', foodId: 'chicken-breast', grams: 1000 }; });
+      localStorage.setItem('fitlab/nutrition', JSON.stringify({ state: { entries: entries, seededDates: [] }, version: 0 }));
+    }
+  `);
   // The stubbed backend: the session's user, and an empty account everywhere else.
   await context.route('http://127.0.0.1:54321/**', (route: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
     const url = route.request().url();
@@ -82,6 +89,7 @@ async function openApp(browser: Browser, base: string, reducedMotion: 'reduce' |
 
 const pageEl = (page: Page, i: number) => page.getByTestId(`energy-guide-page-${i}`);
 const text = async (page: Page, i: number) => (await pageEl(page, i).innerText()).replace(/\s+/g, ' ');
+
 /** Where page 3's marker sits, in px from the equilibrium tick (+ = right, the deficit side). */
 async function markerOffset(page: Page): Promise<number> {
   const centre = async (id: string) => {
@@ -92,10 +100,10 @@ async function markerOffset(page: Page): Promise<number> {
 }
 
 const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const HOME_LABEL = /^(Bilancio|Nessun pasto registrato)/;
 
-/** Opens the guide from the calorie card: its "Dettagli" link, or a tap on the gauge itself. */
 async function openGuide(page: Page, from: 'details' | 'gauge' = 'details') {
-  if (from === 'gauge') await page.getByRole('button', { name: /^(Bilancio|Nessun pasto registrato)/ }).click();
+  if (from === 'gauge') await page.getByRole('button', { name: HOME_LABEL }).click();
   else await page.getByRole('button', { name: 'Dettagli: come leggere il grafico' }).click();
   await pageEl(page, 0).waitFor();
 }
@@ -123,100 +131,116 @@ async function test(name: string, fn: () => Promise<void>) {
   }
 }
 
+/** Every page fits in the pager: nothing to scroll vertically, on any page. */
+async function assertPagesFit(page: Page) {
+  const pager = await page.getByTestId('energy-guide-pager').boundingBox();
+  const problems: string[] = [];
+  for (let i = 0; i < 4; i++) {
+    await swipeTo(page, i);
+    await pause(900);
+    const fit = await pageEl(page, i).evaluate((el: HTMLElement) => ({ content: el.scrollHeight, shown: el.parentElement!.clientHeight }));
+    if (fit.content > fit.shown + 1) problems.push(`page ${i + 1}: content ${fit.content}px in ${fit.shown}px`);
+    const box = await pageEl(page, i).boundingBox();
+    if (box.y + box.height > pager.y + pager.height + 1) problems.push(`page ${i + 1} ends below the pager`);
+  }
+  assert.deepEqual(problems, []);
+  await swipeTo(page, 0);
+}
+
 async function main() {
   const server = await serve(distDir);
   const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
   const shots = process.env.SCREENSHOT_DIR;
   try {
-    const page = await openApp(browser, server.url, 'no-preference');
+    const page = await openApp(browser, server.url, 'no-preference', undefined, true);
     await page.getByRole('button', { name: 'Dettagli: come leggere il grafico' }).waitFor({ timeout: 30000 });
+    await pause(1500);
     const homeBefore = await page.locator('body').innerText();
     if (shots) await page.screenshot({ path: join(shots, 'home.png') });
+
+    await test('Home: the calendar button sits on the right edge, in line with the bell and profile', async () => {
+      const cal = await page.getByRole('button', { name: 'Apri calendario' }).boundingBox();
+      const bell = await page.getByRole('button', { name: 'Notifiche' }).boundingBox();
+      const profile = await page.getByRole('button', { name: /profilo/i }).first().boundingBox();
+      const right = (b: { x: number; width: number }) => b.x + b.width;
+      assert.ok(Math.abs(right(cal) - right(profile)) < 2, `calendar right edge ${right(cal)} vs profile ${right(profile)}`);
+      assert.ok(right(bell) < right(profile));
+    });
+
+    await test('Home: the gauge shows the balance, the goal under it, then deficit / surplus in grey', async () => {
+      const gauge = await page.getByRole('button', { name: HOME_LABEL }).innerText();
+      assert.match(gauge.replace(/\s+/g, ' '), /-?\d[\d.]* \/-?\d[\d.]* kcal (deficit|surplus|equilibrio|nessun pasto)$/);
+      assert.match(gauge, /Equilibrio · 0 kcal/);
+      assert.match(gauge, /Deficit\s+-[\d.]+ kcal/);
+      assert.match(gauge, /Surplus\s+\+[\d.]+ kcal/);
+      assert.doesNotMatch(gauge, /obiettivo/i);
+    });
+
+    await test('Home: days with meals logged before today show their coloured ring in the week strip', async () => {
+      const today = new Date().getDay(); // 0 = Sunday … 1 = Monday
+      if (today === 1) return console.log('      (Monday: no earlier day in this week, skipped)');
+      const rings = async (offset: number) => {
+        const d = new Date();
+        d.setDate(d.getDate() - offset);
+        return page.locator(`[role="tab"][aria-label$=" ${d.getDate()}"] svg path`).count();
+      };
+      assert.equal(await rings(1), 2, 'yesterday: two arcs (burned + eaten)');
+      assert.equal(await rings(2) > 0 || today === 2, true, 'two days ago has its arcs too');
+    });
 
     await test('page 1 animates from zero to the example values when shown', async () => {
       await openGuide(page);
       await pause(120);
       const early = await text(page, 0);
-      const pager = await page.getByTestId('energy-guide-pager').boundingBox();
       await pause(1400);
       const settled = await text(page, 0);
       assert.match(settled, /2\.400 kcal/);
       assert.match(settled, /2\.681 kcal/);
       assert.match(settled, /-281 kcal/);
       assert.doesNotMatch(early, /2\.681 kcal/, 'the counters are still running shortly after opening');
-      if (shots) await page.screenshot({ path: join(shots, 'page1.png'), fullPage: true });
-      // The pager is as tall as page 1, not as the tallest page.
-      const page1 = await pageEl(page, 0).boundingBox();
-      const after = await page.getByTestId('energy-guide-pager').boundingBox();
-      assert.ok(Math.abs(after.height - page1.height) < 2, `pager ${after.height} vs page ${page1.height} (was ${pager.height})`);
+      if (shots) await page.screenshot({ path: join(shots, 'page1.png') });
     });
 
-    await test('1. deficit: page 3 reads Deficit with the marker right of centre', async () => {
+    await test('the carousel is one screen: no controls box, no vertical scroll on any page', async () => {
+      assert.equal(await page.getByText('Prova a cambiare').count(), 0);
+      assert.equal(await page.getByRole('button', { name: 'Ripristina l’esempio' }).count(), 0);
+      await assertPagesFit(page);
+    });
+
+    await test('3. page 3 reads Deficit with the marker right of centre', async () => {
       await swipeTo(page, 2);
       await pause(1300);
-      const t = await text(page, 2);
-      assert.match(t, /Deficit -281 kcal/);
+      assert.match(await text(page, 2), /Deficit -281 kcal/);
       assert.ok((await markerOffset(page)) > 40, 'marker right of centre');
-      if (shots) await page.screenshot({ path: join(shots, 'page3-deficit.png'), fullPage: true });
-    });
-
-    await test('2. equilibrium preset: page 3 switches to Equilibrio, 0 kcal', async () => {
-      await page.getByRole('button', { name: 'Esempio in equilibrio' }).click();
-      await pause(900);
-      assert.match(await text(page, 2), /Equilibrio 0 kcal/);
-      assert.ok(Math.abs(await markerOffset(page)) < 2, 'marker on the equilibrium tick');
-      if (shots) await page.screenshot({ path: join(shots, 'page3-even.png'), fullPage: true });
-    });
-
-    await test('3. surplus preset: page 3 switches to Surplus, +350 kcal', async () => {
-      await page.getByRole('button', { name: 'Esempio in surplus' }).click();
-      await pause(900);
-      assert.match(await text(page, 2), /Surplus \+350 kcal/);
-      assert.ok((await markerOffset(page)) < -40, 'marker left of centre');
-      if (shots) await page.screenshot({ path: join(shots, 'page3-surplus.png'), fullPage: true });
-    });
-
-    await test('4. a stepper change updates the chart immediately', async () => {
-      await page.getByRole('button', { name: 'Diminuisci calorie assunte' }).click();
-      await page.getByRole('button', { name: 'Diminuisci calorie assunte' }).click();
-      await page.getByRole('button', { name: 'Diminuisci calorie assunte' }).click();
-      await page.getByRole('button', { name: 'Diminuisci calorie assunte' }).click();
-      await pause(900);
-      // 3.031 → 3.000 → 2.900 → 2.800 → 2.700: +19 against 2.681 burned.
-      assert.match(await text(page, 2), /Equilibrio \+19 kcal/);
-      // +19 sits inside the ±50 tolerance: still equilibrium, on the surplus side.
-      await page.getByRole('button', { name: 'Aumenta attività extra' }).click();
-      await page.getByRole('button', { name: 'Aumenta attività extra' }).click();
-      await pause(900);
-      assert.match(await text(page, 2), /Deficit -81 kcal/, 'more movement, more burned');
+      if (shots) await page.screenshot({ path: join(shots, 'page3.png') });
     });
 
     await test('5. swiping forward and back keeps every page in sync', async () => {
       await swipeTo(page, 3);
       await pause(1300);
       const p4 = await text(page, 3);
-      assert.match(p4, /2\.781 kcal/);
-      assert.match(p4, /2\.700 kcal/);
-      assert.match(p4, /-81 kcal/);
-      assert.match(p4, /in deficit/);
-      if (shots) await page.screenshot({ path: join(shots, 'page4.png'), fullPage: true });
+      assert.match(p4, /-281 \/-300 kcal equilibrio|-281 \/-300 kcal deficit/);
+      assert.match(p4, /2\.681 kcal/);
+      assert.match(p4, /2\.400 kcal/);
+      assert.match(p4, /Equilibrio · 0 kcal/);
+      assert.match(p4, /Deficit -600 kcal/);
+      assert.match(p4, /Surplus \+600 kcal/);
+      if (shots) await page.screenshot({ path: join(shots, 'page4.png') });
       await swipeTo(page, 1);
       await pause(1300);
       const p2 = await text(page, 1);
-      assert.match(p2, /2\.781 kcal/, 'the total on page 2 follows the change');
+      assert.match(p2, /2\.681 kcal/);
       assert.match(p2, /1\.708 kcal/);
-      assert.match(p2, /1\.073 kcal/);
-      if (shots) await page.screenshot({ path: join(shots, 'page2.png'), fullPage: true });
+      assert.match(p2, /973 kcal/);
+      if (shots) await page.screenshot({ path: join(shots, 'page2.png') });
       await swipeTo(page, 0);
-      // Already played: back on page 1 the numbers are there at once, not replayed from zero.
       await pause(80);
       const p1 = await text(page, 0);
-      assert.match(p1, /2\.700 kcal/);
-      assert.match(p1, /2\.781 kcal/);
-      assert.match(p1, /-81 kcal/);
+      assert.match(p1, /2\.400 kcal/);
+      assert.match(p1, /-281 kcal/);
     });
 
-    await test('6. closing and reopening (now from a tap on the gauge) starts again from page 1 and the initial example', async () => {
+    await test('6. closing and reopening (from a tap on the gauge) starts again from page 1', async () => {
       await page.getByRole('button', { name: 'Chiudi' }).first().click();
       await page.getByTestId('energy-guide-page-0').waitFor({ state: 'detached' });
       await openGuide(page, 'gauge');
@@ -224,7 +248,6 @@ async function main() {
       const t = await text(page, 0);
       assert.match(t, /1 di 4/i);
       assert.match(t, /2\.400 kcal/);
-      assert.match(t, /-281 kcal/);
       assert.equal(await page.getByText('Indietro', { exact: true }).count(), 0, 'back on the first page');
       await page.getByRole('button', { name: 'Chiudi' }).first().click();
       await page.getByTestId('energy-guide-page-0').waitFor({ state: 'detached' });
@@ -241,6 +264,17 @@ async function main() {
 
     await page.context().close();
 
+    const small = await openApp(browser, server.url, 'no-preference', { width: 375, height: 667 });
+    await test('on a small phone (375×667) every page still fits without scrolling', async () => {
+      await small.getByRole('button', { name: 'Dettagli: come leggere il grafico' }).waitFor({ timeout: 30000 });
+      await openGuide(small);
+      await assertPagesFit(small);
+      await swipeTo(small, 3);
+      await pause(1300);
+      if (shots) await small.screenshot({ path: join(shots, 'small-page4.png') });
+    });
+    await small.context().close();
+
     const still = await openApp(browser, server.url, 'reduce');
     await test('7. with reduced motion every chart is complete as soon as it is shown', async () => {
       await still.getByRole('button', { name: 'Dettagli: come leggere il grafico' }).waitFor({ timeout: 30000 });
@@ -256,8 +290,7 @@ async function main() {
       assert.match(await text(still, 2), /Deficit -281 kcal/);
       await still.getByText('Avanti', { exact: true }).click();
       await pause(60);
-      // -281 against a -300 goal is within the tolerance of it: Home's own caption.
-      assert.match(await text(still, 3), /-281 kcal obiettivo raggiunto/);
+      assert.match(await text(still, 3), /-281 \/-300 kcal deficit/);
       if (shots) await pageEl(still, 3).screenshot({ path: join(shots, 'reduced-page4.png') });
     });
   } finally {
