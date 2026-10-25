@@ -25,6 +25,7 @@ import { InfoPopover } from '@/components/ui/info-popover';
 import { DietOverviewPopup } from '@/components/nutrition/diet-overview-popup';
 import { FoodSearchModal } from '@/components/nutrition/food-search-modal';
 import { MealPickerModal } from '@/components/nutrition/meal-picker-modal';
+import { useEnsurePlan } from '@/hooks/use-ensure-plan';
 import { useHealthEnergy } from '@/hooks/use-health-energy';
 import { sumActivityKcalForDate, useWeeklyEnergy } from '@/hooks/use-weekly-energy';
 import { useTheme } from '@/hooks/use-theme';
@@ -37,7 +38,7 @@ import { WEEKDAY_LABELS } from '@/lib/planning/exercise-library';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
 import { useActivityLogStore } from '@/store/activity-log-store';
 import { useNutritionStore, sumMacros, type MealSlot } from '@/store/nutrition-store';
-import { isValidDietPlan, usePlanStore } from '@/store/plan-store';
+import { usePlanStore } from '@/store/plan-store';
 import { isExerciseCompleted, useTrainingProgressStore } from '@/store/training-progress-store';
 import { useUserStore } from '@/store/user-store';
 
@@ -91,7 +92,11 @@ export default function HomeScreen() {
   const [registerMealOpen, setRegisterMealOpen] = useState(false);
   const [mealSlot, setMealSlot] = useState<MealSlot | null>(null);
   const [overview, setOverview] = useState<'training' | 'diet' | null>(null);
-  const validDietPlan = dietPlan && isValidDietPlan(dietPlan) ? dietPlan : null;
+  // Home shows both plan cards, so it builds a missing or outdated plan itself instead of waiting for the
+  // person to open Allenamento or Nutrizione. Meanwhile any diet plan the overview can render keeps its card.
+  useEnsurePlan('training');
+  useEnsurePlan('diet');
+  const shownDietPlan = dietPlan && dietPlan.months.length > 0 && dietPlan.months.every((m) => Array.isArray(m.weeklySplit)) ? dietPlan : null;
 
   // On iOS a Modal can't present (or navigation run) while another is still dismissing.
   const afterModal = (fn: () => void) => (Platform.OS === 'ios' ? setTimeout(fn, 350) : fn());
@@ -335,7 +340,7 @@ export default function HomeScreen() {
       </View>
 
       {/* The two plans, moved here from Allenamento and Nutrizione so Home is where a plan is explored from. */}
-      {trainingPlan || validDietPlan ? (
+      {trainingPlan || shownDietPlan ? (
         <View style={styles.journeys}>
           {trainingPlan ? (
             <PlanJourneyHero
@@ -345,10 +350,10 @@ export default function HomeScreen() {
               action={{ label: 'Esplora piano di allenamento', icon: 'calendar', onPress: () => router.push('/training-plan') }}
             />
           ) : null}
-          {validDietPlan ? (
+          {shownDietPlan ? (
             <PlanJourneyHero
               kind="diet"
-              totalMonths={validDietPlan.durationMonths}
+              totalMonths={shownDietPlan.durationMonths}
               goal={currentUser.goal}
               onPress={() => setOverview('diet')}
               action={{ label: 'Esplora piano alimentare', icon: 'calendar', onPress: () => router.push('/diet-plan') }}
@@ -488,13 +493,13 @@ export default function HomeScreen() {
           currentMonth={currentMonthIndex(trainingPlan)}
         />
       ) : null}
-      {validDietPlan ? (
+      {shownDietPlan ? (
         <DietOverviewPopup
           visible={overview === 'diet'}
           onClose={() => setOverview(null)}
-          plan={validDietPlan}
+          plan={shownDietPlan}
           goal={currentUser.goal}
-          currentMonth={currentMonthIndex(validDietPlan)}
+          currentMonth={currentMonthIndex(shownDietPlan)}
         />
       ) : null}
 
