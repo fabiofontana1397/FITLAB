@@ -55,11 +55,11 @@ const FADE_FLOOR = 0.4;
 const FADE_MIN_SPAN_DEG = 90;
 /** How far toward the card surface the faded colour sits. */
 const FADE_TOWARD_SURFACE = 0.6;
-/** The goal zone on the semi-ring track: a narrow full-green core around the goal, a short fade out of it, grey everywhere else. */
+/** The goal zone on the semi-ring track: a narrow light-green core around the goal, a soft fade out of it, grey everywhere else. */
 const GOAL_ZONE_STEP_DEG = 1.5;
-const GOAL_ZONE_MIN_CORE_DEG = 1.5;
-const GOAL_ZONE_MAX_CORE_DEG = 4;
-const GOAL_ZONE_FADE_DEG = 9;
+const GOAL_ZONE_MIN_CORE_DEG = 3;
+const GOAL_ZONE_MAX_CORE_DEG = 6;
+const GOAL_ZONE_FADE_DEG = 24;
 const CY = TOP_PAD + SEMI_R + SEMI_STROKE / 2;
 const BASE_H = CY + MAIN_R * Math.cos(((180 - MAIN_HALF_SPAN) * Math.PI) / 180) + MAIN_STROKE / 2 + 4;
 
@@ -249,9 +249,10 @@ export function OggiGauge({ burnedKcal, eatenKcal, burnedColor, eatenColor, read
   const goalZone = useMemo(() => {
     const surface = rgbOf(theme.backgroundElevated, rgbOf(theme.background));
     const track = rgbOf(theme.backgroundElement, surface);
-    const green = rgbOf(theme.balanceGoalScale[2]);
+    // A light green: the scale's second stop on light pages, its brighter third on dark ones (that scale runs dark to bright).
+    const green = rgbOf(theme.balanceGoalScale[theme.tabBarBlur === 'light' ? 1 : 2]);
     const count = Math.ceil((SEMI_HALF_SPAN * 2) / GOAL_ZONE_STEP_DEG);
-    const core = Math.min(GOAL_ZONE_MAX_CORE_DEG, Math.max(GOAL_ZONE_MIN_CORE_DEG, ((toleranceKcal / reading.halfRangeKcal) * SEMI_HALF_SPAN) * 0.3));
+    const core = Math.min(GOAL_ZONE_MAX_CORE_DEG, Math.max(GOAL_ZONE_MIN_CORE_DEG, ((toleranceKcal / reading.halfRangeKcal) * SEMI_HALF_SPAN) * 0.5));
     return Array.from({ length: count }, (_, i) => {
       const from = -SEMI_HALF_SPAN + i * GOAL_ZONE_STEP_DEG;
       const to = Math.min(SEMI_HALF_SPAN, from + GOAL_ZONE_STEP_DEG + 0.3);
@@ -260,7 +261,7 @@ export function OggiGauge({ burnedKcal, eatenKcal, burnedColor, eatenColor, read
       const c = track && green ? mixRgb(track, green, keep) : null;
       return { d: arc(SEMI_R, from, to), color: c ? `rgb(${Math.round(c[0])},${Math.round(c[1])},${Math.round(c[2])})` : theme.backgroundElement };
     });
-  }, [theme.background, theme.backgroundElevated, theme.backgroundElement, theme.balanceGoalScale, goalDeg, toleranceKcal, reading.halfRangeKcal]);
+  }, [theme.background, theme.backgroundElevated, theme.backgroundElement, theme.balanceGoalScale, theme.tabBarBlur, goalDeg, toleranceKcal, reading.halfRangeKcal]);
 
   const onLayout = (e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width);
   const label = (fontSize: number) => ({ fontSize: Math.max(11, fontSize * k), lineHeight: Math.max(14, (fontSize + 3) * k) });
