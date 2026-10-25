@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useTheme } from '@/hooks/use-theme';
 
 const TRACK_W = 62;
 const TRACK_H = 36;
@@ -10,8 +11,6 @@ const THUMB_W = 38;
 const THUMB_H = 30;
 const PAD = (TRACK_H - THUMB_H) / 2;
 const TRAVEL = TRACK_W - THUMB_W - PAD * 2;
-/** Colour of the "on" track, taken from the reference toggle. */
-const ON_COLOR = '#E5485F';
 
 export type IosSwitchProps = {
   value: boolean;
@@ -26,6 +25,8 @@ export type IosSwitchProps = {
  */
 export function IosSwitch({ value, onValueChange, disabled }: IosSwitchProps) {
   const dark = useColorScheme() === 'dark';
+  // The "on" track is the app's orange, like every other active control.
+  const onColor = useTheme().accent;
   const progress = useSharedValue(value ? 1 : 0);
   useEffect(() => {
     progress.value = withTiming(value ? 1 : 0, { duration: 180 });
@@ -48,7 +49,7 @@ export function IosSwitch({ value, onValueChange, disabled }: IosSwitchProps) {
       aria-checked={value}
       style={[
         styles.track,
-        value ? { backgroundColor: ON_COLOR, borderColor: ON_COLOR } : { backgroundColor: offTrack, borderColor: offLine },
+        value ? { backgroundColor: onColor, borderColor: onColor } : { backgroundColor: offTrack, borderColor: offLine },
         disabled && styles.disabled,
       ]}>
       <Animated.View style={[styles.mark, styles.onMark, onMark]}>
