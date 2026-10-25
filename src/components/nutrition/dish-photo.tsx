@@ -1,9 +1,7 @@
-import { Image } from 'expo-image';
-import { useState } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 
-import { cornerSafeInset } from '@/components/nutrition/photo-fit';
 import { Icon } from '@/components/ui/icon';
+import { PhotoTile } from '@/components/ui/photo-tile';
 import { useTheme } from '@/hooks/use-theme';
 import type { MealImage } from '@/lib/planning/fitlab/dish-images';
 
@@ -19,52 +17,44 @@ export function mealImageUri(image: MealImage): string | undefined {
 }
 
 /**
- * A dish's photo as a fixed square tile, so the card never jumps when it
- * loads. The photo is always shown whole (see photo-fit.ts). Lazy on the web (the plan lists a whole week of meals), cached in
- * memory and on disk so the same plate shown on several days is fetched once.
- * If the file is missing or fails to load, the tile keeps its place and shows
- * a plate glyph instead.
+ * A dish's photo in the Piano alimentare: a fixed square PhotoTile (always
+ * the whole picture), lazy on the web since the plan lists a whole week of
+ * meals. No photo URL, or a file that fails, leaves a plate glyph instead.
  */
 export function DishPhoto({ image, size = 64, radius = 14 }: { image: MealImage; size?: number; radius?: number }) {
   const theme = useTheme();
   const uri = mealImageUri(image);
-  const [failed, setFailed] = useState(false);
-  const box = { width: size, height: size, borderRadius: radius, backgroundColor: theme.backgroundElement };
+  const fallback = <Icon name="utensils" size={Math.round(size * 0.38)} color={theme.textTertiary} />;
 
-  if (!uri || failed) {
+  if (!uri) {
     return (
-      <View style={[styles.tile, box]} accessibilityRole="image" accessibilityLabel={image.alt}>
-        <Icon name="utensils" size={Math.round(size * 0.38)} color={theme.textTertiary} />
+      <View
+        style={[styles.empty, { width: size, height: size, borderRadius: radius, backgroundColor: theme.backgroundElement }]}
+        accessibilityRole="image"
+        accessibilityLabel={image.alt}>
+        {fallback}
       </View>
     );
   }
 
   return (
-    <View style={[styles.tile, box, { padding: cornerSafeInset(radius) }]}>
-      <Image
-        source={{ uri, width: 512, height: 512 }}
-        style={styles.photo}
-        contentFit="contain"
-        contentPosition="center"
-        loading="lazy"
-        cachePolicy="memory-disk"
-        recyclingKey={image.id}
-        transition={150}
-        accessible
-        accessibilityLabel={image.alt}
-        onError={() => setFailed(true)}
-      />
-    </View>
+    <PhotoTile
+      source={{ uri, width: 512, height: 512 }}
+      width={size}
+      radius={radius}
+      background={theme.backgroundElement}
+      alt={image.alt}
+      fallback={fallback}
+      lazy
+      recyclingKey={image.id}
+      transition={150}
+    />
   );
 }
 
 const styles = StyleSheet.create({
-  photo: {
-    width: '100%',
-    height: '100%',
-  },
-  tile: {
-    overflow: 'hidden',
+  empty: {
+    borderCurve: 'continuous',
     alignItems: 'center',
     justifyContent: 'center',
   },
