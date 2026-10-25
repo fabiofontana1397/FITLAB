@@ -16,12 +16,23 @@ import { FadeInView } from '@/components/ui/fade-in-view';
 import { Icon } from '@/components/ui/icon';
 import { PrimaryButton } from '@/components/ui/primary-button';
 import { SpringSnappy } from '@/constants/motion';
-import { Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import type { OnboardingMode } from '@/lib/questionnaire/schema';
+import { useOnboardingStore } from '@/store/onboarding-store';
+import { useUserStore } from '@/store/user-store';
 
 const BURST_ANGLES = Array.from({ length: 8 }, (_, i) => (i / 8) * Math.PI * 2);
 
 export default function OnboardingCreatedScreen() {
+  const mode = (useOnboardingStore((s) => s.answers.mode) as OnboardingMode | undefined) ?? 'both';
+  const calories = useUserStore((s) => s.dailyCalorieTarget);
+  const macros = useUserStore((s) => s.macroTargetsG);
+  // The numbers the profile was actually saved with (confirmProfile ran the
+  // same engine the plans use). Hidden for a training-only profile and until
+  // there is a real value — never a placeholder.
+  const showTargets = mode !== 'training' && calories > 0;
+
   return (
     <ScreenScroll contentContainerStyle={{ flex: 1, justifyContent: 'space-between' }}>
       <View />
@@ -35,11 +46,49 @@ export default function OnboardingCreatedScreen() {
             Abbiamo calcolato il tuo punto di partenza. Ora ti mostriamo come funzionerà il tuo piano.
           </ThemedText>
         </FadeInView>
+        {showTargets ? (
+          <FadeInView delay={620} style={{ width: '100%', maxWidth: 360 }}>
+            <StartingPoint calories={calories} protein={macros.protein} carbs={macros.carbs} fats={macros.fats} />
+          </FadeInView>
+        ) : null}
       </View>
       <FadeInView delay={750}>
         <PrimaryButton label="Continua" onPress={() => router.push('/onboarding-roadmap')} />
       </FadeInView>
     </ScreenScroll>
+  );
+}
+
+function StartingPoint({ calories, protein, carbs, fats }: { calories: number; protein: number; carbs: number; fats: number }) {
+  const theme = useTheme();
+  return (
+    <View style={[styles.card, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+      <ThemedText type="label" themeColor="textSecondary">
+        Il tuo punto di partenza
+      </ThemedText>
+      <View style={styles.kcalRow}>
+        <ThemedText style={styles.kcal}>{Math.round(calories).toLocaleString('it-IT')}</ThemedText>
+        <ThemedText type="subtitle" themeColor="textSecondary">
+          kcal al giorno
+        </ThemedText>
+      </View>
+      <View style={styles.macros}>
+        <Macro label="Proteine" grams={protein} />
+        <Macro label="Carboidrati" grams={carbs} />
+        <Macro label="Grassi" grams={fats} />
+      </View>
+    </View>
+  );
+}
+
+function Macro({ label, grams }: { label: string; grams: number }) {
+  return (
+    <View style={{ flex: 1, alignItems: 'center' }}>
+      <ThemedText type="smallBold">{Math.round(grams)} g</ThemedText>
+      <ThemedText type="caption" themeColor="textSecondary">
+        {label}
+      </ThemedText>
+    </View>
   );
 }
 
@@ -103,6 +152,10 @@ function BurstDot({ angle, delay, color }: { angle: number; delay: number; color
 }
 
 const styles = StyleSheet.create({
+  card: { borderWidth: 1, borderRadius: Radius.large, padding: Spacing.four, gap: Spacing.two, alignItems: 'center' },
+  kcalRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
+  kcal: { fontSize: 40, lineHeight: 46, fontWeight: '700', letterSpacing: -1, fontVariant: ['tabular-nums'] },
+  macros: { flexDirection: 'row', alignSelf: 'stretch', marginTop: Spacing.one },
   badgeWrap: {
     width: 190,
     height: 190,

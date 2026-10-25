@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { OnboardingHeader } from '@/components/onboarding/onboarding-header';
 import { PlanGenerationScreen } from '@/components/onboarding/plan-generation-screen';
 import { ThemedText } from '@/components/themed-text';
 import { FadeInView } from '@/components/ui/fade-in-view';
@@ -138,7 +139,14 @@ export default function OnboardingRoadmapScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background, paddingTop: insets.top }]}>
+    <View style={[styles.container, { backgroundColor: theme.background, paddingTop: insets.top + Spacing.two }]}>
+      <View style={styles.headerWrap}>
+        <OnboardingHeader
+          progress={(pageIndex + 1) / pages.length}
+          onBack={pageIndex > 0 ? () => goToPage(pageIndex - 1) : undefined}
+          kicker={`${pageIndex + 1} di ${pages.length}`}
+        />
+      </View>
       <ScrollView
         ref={scrollRef}
         horizontal
@@ -181,23 +189,7 @@ export default function OnboardingRoadmapScreen() {
       </ScrollView>
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + Spacing.four }]}>
-        <View style={styles.dots}>
-          {pages.map((page, i) => (
-            <View
-              key={page.id}
-              style={[styles.dot, { backgroundColor: i === pageIndex ? theme.accent : theme.backgroundElement }]}
-            />
-          ))}
-        </View>
         <View style={styles.navRow}>
-          {pageIndex > 0 ? (
-            <PrimaryButton
-              variant="ghost"
-              label="Indietro"
-              onPress={() => goToPage(pageIndex - 1)}
-              style={{ flex: 1 }}
-            />
-          ) : null}
           <PrimaryButton
             label={isLastPage ? 'Vai alla dashboard' : 'Continua'}
             onPress={isLastPage ? finish : () => goToPage(pageIndex + 1)}
@@ -241,7 +233,7 @@ const styles = StyleSheet.create({
     maxWidth: MaxContentWidth,
     alignSelf: 'center',
     paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.six,
+    paddingTop: Spacing.four,
     // Room to scroll past the last timeline row instead of it landing
     // flush against (or under) the fixed dots/nav footer below the pager.
     paddingBottom: Spacing.six,
@@ -281,17 +273,14 @@ const styles = StyleSheet.create({
   },
   footer: {
     paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.three,
     gap: Spacing.three,
   },
-  dots: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+  headerWrap: {
+    width: '100%',
+    maxWidth: MaxContentWidth,
+    alignSelf: 'center',
+    paddingHorizontal: Spacing.four,
   },
   navRow: {
     flexDirection: 'row',
