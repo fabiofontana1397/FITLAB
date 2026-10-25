@@ -19,7 +19,10 @@ import { BrandWordmark } from '@/components/ui/brand-wordmark';
 import { ProfileAvatarButton } from '@/components/ui/profile-avatar-button';
 import { LoggedActivitiesCard } from '@/components/training/logged-activities-card';
 import { LogActivityModal } from '@/components/training/log-activity-modal';
+import { PlanJourneyHero } from '@/components/training/plan-journey-hero';
+import { PlanOverviewPopup } from '@/components/training/plan-overview-popup';
 import { InfoPopover } from '@/components/ui/info-popover';
+import { DietOverviewPopup } from '@/components/nutrition/diet-overview-popup';
 import { FoodSearchModal } from '@/components/nutrition/food-search-modal';
 import { MealPickerModal } from '@/components/nutrition/meal-picker-modal';
 import { useHealthEnergy } from '@/hooks/use-health-energy';
@@ -34,7 +37,7 @@ import { WEEKDAY_LABELS } from '@/lib/planning/exercise-library';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
 import { useActivityLogStore } from '@/store/activity-log-store';
 import { useNutritionStore, sumMacros, type MealSlot } from '@/store/nutrition-store';
-import { usePlanStore } from '@/store/plan-store';
+import { isValidDietPlan, usePlanStore } from '@/store/plan-store';
 import { isExerciseCompleted, useTrainingProgressStore } from '@/store/training-progress-store';
 import { useUserStore } from '@/store/user-store';
 
@@ -87,6 +90,8 @@ export default function HomeScreen() {
   const [logActivityOpen, setLogActivityOpen] = useState(false);
   const [registerMealOpen, setRegisterMealOpen] = useState(false);
   const [mealSlot, setMealSlot] = useState<MealSlot | null>(null);
+  const [overview, setOverview] = useState<'training' | 'diet' | null>(null);
+  const validDietPlan = dietPlan && isValidDietPlan(dietPlan) ? dietPlan : null;
 
   // On iOS a Modal can't present (or navigation run) while another is still dismissing.
   const afterModal = (fn: () => void) => (Platform.OS === 'ios' ? setTimeout(fn, 350) : fn());
@@ -324,6 +329,29 @@ export default function HomeScreen() {
         />
       </View>
 
+      {/* The two plans, moved here from Allenamento and Nutrizione so Home is where a plan is explored from. */}
+      {trainingPlan || validDietPlan ? (
+        <View style={styles.journeys}>
+          {trainingPlan ? (
+            <PlanJourneyHero
+              totalMonths={trainingPlan.durationMonths}
+              goal={currentUser.goal}
+              onPress={() => setOverview('training')}
+              action={{ label: 'Esplora piano di allenamento', icon: 'calendar', onPress: () => router.push('/training-plan') }}
+            />
+          ) : null}
+          {validDietPlan ? (
+            <PlanJourneyHero
+              kind="diet"
+              totalMonths={validDietPlan.durationMonths}
+              goal={currentUser.goal}
+              onPress={() => setOverview('diet')}
+              action={{ label: 'Esplora piano alimentare', icon: 'calendar', onPress: () => router.push('/diet-plan') }}
+            />
+          ) : null}
+        </View>
+      ) : null}
+
       <View style={{ marginTop: 24 }}>
         <SectionHeader title="Questa settimana" action="Riepilogo" onActionPress={() => router.push('/weekly-summary' as Href)} />
       </View>
@@ -445,6 +473,25 @@ export default function HomeScreen() {
         onClose={() => setMealSlot(null)}
         onSaved={() => afterModal(() => router.navigate('/nutrition'))}
       />
+
+      {trainingPlan ? (
+        <PlanOverviewPopup
+          visible={overview === 'training'}
+          onClose={() => setOverview(null)}
+          plan={trainingPlan}
+          goal={currentUser.goal}
+          currentMonth={currentMonthIndex(trainingPlan)}
+        />
+      ) : null}
+      {validDietPlan ? (
+        <DietOverviewPopup
+          visible={overview === 'diet'}
+          onClose={() => setOverview(null)}
+          plan={validDietPlan}
+          goal={currentUser.goal}
+          currentMonth={currentMonthIndex(validDietPlan)}
+        />
+      ) : null}
 
       <EnergyDetailsPopup
         visible={detailsFocus != null}
@@ -726,6 +773,10 @@ const styles = StyleSheet.create({
     fontSize: 12.5,
     lineHeight: 17,
     fontWeight: '700',
+  },
+  journeys: {
+    marginTop: 18,
+    gap: 12,
   },
   weekCard: {
     paddingHorizontal: 14,

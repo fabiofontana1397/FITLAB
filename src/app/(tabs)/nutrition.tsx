@@ -1,16 +1,13 @@
-import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Platform, Pressable, StyleSheet, Switch, View } from 'react-native';
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 
 import { FoodThumb } from '@/components/nutrition/food-thumb';
-import { DietOverviewPopup } from '@/components/nutrition/diet-overview-popup';
 import { FoodSearchModal } from '@/components/nutrition/food-search-modal';
 import { MealPickerModal, mealSlotColor } from '@/components/nutrition/meal-picker-modal';
 import { PressableScale } from '@/components/motion/pressable-scale';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
-import { PlanJourneyHero } from '@/components/training/plan-journey-hero';
 import { DayCalendarModal } from '@/components/ui/day-calendar-modal';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon } from '@/components/ui/icon';
@@ -32,7 +29,7 @@ import {
   type MealFoodEntry,
   type MealSlot,
 } from '@/store/nutrition-store';
-import { isValidDietPlan, usePlanStore } from '@/store/plan-store';
+import { usePlanStore } from '@/store/plan-store';
 import { useUserStore } from '@/store/user-store';
 import { hapticSelection, hapticToggle } from '@/lib/haptics';
 
@@ -89,7 +86,6 @@ export default function NutritionScreen() {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [expandedSlot, setExpandedSlot] = useState<MealSlot | null>('colazione');
-  const [overviewOpen, setOverviewOpen] = useState(false);
 
   useEnsurePlan('diet');
 
@@ -157,18 +153,6 @@ export default function NutritionScreen() {
         <ThemedText style={styles.pageTitle}>Nutrizione</ThemedText>
         <ProfileAvatarButton size={38} />
       </View>
-
-      {dietPlan && isValidDietPlan(dietPlan) ? (
-        <View style={styles.heroWrap}>
-          <PlanJourneyHero
-            kind="diet"
-            totalMonths={dietPlan.durationMonths}
-            goal={currentUser.goal}
-            onPress={() => setOverviewOpen(true)}
-            action={{ label: 'Esplora piano', icon: 'calendar', onPress: () => router.push('/diet-plan') }}
-          />
-        </View>
-      ) : null}
 
       <FlatCard radius={CARD_RADIUS} style={styles.calorieCard}>
         <View style={styles.cardTitleRow}>
@@ -327,16 +311,6 @@ export default function NutritionScreen() {
         })}
       </View>
 
-      {dietPlan && isValidDietPlan(dietPlan) ? (
-        <DietOverviewPopup
-          visible={overviewOpen}
-          onClose={() => setOverviewOpen(false)}
-          plan={dietPlan}
-          goal={currentUser.goal}
-          currentMonth={monthIndex}
-        />
-      ) : null}
-
       <DayCalendarModal
         visible={calendarOpen}
         selectedDate={selectedDate}
@@ -383,9 +357,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 17,
     fontWeight: '600',
-  },
-  heroWrap: {
-    marginBottom: 16,
   },
   registerButton: {
     marginBottom: 12,
