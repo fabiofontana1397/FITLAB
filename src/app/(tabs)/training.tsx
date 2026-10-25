@@ -8,6 +8,7 @@ import { ThemedText } from '@/components/themed-text';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon } from '@/components/ui/icon';
 import { TabHeader } from '@/components/tab-header';
+import { DayCalendarModal } from '@/components/ui/day-calendar-modal';
 import { LogActivityModal } from '@/components/training/log-activity-modal';
 import { LoggedActivitiesCard } from '@/components/training/logged-activities-card';
 import { TrainingWeekCard } from '@/components/training/training-week-card';
@@ -17,7 +18,7 @@ import { WorkoutSessionModal } from '@/components/training/workout-session-modal
 import { useEnsurePlan } from '@/hooks/use-ensure-plan';
 import { useUserContext } from '@/hooks/use-user-context';
 import { useTheme } from '@/hooks/use-theme';
-import { currentWeekDates, dayOfMonth, daysAgoISO, isoMondayIndex } from '@/lib/mock/dates';
+import { addDaysISO, currentWeekDates, dayOfMonth, daysAgoISO, isoMondayIndex } from '@/lib/mock/dates';
 import { sessionKcal as plannedSessionKcal, sessionMinutes as plannedSessionMinutes } from '@/domain/energy';
 import { OnBrand } from '@/constants/theme';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
@@ -49,12 +50,14 @@ export default function TrainingScreen() {
   const toggleCompleted = useTrainingProgressStore((s) => s.toggleCompleted);
   const addActivityEntry = useActivityLogStore((s) => s.addEntry);
   const [isLogActivityVisible, setLogActivityVisible] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(false);
   const [sessionOpen, setSessionOpen] = useState(false);
 
   const today = daysAgoISO(0);
   const [selectedDate, setSelectedDate] = useState(today);
+  const [weekOffset, setWeekOffset] = useState(0);
 
-  const viewedWeekDates = useMemo(() => currentWeekDates(new Date(today)), [today]);
+  const viewedWeekDates = useMemo(() => currentWeekDates(new Date(addDaysISO(today, weekOffset * 7))), [today, weekOffset]);
 
   useEnsurePlan('training');
 
@@ -86,6 +89,17 @@ export default function TrainingScreen() {
       const done = isExerciseCompleted(completedExercises, exercise.id, date);
       if (allDone || !done) toggleCompleted(exercise.id, date);
     });
+  };
+
+  // Whole Monday-to-Monday weeks between the picked date and today — a
+  // plain (date-today)/7 day-diff rounds wrong whenever the two dates
+  // fall on different weekdays, landing the strip on a week that doesn't
+  // even contain the picked date.
+  const selectDateFromCalendar = (date: string) => {
+    setSelectedDate(date);
+    const dateMonday = addDaysISO(date, -isoMondayIndex(date));
+    const todayMonday = addDaysISO(today, -isoMondayIndex(today));
+    setWeekOffset(Math.round((new Date(dateMonday).getTime() - new Date(todayMonday).getTime()) / (7 * 86400000)));
   };
 
   const weightKg = ctx.weightKg;
@@ -210,6 +224,14 @@ export default function TrainingScreen() {
           </View>
         </>
       ) : null}
+
+      <DayCalendarModal
+        visible={calendarOpen}
+        selectedDate={selectedDate}
+        isDayMarked={isDayComplete}
+        onSelectDate={selectDateFromCalendar}
+        onClose={() => setCalendarOpen(false)}
+      />
 
       {selectedDay?.type === 'workout' ? (
         <WorkoutSessionModal
