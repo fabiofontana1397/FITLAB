@@ -89,6 +89,8 @@ export default function HomeScreen() {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [detailsFocus, setDetailsFocus] = useState<'day' | 'week' | null>(null);
   const [viewDate, setViewDate] = useState(today);
+  // The calorie card (gauge and its "Dettagli") opens the chart guide: a sheet like Profilo and Notifiche.
+  const openGuide = () => router.push('/energy-guide' as Href);
 
   // The active month's weekly split: the same weekday-indexed lookup the
   // Training tab uses, so Home and Training agree on what's planned.
@@ -239,13 +241,13 @@ export default function HomeScreen() {
           <ThemedText style={styles.cardTitle}>
             {viewDate === today ? 'Calorie di oggi' : `Calorie del ${viewDateObj.getDate()} ${viewDateObj.toLocaleDateString('it-IT', { month: 'long' })}`}
           </ThemedText>
-          <Pressable onPress={() => setDetailsFocus('day')} hitSlop={8} style={styles.linkRow}>
+          <Pressable onPress={openGuide} hitSlop={8} style={styles.linkRow} accessibilityRole="button" accessibilityLabel="Dettagli: come leggere il grafico">
             <ThemedText style={[styles.linkText, { color: theme.accent }]}>Dettagli</ThemedText>
             <Icon name="chevronRight" size={13} color={theme.accent} />
           </Pressable>
         </View>
 
-        <Pressable onPress={() => setDetailsFocus('day')} style={styles.gaugeWrap} accessibilityRole="button" accessibilityLabel={balanceA11y}>
+        <Pressable onPress={openGuide} style={styles.gaugeWrap} accessibilityRole="button" accessibilityLabel={balanceA11y} accessibilityHint="Apre la spiegazione del grafico">
           <OggiGauge
             burnedKcal={burnedKcal}
             eatenKcal={eatenKcal}
@@ -288,16 +290,6 @@ export default function HomeScreen() {
             <ThemedText style={styles.sideValue} numberOfLines={1} adjustsFontSizeToFit>{formatKcal(eatenKcal)} kcal</ThemedText>
           </Pressable>
         </View>
-
-        <Pressable
-          onPress={() => router.push('/energy-guide' as Href)}
-          hitSlop={8}
-          style={styles.guideLink}
-          accessibilityRole="button"
-          accessibilityLabel="Come leggere il grafico, con un esempio">
-          <Icon name="info" size={16} color={theme.accent} />
-          <ThemedText style={[styles.linkText, { color: theme.accent }]}>Come leggere il grafico</ThemedText>
-        </Pressable>
       </FlatCard>
 
       <View style={styles.actionsRow}>
@@ -660,13 +652,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 2,
-  },
-  guideLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'center',
-    gap: 5,
-    marginTop: 14,
   },
   linkText: {
     fontSize: 13,

@@ -93,8 +93,10 @@ async function markerOffset(page: Page): Promise<number> {
 
 const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-async function openGuide(page: Page) {
-  await page.getByRole('button', { name: 'Come leggere il grafico, con un esempio' }).click();
+/** Opens the guide from the calorie card: its "Dettagli" link, or a tap on the gauge itself. */
+async function openGuide(page: Page, from: 'details' | 'gauge' = 'details') {
+  if (from === 'gauge') await page.getByRole('button', { name: /^(Bilancio|Nessun pasto registrato)/ }).click();
+  else await page.getByRole('button', { name: 'Dettagli: come leggere il grafico' }).click();
   await pageEl(page, 0).waitFor();
 }
 
@@ -127,7 +129,7 @@ async function main() {
   const shots = process.env.SCREENSHOT_DIR;
   try {
     const page = await openApp(browser, server.url, 'no-preference');
-    await page.getByRole('button', { name: 'Come leggere il grafico, con un esempio' }).waitFor({ timeout: 30000 });
+    await page.getByRole('button', { name: 'Dettagli: come leggere il grafico' }).waitFor({ timeout: 30000 });
     const homeBefore = await page.locator('body').innerText();
     if (shots) await page.screenshot({ path: join(shots, 'home.png') });
 
@@ -214,10 +216,10 @@ async function main() {
       assert.match(p1, /-81 kcal/);
     });
 
-    await test('6. closing and reopening starts again from page 1 and the initial example', async () => {
+    await test('6. closing and reopening (now from a tap on the gauge) starts again from page 1 and the initial example', async () => {
       await page.getByRole('button', { name: 'Chiudi' }).first().click();
       await page.getByTestId('energy-guide-page-0').waitFor({ state: 'detached' });
-      await openGuide(page);
+      await openGuide(page, 'gauge');
       await pause(1400);
       const t = await text(page, 0);
       assert.match(t, /1 di 4/i);
@@ -241,7 +243,7 @@ async function main() {
 
     const still = await openApp(browser, server.url, 'reduce');
     await test('7. with reduced motion every chart is complete as soon as it is shown', async () => {
-      await still.getByRole('button', { name: 'Come leggere il grafico, con un esempio' }).waitFor({ timeout: 30000 });
+      await still.getByRole('button', { name: 'Dettagli: come leggere il grafico' }).waitFor({ timeout: 30000 });
       await openGuide(still);
       await pause(60);
       const p1 = await text(still, 0);
