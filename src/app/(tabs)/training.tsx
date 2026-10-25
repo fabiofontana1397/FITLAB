@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
+import { Platform, ScrollView, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 import Animated, { interpolate, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -224,7 +224,7 @@ export default function TrainingScreen() {
         />
       ) : null}
 
-      {/* Fixed: the header and the week never scroll. */}
+      {/* Fixed: the header, the week and "Registra allenamento" never scroll. */}
       <View style={[styles.fixed, { paddingTop: insets.top + Platform.select({ web: Spacing.five, default: Spacing.two }) }]}>
         <View style={styles.inner}>
           <TabHeader title="Allenamento" onCalendarPress={() => setCalendarOpen(true)} />
@@ -237,6 +237,19 @@ export default function TrainingScreen() {
             onToggleDayComplete={toggleDayComplete}
             dayType={(date) => (trainingPlan ? dayPlanOf(date)?.type : undefined)}
           />
+
+          <PressableScale
+            onPress={() => setLogActivityVisible(true)}
+            accessibilityRole="button"
+            haptic="press"
+            scaleTo={0.97}
+            style={[styles.registerButton, { backgroundColor: theme.accent }]}>
+            <View style={styles.registerPlus}>
+              <Icon name="plus" size={18} color={theme.accent} />
+            </View>
+            <ThemedText style={styles.registerLabel}>Registra allenamento</ThemedText>
+            <Icon name="chevronRight" size={16} color={OnBrand.text} />
+          </PressableScale>
         </View>
       </View>
 
@@ -314,19 +327,6 @@ export default function TrainingScreen() {
               );
             })}
 
-            <PressableScale
-              onPress={() => setLogActivityVisible(true)}
-              accessibilityRole="button"
-              haptic="press"
-              scaleTo={0.97}
-              style={[styles.registerButton, { backgroundColor: theme.accent }]}>
-              <View style={styles.registerPlus}>
-                <Icon name="plus" size={18} color={theme.accent} />
-              </View>
-              <ThemedText style={styles.registerLabel}>Registra allenamento</ThemedText>
-              <Icon name="chevronRight" size={16} color={OnBrand.text} />
-            </PressableScale>
-
             <LoggedActivitiesCard date={selectedDate} />
 
             <View style={{ height: BottomTabInset + Spacing.six }} />
@@ -401,8 +401,8 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   dayHeadingRow: {
-    marginTop: 10,
-    marginBottom: 12,
+    marginTop: 6,
+    marginBottom: 10,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -427,14 +427,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  // iOS "headline": 17 pt semibold, one step under the page title and above the 15 pt card titles.
   sectionTitle: {
-    fontSize: 20,
-    lineHeight: 25,
+    fontSize: 17,
+    lineHeight: 22,
     fontWeight: '700',
-    letterSpacing: -0.3,
+    letterSpacing: -0.2,
   },
   registerButton: {
-    marginTop: 18,
+    marginTop: 12,
     height: 54,
     borderRadius: 16,
     paddingHorizontal: 12,
@@ -463,8 +464,8 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
   statusText: {
-    fontSize: 13,
-    lineHeight: 17,
+    fontSize: 12,
+    lineHeight: 16,
     fontWeight: '700',
   },
   trendButton: {
