@@ -128,7 +128,7 @@ async function main() {
       const lastDate = sat; // Monday is selected here, so today's rest day is no longer listed
       const box = await page.getByTestId(`training-day-${lastDate}`).boundingBox();
       assert.ok(box.y < region.y + region.height, 'the last section is on screen');
-      assert.ok(await page.getByText('Registra allenamento').isVisible(), 'the register button is at the end of the list');
+      assert.ok(await page.getByText('Registra allenamento').isVisible(), 'the register button stays in view: it is part of the fixed header');
       if (shots) await page.screenshot({ path: join(shots, 'training-bottom.png') });
     });
 

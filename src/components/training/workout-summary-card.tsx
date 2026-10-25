@@ -1,5 +1,5 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { PressableScale } from '@/components/motion/pressable-scale';
 import { ThemedText } from '@/components/themed-text';
@@ -22,8 +22,7 @@ export function levelLabel(phase: PlanPhaseKind | undefined): string {
   return d === 'Alta' ? 'Livello avanzato' : d === 'Media' ? 'Livello intermedio' : 'Livello base';
 }
 
-/** The rounded orange square with a dumbbell, used on the session card and
- * on the detail page header. */
+/** The rounded orange square with a dumbbell, used on the detail page header. */
 export function WorkoutBadge({ size = 60 }: { size?: number }) {
   return (
     <LinearGradient
@@ -36,64 +35,61 @@ export function WorkoutBadge({ size = 60 }: { size?: number }) {
   );
 }
 
+/** The orange rounded square that starts the session: the box's leading image,
+ * a play glyph where the dumbbell used to be. 56 pt, comfortably over the
+ * HIG's 44 pt touch target. */
+const PLAY_SIZE = 56;
+
 export type WorkoutSummaryCardProps = {
   title: string;
   subtitle: string;
   minutes: number;
   kcal: number;
-  /** Opens the session detail (the chevron and the card). */
+  /** Opens the session detail (the text and the chevron). */
   onOpen: () => void;
-  /** The orange "Inizia allenamento" button. */
+  /** Starts the session (the play button). */
   onStart: () => void;
 };
 
-/** "Allenamento di oggi": session thumbnail, name, "Forza - Livello base",
- * duration + estimated kcal, and a full-width orange start button. */
+/** A day's session: the play button that starts it, its name, "Forza - Livello base"
+ * and its duration + estimated kcal; the rest of the box opens the detail. */
 export function WorkoutSummaryCard({ title, subtitle, minutes, kcal, onOpen, onStart }: WorkoutSummaryCardProps) {
   const theme = useTheme();
   return (
     <FlatCard radius={20} style={styles.card}>
-      <Pressable onPress={onOpen} style={styles.top}>
-        <WorkoutBadge size={82} />
-        <View style={styles.textCol}>
-          <ThemedText style={styles.title} numberOfLines={1}>
-            {title}
-          </ThemedText>
-          <ThemedText style={styles.subtitle} themeColor="textTertiary" numberOfLines={1}>
-            {subtitle}
-          </ThemedText>
-          <View style={styles.statsRow}>
-            <View style={styles.stat}>
-              <Icon name="clock" size={15} color={theme.textTertiary} />
-              <ThemedText style={styles.statText}>{minutes} min</ThemedText>
-            </View>
-            <View style={styles.stat}>
-              <Icon name="flame" size={15} color={theme.accent} />
-              <ThemedText style={styles.statText}>{kcal} kcal</ThemedText>
+      <View style={styles.row}>
+        <PressableScale onPress={onStart} haptic="press" accessibilityRole="button" accessibilityLabel={`Inizia allenamento: ${title}`}>
+          <LinearGradient
+            colors={Brand.badgeGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.play, { width: PLAY_SIZE, height: PLAY_SIZE, borderRadius: PLAY_SIZE * 0.26 }]}>
+            <Icon name="play" size={24} color={OnBrand.text} />
+          </LinearGradient>
+        </PressableScale>
+
+        <Pressable onPress={onOpen} accessibilityRole="button" accessibilityLabel={`Dettagli: ${title}`} style={styles.open}>
+          <View style={styles.textCol}>
+            <ThemedText style={styles.title} numberOfLines={1}>
+              {title}
+            </ThemedText>
+            <ThemedText style={styles.subtitle} themeColor="textTertiary" numberOfLines={1}>
+              {subtitle}
+            </ThemedText>
+            <View style={styles.statsRow}>
+              <View style={styles.stat}>
+                <Icon name="clock" size={15} color={theme.textTertiary} />
+                <ThemedText style={styles.statText}>{minutes} min</ThemedText>
+              </View>
+              <View style={styles.stat}>
+                <Icon name="flame" size={15} color={theme.accent} />
+                <ThemedText style={styles.statText}>{kcal} kcal</ThemedText>
+              </View>
             </View>
           </View>
-        </View>
-        <Icon name="chevronRight" size={18} color={theme.textTertiary} />
-      </Pressable>
-
-      <PressableScale
-        onPress={onStart}
-        haptic="press"
-        accessibilityRole="button"
-        style={[
-          styles.startButton,
-          { backgroundColor: theme.accent },
-          Platform.select({
-            web: { boxShadow: `0px 6px 14px ${Brand.accentShadow}` },
-            default: { shadowColor: Brand.accentGlow, shadowOpacity: 0.28, shadowRadius: 10, shadowOffset: { width: 0, height: 5 }, elevation: 3 },
-          }),
-        ]}>
-        <View style={styles.playCircle}>
-          <Icon name="play" size={14} color={theme.accent} />
-        </View>
-        <ThemedText style={styles.startLabel}>Inizia allenamento</ThemedText>
-        <Icon name="chevronRight" size={16} color={OnBrand.text} />
-      </PressableScale>
+          <Icon name="chevronRight" size={18} color={theme.textTertiary} />
+        </Pressable>
+      </View>
     </FlatCard>
   );
 }
@@ -101,9 +97,8 @@ export function WorkoutSummaryCard({ title, subtitle, minutes, kcal, onOpen, onS
 const styles = StyleSheet.create({
   card: {
     padding: 12,
-    gap: 12,
   },
-  top: {
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
@@ -111,6 +106,19 @@ const styles = StyleSheet.create({
   badge: {
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  play: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    // The triangle's weight sits to its left: nudge it so it reads as centred.
+    paddingLeft: 3,
+  },
+  open: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   textCol: {
     flex: 1,
@@ -128,7 +136,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   statsRow: {
-    marginTop: 10,
+    marginTop: 8,
     flexDirection: 'row',
     gap: 14,
   },
@@ -141,29 +149,5 @@ const styles = StyleSheet.create({
     fontSize: 12.5,
     lineHeight: 16,
     fontWeight: '500',
-  },
-  startButton: {
-    height: 48,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  playCircle: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: OnBrand.text,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingLeft: 2,
-  },
-  startLabel: {
-    flex: 1,
-    color: OnBrand.text,
-    fontSize: 15,
-    lineHeight: 19,
-    fontWeight: '700',
   },
 });
