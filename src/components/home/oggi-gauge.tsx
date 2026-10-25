@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 import Animated, { useAnimatedProps, useSharedValue, withTiming } from 'react-native-reanimated';
-import Svg, { Circle, Line, Path } from 'react-native-svg';
+import Svg, { Circle, Defs, Line, Path, Polygon, Text as SvgText, TextPath } from 'react-native-svg';
 
 import { balanceTone } from '@/components/home/balance-tone';
 import { ThemedText } from '@/components/themed-text';
@@ -34,12 +34,22 @@ const RING_GAP = 9;
 const SEMI_R = MAIN_R + MAIN_STROKE / 2 + RING_GAP + SEMI_STROKE / 2;
 const SEMI_HALF_SPAN = 90;
 
-/** Where the "obiettivo" label hangs: just past the goal notch's outer end. */
-const GOAL_LABEL_R = SEMI_R + SEMI_STROKE / 2 + 8;
-/** Room above the semi-ring for that label. */
-const TOP_PAD = 20;
+/** The goal marker: a triangle outside the semi-ring, its tip on the track pointing at the ring's centre. */
+const GOAL_TIP_R = SEMI_R + SEMI_STROKE / 2 + 1.5;
+const GOAL_TRI_H = 8;
+const GOAL_TRI_HALF_W = 4.6;
+/** Where the "obiettivo" label hangs: just past the triangle's base. */
+const GOAL_LABEL_R = GOAL_TIP_R + GOAL_TRI_H + 7;
+/** "Surplus" / "Deficit" continue the semi-ring's curve just past its two ends (outside the marker knob), on this baseline radius. */
+const END_LABEL_R = SEMI_R + 11;
+const END_LABEL_FROM_DEG = 96;
+const END_LABEL_SPAN_DEG = 40;
+/** Room above the semi-ring for the goal label. */
+const TOP_PAD = 30;
+/** The junction knob on the main ring: white disc with two opposite arrows. */
+const KNOB_R = 11;
 const CY = TOP_PAD + SEMI_R + SEMI_STROKE / 2;
-const BASE_H = CY + MAIN_R * Math.cos(((180 - MAIN_HALF_SPAN) * Math.PI) / 180) + MAIN_STROKE / 2 + 4;
+const BASE_H = CY + MAIN_R * Math.cos(((180 - MAIN_HALF_SPAN) * Math.PI) / 180) + KNOB_R + 4;
 
 function px(r: number, deg: number) {
   'worklet';
@@ -65,6 +75,24 @@ function junctionDeg(burnedKcal: number, eatenKcal: number): number {
   const span = MAIN_HALF_SPAN * 2;
   const burnedSweep = total > 0 ? span * (burnedKcal / total) : span / 2;
   return -MAIN_HALF_SPAN + Math.min(Math.max(burnedSweep, MIN_SWEEP_DEG), span - MIN_SWEEP_DEG);
+}
+
+/**
+ * The knob's two arrows as one path, drawn around (cx, cy) and turned to lie
+ * along the ring's tangent at `deg` (never upside down). Plain maths, so it
+ * runs inside the animation worklet with the knob.
+ */
+function arrowsPath(cx: number, cy: number, deg: number): string {
+  'worklet';
+  const turn = deg > 90 ? deg - 180 : deg < -90 ? deg + 180 : deg;
+  const a = (turn * Math.PI) / 180;
+  const cos = Math.cos(a);
+  const sin = Math.sin(a);
+  const pt = (x: number, y: number) => `${(cx + x * cos - y * sin).toFixed(2)} ${(cy + x * sin + y * cos).toFixed(2)}`;
+  return [
+    `M ${pt(-4.6, -2.7)} L ${pt(4.6, -2.7)} M ${pt(2.4, -4.9)} L ${pt(4.6, -2.7)} L ${pt(2.4, -0.5)}`,
+    `M ${pt(4.6, 2.7)} L ${pt(-4.6, 2.7)} M ${pt(-2.4, 0.5)} L ${pt(-4.6, 2.7)} L ${pt(-2.4, 4.9)}`,
+  ].join(' ');
 }
 
 export type OggiGaugeProps = {
@@ -107,6 +135,14 @@ export function OggiGauge({ burnedKcal, eatenKcal, burnedColor, eatenColor, read
   const { position } = balancePosition(reading.balanceKcal, reading.halfRangeKcal);
   const targetSemi = missing ? 0 : position * SEMI_HALF_SPAN;
   const goalDeg = balancePosition(reading.goalKcal, reading.halfRangeKcal).position * SEMI_HALF_SPAN;
+  // The goal triangle, from the same arc geometry: tip on the track, base further out along the radius.
+  const goalBase = { x: px(GOAL_TIP_R + GOAL_TRI_H, goalDeg), y: py(GOAL_TIP_R + GOAL_TRI_H, goalDeg) };
+  const goalRad = (goalDeg * Math.PI) / 180;
+  const goalTriangle = [
+    `${px(GOAL_TIP_R, goalDeg)},${py(GOAL_TIP_R, goalDeg)}`,
+    `${goalBase.x - Math.cos(goalRad) * GOAL_TRI_HALF_W},${goalBase.y - Math.sin(goalRad) * GOAL_TRI_HALF_W}`,
+    `${goalBase.x + Math.cos(goalRad) * GOAL_TRI_HALF_W},${goalBase.y + Math.sin(goalRad) * GOAL_TRI_HALF_W}`,
+  ].join(' ');
 
   // Both markers glide to new values together; under Reduce Motion
   // Reanimated jumps straight to the end value on its own.
@@ -128,7 +164,7 @@ export function OggiGauge({ burnedKcal, eatenKcal, burnedColor, eatenColor, read
   const semiShadow = useAnimatedProps(() => ({ cx: px(SEMI_R, semi.value), cy: py(SEMI_R, semi.value) + 0.9 }));
   const semiAt = useAnimatedProps(() => ({ cx: px(SEMI_R, semi.value), cy: py(SEMI_R, semi.value) }));
 
-  const junctionKnob = MAIN_STROKE / 2 + 1.5;
+  const junctionArrows = useAnimatedProps(() => ({ d: arrowsPath(px(MAIN_R, junction.value), py(MAIN_R, junction.value), junction.value) }));
   const semiKnob = SEMI_STROKE / 2 + 3.5;
   // The equilibrium notch is dropped when the goal notch would sit on top of it (a maintenance goal).
   const showZeroNotch = Math.abs(goalDeg) > 5;
@@ -138,7 +174,7 @@ export function OggiGauge({ burnedKcal, eatenKcal, burnedColor, eatenColor, read
 
   return (
     <View style={styles.root} onLayout={onLayout}>
-      <View style={{ width: BASE_W * k, height: BASE_H * k, marginBottom: -22 * k }}>
+      <View style={{ width: BASE_W * k, height: BASE_H * k, marginBottom: 0 }}>
         <Svg width={BASE_W * k} height={BASE_H * k} viewBox={`0 0 ${BASE_W} ${BASE_H}`} style={StyleSheet.absoluteFill}>
           {/* Semi-ring: track, the balance's fill from equilibrium, notches. */}
           <Path d={arc(SEMI_R, -SEMI_HALF_SPAN, SEMI_HALF_SPAN)} stroke={theme.backgroundElement} strokeWidth={SEMI_STROKE} strokeLinecap="round" fill="none" />
@@ -154,15 +190,23 @@ export function OggiGauge({ burnedKcal, eatenKcal, burnedColor, eatenColor, read
               strokeLinecap="round"
             />
           ) : null}
-          <Line
-            x1={px(SEMI_R - SEMI_STROKE / 2 - 2, goalDeg)}
-            y1={py(SEMI_R - SEMI_STROKE / 2 - 2, goalDeg)}
-            x2={px(SEMI_R + SEMI_STROKE / 2 + 5, goalDeg)}
-            y2={py(SEMI_R + SEMI_STROKE / 2 + 5, goalDeg)}
-            stroke={theme.text}
-            strokeWidth={2}
-            strokeLinecap="round"
-          />
+          <Polygon points={goalTriangle} fill={theme.text} stroke={theme.text} strokeWidth={1.2} strokeLinejoin="round" />
+
+          {/* "Surplus" and "Deficit" run along the semi-ring, each ending near its end of the arc. */}
+          <Defs>
+            <Path id="oggi-surplus" d={arc(END_LABEL_R, -END_LABEL_FROM_DEG - END_LABEL_SPAN_DEG, -END_LABEL_FROM_DEG)} />
+            <Path id="oggi-deficit" d={arc(END_LABEL_R, END_LABEL_FROM_DEG, END_LABEL_FROM_DEG + END_LABEL_SPAN_DEG)} />
+          </Defs>
+          <SvgText fill={theme.textTertiary} fontSize={11} fontWeight="600" letterSpacing={0.2} textAnchor="end">
+            <TextPath href="#oggi-surplus" startOffset="100%">
+              Surplus
+            </TextPath>
+          </SvgText>
+          <SvgText fill={theme.textTertiary} fontSize={11} fontWeight="600" letterSpacing={0.2}>
+            <TextPath href="#oggi-deficit" startOffset="0">
+              Deficit
+            </TextPath>
+          </SvgText>
 
           {/* Main ring: burned from the left end, intake from the right, meeting at the junction. */}
           <AnimatedPath animatedProps={burnedArc} stroke={empty ? theme.backgroundElement : burnedColor} strokeWidth={MAIN_STROKE} strokeLinecap="round" fill="none" />
@@ -171,9 +215,9 @@ export function OggiGauge({ burnedKcal, eatenKcal, burnedColor, eatenColor, read
           {/* The two markers: one knob design, one colour — the same balance at two scales. */}
           {empty ? null : (
             <>
-              <AnimatedCircle animatedProps={junctionShadow} r={junctionKnob + 0.5} fill={Palette.neutral[950]} opacity={0.18} />
-              <AnimatedCircle animatedProps={junctionAt} r={junctionKnob} fill={OnBrand.text} />
-              <AnimatedCircle animatedProps={junctionAt} r={junctionKnob * 0.45} fill={tone} />
+              <AnimatedCircle animatedProps={junctionShadow} r={KNOB_R + 0.8} fill={Palette.neutral[950]} opacity={0.14} />
+              <AnimatedCircle animatedProps={junctionAt} r={KNOB_R} fill={OnBrand.text} stroke={Palette.neutral[950]} strokeOpacity={0.1} strokeWidth={0.75} />
+              <AnimatedPath animatedProps={junctionArrows} stroke={Palette.neutral[800]} strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round" fill="none" />
             </>
           )}
           {missing ? null : (
@@ -185,16 +229,7 @@ export function OggiGauge({ burnedKcal, eatenKcal, burnedColor, eatenColor, read
           )}
         </Svg>
 
-        {/* Short, quiet labels for the semi-ring: its two directions and the goal. */}
-        <ThemedText
-          themeColor="textTertiary"
-          style={[styles.end, label(11), { right: (CX + 80) * k, top: (CY + 7) * k, textAlign: 'right' }]}>
-          Surplus
-        </ThemedText>
-        <ThemedText themeColor="textTertiary" style={[styles.end, label(11), { left: (CX + 80) * k, top: (CY + 7) * k }]}>
-          Deficit
-        </ThemedText>
-        {/* Anchored on the notch's outer end and grown away from the ring, so it
+        {/* Anchored past the triangle's base and grown away from the ring, so it
             never sits on the track or on the marker when the day is on target. */}
         <ThemedText
           themeColor="textSecondary"
@@ -226,11 +261,6 @@ const styles = StyleSheet.create({
   root: {
     alignSelf: 'stretch',
     alignItems: 'center',
-  },
-  end: {
-    position: 'absolute',
-    fontWeight: '600',
-    letterSpacing: 0.2,
   },
   goalText: {
     position: 'absolute',

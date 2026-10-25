@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, type Href } from 'expo-router';
 import { useState } from 'react';
-import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 
 import { EnergyDetailsPopup } from '@/components/home/energy-details-popup';
 import { OggiGauge } from '@/components/home/oggi-gauge';
@@ -105,6 +105,8 @@ export default function HomeScreen() {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [detailsFocus, setDetailsFocus] = useState<'day' | 'week' | null>(null);
   const [viewDate, setViewDate] = useState(today);
+  // adjustsFontSizeToFit does nothing on the web, so the three kcal values step down on the narrowest phones.
+  const narrow = useWindowDimensions().width < 360;
 
   // The active month's weekly split: the same weekday-indexed lookup the
   // Training tab uses, so Home and Training agree on what's planned.
@@ -285,22 +287,22 @@ export default function HomeScreen() {
         <View style={styles.oggiRow}>
           <Pressable onPress={() => setInfoTopic('burned')} style={styles.sideCol}>
             <View style={styles.sideIcon}>
-              <Icon name="flame" size={22} color={theme.accent} />
+              <Icon name="flameLine" size={22} color={theme.accent} />
             </View>
             <ThemedText style={styles.sideLabel} themeColor="textTertiary">
               Bruciate
             </ThemedText>
-            <ThemedText style={styles.sideValue} numberOfLines={1} adjustsFontSizeToFit>{formatKcal(burnedKcal)} kcal</ThemedText>
+            <ThemedText style={[styles.sideValue, narrow && styles.sideValueNarrow]} numberOfLines={1} adjustsFontSizeToFit>{formatKcal(burnedKcal)} kcal</ThemedText>
           </Pressable>
           <View style={[styles.sideDivider, { backgroundColor: theme.border }]} />
           <Pressable onPress={() => setDetailsFocus('day')} style={styles.sideCol}>
             <View style={styles.sideIcon}>
-              <Icon name="target" size={22} color={theme.textSecondary} />
+              <Icon name="crosshair" size={22} color={theme.textSecondary} />
             </View>
             <ThemedText style={styles.sideLabel} themeColor="textTertiary">
               Obiettivo
             </ThemedText>
-            <ThemedText style={styles.sideValue} numberOfLines={1} adjustsFontSizeToFit>{formatSignedKcal(dailyGoalKcal)} kcal</ThemedText>
+            <ThemedText style={[styles.sideValue, narrow && styles.sideValueNarrow]} numberOfLines={1} adjustsFontSizeToFit>{formatSignedKcal(dailyGoalKcal)} kcal</ThemedText>
           </Pressable>
           <View style={[styles.sideDivider, { backgroundColor: theme.border }]} />
           <Pressable onPress={() => setInfoTopic('eaten')} style={styles.sideCol}>
@@ -310,7 +312,7 @@ export default function HomeScreen() {
             <ThemedText style={styles.sideLabel} themeColor="textTertiary">
               Assunte
             </ThemedText>
-            <ThemedText style={styles.sideValue} numberOfLines={1} adjustsFontSizeToFit>{formatKcal(eatenKcal)} kcal</ThemedText>
+            <ThemedText style={[styles.sideValue, narrow && styles.sideValueNarrow]} numberOfLines={1} adjustsFontSizeToFit>{formatKcal(eatenKcal)} kcal</ThemedText>
           </Pressable>
         </View>
       </FlatCard>
@@ -705,7 +707,7 @@ const styles = StyleSheet.create({
   oggiRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginTop: 6,
+    marginTop: 14,
   },
   sideCol: {
     flex: 1,
@@ -727,6 +729,10 @@ const styles = StyleSheet.create({
     lineHeight: 21,
     fontWeight: '800',
     letterSpacing: -0.3,
+  },
+  sideValueNarrow: {
+    fontSize: 14,
+    lineHeight: 18,
   },
   sideLabel: {
     fontSize: 13,
