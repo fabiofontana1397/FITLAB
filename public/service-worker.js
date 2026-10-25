@@ -4,8 +4,8 @@ self.addEventListener('push', (event) => {
   const title = payload.title || 'FitLab';
   event.waitUntil(self.registration.showNotification(title, {
     body: payload.body || 'Il tuo promemoria FitLab è pronto.',
-    icon: '/apple-touch-icon.png',
-    badge: '/apple-touch-icon.png',
+    icon: '/apple-touch-icon.png?v=2',
+    badge: '/apple-touch-icon.png?v=2',
     data: { url: payload.url || '/' },
     tag: payload.tag || 'fitlab-reminder',
   }));

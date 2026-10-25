@@ -7,6 +7,9 @@ import { PageBackground } from '@/constants/page-background';
 // the Home Screen icon. This file renders in a bare Node pass and cannot
 // import constants/theme.ts, so the page colour comes from the dependency-free
 // module that theme.ts builds `background` from.
+/** Bump when the logo files in public/ change. */
+const ICON_VERSION = '2';
+
 const PAGE_BACKGROUND_CSS = `
 html,body{background-color:${PageBackground.light}}
 @media (prefers-color-scheme:dark){html,body{background-color:${PageBackground.dark}}}
@@ -27,7 +30,10 @@ export default function Root({ children }: PropsWithChildren) {
         {/* Label under the Home Screen icon (the page <title> is empty) and the icon itself. */}
         <meta name="apple-mobile-web-app-title" content="FitLab" />
         <link rel="manifest" href="/manifest.json" />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        {/* ?v= changes the URL when the logo changes: Safari and iOS keep icons cached by URL for a long time. */}
+        <link rel="icon" type="image/png" sizes="32x32" href={`/favicon-32.png?v=${ICON_VERSION}`} />
+        <link rel="icon" type="image/png" sizes="48x48" href={`/favicon-48.png?v=${ICON_VERSION}`} />
+        <link rel="apple-touch-icon" sizes="180x180" href={`/apple-touch-icon.png?v=${ICON_VERSION}`} />
         <meta name="theme-color" content={PageBackground.light} media="(prefers-color-scheme: light)" />
         <meta name="theme-color" content={PageBackground.dark} media="(prefers-color-scheme: dark)" />
         <ScrollViewStyleReset />
