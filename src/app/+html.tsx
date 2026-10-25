@@ -8,7 +8,7 @@ import { PageBackground } from '@/constants/page-background';
 // import constants/theme.ts, so the page colour comes from the dependency-free
 // module that theme.ts builds `background` from.
 /** Bump when the logo files in public/ change. */
-const ICON_VERSION = '2';
+const ICON_VERSION = '3';
 
 const PAGE_BACKGROUND_CSS = `
 html,body{background-color:${PageBackground.light}}
