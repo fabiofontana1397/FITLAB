@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Alert, StyleSheet, Switch, TextInput, View } from 'react-native';
+import { Alert, StyleSheet, TextInput, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
 import { ListGroup, ListRow } from '@/components/ui/list-group';
 import { PrimaryButton } from '@/components/ui/primary-button';
+import { IosSwitch } from '@/components/ui/ios-switch';
 import { SheetScreen } from '@/components/ui/sheet-screen';
 import { Layout, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -85,7 +86,7 @@ export default function NotificationSettingsScreen() {
             icon="nutrition"
             title="Promemoria pasti"
             subtitle="Un avviso per i pasti principali."
-            trailing={<Switch value={preferences.meal_enabled} onValueChange={(value) => update('meal_enabled', value)} trackColor={{ true: theme.accent }} />}
+            trailing={<IosSwitch value={preferences.meal_enabled} onValueChange={(value) => update('meal_enabled', value)} />}
           />
           {TIME_FIELDS.slice(0, 3).map(({ key, label }) => (
             <TimeRow key={key} label={label} value={String(preferences[key])} disabled={!preferences.meal_enabled} onChange={(value) => update(key, value)} />
@@ -97,7 +98,7 @@ export default function NotificationSettingsScreen() {
             icon="training"
             title="Promemoria allenamento"
             subtitle="All’ora che preferisci."
-            trailing={<Switch value={preferences.training_enabled} onValueChange={(value) => update('training_enabled', value)} trackColor={{ true: theme.accent }} />}
+            trailing={<IosSwitch value={preferences.training_enabled} onValueChange={(value) => update('training_enabled', value)} />}
           />
           <TimeRow label="Orario" value={preferences.training_time} disabled={!preferences.training_enabled} onChange={(value) => update('training_time', value)} />
         </ListGroup>
@@ -106,12 +107,12 @@ export default function NotificationSettingsScreen() {
           <ListRow
             title="Settimanale"
             subtitle="I progressi della settimana, ogni domenica."
-            trailing={<Switch value={preferences.weekly_enabled} onValueChange={(value) => update('weekly_enabled', value)} trackColor={{ true: theme.accent }} />}
+            trailing={<IosSwitch value={preferences.weekly_enabled} onValueChange={(value) => update('weekly_enabled', value)} />}
           />
           <ListRow
             title="Mensile"
             subtitle="Check-in e ricalibrazione del piano."
-            trailing={<Switch value={preferences.monthly_enabled} onValueChange={(value) => update('monthly_enabled', value)} trackColor={{ true: theme.accent }} />}
+            trailing={<IosSwitch value={preferences.monthly_enabled} onValueChange={(value) => update('monthly_enabled', value)} />}
           />
         </ListGroup>
 

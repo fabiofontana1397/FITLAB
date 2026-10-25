@@ -4,14 +4,15 @@ import { Children, Fragment, isValidElement } from 'react';
 import { ThemedText } from '@/components/themed-text';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon, type IconName } from '@/components/ui/icon';
-import { Layout, Radius, Spacing } from '@/constants/theme';
+import { Layout, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { hapticTap } from '@/lib/haptics';
 
 /** Width of a row's leading icon tile plus its gap: hairlines start here, so
  * they line up under the labels like iOS Settings, not under the icons. */
-const ICON_TILE = 30;
-const ROW_INSET = Spacing.three;
+const ICON_TILE = 28;
+const ROW_INSET = Spacing.four;
+const GROUP_RADIUS = 26;
 
 export type ListGroupProps = {
   /** Small uppercase heading above the card. */
@@ -39,7 +40,7 @@ export function ListGroup({ header, footer, insetSeparators, style, children }: 
           {header}
         </ThemedText>
       ) : null}
-      <FlatCard radius={Radius.medium}>
+      <FlatCard radius={GROUP_RADIUS}>
         {rows.map((row, i) => (
           <Fragment key={row.key ?? i}>
             {i > 0 ? (
@@ -85,16 +86,16 @@ export function ListRow({ title, subtitle, icon, iconTint, iconColor, trailing, 
   const content = (
     <>
       {icon ? (
-        <View style={[styles.iconTile, { backgroundColor: iconTint ?? theme.accentSoft }]}>
-          <Icon name={icon} size={17} color={iconColor ?? (destructive ? theme.danger : theme.accent)} />
+        <View style={styles.iconTile}>
+          <Icon name={icon} size={22} color={iconColor ?? (destructive ? theme.danger : theme.textTertiary)} />
         </View>
       ) : null}
       <View style={styles.texts}>
-        <ThemedText type="default" style={{ color: titleColor }}>
+        <ThemedText type="default" style={[styles.title, { color: titleColor }]}>
           {title}
         </ThemedText>
         {subtitle ? (
-          <ThemedText type="caption" themeColor="textSecondary">
+          <ThemedText type="small" themeColor="textSecondary" style={styles.subtitle}>
             {subtitle}
           </ThemedText>
         ) : null}
@@ -132,19 +133,26 @@ const styles = StyleSheet.create({
     height: StyleSheet.hairlineWidth,
   },
   row: {
-    minHeight: Layout.minTouch + 8,
+    minHeight: Layout.minTouch + 10,
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.three,
     paddingHorizontal: ROW_INSET,
-    paddingVertical: 10,
+    paddingVertical: 12,
   },
   iconTile: {
     width: ICON_TILE,
     height: ICON_TILE,
-    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  title: {
+    fontSize: 17,
+    lineHeight: 22,
+  },
+  subtitle: {
+    fontSize: 15,
+    lineHeight: 21,
   },
   texts: {
     flex: 1,

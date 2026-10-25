@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { GlassPopup } from '@/components/glass/glass-popup';
-import { GlassSurface } from '@/components/glass/glass-surface';
+import { FlatCard } from '@/components/ui/flat-card';
 import { EditAnswersSheet } from '@/components/profile/edit-answers-sheet';
 import { IntegrationsSection } from '@/components/profile/integrations-section';
 import { MODE_LABEL, OutcomeBanner, QuestionnaireSheet } from '@/components/profile/questionnaire-sheet';
@@ -123,7 +123,7 @@ export default function ProfileScreen() {
 
   return (
     <SheetScreen title="Profilo">
-      <GlassSurface level="raised" radius={Radius.xlarge} style={styles.identityCard}>
+      <FlatCard radius={26} style={styles.identityCard}>
         <View style={styles.identityTop}>
           <Pressable onPress={onAvatarPress} accessibilityRole="button" accessibilityLabel="Cambia foto profilo">
             <View style={[styles.avatar, { backgroundColor: theme.accentSoft }]}>
@@ -211,7 +211,7 @@ export default function ProfileScreen() {
             })}
           </View>
         </View>
-      </GlassSurface>
+      </FlatCard>
 
       <View>
         <SectionHeader title="Aspetto" />
@@ -221,7 +221,7 @@ export default function ProfileScreen() {
       <View style={{ gap: Spacing.three }}>
         <ThemedText type="subtitle" accessibilityRole="header">Questionario</ThemedText>
         <OutcomeBanner saving={saving && !questionnaireOpen} isGenerating={isGenerating && !questionnaireOpen} outcome={questionnaireOpen ? null : outcome} />
-        <GlassSurface level="card" radius={Radius.large} style={styles.questionnaireCard}>
+        <FlatCard radius={26} style={styles.questionnaireCard}>
           <View style={styles.questionnaireTop}>
             <View style={[styles.questionnaireIcon, { backgroundColor: theme.accentSoft }]}>
               <Icon name="checkCircle" size={20} color={theme.accent} />
@@ -242,7 +242,7 @@ export default function ProfileScreen() {
               Rifai il questionario da capo
             </ThemedText>
           </Pressable>
-        </GlassSurface>
+        </FlatCard>
       </View>
 
       <IntegrationsSection />
