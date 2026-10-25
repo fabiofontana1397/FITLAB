@@ -15,7 +15,7 @@ import { ThemedText } from '@/components/themed-text';
 import { FlatCard } from '@/components/ui/flat-card';
 import { GoalTrendChart } from '@/components/ui/goal-trend-chart';
 import { Icon } from '@/components/ui/icon';
-import { ProfileAvatarButton } from '@/components/ui/profile-avatar-button';
+import { TabHeader } from '@/components/tab-header';
 import { InsightCard } from '@/components/ui/insight-card';
 import { SegmentedControl } from '@/components/ui/segmented-control';
 import { TrendChart } from '@/components/ui/trend-chart';
@@ -125,10 +125,7 @@ export default function ProgressScreen() {
 
   return (
     <ScreenScroll reveal contentContainerStyle={styles.page}>
-      <View style={styles.headerRow}>
-        <ThemedText style={styles.pageTitle}>Progressi</ThemedText>
-        <ProfileAvatarButton size={37} />
-      </View>
+      <TabHeader title="Progressi" />
 
       <View style={styles.tabs}>
         <SegmentedControl

@@ -11,7 +11,7 @@ import { ThemedText } from '@/components/themed-text';
 import { DayCalendarModal } from '@/components/ui/day-calendar-modal';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon } from '@/components/ui/icon';
-import { ProfileAvatarButton } from '@/components/ui/profile-avatar-button';
+import { TabHeader } from '@/components/tab-header';
 import { ProgressRing } from '@/components/ui/progress-ring';
 import { TickProgressBar } from '@/components/ui/tick-progress-bar';
 import { useEnsurePlan } from '@/hooks/use-ensure-plan';
@@ -149,10 +149,7 @@ export default function NutritionScreen() {
 
   return (
     <ScreenScroll reveal contentContainerStyle={styles.page}>
-      <View style={styles.headerRow}>
-        <ThemedText style={styles.pageTitle}>Nutrizione</ThemedText>
-        <ProfileAvatarButton size={38} />
-      </View>
+      <TabHeader title="Nutrizione" />
 
       <FlatCard radius={CARD_RADIUS} style={styles.calorieCard}>
         <View style={styles.cardTitleRow}>
