@@ -1,14 +1,11 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { useRef, useState } from 'react';
+import { Pressable, StyleSheet, type TextInput } from 'react-native';
 
-import { AppTextInput } from '@/components/ui/app-text';
-
-import { ScreenScroll } from '@/components/screen-scroll';
+import { AuthField } from '@/components/auth/auth-field';
+import { AuthShell } from '@/components/auth/auth-shell';
 import { ThemedText } from '@/components/themed-text';
-import { Icon } from '@/components/ui/icon';
 import { PrimaryButton } from '@/components/ui/primary-button';
-import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { goBackOr } from '@/lib/navigation/go-back';
 import { useAppStore } from '@/store/app-store';
@@ -22,8 +19,12 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const passwordRef = useRef<TextInput>(null);
+
+  const canSubmit = !!email && !!password && !isSubmitting;
 
   const handleLogin = async () => {
+    if (!canSubmit) return;
     setIsSubmitting(true);
     const { error: loginError } = await login(email, password);
     setIsSubmitting(false);
@@ -35,86 +36,64 @@ export default function LoginScreen() {
   };
 
   return (
-    <ScreenScroll>
-      <View style={styles.header}>
-        <Pressable onPress={() => goBackOr('/welcome')} hitSlop={8}>
-          <Icon name="arrowBack" size={22} color={theme.text} />
-        </Pressable>
-      </View>
-
-      <View style={{ gap: Spacing.one }}>
-        <ThemedText type="display">Bentornato</ThemedText>
-        <ThemedText type="default" themeColor="textSecondary">
-          Accedi con le credenziali del tuo account.
-        </ThemedText>
-      </View>
-
-      <View style={{ gap: Spacing.three }}>
-        <View style={{ gap: Spacing.one }}>
-          <ThemedText type="label" themeColor="textSecondary">
-            Email
-          </ThemedText>
-          <AppTextInput
-            value={email}
-            onChangeText={(t) => {
-              setEmail(t);
-              setError(null);
-            }}
-            autoCapitalize="none"
-            keyboardType="email-address"
-            placeholder="tu@esempio.com"
-            placeholderTextColor={theme.textTertiary}
-            style={[styles.input, { color: theme.text, backgroundColor: theme.backgroundElement, borderColor: theme.border }]}
-          />
-        </View>
-        <View style={{ gap: Spacing.one }}>
-          <ThemedText type="label" themeColor="textSecondary">
-            Password
-          </ThemedText>
-          <AppTextInput
-            value={password}
-            onChangeText={(t) => {
-              setPassword(t);
-              setError(null);
-            }}
-            secureTextEntry
-            placeholder="••••••••"
-            placeholderTextColor={theme.textTertiary}
-            style={[styles.input, { color: theme.text, backgroundColor: theme.backgroundElement, borderColor: theme.border }]}
-          />
-        </View>
-        {error ? (
-          <ThemedText type="caption" style={{ color: theme.danger }}>
-            {error}
-          </ThemedText>
-        ) : null}
-        <Pressable onPress={() => router.push('/forgot-password')} hitSlop={8}>
-          <ThemedText type="caption" style={{ color: theme.accent }}>
-            Password dimenticata?
-          </ThemedText>
-        </Pressable>
-      </View>
-
-      <PrimaryButton label="Accedi" onPress={handleLogin} disabled={!email || !password || isSubmitting} />
-
-      <Pressable onPress={() => router.replace('/register')} hitSlop={8}>
-        <ThemedText type="caption" style={{ textAlign: 'center', color: theme.accent }}>
-          Non hai un account? Creane uno
+    <AuthShell
+      title="Bentornato"
+      subtitle="Accedi con le credenziali del tuo account."
+      onBack={() => goBackOr('/welcome')}
+      footer={
+        <>
+          <PrimaryButton label={isSubmitting ? 'Accesso in corso…' : 'Accedi'} onPress={handleLogin} disabled={!canSubmit} />
+          <Pressable onPress={() => router.replace('/register')} hitSlop={8} accessibilityRole="button" style={styles.switchRow}>
+            <ThemedText type="small" themeColor="textSecondary">
+              Non hai un account?{' '}
+            </ThemedText>
+            <ThemedText type="smallBold" style={{ color: theme.accent }}>
+              Creane uno
+            </ThemedText>
+          </Pressable>
+        </>
+      }>
+      <AuthField
+        label="Email"
+        value={email}
+        onChangeText={(t) => {
+          setEmail(t);
+          setError(null);
+        }}
+        autoCapitalize="none"
+        keyboardType="email-address"
+        autoComplete="email"
+        textContentType="emailAddress"
+        returnKeyType="next"
+        onSubmitEditing={() => passwordRef.current?.focus()}
+        placeholder="tu@esempio.com"
+      />
+      <AuthField
+        ref={passwordRef}
+        label="Password"
+        secure
+        value={password}
+        onChangeText={(t) => {
+          setPassword(t);
+          setError(null);
+        }}
+        autoComplete="current-password"
+        textContentType="password"
+        returnKeyType="go"
+        onSubmitEditing={handleLogin}
+        placeholder="••••••••"
+        error={error}
+      />
+      <Pressable onPress={() => router.push('/forgot-password')} hitSlop={8} accessibilityRole="button" style={styles.forgot}>
+        <ThemedText type="smallBold" style={{ color: theme.accent }}>
+          Password dimenticata?
         </ThemedText>
       </Pressable>
-    </ScreenScroll>
+    </AuthShell>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-  },
-  input: {
-    borderWidth: 1,
-    borderRadius: Radius.small,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: 12,
-    fontSize: 15,
-  },
+  forgot: { alignSelf: 'flex-end', paddingVertical: 4 },
+  switchRow: { flexDirection: 'row', alignSelf: 'center', alignItems: 'center', paddingVertical: 8 },
 });

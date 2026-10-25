@@ -9,10 +9,10 @@ import {
   type NativeSyntheticEvent,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 
-import { TimingPulse } from '@/constants/motion';
 import { ScrollDefaults } from '@/constants/scroll';
+import { OnboardingHeader } from '@/components/onboarding/onboarding-header';
+import { PlanGenerationScreen } from '@/components/onboarding/plan-generation-screen';
 import { ThemedText } from '@/components/themed-text';
 import { FadeInView } from '@/components/ui/fade-in-view';
 import { Icon } from '@/components/ui/icon';
@@ -31,13 +31,6 @@ import type { OnboardingMode } from '@/lib/questionnaire/schema';
 import { useAppStore } from '@/store/app-store';
 import { useOnboardingStore } from '@/store/onboarding-store';
 import { usePlanStore } from '@/store/plan-store';
-
-const GENERATING_MESSAGES = [
-  'Stiamo creando il tuo piano personalizzato…',
-  'Analizziamo i tuoi obiettivi e le tue abitudini…',
-  'Costruiamo la struttura mese per mese…',
-  'Quasi pronto…',
-];
 
 type RoadmapPage = { id: string; kicker: string; title: string; subtitle: string; steps: RoadmapStep[] };
 
@@ -84,6 +77,9 @@ export default function OnboardingRoadmapScreen() {
   const answers = useOnboardingStore((s) => s.answers);
   const completeOnboarding = useAppStore((s) => s.completeOnboarding);
   const isGenerating = usePlanStore((s) => s.isGenerating);
+  const dietPlan = usePlanStore((s) => s.dietPlan);
+  const trainingPlan = usePlanStore((s) => s.trainingPlan);
+  const generatePlans = usePlanStore((s) => s.generatePlans);
 
   const mode = (answers.mode as OnboardingMode) ?? 'both';
   const pages = useMemo(
@@ -108,23 +104,50 @@ export default function OnboardingRoadmapScreen() {
   // piano generato") for a minute, show that it's still working and only
   // navigate once isGenerating actually flips false. If it's already done
   // by the time they get here, this resolves on the very next render.
+  //
+  // generatePlans swallows its own failures (see plan-store.ts), so "done"
+  // alone isn't success: the plans the chosen mode asks for have to exist.
+  // If they don't, the user is offered a retry here instead of landing on an
+  // empty dashboard — their answers are saved either way.
+  const generationFailed =
+    !isGenerating && ((mode !== 'training' && dietPlan == null) || (mode !== 'diet' && trainingPlan == null));
+
   useEffect(() => {
-    if (isFinishing && !isGenerating) {
+    if (isFinishing && !isGenerating && !generationFailed) {
       completeOnboarding();
       router.replace('/');
     }
-  }, [isFinishing, isGenerating, completeOnboarding]);
+  }, [isFinishing, isGenerating, generationFailed, completeOnboarding]);
 
   const finish = () => {
     setIsFinishing(true);
   };
 
+  const enterAnyway = () => {
+    completeOnboarding();
+    router.replace('/');
+  };
+
   if (isFinishing) {
-    return <GeneratingPlanView />;
+    return (
+      <PlanGenerationScreen
+        isGenerating={isGenerating}
+        failed={generationFailed}
+        onRetry={() => void generatePlans(answers, { trigger: 'onboarding' })}
+        onContinueAnyway={enterAnyway}
+      />
+    );
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background, paddingTop: insets.top }]}>
+    <View style={[styles.container, { backgroundColor: theme.background, paddingTop: insets.top + Spacing.two }]}>
+      <View style={styles.headerWrap}>
+        <OnboardingHeader
+          progress={(pageIndex + 1) / pages.length}
+          onBack={pageIndex > 0 ? () => goToPage(pageIndex - 1) : undefined}
+          kicker={`${pageIndex + 1} di ${pages.length}`}
+        />
+      </View>
       <ScrollView
         ref={scrollRef}
         horizontal
@@ -167,77 +190,13 @@ export default function OnboardingRoadmapScreen() {
       </ScrollView>
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + Spacing.four }]}>
-        <View style={styles.dots}>
-          {pages.map((page, i) => (
-            <View
-              key={page.id}
-              style={[styles.dot, { backgroundColor: i === pageIndex ? theme.accent : theme.backgroundElement }]}
-            />
-          ))}
-        </View>
         <View style={styles.navRow}>
-          {pageIndex > 0 ? (
-            <PrimaryButton
-              variant="ghost"
-              label="Indietro"
-              onPress={() => goToPage(pageIndex - 1)}
-              style={{ flex: 1 }}
-            />
-          ) : null}
           <PrimaryButton
             label={isLastPage ? 'Vai alla dashboard' : 'Continua'}
             onPress={isLastPage ? finish : () => goToPage(pageIndex + 1)}
             style={{ flex: 1 }}
           />
         </View>
-      </View>
-    </View>
-  );
-}
-
-/** Shown between "Vai alla dashboard" and actually landing on Home while
- * generatePlans (a real AI call — web search + RAG, 1-2 minutes) is still
- * running — see the isFinishing effect above. Cycles through a few
- * status lines so a full-minute wait doesn't look stalled. */
-function GeneratingPlanView() {
-  const theme = useTheme();
-  const insets = useSafeAreaInsets();
-  const pulse = useSharedValue(0);
-  const [messageIndex, setMessageIndex] = useState(0);
-
-  useEffect(() => {
-    pulse.value = withRepeat(withTiming(1, TimingPulse), -1, true);
-  }, [pulse]);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setMessageIndex((i) => Math.min(i + 1, GENERATING_MESSAGES.length - 1));
-    }, 3200);
-    return () => clearInterval(interval);
-  }, []);
-
-  const badgeStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: 1 + pulse.value * 0.12 }],
-    opacity: 0.7 + pulse.value * 0.3,
-  }));
-
-  return (
-    <View
-      style={[
-        styles.container,
-        styles.generatingContainer,
-        { backgroundColor: theme.background, paddingTop: insets.top, paddingBottom: insets.bottom },
-      ]}>
-      <Animated.View style={[styles.readyBadge, { backgroundColor: theme.accentSoft }, badgeStyle]}>
-        <Icon name="sparkle" size={32} color={theme.accent} />
-      </Animated.View>
-      <View style={{ gap: Spacing.two, alignItems: 'center' }}>
-        <ThemedText type="display" style={{ textAlign: 'center' }}>
-          Un attimo…
-        </ThemedText>
-        <ThemedText type="default" themeColor="textSecondary" style={{ textAlign: 'center', maxWidth: 320 }}>
-          {GENERATING_MESSAGES[messageIndex]}
-        </ThemedText>
       </View>
     </View>
   );
@@ -270,18 +229,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  generatingContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.six,
-    paddingHorizontal: Spacing.four,
-  },
   pageInner: {
     width: '100%',
     maxWidth: MaxContentWidth,
     alignSelf: 'center',
     paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.six,
+    paddingTop: Spacing.four,
     // Room to scroll past the last timeline row instead of it landing
     // flush against (or under) the fixed dots/nav footer below the pager.
     paddingBottom: Spacing.six,
@@ -321,17 +274,14 @@ const styles = StyleSheet.create({
   },
   footer: {
     paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.three,
     gap: Spacing.three,
   },
-  dots: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+  headerWrap: {
+    width: '100%',
+    maxWidth: MaxContentWidth,
+    alignSelf: 'center',
+    paddingHorizontal: Spacing.four,
   },
   navRow: {
     flexDirection: 'row',
