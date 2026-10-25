@@ -5,7 +5,6 @@ import { Platform, Pressable, StyleSheet, View, useWindowDimensions } from 'reac
 
 import { EnergyDetailsPopup } from '@/components/home/energy-details-popup';
 import { OggiGauge } from '@/components/home/oggi-gauge';
-import { HomeCoachCard } from '@/components/home/home-coach-card';
 import { DayCalendarModal } from '@/components/ui/day-calendar-modal';
 import { LiquidGlassButton } from '@/components/glass/liquid-glass';
 import { AnimatedFill, GrowBar } from '@/components/motion/animated-fill';
@@ -107,9 +106,6 @@ export default function HomeScreen() {
     const planDay = weeklySplit[isoMondayIndex(date)];
     return planDay?.type === 'workout' ? (planDay.exercises ?? []) : [];
   };
-  const todayExercises = exercisesOn(today);
-  const todayDoneCount = todayExercises.filter((ex) => isExerciseCompleted(completedExercises, ex.id, today)).length;
-  const isWorkoutDayIncomplete = todayExercises.length > 0 && todayDoneCount < todayExercises.length;
   // The "Oggi" card follows the day picked with the calendar icon (today by
   // default). 0 on any non-workout day — only a real workout earns exercise
   // calories.
@@ -420,10 +416,6 @@ export default function HomeScreen() {
           target={{ goal: dailyGoalKcal, actual: averageBalance }}
         />
       </FlatCard>
-
-      <View style={styles.coachWrap}>
-        <HomeCoachCard isWorkoutDayIncomplete={isWorkoutDayIncomplete} />
-      </View>
 
       <LoggedActivitiesCard date={viewDate} />
 
@@ -904,8 +896,5 @@ const styles = StyleSheet.create({
     width: 5,
     marginLeft: -2.5,
     borderRadius: 3,
-  },
-  coachWrap: {
-    marginTop: 20,
   },
 });
