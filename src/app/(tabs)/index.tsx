@@ -208,9 +208,7 @@ export default function HomeScreen() {
   const weekPill = weeklyProgress >= 1 ? 'Obiettivo raggiunto! 🎯' : weeklyProgress >= 0.6 ? 'Ci sei quasi!' : weeklyProgress >= 0.25 ? 'Stai andando bene' : 'Ogni giorno conta';
 
   return (
-    <ScreenScroll reveal contentContainerStyle={styles.page}>
-      <TabHeader title={`Ciao ${currentUser.name}`} subtitle={viewDateLabel} onCalendarPress={() => setCalendarOpen(true)} />
-
+    <ScreenScroll reveal header={<TabHeader title={`Ciao ${currentUser.name}`} subtitle={viewDateLabel} onCalendarPress={() => setCalendarOpen(true)} />} contentContainerStyle={styles.page}>
       <View style={styles.weekStrip}>
         <WeekStrip days={stripDays} selectedDate={viewDate} onSelect={setViewDate} />
       </View>

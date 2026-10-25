@@ -86,7 +86,8 @@
     "energy-guide:test": "tsx scripts/energy-guide-tests/run.ts",
     "energy-guide:ui": "tsx scripts/energy-guide-tests/ui.ts",
     "training:ui": "tsx scripts/training-tests/ui.ts",
-    "nutrition:ui": "tsx scripts/nutrition-tests/ui.ts"
+    "nutrition:ui": "tsx scripts/nutrition-tests/ui.ts",
+    "tabs:ui": "tsx scripts/tabs-tests/ui.ts"
   },
   "private": true
 }

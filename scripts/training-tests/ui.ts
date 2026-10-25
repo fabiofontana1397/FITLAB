@@ -13,6 +13,7 @@ import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { TRAINING_PLAN as PLAN } from '../lib/fixtures';
 import { loadChromium, openApp, serve, type Page } from '../lib/web-harness';
 
 const distDir = process.argv[2];
@@ -20,33 +21,6 @@ if (!distDir || !existsSync(join(distDir, 'index.html'))) {
   console.error('Usage: npm run training:ui -- <web export dir>');
   process.exit(2);
 }
-
-const exercise = (n: number) => ({ id: `ex-${n}`, name: `Esercizio ${n}`, sets: 3, reps: '10', restSec: 60, suggestedKg: 20, tempo: '2-0-1' });
-const workout = (weekday: string, title: string) => ({ weekday, type: 'workout', title, exercises: [exercise(1), exercise(2), exercise(3)] });
-const rest = (weekday: string) => ({ weekday, type: 'rest', title: 'Riposo' });
-const PLAN = {
-  generatedAt: new Date().toISOString(),
-  durationMonths: 3,
-  engine: 'training-2',
-  calibration: {},
-  months: [
-    {
-      monthIndex: 1,
-      phase: 'adattamento',
-      title: 'Mese 1',
-      focusNote: '',
-      weeklySplit: [
-        workout('Lun', 'Petto e tricipiti'),
-        rest('Mar'),
-        { weekday: 'Mer', type: 'cardio', title: 'Corsa facile', note: 'Corsa facile 35 min' },
-        workout('Gio', 'Schiena e bicipiti'),
-        rest('Ven'),
-        workout('Sab', 'Gambe'),
-        rest('Dom'),
-      ],
-    },
-  ],
-};
 
 const iso = (offset: number) => {
   const d = new Date();
@@ -126,7 +100,9 @@ async function main() {
         await pause(900);
         const region = (await list().boundingBox()).y;
         const section = await top(page, `training-day-${date}`);
-        assert.ok(Math.abs(section - region - 18) < 8, `${date}: section ${Math.round(section - region)}px under the list's top`);
+        // The first section of the week cannot go lower than the list's own top padding; the others sit just under the fade.
+        const under = section - region;
+        assert.ok(date === mon ? under >= 0 && under <= 22 : Math.abs(under - 18) < 8, `${date}: section ${Math.round(under)}px under the list's top`);
       }
     });
 
@@ -159,7 +135,7 @@ async function main() {
     await test('the list fades under the week once scrolled, and not at rest', async () => {
       await list().evaluate((el: HTMLElement) => { el.scrollTop = 0; });
       await pause(300);
-      const opacity = () => page.getByTestId('training-fade').evaluate((el: HTMLElement) => Number(getComputedStyle(el).opacity));
+      const opacity = () => page.getByTestId('screen-top-fade').evaluate((el: HTMLElement) => Number(getComputedStyle(el).opacity));
       assert.equal(await opacity(), 0);
       await list().evaluate((el: HTMLElement) => { el.scrollTop = 80; });
       await pause(300);
