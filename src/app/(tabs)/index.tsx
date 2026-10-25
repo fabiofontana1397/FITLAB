@@ -15,7 +15,7 @@ import { ThemedText } from '@/components/themed-text';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { SectionHeader } from '@/components/ui/section-header';
-import { BrandWordmark } from '@/components/ui/brand-wordmark';
+import { WeekStrip, type WeekStripDay } from '@/components/home/week-strip';
 import { ProfileAvatarButton } from '@/components/ui/profile-avatar-button';
 import { LoggedActivitiesCard } from '@/components/training/logged-activities-card';
 import { LogActivityModal } from '@/components/training/log-activity-modal';
@@ -199,9 +199,16 @@ export default function HomeScreen() {
 
   const viewDateObj = new Date(viewDate);
   const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-  const datePill = `${capitalize(viewDateObj.toLocaleDateString('it-IT', { weekday: 'short' }).replace('.', ''))} ${viewDateObj.getDate()} ${capitalize(
-    viewDateObj.toLocaleDateString('it-IT', { month: 'short' }).replace('.', '')
-  )}`;
+  const todayLabel = capitalize(new Date(today).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' }));
+  const stripDays: WeekStripDay[] = weekDaysWithActivity.map((d, i) => ({
+    date: d.date,
+    label: WEEKDAY_LABELS[i].charAt(0),
+    dayOfMonth: dayOfMonth(d.date),
+    isToday: d.isToday,
+    hasHappened: d.date <= today,
+    burnedKcal: d.estimatedExpenditureKcal,
+    eatenKcal: d.eatenKcal,
+  }));
   const dailyGoalKcal = weeklyGoalKcal / 7;
   // The gauge's semi-ring reads today's balance against the same daily goal the "Obiettivo" column shows.
   const balanceReading = readBalance({ eatenKcal, burnedKcal, goalKcal: dailyGoalKcal });
@@ -224,34 +231,32 @@ export default function HomeScreen() {
   return (
     <ScreenScroll reveal contentContainerStyle={styles.page}>
       <View style={styles.headerRow}>
-        <BrandWordmark style={styles.logo} />
+        <LiquidGlassButton onPress={() => setCalendarOpen(true)} hitSlop={8} scaleTo={0.9} accessibilityLabel="Apri calendario" size={44}>
+          <Icon name="calendar" size={20} color={theme.text} />
+        </LiquidGlassButton>
+        <View style={styles.headerText}>
+          <ThemedText style={styles.greeting} numberOfLines={1}>
+            Ciao {currentUser.name}
+          </ThemedText>
+          <ThemedText style={styles.subtitle} themeColor="textTertiary" numberOfLines={1}>
+            {todayLabel}
+          </ThemedText>
+        </View>
         <View style={styles.headerIcons}>
           <LiquidGlassButton
             onPress={() => router.push('/notification-settings' as Href)}
             hitSlop={8}
             scaleTo={0.9}
             accessibilityLabel="Notifiche"
-            size={36}>
-            <Icon name="bell" size={19} color={theme.text} />
+            size={44}>
+            <Icon name="bell" size={20} color={theme.text} />
           </LiquidGlassButton>
-          <ProfileAvatarButton size={36} />
+          <ProfileAvatarButton size={44} />
         </View>
       </View>
 
-      <View style={styles.greetingRow}>
-        <View style={{ flex: 1 }}>
-          <ThemedText style={styles.greeting}>Ciao {currentUser.name} 👋</ThemedText>
-          <ThemedText style={styles.subtitle} themeColor="textTertiary">
-            Sei sulla strada giusta!
-          </ThemedText>
-        </View>
-        <LiquidGlassButton
-          onPress={() => setCalendarOpen(true)}
-          accessibilityLabel="Apri calendario"
-          glassStyle={styles.datePill}>
-          <Icon name="calendar" size={16} color={theme.text} />
-          <ThemedText style={styles.datePillText}>{datePill}</ThemedText>
-        </LiquidGlassButton>
+      <View style={styles.weekStrip}>
+        <WeekStrip days={stripDays} selectedDate={viewDate} onSelect={setViewDate} />
       </View>
 
       <FlatCard radius={CARD_RADIUS} style={styles.oggiCard}>
@@ -628,17 +633,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  logo: {
-    width: 132,
-    height: 32,
+  headerText: {
+    flex: 1,
+    marginHorizontal: 12,
+  },
+  weekStrip: {
+    marginTop: 14,
+    marginBottom: 6,
   },
   headerIcons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  greetingRow: {
-    marginTop: 12,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
@@ -651,21 +654,9 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     marginTop: 1,
-    fontSize: 13,
+    fontSize: 14,
     lineHeight: 17,
     fontWeight: '500',
-  },
-  datePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
-  datePillText: {
-    fontSize: 13,
-    lineHeight: 17,
-    fontWeight: '600',
   },
   sectionRow: {
     marginTop: 24,

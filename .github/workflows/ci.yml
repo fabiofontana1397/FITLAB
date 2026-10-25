@@ -30,6 +30,8 @@ jobs:
 
       - run: npm run agents:test
 
+      - run: npm run meals:check
+
       # Same command Vercel runs. The static export pre-renders every route
       # in Node, which loads the Supabase client — hence the placeholders:
       # they only have to be non-empty for the build to get that far, and no

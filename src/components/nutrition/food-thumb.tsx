@@ -1,6 +1,7 @@
 import { Image } from 'expo-image';
-import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import { useWindowDimensions } from 'react-native';
 
+import { cornerSafeInset, PhotoTile } from '@/components/ui/photo-tile';
 import { useTheme } from '@/hooks/use-theme';
 import { foodIcon } from '@/lib/nutrition/food-icons';
 import { foodPhoto } from '@/lib/nutrition/food-photos';
@@ -45,55 +46,32 @@ export function useFoodThumbSize(variant: FoodThumbVariant): number {
 }
 
 /**
- * The picture keeps this share of the tile, so the whole food sits inside it
- * the way an app icon's artwork sits in its rounded square: never cropped,
- * never touching the corners the rounding would clip.
- */
-const PICTURE_SCALE = 0.82;
-
-/**
  * What a food looks like in the meal tracker, on a tile sized for the space
  * available: its photo when there is one (lib/nutrition/food-photos.ts),
  * otherwise its 3D picture (lib/nutrition/food-icons.ts), which exists for
- * every food. Both are cut out on a transparent background and shown whole.
+ * every food. Both are cut out on a transparent background and shown whole,
+ * through PhotoTile like every other food or dish photo.
  * Decorative — the food's name always sits beside it — so it is hidden from
  * screen readers.
  */
 export function FoodThumb({ foodId, variant = 'row' }: { foodId: string; variant?: FoodThumbVariant }) {
   const theme = useTheme();
   const size = useFoodThumbSize(variant);
-  const picture = Math.round(size * PICTURE_SCALE);
+  // A quarter of the side, on iOS's continuous curve: the same rounding the
+  // system gives app icons and list thumbnails, at any size.
+  const radius = Math.round(size * 0.24);
+  const icon = foodIcon(foodId);
+  const inner = size - 2 * cornerSafeInset(radius);
 
+  // A photo file that fails to load falls back to the food's 3D picture.
   return (
-    <View
-      aria-hidden
-      style={[
-        styles.tile,
-        {
-          width: size,
-          height: size,
-          // A quarter of the side, on iOS's continuous curve: the same rounding
-          // the system gives app icons and list thumbnails, at any size.
-          borderRadius: Math.round(size * 0.24),
-          backgroundColor: theme.backgroundElement,
-        },
-      ]}>
-      <Image
-        source={foodPhoto(foodId) ?? foodIcon(foodId)}
-        style={{ width: picture, height: picture }}
-        contentFit="contain"
-        transition={0}
-        accessibilityIgnoresInvertColors
-      />
-    </View>
+    <PhotoTile
+      source={foodPhoto(foodId) ?? icon}
+      width={size}
+      radius={radius}
+      background={theme.backgroundElement}
+      fallback={<Image source={icon} style={{ width: inner, height: inner }} contentFit="contain" transition={0} />}
+      recyclingKey={foodId}
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  tile: {
-    overflow: 'hidden',
-    borderCurve: 'continuous',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});

@@ -4,6 +4,7 @@ import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from 'react-nat
 
 import { GlassSurface } from '@/components/glass/glass-surface';
 import { DIET_PHASE_SHORT_LABEL, DietOverviewPopup } from '@/components/nutrition/diet-overview-popup';
+import { DishPhoto } from '@/components/nutrition/dish-photo';
 import { DietPlanSummaryCard } from '@/components/training/plan-summary-card';
 import { PlanMonthStepper } from '@/components/training/plan-month-stepper';
 import { ScreenScroll } from '@/components/screen-scroll';
@@ -18,6 +19,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useUserContext } from '@/hooks/use-user-context';
 import { goBackOr } from '@/lib/navigation/go-back';
 import { WEEKDAY_LABELS } from '@/lib/planning/exercise-library';
+import { dishImage } from '@/lib/planning/fitlab/dish-images';
 import { exportDietPlanPdf } from '@/lib/planning/pdf-export';
 import { currentMonthIndex, currentMonthProgress, monthProgress } from '@/lib/planning/plan-progress';
 import type { PlanMeal } from '@/lib/planning/types';
@@ -242,6 +244,7 @@ export default function DietPlanScreen() {
 
 function MealCard({ meal }: { meal: PlanMeal }) {
   const theme = useTheme();
+  const photo = dishImage(meal.recipe?.dishId);
   return (
     <GlassSurface level="card" radius={Radius.large} style={styles.mealCard}>
       <View style={styles.mealHeader}>
@@ -266,13 +269,16 @@ function MealCard({ meal }: { meal: PlanMeal }) {
       ) : (
         <>
           {meal.recipe ? (
-            <View style={{ gap: 2 }}>
-              <ThemedText type="smallBold">{meal.recipe.name}</ThemedText>
-              {meal.recipe.flavorings.length > 0 ? (
-                <ThemedText type="caption" themeColor="textSecondary">
-                  Per insaporire: {meal.recipe.flavorings.join(', ')}
-                </ThemedText>
-              ) : null}
+            <View style={styles.recipeRow}>
+              {photo ? <DishPhoto image={photo} /> : null}
+              <View style={styles.recipeText}>
+                <ThemedText type="smallBold">{meal.recipe.name}</ThemedText>
+                {meal.recipe.flavorings.length > 0 ? (
+                  <ThemedText type="caption" themeColor="textSecondary">
+                    Per insaporire: {meal.recipe.flavorings.join(', ')}
+                  </ThemedText>
+                ) : null}
+              </View>
             </View>
           ) : null}
           <View style={{ gap: 6 }}>
@@ -427,6 +433,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two,
+  },
+  recipeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+  },
+  recipeText: {
+    flex: 1,
+    gap: 2,
   },
   mealFooterDivider: {
     paddingTop: Spacing.two,
