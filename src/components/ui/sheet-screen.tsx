@@ -23,17 +23,24 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ScrollDefaults } from '@/constants/scroll';
-import { GlassSurface } from '@/components/glass/glass-surface';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
 import { SpringSheet, TimingExit } from '@/constants/motion';
-import { Layout, MaxContentWidth, Radius, SheetShadow, Spacing } from '@/constants/theme';
+import { Layout, MaxContentWidth, Spacing } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { goBackOr } from '@/lib/navigation/go-back';
 
 /** Strip of the screen underneath left visible above the sheet, like an iOS
- * page sheet — it's what tells you the page you came from is still there. */
-const TOP_GAP = 12;
+ * page sheet — it's what tells you the page you came from is still there.
+ * It is a share of the screen (the sheet covers about 95% of it), but never
+ * less than the status bar / Dynamic Island plus a small margin. */
+const TOP_GAP_SHARE = 0.045;
+const TOP_GAP_MIN = 8;
+/** Round white close button, pinned to the sheet's top right. */
+const CLOSE_SIZE = 44;
+const CLOSE_INSET = 16;
+const SHEET_RADIUS = 40;
 /** Drag past this (or flick faster than this) and the sheet goes away. */
 const DRAG_CLOSE_DISTANCE = 120;
 const DRAG_CLOSE_VELOCITY = 0.8;
@@ -63,6 +70,7 @@ export type SheetScreenProps = {
  */
 export function SheetScreen({ title, eyebrow, children, fallbackHref = '/', contentContainerStyle }: SheetScreenProps) {
   const theme = useTheme();
+  const dark = useColorScheme() === 'dark';
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
 
@@ -137,11 +145,11 @@ export function SheetScreen({ title, eyebrow, children, fallbackHref = '/', cont
     transform: [{ translateY: translateY.value }],
   }));
 
-  const top = insets.top + TOP_GAP;
+  const top = Math.max(insets.top + TOP_GAP_MIN, Math.round(height * TOP_GAP_SHARE));
 
   return (
     <View style={styles.overlay}>
-      <Animated.View style={[StyleSheet.absoluteFill, styles.backdrop, { backgroundColor: theme.scrim }, backdropStyle]}>
+      <Animated.View style={[StyleSheet.absoluteFill, styles.backdrop, { backgroundColor: dark ? 'rgba(0,0,0,0.55)' : 'rgba(0,0,0,0.22)' }, backdropStyle]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={close} accessibilityLabel="Chiudi" />
       </Animated.View>
 
@@ -158,14 +166,16 @@ export function SheetScreen({ title, eyebrow, children, fallbackHref = '/', cont
                 </ThemedText>
               ) : null}
             </View>
-            <Pressable onPress={close} hitSlop={6} accessibilityRole="button" accessibilityLabel="Chiudi" style={styles.closeHit}>
-              <GlassSurface level="card" radius={Radius.pill} style={styles.closeButton}>
-                <View style={styles.closeInner}>
-                  <Icon name="close" size={18} color={theme.text} />
-                </View>
-              </GlassSurface>
-            </Pressable>
           </View>
+
+          <Pressable
+            onPress={close}
+            hitSlop={6}
+            accessibilityRole="button"
+            accessibilityLabel="Chiudi"
+            style={[styles.closeButton, { backgroundColor: theme.backgroundElevated }]}>
+            <Icon name="close" size={20} color={theme.text} />
+          </Pressable>
 
           <ScrollView
             {...ScrollDefaults}
@@ -207,42 +217,36 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
     maxWidth: MaxContentWidth,
-    borderTopLeftRadius: Radius.xlarge,
-    borderTopRightRadius: Radius.xlarge,
+    borderTopLeftRadius: SHEET_RADIUS,
+    borderTopRightRadius: SHEET_RADIUS,
+    borderCurve: 'continuous',
     overflow: 'hidden',
-    boxShadow: SheetShadow,
   },
+  // The close button floats at the top right; the title sits below it, as in iOS Settings.
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.three,
     paddingHorizontal: Layout.screenGutter,
-    paddingTop: Layout.screenGutter,
+    paddingTop: CLOSE_INSET + CLOSE_SIZE + Spacing.three,
     paddingBottom: Spacing.three,
   },
   headingText: {
-    flexShrink: 1,
     gap: 2,
   },
-  // A sheet's title sits a step below a full screen's Large Title, like the
-  // system's own page sheets: present, but not shouting over its content.
   title: {
-    fontSize: 28,
-    lineHeight: 34,
-    letterSpacing: -0.6,
-  },
-  closeHit: {
-    alignSelf: 'flex-start',
+    fontSize: 34,
+    lineHeight: 41,
+    fontWeight: '700',
+    letterSpacing: -0.8,
   },
   closeButton: {
-    width: 36,
-    height: 36,
-  },
-  closeInner: {
-    flex: 1,
+    position: 'absolute',
+    top: CLOSE_INSET,
+    right: CLOSE_INSET,
+    width: CLOSE_SIZE,
+    height: CLOSE_SIZE,
+    borderRadius: CLOSE_SIZE / 2,
     alignItems: 'center',
     justifyContent: 'center',
+    boxShadow: '0px 2px 10px rgba(0,0,0,0.08)',
   },
   scroll: {
     flex: 1,
