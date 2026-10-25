@@ -9,7 +9,7 @@ import { isValidDietPlan, isValidTrainingPlan, usePlanStore } from '@/store/plan
 import { useUserStore } from '@/store/user-store';
 
 /**
- * Safety net for the Nutrition / Training tabs: if the person finished
+ * Safety net for Home and the Nutrition / Training tabs: if the person finished
  * onboarding but the plan they need is missing or from an older engine
  * version, build ONLY that plan (never touching the other one).
  *
@@ -37,6 +37,9 @@ export function useEnsurePlan(kind: 'diet' | 'training'): void {
   useEffect(() => {
     if (!planHydrated || !onboardingHydrated || !userHydrated) return;
     if (!hasSynced || !hasOnboarded || calorieTarget <= 0 || isGenerating || attempted.current) return;
+    // Read live, not from this render: Home runs this hook for both plans in the same commit, and the first
+    // one's generatePlans has already set isGenerating by the time the second effect runs.
+    if (usePlanStore.getState().isGenerating) return;
     const mode = answers.mode as string | undefined;
     if (mode === (kind === 'diet' ? 'training' : 'diet')) return; // this plan was never requested
     const valid = kind === 'diet' ? isValidDietPlan(plan as never) : isValidTrainingPlan(plan as never);

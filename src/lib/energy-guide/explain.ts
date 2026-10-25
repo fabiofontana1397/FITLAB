@@ -23,10 +23,10 @@ export function explain(day: DemoDay): { key: string; text: string; tone: Explai
   const goalText = reading.reached
     ? reading.goalKind === 'maintenance'
       ? 'Il semicerchio in alto confronta il bilancio con l’obiettivo: sei in linea con il mantenimento.'
-      : `Il semicerchio in alto confronta il bilancio con l’obiettivo di ${formatSignedKcal(goalKcal)} kcal: il marker è sulla tacca o oltre, obiettivo raggiunto.`
+      : `Il semicerchio in alto confronta il bilancio con l’obiettivo di ${formatSignedKcal(goalKcal)} kcal: il marker ha raggiunto il triangolo dell’obiettivo, o l’ha superato.`
     : reading.towardGoal
-      ? `Il semicerchio in alto confronta il bilancio con l’obiettivo di ${formatSignedKcal(goalKcal)} kcal: sei sulla strada giusta, mancano ${formatKcal(toGoal)} kcal alla tacca.`
-      : `Il semicerchio in alto confronta il bilancio con l’obiettivo di ${formatSignedKcal(goalKcal)} kcal: il marker è dal lato opposto alla tacca, ti allontani dall’obiettivo.`;
+      ? `Il semicerchio in alto confronta il bilancio con l’obiettivo di ${formatSignedKcal(goalKcal)} kcal: sei sulla strada giusta, mancano ${formatKcal(toGoal)} kcal al triangolo dell’obiettivo.`
+      : `Il semicerchio in alto confronta il bilancio con l’obiettivo di ${formatSignedKcal(goalKcal)} kcal: il marker è dal lato opposto al triangolo dell’obiettivo, ti allontani dall’obiettivo.`;
 
   return [
     {

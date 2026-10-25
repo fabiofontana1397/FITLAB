@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, type Href } from 'expo-router';
 import { useState } from 'react';
-import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 
 import { EnergyDetailsPopup } from '@/components/home/energy-details-popup';
 import { OggiGauge } from '@/components/home/oggi-gauge';
@@ -25,6 +25,7 @@ import { InfoPopover } from '@/components/ui/info-popover';
 import { DietOverviewPopup } from '@/components/nutrition/diet-overview-popup';
 import { FoodSearchModal } from '@/components/nutrition/food-search-modal';
 import { MealPickerModal } from '@/components/nutrition/meal-picker-modal';
+import { useEnsurePlan } from '@/hooks/use-ensure-plan';
 import { useHealthEnergy } from '@/hooks/use-health-energy';
 import { sumActivityKcalForDate, useWeeklyEnergy } from '@/hooks/use-weekly-energy';
 import { useTheme } from '@/hooks/use-theme';
@@ -38,7 +39,7 @@ import { WEEKDAY_LABELS } from '@/lib/planning/exercise-library';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
 import { useActivityLogStore } from '@/store/activity-log-store';
 import { useNutritionStore, sumMacros, type MealSlot } from '@/store/nutrition-store';
-import { isValidDietPlan, usePlanStore } from '@/store/plan-store';
+import { usePlanStore } from '@/store/plan-store';
 import { isExerciseCompleted, useTrainingProgressStore } from '@/store/training-progress-store';
 import { useUserStore } from '@/store/user-store';
 
@@ -75,7 +76,11 @@ export default function HomeScreen() {
   const [registerMealOpen, setRegisterMealOpen] = useState(false);
   const [mealSlot, setMealSlot] = useState<MealSlot | null>(null);
   const [overview, setOverview] = useState<'training' | 'diet' | null>(null);
-  const validDietPlan = dietPlan && isValidDietPlan(dietPlan) ? dietPlan : null;
+  // Home shows both plan cards, so it builds a missing or outdated plan itself instead of waiting for the
+  // person to open Allenamento or Nutrizione. Meanwhile any diet plan the overview can render keeps its card.
+  useEnsurePlan('training');
+  useEnsurePlan('diet');
+  const shownDietPlan = dietPlan && dietPlan.months.length > 0 && dietPlan.months.every((m) => Array.isArray(m.weeklySplit)) ? dietPlan : null;
 
   // On iOS a Modal can't present (or navigation run) while another is still dismissing.
   const afterModal = (fn: () => void) => (Platform.OS === 'ios' ? setTimeout(fn, 350) : fn());
@@ -91,6 +96,8 @@ export default function HomeScreen() {
   const [viewDate, setViewDate] = useState(today);
   // The calorie card (gauge and its "Dettagli") opens the chart guide: a sheet like Profilo and Notifiche.
   const openGuide = () => router.push('/energy-guide' as Href);
+  // adjustsFontSizeToFit does nothing on the web, so the three kcal values step down on the narrowest phones.
+  const narrow = useWindowDimensions().width < 360;
 
   // The active month's weekly split: the same weekday-indexed lookup the
   // Training tab uses, so Home and Training agree on what's planned.
@@ -262,22 +269,22 @@ export default function HomeScreen() {
         <View style={styles.oggiRow}>
           <Pressable onPress={() => setInfoTopic('burned')} style={styles.sideCol}>
             <View style={styles.sideIcon}>
-              <Icon name="flame" size={22} color={theme.accent} />
+              <Icon name="flameLine" size={22} color={theme.accent} />
             </View>
             <ThemedText style={styles.sideLabel} themeColor="textTertiary">
               Bruciate
             </ThemedText>
-            <ThemedText style={styles.sideValue} numberOfLines={1} adjustsFontSizeToFit>{formatKcal(burnedKcal)} kcal</ThemedText>
+            <ThemedText style={[styles.sideValue, narrow && styles.sideValueNarrow]} numberOfLines={1} adjustsFontSizeToFit>{formatKcal(burnedKcal)} kcal</ThemedText>
           </Pressable>
           <View style={[styles.sideDivider, { backgroundColor: theme.border }]} />
           <Pressable onPress={() => setDetailsFocus('day')} style={styles.sideCol}>
             <View style={styles.sideIcon}>
-              <Icon name="target" size={22} color={theme.textSecondary} />
+              <Icon name="crosshair" size={22} color={theme.textSecondary} />
             </View>
             <ThemedText style={styles.sideLabel} themeColor="textTertiary">
               Obiettivo
             </ThemedText>
-            <ThemedText style={styles.sideValue} numberOfLines={1} adjustsFontSizeToFit>{formatSignedKcal(dailyGoalKcal)} kcal</ThemedText>
+            <ThemedText style={[styles.sideValue, narrow && styles.sideValueNarrow]} numberOfLines={1} adjustsFontSizeToFit>{formatSignedKcal(dailyGoalKcal)} kcal</ThemedText>
           </Pressable>
           <View style={[styles.sideDivider, { backgroundColor: theme.border }]} />
           <Pressable onPress={() => setInfoTopic('eaten')} style={styles.sideCol}>
@@ -287,7 +294,7 @@ export default function HomeScreen() {
             <ThemedText style={styles.sideLabel} themeColor="textTertiary">
               Assunte
             </ThemedText>
-            <ThemedText style={styles.sideValue} numberOfLines={1} adjustsFontSizeToFit>{formatKcal(eatenKcal)} kcal</ThemedText>
+            <ThemedText style={[styles.sideValue, narrow && styles.sideValueNarrow]} numberOfLines={1} adjustsFontSizeToFit>{formatKcal(eatenKcal)} kcal</ThemedText>
           </Pressable>
         </View>
       </FlatCard>
@@ -312,7 +319,7 @@ export default function HomeScreen() {
       </View>
 
       {/* The two plans, moved here from Allenamento and Nutrizione so Home is where a plan is explored from. */}
-      {trainingPlan || validDietPlan ? (
+      {trainingPlan || shownDietPlan ? (
         <View style={styles.journeys}>
           {trainingPlan ? (
             <PlanJourneyHero
@@ -322,10 +329,10 @@ export default function HomeScreen() {
               action={{ label: 'Esplora piano di allenamento', icon: 'calendar', onPress: () => router.push('/training-plan') }}
             />
           ) : null}
-          {validDietPlan ? (
+          {shownDietPlan ? (
             <PlanJourneyHero
               kind="diet"
-              totalMonths={validDietPlan.durationMonths}
+              totalMonths={shownDietPlan.durationMonths}
               goal={currentUser.goal}
               onPress={() => setOverview('diet')}
               action={{ label: 'Esplora piano alimentare', icon: 'calendar', onPress: () => router.push('/diet-plan') }}
@@ -465,13 +472,13 @@ export default function HomeScreen() {
           currentMonth={currentMonthIndex(trainingPlan)}
         />
       ) : null}
-      {validDietPlan ? (
+      {shownDietPlan ? (
         <DietOverviewPopup
           visible={overview === 'diet'}
           onClose={() => setOverview(null)}
-          plan={validDietPlan}
+          plan={shownDietPlan}
           goal={currentUser.goal}
-          currentMonth={currentMonthIndex(validDietPlan)}
+          currentMonth={currentMonthIndex(shownDietPlan)}
         />
       ) : null}
 
@@ -682,7 +689,7 @@ const styles = StyleSheet.create({
   oggiRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginTop: 6,
+    marginTop: 14,
   },
   sideCol: {
     flex: 1,
@@ -704,6 +711,10 @@ const styles = StyleSheet.create({
     lineHeight: 21,
     fontWeight: '800',
     letterSpacing: -0.3,
+  },
+  sideValueNarrow: {
+    fontSize: 14,
+    lineHeight: 18,
   },
   sideLabel: {
     fontSize: 13,

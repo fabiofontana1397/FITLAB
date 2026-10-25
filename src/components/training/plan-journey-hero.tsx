@@ -1,4 +1,4 @@
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { PressableScale } from '@/components/motion/pressable-scale';
 import { ThemedText } from '@/components/themed-text';
@@ -8,35 +8,17 @@ import { OnBrand } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { Goal } from '@/lib/mock/types';
 
-/** "per una versione … di te." — the hero's promise, worded for the goal. */
-const GOAL_PROMISE: Record<Goal, { adjective: string; body: string }> = {
-  gainStrength: {
-    adjective: 'più forte',
-    body: 'Un programma progressivo per aumentare i tuoi carichi, costruire forza e muoverti meglio.',
-  },
-  gainMuscle: {
-    adjective: 'più muscolosa',
-    body: 'Un programma progressivo per costruire massa muscolare, forza e migliorare la tua forma fisica.',
-  },
-  loseFat: {
-    adjective: 'più definita',
-    body: 'Un programma progressivo per perdere grasso mantenendo i muscoli e migliorare la tua forma fisica.',
-  },
-  improveEndurance: {
-    adjective: 'più resistente',
-    body: 'Un programma progressivo per allungare il fiato, reggere più a lungo e recuperare prima.',
-  },
-  maintainImprove: {
-    adjective: 'migliore',
-    body: 'Un programma progressivo per mantenere i risultati e continuare a migliorare, mese dopo mese.',
-  },
-  generalHealth: {
-    adjective: 'più in forma',
-    body: 'Un programma progressivo per muoverti con costanza, sentirti meglio e restare in salute.',
-  },
+/** The training program's pitch, worded for the goal. */
+const GOAL_BODY: Record<Goal, string> = {
+  gainStrength: 'Un programma progressivo per aumentare i tuoi carichi, costruire forza e muoverti meglio.',
+  gainMuscle: 'Un programma progressivo per costruire massa muscolare, forza e migliorare la tua forma fisica.',
+  loseFat: 'Un programma progressivo per perdere grasso mantenendo i muscoli e migliorare la tua forma fisica.',
+  improveEndurance: 'Un programma progressivo per allungare il fiato, reggere più a lungo e recuperare prima.',
+  maintainImprove: 'Un programma progressivo per mantenere i risultati e continuare a migliorare, mese dopo mese.',
+  generalHealth: 'Un programma progressivo per muoverti con costanza, sentirti meglio e restare in salute.',
 };
 
-/** The same promise, told from the plate. */
+/** The same pitch, told from the plate. */
 const DIET_BODY: Record<Goal, string> = {
   gainStrength: 'Un piano alimentare che sostiene i tuoi allenamenti, con le proteine e l’energia per far salire i carichi.',
   gainMuscle: 'Un piano alimentare in leggero surplus, ricco di proteine, per costruire massa muscolare senza accumulare grasso.',
@@ -49,147 +31,150 @@ const DIET_BODY: Record<Goal, string> = {
 export type PlanJourneyHeroProps = {
   totalMonths: number;
   goal: Goal;
+  /** Opens the full plan description (the "Dettagli" link). */
   onPress: () => void;
-  /** Which plan the banner sells: the training program (default) or the diet. */
+  /** Which plan the card presents: the training program (default) or the diet. */
   kind?: 'training' | 'diet';
-  /** Optional white button at the bottom (e.g. "Esplora piano"), in place of the "Scopri" link. */
-  action?: { label: string; icon: IconName; onPress: () => void };
+  /** The button at the bottom, e.g. "Esplora piano di allenamento". */
+  action: { label: string; icon: IconName; onPress: () => void };
 };
 
-/** The "Il tuo percorso" banner on Home, one for the training program and
- * one for the diet: a card in the same milky glass as the rest of Home,
- * selling the whole plan in one line. Tapping it opens the full plan
- * description (PlanOverviewPopup / DietOverviewPopup). */
+/**
+ * A "Il tuo percorso" card on Home, one for the training program and one for
+ * the diet, built like Home's other cards so the page reads as one system:
+ * a 14 pt bold title row with its "Dettagli" link (as "Calorie di oggi"),
+ * the plan length as the card's figure at 26 pt (as the weekly balance), a
+ * two-line 13 pt description in the secondary colour (as the AI Coach), and
+ * one button at least 44 pt tall — the HIG's minimum touch target — to open
+ * the plan. On narrow phones labels wrap rather than truncate. Its accents
+ * and faint watermark artwork take the plan's colour: green for training,
+ * orange for the diet.
+ */
 export function PlanJourneyHero({ totalMonths, goal, onPress, kind = 'training', action }: PlanJourneyHeroProps) {
   const theme = useTheme();
-  const promise = GOAL_PROMISE[goal];
   const diet = kind === 'diet';
-  const label = diet ? 'Scopri il tuo piano alimentare' : 'Scopri il tuo percorso';
-  const copy = (
-    <>
-      <ThemedText style={[styles.tag, { color: theme.accent }]}>IL TUO PERCORSO · {diet ? 'ALIMENTAZIONE' : 'ALLENAMENTO'}</ThemedText>
-      <View style={styles.copy}>
-        <ThemedText style={styles.months}>
-          {totalMonths} {totalMonths === 1 ? 'mese' : 'mesi'}
-        </ThemedText>
-        <ThemedText style={styles.headline}>per una versione {promise.adjective} di te.</ThemedText>
-        <ThemedText style={styles.body} themeColor="textSecondary">
-          {diet ? DIET_BODY[goal] : promise.body}
-        </ThemedText>
-      </View>
-    </>
-  );
-  const card = (
+  // Each plan wears the colour of its own Home button: orange like "Registra pasto", green like "Registra allenamento".
+  const tint = diet ? theme.accent : theme.brandGreen;
+  const tintSoft = diet ? theme.accentSoft : theme.successSoft;
+
+  return (
     <FlatCard radius={20} style={styles.card}>
       <View pointerEvents="none" style={styles.artBig}>
-        <Icon name={diet ? 'utensils' : 'barbell'} size={diet ? 120 : 136} color={theme.accentSoft} />
+        <Icon name={diet ? 'utensils' : 'barbell'} size={diet ? 88 : 100} color={tintSoft} />
       </View>
       <View pointerEvents="none" style={styles.artSmall}>
-        <Icon name={diet ? 'nutrition' : 'training'} size={60} color={theme.accentSoft} />
+        <Icon name={diet ? 'nutrition' : 'training'} size={40} color={tintSoft} />
       </View>
 
-      {action ? (
-        <PressableScale onPress={onPress} scaleTo={0.985} accessibilityRole="button" accessibilityLabel={label} style={styles.copyPress}>
-          {copy}
-        </PressableScale>
-      ) : (
-        copy
-      )}
-      {action ? (
-        <PressableScale onPress={action.onPress} accessibilityRole="button" style={[styles.actionButton, { backgroundColor: theme.accentSoft }]}>
-          <View style={[styles.actionIcon, { backgroundColor: theme.accent }]}>
-            <Icon name={action.icon} size={16} color={OnBrand.text} />
-          </View>
-          <ThemedText style={[styles.actionLabel, { color: theme.accent }]}>{action.label}</ThemedText>
-          <Icon name="chevronRight" size={16} color={theme.accent} />
-        </PressableScale>
-      ) : (
-        <View style={styles.cta}>
-          <ThemedText style={[styles.ctaText, { color: theme.accent }]}>{diet ? 'Scopri il piano' : 'Scopri il programma'}</ThemedText>
-          <Icon name="chevronRight" size={15} color={theme.accent} />
+      <View style={styles.titleRow}>
+        <View style={styles.titleLeft}>
+          <Icon name={diet ? 'utensils' : 'barbell'} size={20} color={tint} />
+          <ThemedText style={styles.title} numberOfLines={2}>
+            Il tuo percorso · {diet ? 'Alimentazione' : 'Allenamento'}
+          </ThemedText>
         </View>
-      )}
-    </FlatCard>
-  );
+        <Pressable
+          onPress={onPress}
+          hitSlop={8}
+          style={styles.linkRow}
+          accessibilityRole="button"
+          accessibilityLabel={diet ? 'Dettagli del piano alimentare' : 'Dettagli del programma di allenamento'}>
+          <ThemedText style={[styles.linkText, { color: tint }]}>Dettagli</ThemedText>
+          <Icon name="chevronRight" size={13} color={tint} />
+        </Pressable>
+      </View>
 
-  // With its own action button the card can't also be one big button (on
-  // web that nests a <button> in a <button>, which browsers and screen
-  // readers mangle): only the copy opens the overview then.
-  if (action) return card;
-  return (
-    <PressableScale onPress={onPress} scaleTo={0.985} accessibilityRole="button" accessibilityLabel={label}>
-      {card}
-    </PressableScale>
+      <ThemedText style={styles.value}>
+        {totalMonths} {totalMonths === 1 ? 'mese' : 'mesi'}
+      </ThemedText>
+      <ThemedText style={styles.body} themeColor="textSecondary" numberOfLines={2}>
+        {diet ? DIET_BODY[goal] : GOAL_BODY[goal]}
+      </ThemedText>
+
+      <PressableScale onPress={action.onPress} accessibilityRole="button" style={[styles.actionButton, { backgroundColor: tintSoft }]}>
+        <View style={[styles.actionIcon, { backgroundColor: tint }]}>
+          <Icon name={action.icon} size={15} color={OnBrand.text} />
+        </View>
+        <ThemedText style={[styles.actionLabel, { color: tint }]} numberOfLines={2}>
+          {action.label}
+        </ThemedText>
+        <Icon name="chevronRight" size={15} color={tint} />
+      </PressableScale>
+    </FlatCard>
   );
 }
 
 const styles = StyleSheet.create({
-  copyPress: {
-    gap: 8,
-  },
   card: {
-    padding: 16,
+    paddingHorizontal: 14,
+    paddingTop: 14,
+    paddingBottom: 14,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     gap: 8,
   },
+  titleLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+    flexShrink: 1,
+  },
+  title: {
+    flexShrink: 1,
+    fontSize: 14,
+    lineHeight: 18,
+    fontWeight: '700',
+  },
+  linkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  linkText: {
+    fontSize: 13,
+    lineHeight: 17,
+    fontWeight: '600',
+  },
+  // The watermark keeps to the band between the title row and the button, on the right, clear of both.
   artBig: {
     position: 'absolute',
-    right: -24,
-    top: 6,
+    right: -14,
+    top: 34,
     transform: [{ rotate: '-18deg' }],
   },
   artSmall: {
     position: 'absolute',
-    right: 56,
-    bottom: 4,
+    right: 70,
+    top: 38,
     transform: [{ rotate: '12deg' }],
   },
-  tag: {
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: '700',
-    letterSpacing: 1.1,
-  },
-  copy: {
-    maxWidth: '80%',
-    gap: 2,
-  },
-  months: {
-    fontSize: 32,
-    lineHeight: 37,
+  value: {
+    marginTop: 8,
+    fontSize: 26,
+    lineHeight: 32,
     fontWeight: '800',
-    letterSpacing: -0.8,
-  },
-  headline: {
-    fontSize: 18,
-    lineHeight: 23,
-    fontWeight: '600',
-    letterSpacing: -0.3,
+    letterSpacing: -0.6,
   },
   body: {
+    // Leaves the artwork on the right uncovered.
+    maxWidth: '72%',
     marginTop: 4,
-    fontSize: 12.5,
-    lineHeight: 17,
+    fontSize: 13,
+    lineHeight: 18,
     fontWeight: '500',
   },
-  cta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 2,
-  },
-  ctaText: {
-    fontSize: 13.5,
-    lineHeight: 18,
-    fontWeight: '700',
-  },
   actionButton: {
-    marginTop: 4,
-    height: 44,
+    marginTop: 12,
+    minHeight: 44,
     borderRadius: 14,
     paddingHorizontal: 12,
+    paddingVertical: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
   },
   actionIcon: {
     width: 26,
@@ -200,8 +185,8 @@ const styles = StyleSheet.create({
   },
   actionLabel: {
     flex: 1,
-    fontSize: 14.5,
-    lineHeight: 19,
+    fontSize: 14,
+    lineHeight: 18,
     fontWeight: '700',
   },
 });
