@@ -115,7 +115,7 @@ export default function TrainingScreen() {
 
   return (
     <ScreenScroll reveal contentContainerStyle={styles.page}>
-      <TabHeader title="Allenamento" />
+      <TabHeader title="Allenamento" onCalendarPress={() => setCalendarOpen(true)} />
 
       <View style={styles.sectionRow}>
         <ThemedText style={styles.sectionTitle}>La tua settimana</ThemedText>
