@@ -6,7 +6,6 @@ import { Platform, Pressable, StyleSheet, View, useWindowDimensions } from 'reac
 import { EnergyDetailsPopup } from '@/components/home/energy-details-popup';
 import { OggiGauge } from '@/components/home/oggi-gauge';
 import { DayCalendarModal } from '@/components/ui/day-calendar-modal';
-import { LiquidGlassButton } from '@/components/glass/liquid-glass';
 import { AnimatedFill, GrowBar } from '@/components/motion/animated-fill';
 import { PressableScale } from '@/components/motion/pressable-scale';
 import { ScreenScroll } from '@/components/screen-scroll';
@@ -210,15 +209,7 @@ export default function HomeScreen() {
 
   return (
     <ScreenScroll reveal contentContainerStyle={styles.page}>
-      <TabHeader
-        title={`Ciao ${currentUser.name}`}
-        subtitle={viewDateLabel}
-        accessory={
-          <LiquidGlassButton onPress={() => setCalendarOpen(true)} hitSlop={8} scaleTo={0.9} accessibilityLabel="Apri calendario" size={40}>
-            <Icon name="calendar" size={19} color={theme.text} />
-          </LiquidGlassButton>
-        }
-      />
+      <TabHeader title={`Ciao ${currentUser.name}`} subtitle={viewDateLabel} onCalendarPress={() => setCalendarOpen(true)} />
 
       <View style={styles.weekStrip}>
         <WeekStrip days={stripDays} selectedDate={viewDate} onSelect={setViewDate} />

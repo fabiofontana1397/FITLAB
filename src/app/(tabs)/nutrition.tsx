@@ -149,7 +149,7 @@ export default function NutritionScreen() {
 
   return (
     <ScreenScroll reveal contentContainerStyle={styles.page}>
-      <TabHeader title="Nutrizione" />
+      <TabHeader title="Nutrizione" onCalendarPress={() => setCalendarOpen(true)} />
 
       <FlatCard radius={CARD_RADIUS} style={styles.calorieCard}>
         <View style={styles.cardTitleRow}>

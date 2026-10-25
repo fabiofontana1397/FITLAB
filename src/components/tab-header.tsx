@@ -1,6 +1,5 @@
 import { router, type Href } from 'expo-router';
-import type { ReactNode } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, useWindowDimensions } from 'react-native';
 
 import { LiquidGlassButton } from '@/components/glass/liquid-glass';
 import { ThemedText } from '@/components/themed-text';
@@ -9,58 +8,63 @@ import { Icon } from '@/components/ui/icon';
 import { ProfileAvatarButton } from '@/components/ui/profile-avatar-button';
 import { useTheme } from '@/hooks/use-theme';
 
-const BUTTON = 40;
+/** Below this width everything on the line steps down so the title still fits. */
+const NARROW = 360;
 
 export type TabHeaderProps = {
   title: string;
-  /** Small grey line under the title. */
+  /** Small grey line under the title (Home: the selected day's full date). */
   subtitle?: string;
-  /** Sits at the right edge, on the title's line (Home puts its calendar button here). */
-  accessory?: ReactNode;
+  /** Shows the calendar button between notifications and profile; omit it on pages with no calendar. */
+  onCalendarPress?: () => void;
 };
 
 /**
- * The top of every main page: the FitLab mark at the top left, notifications
- * and profile at the top right on the same line, and the page title under the
- * mark, with an optional button right next to it.
+ * The top bar of every main page, all on one line: the FitLab mark and the
+ * page title (with an optional line under it) on the left; on the right, in
+ * this order, notifications, calendar (when the page has one) and profile.
  */
-export function TabHeader({ title, subtitle, accessory }: TabHeaderProps) {
+export function TabHeader({ title, subtitle, onCalendarPress }: TabHeaderProps) {
   const theme = useTheme();
+  const narrow = useWindowDimensions().width < NARROW;
+  const size = narrow ? 34 : 40;
+  const iconSize = narrow ? 17 : 19;
   return (
-    <View style={styles.root}>
-      <View style={styles.topRow}>
-        <BrandMark height={26} />
-        <View style={styles.actions}>
-          <LiquidGlassButton onPress={() => router.push('/notification-settings' as Href)} hitSlop={8} scaleTo={0.9} accessibilityLabel="Notifiche" size={BUTTON}>
-            <Icon name="bell" size={19} color={theme.text} />
-          </LiquidGlassButton>
-          <ProfileAvatarButton size={BUTTON} />
-        </View>
-      </View>
-
-      <View style={styles.titleRow}>
-        <View style={styles.titleText}>
-          <ThemedText style={styles.title} numberOfLines={1}>
-            {title}
+    <View style={[styles.row, narrow && styles.rowNarrow]}>
+      <BrandMark height={narrow ? 20 : 24} />
+      <View style={styles.text}>
+        <ThemedText style={[styles.title, narrow && styles.titleNarrow]} numberOfLines={1}>
+          {title}
+        </ThemedText>
+        {subtitle ? (
+          <ThemedText style={[styles.subtitle, narrow && styles.subtitleNarrow]} themeColor="textSecondary" numberOfLines={1}>
+            {subtitle}
           </ThemedText>
-          {subtitle ? (
-            <ThemedText style={styles.subtitle} themeColor="textSecondary" numberOfLines={1}>
-              {subtitle}
-            </ThemedText>
-          ) : null}
-        </View>
-        {accessory}
+        ) : null}
+      </View>
+      <View style={[styles.actions, narrow && styles.actionsNarrow]}>
+        <LiquidGlassButton onPress={() => router.push('/notification-settings' as Href)} hitSlop={8} scaleTo={0.9} accessibilityLabel="Notifiche" size={size}>
+          <Icon name="bell" size={iconSize} color={theme.text} />
+        </LiquidGlassButton>
+        {onCalendarPress ? (
+          <LiquidGlassButton onPress={onCalendarPress} hitSlop={8} scaleTo={0.9} accessibilityLabel="Apri calendario" size={size}>
+            <Icon name="calendar" size={iconSize} color={theme.text} />
+          </LiquidGlassButton>
+        ) : null}
+        <ProfileAvatarButton size={size} />
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { marginBottom: 14 },
-  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  actions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 14 },
-  titleText: { flex: 1 },
-  title: { fontSize: 26, lineHeight: 32, fontWeight: '700', letterSpacing: -0.5 },
-  subtitle: { fontSize: 14, lineHeight: 19, fontWeight: '400', marginTop: 1 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 },
+  rowNarrow: { gap: 8 },
+  text: { flex: 1, minWidth: 0 },
+  title: { fontSize: 20, lineHeight: 25, fontWeight: '700', letterSpacing: -0.4 },
+  titleNarrow: { fontSize: 16, lineHeight: 20 },
+  subtitle: { fontSize: 13, lineHeight: 17, fontWeight: '400' },
+  subtitleNarrow: { fontSize: 12, lineHeight: 16 },
+  actions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  actionsNarrow: { gap: 6 },
 });

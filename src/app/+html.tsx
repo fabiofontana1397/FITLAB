@@ -8,7 +8,7 @@ import { PageBackground } from '@/constants/page-background';
 // import constants/theme.ts, so the page colour comes from the dependency-free
 // module that theme.ts builds `background` from.
 /** Bump when the logo files in public/ change. */
-const ICON_VERSION = '3';
+const ICON_VERSION = '4';
 
 const PAGE_BACKGROUND_CSS = `
 html,body{background-color:${PageBackground.light}}
@@ -31,6 +31,8 @@ export default function Root({ children }: PropsWithChildren) {
         <meta name="apple-mobile-web-app-title" content="FitLab" />
         <link rel="manifest" href="/manifest.json" />
         {/* ?v= changes the URL when the logo changes: Safari and iOS keep icons cached by URL for a long time. */}
+        {/* The vector icon is all black on a light browser and all white on a dark one; the PNGs are the fallback. */}
+        <link rel="icon" type="image/svg+xml" href={`/favicon.svg?v=${ICON_VERSION}`} />
         <link rel="icon" type="image/png" sizes="32x32" href={`/favicon-32.png?v=${ICON_VERSION}`} />
         <link rel="icon" type="image/png" sizes="48x48" href={`/favicon-48.png?v=${ICON_VERSION}`} />
         <link rel="apple-touch-icon" sizes="180x180" href={`/apple-touch-icon.png?v=${ICON_VERSION}`} />
