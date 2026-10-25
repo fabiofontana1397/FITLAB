@@ -1,7 +1,7 @@
 import { View, type StyleProp, type ViewStyle } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
-import { useTheme } from '@/hooks/use-theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 /** The FitLab "F": two stacked blades, traced from the brand artwork. */
 const VIEWBOX_W = 632;
@@ -10,17 +10,17 @@ const MARK_PATH =
   'M0.4 466.6C0.1 465.8 2.2 457.8 5.0 448.8C34.7 355.6 69.7 292.5 112.6 254.9C138.8 231.9 168.5 215.7 199.5 207.2C233.6 198.0 219.6 198.6 386.8 198.3C510.9 198.0 534.1 198.2 534.6 199.3C535.3 201.1 514.8 237.8 502.3 257.0C473.1 301.9 432.5 330.9 384.0 341.2C375.4 343.0 369.1 343.3 316.5 344.0C258.1 344.8 248.4 345.4 224.5 349.1C152.2 360.6 82.3 397.0 12.8 459.2C2.9 468.2 1.4 469.1 0.4 466.6ZM80.5 224.2C82.2 215.0 94.1 180.5 100.8 165.4C141.5 73.5 203.8 19.3 286.5 4.1C307.8 0.1 314.2 0.0 474.5 0.0C624.6 0.0 630.9 0.1 631.4 1.8C632.3 4.6 582.6 99.5 572.9 113.5C555.1 139.2 531.6 154.8 498.5 162.7C492.2 164.2 477.6 164.4 353.0 165.0C199.5 165.7 210.1 165.2 183.5 172.5C150.1 181.7 121.0 196.9 91.4 220.7C80.8 229.2 79.5 229.6 80.5 224.2Z';
 
 /**
- * The FitLab mark, drawn as a vector in the current text colour (black on
- * light screens, white on dark ones). `height` sets its size; the width
+ * The FitLab mark, drawn as a vector in solid colour, never tinted: pure black on
+ * light screens, pure white on dark ones. `height` sets its size; the width
  * follows the artwork's proportions.
  */
 export function BrandMark({ height = 28, color, style }: { height?: number; color?: string; style?: StyleProp<ViewStyle> }) {
-  const theme = useTheme();
+  const dark = useColorScheme() === 'dark';
   const width = (height * VIEWBOX_W) / VIEWBOX_H;
   return (
     <View style={style} accessibilityRole="image" accessibilityLabel="FitLab">
       <Svg width={width} height={height} viewBox={`0 0 ${VIEWBOX_W} ${VIEWBOX_H}`}>
-        <Path d={MARK_PATH} fill={color ?? theme.text} />
+        <Path d={MARK_PATH} fill={color ?? (dark ? '#FFFFFF' : '#000000')} />
       </Svg>
     </View>
   );
