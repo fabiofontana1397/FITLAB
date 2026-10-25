@@ -8,35 +8,17 @@ import { OnBrand } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { Goal } from '@/lib/mock/types';
 
-/** "per una versione … di te." — the hero's promise, worded for the goal. */
-const GOAL_PROMISE: Record<Goal, { adjective: string; body: string }> = {
-  gainStrength: {
-    adjective: 'più forte',
-    body: 'Un programma progressivo per aumentare i tuoi carichi, costruire forza e muoverti meglio.',
-  },
-  gainMuscle: {
-    adjective: 'più muscolosa',
-    body: 'Un programma progressivo per costruire massa muscolare, forza e migliorare la tua forma fisica.',
-  },
-  loseFat: {
-    adjective: 'più definita',
-    body: 'Un programma progressivo per perdere grasso mantenendo i muscoli e migliorare la tua forma fisica.',
-  },
-  improveEndurance: {
-    adjective: 'più resistente',
-    body: 'Un programma progressivo per allungare il fiato, reggere più a lungo e recuperare prima.',
-  },
-  maintainImprove: {
-    adjective: 'migliore',
-    body: 'Un programma progressivo per mantenere i risultati e continuare a migliorare, mese dopo mese.',
-  },
-  generalHealth: {
-    adjective: 'più in forma',
-    body: 'Un programma progressivo per muoverti con costanza, sentirti meglio e restare in salute.',
-  },
+/** The training program's pitch, worded for the goal. */
+const GOAL_BODY: Record<Goal, string> = {
+  gainStrength: 'Un programma progressivo per aumentare i tuoi carichi, costruire forza e muoverti meglio.',
+  gainMuscle: 'Un programma progressivo per costruire massa muscolare, forza e migliorare la tua forma fisica.',
+  loseFat: 'Un programma progressivo per perdere grasso mantenendo i muscoli e migliorare la tua forma fisica.',
+  improveEndurance: 'Un programma progressivo per allungare il fiato, reggere più a lungo e recuperare prima.',
+  maintainImprove: 'Un programma progressivo per mantenere i risultati e continuare a migliorare, mese dopo mese.',
+  generalHealth: 'Un programma progressivo per muoverti con costanza, sentirti meglio e restare in salute.',
 };
 
-/** The same promise, told from the plate. */
+/** The same pitch, told from the plate. */
 const DIET_BODY: Record<Goal, string> = {
   gainStrength: 'Un piano alimentare che sostiene i tuoi allenamenti, con le proteine e l’energia per far salire i carichi.',
   gainMuscle: 'Un piano alimentare in leggero surplus, ricco di proteine, per costruire massa muscolare senza accumulare grasso.',
@@ -64,18 +46,29 @@ export type PlanJourneyHeroProps = {
  * the plan length as the card's figure at 26 pt (as the weekly balance), a
  * two-line 13 pt description in the secondary colour (as the AI Coach), and
  * one button at least 44 pt tall — the HIG's minimum touch target — to open
- * the plan. On narrow phones labels wrap rather than truncate.
+ * the plan. On narrow phones labels wrap rather than truncate. Its accents
+ * and faint watermark artwork take the plan's colour: green for training,
+ * orange for the diet.
  */
 export function PlanJourneyHero({ totalMonths, goal, onPress, kind = 'training', action }: PlanJourneyHeroProps) {
   const theme = useTheme();
-  const promise = GOAL_PROMISE[goal];
   const diet = kind === 'diet';
+  // Each plan wears the colour of its own Home button: orange like "Registra pasto", green like "Registra allenamento".
+  const tint = diet ? theme.accent : theme.brandGreen;
+  const tintSoft = diet ? theme.accentSoft : theme.successSoft;
 
   return (
     <FlatCard radius={20} style={styles.card}>
+      <View pointerEvents="none" style={styles.artBig}>
+        <Icon name={diet ? 'utensils' : 'barbell'} size={diet ? 88 : 100} color={tintSoft} />
+      </View>
+      <View pointerEvents="none" style={styles.artSmall}>
+        <Icon name={diet ? 'nutrition' : 'training'} size={40} color={tintSoft} />
+      </View>
+
       <View style={styles.titleRow}>
         <View style={styles.titleLeft}>
-          <Icon name={diet ? 'utensils' : 'barbell'} size={20} color={theme.accent} />
+          <Icon name={diet ? 'utensils' : 'barbell'} size={20} color={tint} />
           <ThemedText style={styles.title} numberOfLines={2}>
             Il tuo percorso · {diet ? 'Alimentazione' : 'Allenamento'}
           </ThemedText>
@@ -86,31 +79,26 @@ export function PlanJourneyHero({ totalMonths, goal, onPress, kind = 'training',
           style={styles.linkRow}
           accessibilityRole="button"
           accessibilityLabel={diet ? 'Dettagli del piano alimentare' : 'Dettagli del programma di allenamento'}>
-          <ThemedText style={[styles.linkText, { color: theme.accent }]}>Dettagli</ThemedText>
-          <Icon name="chevronRight" size={13} color={theme.accent} />
+          <ThemedText style={[styles.linkText, { color: tint }]}>Dettagli</ThemedText>
+          <Icon name="chevronRight" size={13} color={tint} />
         </Pressable>
       </View>
 
-      <View style={styles.valueRow}>
-        <ThemedText style={styles.value}>
-          {totalMonths} {totalMonths === 1 ? 'mese' : 'mesi'}
-        </ThemedText>
-        <ThemedText style={styles.promise} themeColor="textTertiary" numberOfLines={2}>
-          per una versione {promise.adjective} di te
-        </ThemedText>
-      </View>
+      <ThemedText style={styles.value}>
+        {totalMonths} {totalMonths === 1 ? 'mese' : 'mesi'}
+      </ThemedText>
       <ThemedText style={styles.body} themeColor="textSecondary" numberOfLines={2}>
-        {diet ? DIET_BODY[goal] : promise.body}
+        {diet ? DIET_BODY[goal] : GOAL_BODY[goal]}
       </ThemedText>
 
-      <PressableScale onPress={action.onPress} accessibilityRole="button" style={[styles.actionButton, { backgroundColor: theme.accentSoft }]}>
-        <View style={[styles.actionIcon, { backgroundColor: theme.accent }]}>
+      <PressableScale onPress={action.onPress} accessibilityRole="button" style={[styles.actionButton, { backgroundColor: tintSoft }]}>
+        <View style={[styles.actionIcon, { backgroundColor: tint }]}>
           <Icon name={action.icon} size={15} color={OnBrand.text} />
         </View>
-        <ThemedText style={[styles.actionLabel, { color: theme.accent }]} numberOfLines={2}>
+        <ThemedText style={[styles.actionLabel, { color: tint }]} numberOfLines={2}>
           {action.label}
         </ThemedText>
-        <Icon name="chevronRight" size={15} color={theme.accent} />
+        <Icon name="chevronRight" size={15} color={tint} />
       </PressableScale>
     </FlatCard>
   );
@@ -150,26 +138,29 @@ const styles = StyleSheet.create({
     lineHeight: 17,
     fontWeight: '600',
   },
-  valueRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 6,
-    marginTop: 8,
+  // The watermark keeps to the band between the title row and the button, on the right, clear of both.
+  artBig: {
+    position: 'absolute',
+    right: -14,
+    top: 34,
+    transform: [{ rotate: '-18deg' }],
+  },
+  artSmall: {
+    position: 'absolute',
+    right: 70,
+    top: 38,
+    transform: [{ rotate: '12deg' }],
   },
   value: {
-    flexShrink: 0,
+    marginTop: 8,
     fontSize: 26,
     lineHeight: 32,
     fontWeight: '800',
     letterSpacing: -0.6,
   },
-  promise: {
-    flexShrink: 1,
-    fontSize: 13,
-    lineHeight: 17,
-    fontWeight: '500',
-  },
   body: {
+    // Leaves the artwork on the right uncovered.
+    maxWidth: '72%',
     marginTop: 4,
     fontSize: 13,
     lineHeight: 18,
