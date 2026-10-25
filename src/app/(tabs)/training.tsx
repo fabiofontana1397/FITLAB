@@ -11,12 +11,13 @@ import { TabHeader } from '@/components/tab-header';
 import { LogActivityModal } from '@/components/training/log-activity-modal';
 import { LoggedActivitiesCard } from '@/components/training/logged-activities-card';
 import { TrainingWeekCard } from '@/components/training/training-week-card';
+import { WeekWorkoutCard, type WeekWorkoutStatus } from '@/components/training/week-workout-card';
 import { levelLabel, WorkoutSummaryCard } from '@/components/training/workout-summary-card';
 import { WorkoutSessionModal } from '@/components/training/workout-session-modal';
 import { useEnsurePlan } from '@/hooks/use-ensure-plan';
 import { useUserContext } from '@/hooks/use-user-context';
 import { useTheme } from '@/hooks/use-theme';
-import { currentWeekDates, daysAgoISO, isoMondayIndex } from '@/lib/mock/dates';
+import { currentWeekDates, dayOfMonth, daysAgoISO, isoMondayIndex } from '@/lib/mock/dates';
 import { sessionKcal as plannedSessionKcal, sessionMinutes as plannedSessionMinutes } from '@/domain/energy';
 import { OnBrand } from '@/constants/theme';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
@@ -95,6 +96,19 @@ export default function TrainingScreen() {
   const selectedDone = isDayComplete(selectedDate);
   const statusLabel = selectedDone ? 'Completato' : selectedDate < today ? 'Non completato' : 'In programma';
   const statusColor = selectedDone ? theme.brandGreen : selectedDate < today ? theme.textTertiary : theme.accent;
+
+  // The other sessions of this week (the selected day has its own card above): one box each, in week order.
+  const otherSessions = trainingPlan
+    ? viewedWeekDates
+        .filter((date) => date !== selectedDate)
+        .flatMap((date) => {
+          const day = weeklySplit[isoMondayIndex(date)];
+          if (!day || day.type === 'rest') return [];
+          const status: WeekWorkoutStatus = isDayComplete(date) ? 'done' : date < today ? 'missed' : 'planned';
+          const weekday = new Date(date).toLocaleDateString('it-IT', { weekday: 'long' });
+          return [{ date, day, status, dayLabel: `${weekday.charAt(0).toUpperCase()}${weekday.slice(1)} ${dayOfMonth(date)}` }];
+        })
+    : [];
 
   const dayHeading =
     selectedDate === today ? 'Allenamento di oggi' : `Allenamento del ${new Date(selectedDate).toLocaleDateString('it-IT', { day: 'numeric', month: 'long' })}`;
@@ -176,6 +190,27 @@ export default function TrainingScreen() {
 
       <LoggedActivitiesCard date={selectedDate} />
 
+      {otherSessions.length > 0 ? (
+        <>
+          <View style={styles.sectionRow}>
+            <ThemedText style={styles.sectionTitle}>Altri allenamenti della settimana</ThemedText>
+          </View>
+          <View style={styles.weekList}>
+            {otherSessions.map(({ date, day, status, dayLabel }) => (
+              <WeekWorkoutCard
+                key={date}
+                dayLabel={dayLabel}
+                title={day.title}
+                minutes={plannedSessionMinutes(day, ctx)}
+                kcal={plannedSessionKcal(day, ctx)}
+                status={status}
+                onOpen={day.type === 'workout' ? () => router.push({ pathname: '/workout-detail', params: { date } }) : undefined}
+              />
+            ))}
+          </View>
+        </>
+      ) : null}
+
       {selectedDay?.type === 'workout' ? (
         <WorkoutSessionModal
           visible={sessionOpen}
@@ -231,6 +266,9 @@ const styles = StyleSheet.create({
     lineHeight: 25,
     fontWeight: '700',
     letterSpacing: -0.3,
+  },
+  weekList: {
+    gap: 12,
   },
   registerButton: {
     marginTop: 12,
