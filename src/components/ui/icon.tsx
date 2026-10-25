@@ -98,6 +98,7 @@ const ICONS = {
   chatBubble: { set: 'ion', name: 'chatbubble-ellipses' },
   minus: { set: 'ion', name: 'remove-circle-outline' },
   addCircle: { set: 'ion', name: 'add-circle' },
+  addCircleOutline: { set: 'ion', name: 'add-circle-outline' },
   trash: { set: 'ion', name: 'trash-outline' },
   logout: { set: 'ion', name: 'log-out-outline' },
   footsteps: { set: 'mci', name: 'shoe-print' },

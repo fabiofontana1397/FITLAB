@@ -70,20 +70,29 @@ export function balanceHalfRange(goalKcal: number): number {
   return Math.ceil(wanted / rangeStepKcal) * rangeStepKcal;
 }
 
-export function readBalance({ eatenKcal, burnedKcal, goalKcal }: { eatenKcal: number; burnedKcal: number; goalKcal: number }): BalanceReading {
-  const { toleranceKcal } = BALANCE_SCALE;
+/** Which side of equilibrium a balance falls on, `toleranceKcal` counting as "even". */
+export function balanceSide(balanceKcal: number, toleranceKcal: number = BALANCE_SCALE.toleranceKcal): Exclude<BalanceStatus, 'missing'> {
+  return Math.abs(balanceKcal) <= toleranceKcal ? 'even' : balanceKcal < 0 ? 'deficit' : 'surplus';
+}
+
+export function readBalance({
+  eatenKcal,
+  burnedKcal,
+  goalKcal,
+  toleranceKcal = BALANCE_SCALE.toleranceKcal,
+}: {
+  eatenKcal: number;
+  burnedKcal: number;
+  goalKcal: number;
+  /** Override of BALANCE_SCALE.toleranceKcal (the explanatory carousel lets it be tuned); Home never passes it. */
+  toleranceKcal?: number;
+}): BalanceReading {
   const balanceKcal = calorieBalance(eatenKcal, burnedKcal);
   const halfRangeKcal = balanceHalfRange(goalKcal);
   const goalKind: GoalKind = goalKcal < -toleranceKcal ? 'deficit' : goalKcal > toleranceKcal ? 'surplus' : 'maintenance';
   const missing = eatenKcal <= 0 || burnedKcal <= 0;
 
-  const status: BalanceStatus = missing
-    ? 'missing'
-    : Math.abs(balanceKcal) <= toleranceKcal
-      ? 'even'
-      : balanceKcal < 0
-        ? 'deficit'
-        : 'surplus';
+  const status: BalanceStatus = missing ? 'missing' : balanceSide(balanceKcal, toleranceKcal);
 
   let progress: number;
   let towardGoal: boolean;
@@ -117,4 +126,12 @@ export function readBalance({ eatenKcal, burnedKcal, goalKcal }: { eatenKcal: nu
 export function balancePosition(balanceKcal: number, halfRangeKcal: number): { position: number; clamped: boolean } {
   const raw = -balanceKcal / halfRangeKcal;
   return { position: Math.max(-1, Math.min(1, raw)), clamped: Math.abs(raw) > 1 };
+}
+
+/** The short word under the gauge's number: what the day's reading amounts to. */
+export function balanceCaption(reading: BalanceReading): string {
+  if (reading.status === 'missing') return 'nessun pasto';
+  if (reading.reached && reading.goalKind !== 'maintenance') return 'obiettivo raggiunto';
+  if (reading.status === 'even') return 'in pari';
+  return reading.status === 'deficit' ? 'in deficit' : 'in surplus';
 }

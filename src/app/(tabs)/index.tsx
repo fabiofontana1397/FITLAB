@@ -29,10 +29,11 @@ import { useHealthEnergy } from '@/hooks/use-health-energy';
 import { sumActivityKcalForDate, useWeeklyEnergy } from '@/hooks/use-weekly-energy';
 import { useTheme } from '@/hooks/use-theme';
 import { currentWeekDates, dayOfMonth, daysAgoISO, isoMondayIndex } from '@/lib/mock/dates';
-import { calorieBalance, readBalance } from '@/domain/calorie-balance';
+import { balanceCaption as captionFor, calorieBalance, readBalance } from '@/domain/calorie-balance';
 import { dayEnergy } from '@/domain/energy';
 import { Brand, OnBrand } from '@/constants/theme';
 import { useUserContext } from '@/hooks/use-user-context';
+import { formatKcal, formatSignedKcal } from '@/lib/format-kcal';
 import { WEEKDAY_LABELS } from '@/lib/planning/exercise-library';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
 import { useActivityLogStore } from '@/store/activity-log-store';
@@ -46,23 +47,6 @@ const CARD_RADIUS = 20;
 
 function clamp01(n: number): number {
   return Math.min(Math.max(n, 0), 1);
-}
-
-/** Italian thousands-separated magnitude, e.g. 2450 -> "2.450". Hand-rolled
- * rather than `toLocaleString('it-IT')` — Hermes (and some minimal-ICU
- * browser builds) don't reliably apply grouping for that locale, silently
- * returning "2450" instead. */
-function formatKcal(n: number): string {
-  return Math.round(Math.abs(n))
-    .toString()
-    .replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-}
-
-/** "-2.450" / "+1.200" / "0" (intake minus expenditure: negative = deficit). */
-function formatSignedKcal(n: number): string {
-  const rounded = Math.round(n);
-  if (rounded === 0) return '0';
-  return `${rounded < 0 ? '-' : '+'}${formatKcal(rounded)}`;
 }
 
 /** Soft colored glow under a filled button, like the Figma's. */
@@ -212,16 +196,7 @@ export default function HomeScreen() {
   const dailyGoalKcal = weeklyGoalKcal / 7;
   // The gauge's semi-ring reads today's balance against the same daily goal the "Obiettivo" column shows.
   const balanceReading = readBalance({ eatenKcal, burnedKcal, goalKcal: dailyGoalKcal });
-  const balanceCaption =
-    balanceReading.status === 'missing'
-      ? 'nessun pasto'
-      : balanceReading.reached && balanceReading.goalKind !== 'maintenance'
-        ? 'obiettivo raggiunto'
-        : balanceReading.status === 'even'
-          ? 'in pari'
-          : balanceReading.status === 'deficit'
-            ? 'in deficit'
-            : 'in surplus';
+  const balanceCaption = captionFor(balanceReading);
   const balanceA11y =
     balanceReading.status === 'missing'
       ? `Nessun pasto registrato. Bruciate ${formatKcal(burnedKcal)} kcal. Obiettivo ${formatSignedKcal(dailyGoalKcal)} kcal.`
@@ -313,6 +288,16 @@ export default function HomeScreen() {
             <ThemedText style={styles.sideValue} numberOfLines={1} adjustsFontSizeToFit>{formatKcal(eatenKcal)} kcal</ThemedText>
           </Pressable>
         </View>
+
+        <Pressable
+          onPress={() => router.push('/energy-guide' as Href)}
+          hitSlop={8}
+          style={styles.guideLink}
+          accessibilityRole="button"
+          accessibilityLabel="Come leggere il grafico, con un esempio">
+          <Icon name="info" size={16} color={theme.accent} />
+          <ThemedText style={[styles.linkText, { color: theme.accent }]}>Come leggere il grafico</ThemedText>
+        </Pressable>
       </FlatCard>
 
       <View style={styles.actionsRow}>
@@ -675,6 +660,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 2,
+  },
+  guideLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'center',
+    gap: 5,
+    marginTop: 14,
   },
   linkText: {
     fontSize: 13,
