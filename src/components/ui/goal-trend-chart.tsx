@@ -213,7 +213,7 @@ export function GoalTrendChart({ points, target, dateGranularity, width, height 
                     left: 0,
                     width: GUTTER_WIDTH - 6,
                     top: tick.y - 7,
-                    fontSize: 10,
+                    fontSize: 11,
                     color: axisColor,
                     textAlign: 'right',
                   }}>
@@ -278,7 +278,7 @@ export function GoalTrendChart({ points, target, dateGranularity, width, height 
                       left: tick.x - 20,
                       width: 40,
                       top: height - PADDING_BOTTOM + 6,
-                      fontSize: 9,
+                      fontSize: 11,
                       color: axisColor,
                       textAlign: 'center',
                     }}>
@@ -296,7 +296,7 @@ export function GoalTrendChart({ points, target, dateGranularity, width, height 
                       left: p.x - 20,
                       width: 40,
                       top: p.y - 20,
-                      fontSize: 9,
+                      fontSize: 11,
                       fontWeight: '700',
                       textAlign: 'center',
                       color,
@@ -316,7 +316,7 @@ export function GoalTrendChart({ points, target, dateGranularity, width, height 
                   position: 'absolute',
                   right: 4,
                   top: Math.max(targetY - 16, 0),
-                  fontSize: 10,
+                  fontSize: 11,
                   fontWeight: '700',
                   color: targetColor,
                 }}>
@@ -328,7 +328,7 @@ export function GoalTrendChart({ points, target, dateGranularity, width, height 
           {/* Period caption — tracks whichever slots are currently scrolled
               into view, so it always reads e.g. "1-30 settembre" for the
               visible slice rather than the whole (possibly off-screen) range. */}
-          <Text style={{ textAlign: 'center', fontSize: 11, fontWeight: '600', color: axisColor, height: PERIOD_LABEL_HEIGHT }}>{periodLabel}</Text>
+          <Text style={{ textAlign: 'center', fontSize: 12, fontWeight: '600', color: axisColor, height: PERIOD_LABEL_HEIGHT }}>{periodLabel}</Text>
         </>
       ) : null}
     </View>

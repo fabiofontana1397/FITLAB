@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { ScrollDefaults } from '@/constants/scroll';
 import { GlassSurface } from '@/components/glass/glass-surface';
 import { QuestionBlock } from '@/components/onboarding/question-block';
 import { ThemedText } from '@/components/themed-text';
@@ -9,6 +10,7 @@ import { Icon } from '@/components/ui/icon';
 import { PrimaryButton } from '@/components/ui/primary-button';
 import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { buildUserContext } from '@/domain/user-context';
+import { useMotionPreference } from '@/hooks/use-motion-preference';
 import { useTheme } from '@/hooks/use-theme';
 import { groupQuestions, type ProfileGroup } from '@/lib/questionnaire/profile-sections';
 import { isAnswered } from '@/lib/questionnaire/step-questions';
@@ -23,6 +25,7 @@ export type EditAnswersSheetProps = {
 
 /** Full-screen sheet that edits one Profilo group with the same question widgets and checks as the onboarding questionnaire. */
 export function EditAnswersSheet({ group, answers, onClose, onSave }: EditAnswersSheetProps) {
+  const { modalAnimation } = useMotionPreference();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   // Mounted fresh (keyed by group) on every opening, so the draft always starts from what is saved.
@@ -39,7 +42,7 @@ export function EditAnswersSheet({ group, answers, onClose, onSave }: EditAnswer
   const usualMeals = questions.filter((q) => q.id.startsWith('usual'));
 
   return (
-    <Modal visible={group != null} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+    <Modal visible={group != null} animationType={modalAnimation('slide')} presentationStyle="pageSheet" onRequestClose={onClose}>
       <View style={[styles.root, { backgroundColor: theme.background, paddingTop: Platform.OS === 'android' ? insets.top : 0 }]}>
         <View style={[styles.header, { borderBottomColor: theme.border }]}>
           <Pressable onPress={onClose} hitSlop={8} accessibilityLabel="Chiudi">
@@ -58,7 +61,7 @@ export function EditAnswersSheet({ group, answers, onClose, onSave }: EditAnswer
           <View style={styles.closeButton} />
         </View>
 
-        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <ScrollView {...ScrollDefaults} contentContainerStyle={styles.scrollContent}>
           <View style={styles.inner}>
             <GlassSurface level="subtle" radius={Radius.large} style={styles.hint}>
               <Icon name="sparkle" size={16} color={theme.accent} />

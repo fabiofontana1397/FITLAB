@@ -1,5 +1,6 @@
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
+import { ScrollDefaults } from '@/constants/scroll';
 import { GlassPopup } from '@/components/glass/glass-popup';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
@@ -166,12 +167,12 @@ export function EnergyDetailsPopup({
         <ThemedText type="subtitle" style={{ flex: 1 }}>
           {focus === 'week' ? 'Il tuo obiettivo settimanale' : 'Il tuo bilancio energetico'}
         </ThemedText>
-        <Pressable onPress={onClose} hitSlop={8}>
+        <Pressable onPress={onClose} hitSlop={11} accessibilityRole="button" accessibilityLabel="Chiudi">
           <Icon name="close" size={22} color={theme.text} />
         </Pressable>
       </View>
 
-      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+      <ScrollView {...ScrollDefaults} style={styles.scroll} contentContainerStyle={styles.content}>
         <Section title={`Il tuo obiettivo: ${copy.name}`}>
           <Body>{copy.why}</Body>
         </Section>
@@ -275,7 +276,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   note: {
-    fontSize: 11,
+    fontSize: 12,
     lineHeight: 15,
     fontWeight: '500',
   },

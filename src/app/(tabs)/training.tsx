@@ -8,11 +8,9 @@ import { ThemedText } from '@/components/themed-text';
 import { DayCalendarModal } from '@/components/ui/day-calendar-modal';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon } from '@/components/ui/icon';
-import { ProfileAvatarButton } from '@/components/ui/profile-avatar-button';
+import { TabHeader } from '@/components/tab-header';
 import { LogActivityModal } from '@/components/training/log-activity-modal';
 import { LoggedActivitiesCard } from '@/components/training/logged-activities-card';
-import { PlanJourneyHero } from '@/components/training/plan-journey-hero';
-import { PlanOverviewPopup } from '@/components/training/plan-overview-popup';
 import { TrainingWeekCard } from '@/components/training/training-week-card';
 import { levelLabel, WorkoutSummaryCard } from '@/components/training/workout-summary-card';
 import { WorkoutSessionModal } from '@/components/training/workout-session-modal';
@@ -21,6 +19,7 @@ import { useUserContext } from '@/hooks/use-user-context';
 import { useTheme } from '@/hooks/use-theme';
 import { addDaysISO, currentWeekDates, daysAgoISO, isoMondayIndex } from '@/lib/mock/dates';
 import { sessionKcal as plannedSessionKcal, sessionMinutes as plannedSessionMinutes } from '@/domain/energy';
+import { OnBrand } from '@/constants/theme';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
 import type { Goal } from '@/lib/mock/types';
 import type { TrainingDayPlan } from '@/lib/planning/types';
@@ -52,7 +51,6 @@ export default function TrainingScreen() {
   const [isLogActivityVisible, setLogActivityVisible] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [sessionOpen, setSessionOpen] = useState(false);
-  const [overviewOpen, setOverviewOpen] = useState(false);
 
   const today = daysAgoISO(0);
   const [selectedDate, setSelectedDate] = useState(today);
@@ -117,19 +115,7 @@ export default function TrainingScreen() {
 
   return (
     <ScreenScroll reveal contentContainerStyle={styles.page}>
-      <View style={styles.headerRow}>
-        <ThemedText style={styles.pageTitle}>Allenamento</ThemedText>
-        <ProfileAvatarButton size={38} />
-      </View>
-
-      {trainingPlan ? (
-        <PlanJourneyHero
-          totalMonths={trainingPlan.durationMonths}
-          goal={currentUser.goal}
-          onPress={() => setOverviewOpen(true)}
-          action={{ label: 'Esplora piano', icon: 'calendar', onPress: () => router.push('/training-plan') }}
-        />
-      ) : null}
+      <TabHeader title="Allenamento" />
 
       <View style={styles.sectionRow}>
         <ThemedText style={styles.sectionTitle}>La tua settimana</ThemedText>
@@ -157,7 +143,7 @@ export default function TrainingScreen() {
           <Icon name="plus" size={18} color={theme.brandGreen} />
         </View>
         <ThemedText style={styles.registerLabel}>Registra allenamento</ThemedText>
-        <Icon name="chevronRight" size={16} color="#FFFFFF" />
+        <Icon name="chevronRight" size={16} color={OnBrand.text} />
       </PressableScale>
 
       <View style={styles.sectionRow}>
@@ -240,15 +226,6 @@ export default function TrainingScreen() {
         }
       />
 
-      {trainingPlan ? (
-        <PlanOverviewPopup
-          visible={overviewOpen}
-          onClose={() => setOverviewOpen(false)}
-          plan={trainingPlan}
-          goal={currentUser.goal}
-          currentMonth={monthIndex}
-        />
-      ) : null}
     </ScreenScroll>
   );
 }
@@ -297,13 +274,13 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: OnBrand.text,
     alignItems: 'center',
     justifyContent: 'center',
   },
   registerLabel: {
     flex: 1,
-    color: '#FFFFFF',
+    color: OnBrand.text,
     fontSize: 15.5,
     lineHeight: 20,
     fontWeight: '700',
@@ -319,8 +296,8 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
   statusText: {
-    fontSize: 11.5,
-    lineHeight: 15,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '700',
   },
   trendButton: {

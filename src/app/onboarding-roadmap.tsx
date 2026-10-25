@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { ScrollDefaults } from '@/constants/scroll';
 import { OnboardingHeader } from '@/components/onboarding/onboarding-header';
 import { PlanGenerationScreen } from '@/components/onboarding/plan-generation-screen';
 import { ThemedText } from '@/components/themed-text';
@@ -157,7 +158,7 @@ export default function OnboardingRoadmapScreen() {
         style={{ flex: 1 }}>
         {pages.map((page) => (
           <View key={page.id} style={{ width, height: '100%' }}>
-            <ScrollView contentContainerStyle={styles.pageInner} showsVerticalScrollIndicator={false}>
+            <ScrollView {...ScrollDefaults} contentContainerStyle={styles.pageInner}>
               <View style={{ gap: Spacing.one }}>
                 <ThemedText type="label" themeColor="textSecondary">
                   {page.kicker}

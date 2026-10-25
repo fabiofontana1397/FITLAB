@@ -1,8 +1,10 @@
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
+import { ScrollDefaults } from '@/constants/scroll';
 import { GlassPopup } from '@/components/glass/glass-popup';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
+import { OnBrand } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { isoMondayIndex } from '@/lib/mock/dates';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
@@ -56,12 +58,12 @@ export function MealPickerModal({ visible, date, onClose, onPick }: MealPickerMo
             Scegli il pasto a cui aggiungere un alimento
           </ThemedText>
         </View>
-        <Pressable onPress={onClose} hitSlop={8}>
+        <Pressable onPress={onClose} hitSlop={11} accessibilityRole="button" accessibilityLabel="Chiudi">
           <Icon name="close" size={22} color={theme.text} />
         </Pressable>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} style={styles.scroll} contentContainerStyle={styles.list}>
+      <ScrollView {...ScrollDefaults} style={styles.scroll} contentContainerStyle={styles.list}>
         {slots.map((slot) => {
           const color = mealSlotColor(theme, slot.id);
           const logged = sumMacros(entriesForSlot(entries, slot.id, date));
@@ -84,7 +86,7 @@ export function MealPickerModal({ visible, date, onClose, onPick }: MealPickerMo
                 </ThemedText>
               </View>
               <View style={[styles.plus, { backgroundColor: theme.accent }]}>
-                <Icon name="plus" size={16} color="#FFFFFF" />
+                <Icon name="plus" size={16} color={OnBrand.text} />
               </View>
             </Pressable>
           );

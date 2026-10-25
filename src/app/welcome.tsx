@@ -18,7 +18,7 @@ export default function WelcomeScreen() {
   return (
     <ScreenScroll contentContainerStyle={{ justifyContent: 'space-between', flex: 1, paddingBottom: insets.bottom + Spacing.four }}>
       <FadeInView style={styles.logoRow}>
-        <BrandWordmark style={styles.logo} />
+        <BrandWordmark tagline height={60} />
       </FadeInView>
 
       <View style={styles.hero}>
@@ -50,7 +50,6 @@ export default function WelcomeScreen() {
 
 const styles = StyleSheet.create({
   logoRow: { alignItems: 'center', paddingTop: Spacing.two },
-  logo: { width: 130, height: 34 },
   hero: { alignItems: 'center', gap: Spacing.three },
   copy: { gap: Spacing.two, alignItems: 'center' },
   centered: { textAlign: 'center' },

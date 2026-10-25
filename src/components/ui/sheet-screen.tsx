@@ -13,7 +13,6 @@ import {
   type ViewStyle,
 } from 'react-native';
 import Animated, {
-  Easing,
   interpolate,
   runOnJS,
   useAnimatedStyle,
@@ -23,11 +22,12 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { ScrollDefaults } from '@/constants/scroll';
 import { GlassSurface } from '@/components/glass/glass-surface';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
-import { SpringSheet } from '@/constants/motion';
-import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { SpringSheet, TimingExit } from '@/constants/motion';
+import { Layout, MaxContentWidth, Radius, SheetShadow, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { goBackOr } from '@/lib/navigation/go-back';
 
@@ -93,7 +93,7 @@ export function SheetScreen({ title, eyebrow, children, fallbackHref = '/', cont
     if (closing) return;
     setClosing(true);
     moveTo(
-      withTiming(height, { duration: 240, easing: Easing.in(Easing.cubic) }, (finished) => {
+      withTiming(height, TimingExit, (finished) => {
         if (finished) runOnJS(goBackOr)(fallbackHref);
       })
     );
@@ -141,7 +141,7 @@ export function SheetScreen({ title, eyebrow, children, fallbackHref = '/', cont
 
   return (
     <View style={styles.overlay}>
-      <Animated.View style={[StyleSheet.absoluteFill, styles.backdrop, backdropStyle]}>
+      <Animated.View style={[StyleSheet.absoluteFill, styles.backdrop, { backgroundColor: theme.scrim }, backdropStyle]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={close} accessibilityLabel="Chiudi" />
       </Animated.View>
 
@@ -149,14 +149,16 @@ export function SheetScreen({ title, eyebrow, children, fallbackHref = '/', cont
         <Animated.View style={[styles.sheet, { backgroundColor: theme.background }, sheetStyle]}>
           <View style={styles.header} {...dragHandlers.panHandlers}>
             <View style={styles.headingText}>
-              <ThemedText type="display">{title}</ThemedText>
+              <ThemedText type="display" style={styles.title} accessibilityRole="header">
+                {title}
+              </ThemedText>
               {eyebrow ? (
-                <ThemedText type="caption" themeColor="textSecondary">
+                <ThemedText type="small" themeColor="textSecondary">
                   {eyebrow}
                 </ThemedText>
               ) : null}
             </View>
-            <Pressable onPress={close} hitSlop={8} accessibilityRole="button" accessibilityLabel="Chiudi">
+            <Pressable onPress={close} hitSlop={6} accessibilityRole="button" accessibilityLabel="Chiudi" style={styles.closeHit}>
               <GlassSurface level="card" radius={Radius.pill} style={styles.closeButton}>
                 <View style={styles.closeInner}>
                   <Icon name="close" size={18} color={theme.text} />
@@ -166,10 +168,9 @@ export function SheetScreen({ title, eyebrow, children, fallbackHref = '/', cont
           </View>
 
           <ScrollView
+            {...ScrollDefaults}
             style={styles.scroll}
-            contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + Spacing.six }, contentContainerStyle]}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled">
+            contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + Spacing.five }, contentContainerStyle]}>
             {children}
           </ScrollView>
         </Animated.View>
@@ -183,7 +184,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   backdrop: {
-    backgroundColor: 'rgba(0,0,0,0.45)',
   },
   // The space the sheet occupies, from under the status bar to the bottom
   // edge. It must not carry `alignSelf`: on web an align-self on an
@@ -210,24 +210,34 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: Radius.xlarge,
     borderTopRightRadius: Radius.xlarge,
     overflow: 'hidden',
-    boxShadow: '0px -10px 34px rgba(0,0,0,0.28)',
+    boxShadow: SheetShadow,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: Spacing.three,
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.four,
+    paddingHorizontal: Layout.screenGutter,
+    paddingTop: Layout.screenGutter,
     paddingBottom: Spacing.three,
   },
   headingText: {
     flexShrink: 1,
-    gap: 4,
+    gap: 2,
+  },
+  // A sheet's title sits a step below a full screen's Large Title, like the
+  // system's own page sheets: present, but not shouting over its content.
+  title: {
+    fontSize: 28,
+    lineHeight: 34,
+    letterSpacing: -0.6,
+  },
+  closeHit: {
+    alignSelf: 'flex-start',
   },
   closeButton: {
-    width: 40,
-    height: 40,
+    width: 36,
+    height: 36,
   },
   closeInner: {
     flex: 1,
@@ -239,7 +249,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.five,
+    paddingHorizontal: Layout.screenGutter,
+    gap: Layout.sectionGap,
   },
 });

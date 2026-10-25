@@ -16,16 +16,16 @@ import { ThemedText } from '@/components/themed-text';
 import { Radius } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
-const BOWL = require('@/assets/images/food-icons/bowl-with-spoon.png');
+const BOWL = require('@/assets/images/food-icons/bowl-with-spoon.webp');
 
 /** Real catalog pictures (the same ones the meal tracker uses) around a bowl. The
  * names are plain labels: no calories or macros are shown, because here they
  * would be made-up numbers presented as data. */
 const ITEMS = [
-  { label: 'Riso', source: require('@/assets/images/food-icons/cooked-rice.png'), x: -92, y: -78 },
-  { label: 'Pollo', source: require('@/assets/images/food-icons/poultry-leg.png'), x: 88, y: -64 },
-  { label: 'Insalata', source: require('@/assets/images/food-icons/green-salad.png'), x: -96, y: 62 },
-  { label: 'Broccoli', source: require('@/assets/images/food-icons/broccoli.png'), x: 94, y: 78 },
+  { label: 'Riso', source: require('@/assets/images/food-icons/cooked-rice.webp'), x: -92, y: -78 },
+  { label: 'Pollo', source: require('@/assets/images/food-icons/poultry-leg.webp'), x: 88, y: -64 },
+  { label: 'Insalata', source: require('@/assets/images/food-icons/green-salad.webp'), x: -96, y: 62 },
+  { label: 'Broccoli', source: require('@/assets/images/food-icons/broccoli.webp'), x: 94, y: 78 },
 ] as const;
 
 export type FoodHeroProps = { size?: number };

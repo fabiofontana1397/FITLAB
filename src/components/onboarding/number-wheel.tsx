@@ -138,7 +138,7 @@ function StepperButton({ icon, onPress, label, disabled }: { icon: 'minus' | 'pl
 const styles = StyleSheet.create({
   root: { gap: Spacing.three, alignItems: 'center' },
   wheelRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
-  wheelWrap: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  wheelWrap: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: Spacing.three },
   suffix: { marginLeft: Spacing.two },
   stepper: { width: 44, height: 44, borderRadius: Radius.pill, alignItems: 'center', justifyContent: 'center' },
   manualWrap: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.three, height: WHEEL_HEIGHT },

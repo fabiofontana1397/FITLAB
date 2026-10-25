@@ -9,6 +9,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
 import { PrimaryButton } from '@/components/ui/primary-button';
 import { Radius, Spacing } from '@/constants/theme';
+import { useMotionPreference } from '@/hooks/use-motion-preference';
 import { useTheme } from '@/hooks/use-theme';
 
 const SHEET_MAX_WIDTH = 440;
@@ -32,12 +33,13 @@ const RIR_OPTIONS = [0, 1, 2, 3, 4, 5] as const;
  * the single way to record progress now that the always-open per-set
  * inputs have been replaced by one deliberate "nuovo carico" action. */
 export function NewLoadModal({ visible, exerciseName, defaultReps, defaultWeightKg, onClose, onSave }: NewLoadModalProps) {
+  const { modalAnimation } = useMotionPreference();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.backdrop}>
+    <Modal visible={visible} transparent animationType={modalAnimation('slide')} onRequestClose={onClose}>
+      <View style={[styles.backdrop, { backgroundColor: theme.scrim }]}>
         <GlassSurface
           level="overlay"
           radius={Radius.xlarge}
@@ -95,7 +97,7 @@ function NewLoadForm({
             {exerciseName}
           </ThemedText>
         </View>
-        <Pressable onPress={onClose} hitSlop={8}>
+        <Pressable onPress={onClose} hitSlop={11} accessibilityRole="button" accessibilityLabel="Chiudi">
           <Icon name="close" size={22} color={theme.text} />
         </Pressable>
       </View>
@@ -166,7 +168,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'flex-end',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.4)',
   },
   sheet: {
     width: '100%',

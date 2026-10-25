@@ -1,0 +1,86 @@
+[
+  {
+    "id": "porridge-frutti-bosco",
+    "name": "Porridge con banana e frutti di bosco",
+    "category": "breakfast",
+    "image": "/images/meals/porridge-frutti-bosco.webp",
+    "alt": "Porridge con banana e frutti di bosco"
+  },
+  {
+    "id": "toast-avocado-uova",
+    "name": "Toast con avocado e uova",
+    "category": "breakfast",
+    "image": "/images/meals/toast-avocado-uova.webp",
+    "alt": "Toast con avocado e uova"
+  },
+  {
+    "id": "yogurt-frutta-granola",
+    "name": "Yogurt con frutta e granola",
+    "category": "breakfast",
+    "image": "/images/meals/yogurt-frutta-granola.webp",
+    "alt": "Yogurt con frutta e granola"
+  },
+  {
+    "id": "pancake-banana-mirtilli",
+    "name": "Pancake con banana e mirtilli",
+    "category": "breakfast",
+    "image": "/images/meals/pancake-banana-mirtilli.webp",
+    "alt": "Pancake con banana e mirtilli"
+  },
+  {
+    "id": "spaghetti-pomodoro",
+    "name": "Spaghetti al pomodoro e basilico",
+    "category": "lunch",
+    "image": "/images/meals/spaghetti-pomodoro.webp",
+    "alt": "Spaghetti al pomodoro e basilico"
+  },
+  {
+    "id": "penne-zucchine",
+    "name": "Penne con zucchine",
+    "category": "lunch",
+    "image": "/images/meals/penne-zucchine.webp",
+    "alt": "Penne con zucchine"
+  },
+  {
+    "id": "risotto-funghi",
+    "name": "Risotto ai funghi",
+    "category": "lunch",
+    "image": "/images/meals/risotto-funghi.webp",
+    "alt": "Risotto ai funghi"
+  },
+  {
+    "id": "farro-verdure-feta",
+    "name": "Farro con verdure e feta",
+    "category": "lunch",
+    "image": "/images/meals/farro-verdure-feta.webp",
+    "alt": "Farro con verdure e feta"
+  },
+  {
+    "id": "pollo-patate-insalata",
+    "name": "Pollo alla griglia con patate e insalata",
+    "category": "dinner",
+    "image": "/images/meals/pollo-patate-insalata.webp",
+    "alt": "Pollo alla griglia con patate e insalata"
+  },
+  {
+    "id": "salmone-cereali-zucchine",
+    "name": "Salmone con cereali e zucchine",
+    "category": "dinner",
+    "image": "/images/meals/salmone-cereali-zucchine.webp",
+    "alt": "Salmone con cereali e zucchine"
+  },
+  {
+    "id": "frittata-spinaci-pomodori",
+    "name": "Frittata con spinaci e pomodori",
+    "category": "dinner",
+    "image": "/images/meals/frittata-spinaci-pomodori.webp",
+    "alt": "Frittata con spinaci e pomodori"
+  },
+  {
+    "id": "insalata-tonno-ceci",
+    "name": "Insalata di tonno e ceci",
+    "category": "dinner",
+    "image": "/images/meals/insalata-tonno-ceci.webp",
+    "alt": "Insalata di tonno e ceci"
+  }
+]

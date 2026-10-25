@@ -70,3 +70,42 @@ export const TimingFill: WithTimingConfig = {
  * and after how many the stagger stops growing (later ones are off-screen). */
 export const STAGGER_STEP = 55;
 export const STAGGER_MAX_STEPS = 7;
+
+/** Icon snapping back after a tab press: loose enough to overshoot visibly. */
+export const SpringIconPop: WithSpringConfig = { damping: 9, mass: 0.5, stiffness: 300 };
+
+/** A count or badge popping as its value changes. */
+export const SpringCountPop: WithSpringConfig = { damping: 10, mass: 1, stiffness: 200 };
+
+/** A panel settling after it has been pulled open. */
+export const SpringPanel: WithSpringConfig = { damping: 15, mass: 0.9, stiffness: 110 };
+
+/**
+ * The squash under a finger, before the spring back. Deliberately much
+ * shorter than TimingQuick: it has to land while the finger is still down.
+ */
+export const TimingTap: WithTimingConfig = { duration: 90, easing: Easing.out(Easing.quad) };
+
+/**
+ * Something leaving downward or off-screen. Eased *in* (slow start, fast
+ * finish) — the mirror of the eased-out entrances above, so a sheet
+ * accelerates away instead of drifting.
+ */
+export const TimingExit: WithTimingConfig = { duration: 240, easing: Easing.in(Easing.cubic) };
+
+/** A screen-sized element settling after a route change. */
+export const TimingScreen: WithTimingConfig = { duration: 300, easing: Easing.out(Easing.cubic) };
+
+/** A countdown or long determinate progress running to completion. */
+export const TimingCountdown: WithTimingConfig = { duration: 950, easing: Easing.linear };
+
+/**
+ * One beat of a looping pulse (a "live" dot, a halo, a timeline marker).
+ * Shared so several pulses on the same screen breathe together instead of
+ * drifting against one another.
+ */
+export const PULSE_DURATION = 1400;
+export const TimingPulse: WithTimingConfig = { duration: PULSE_DURATION, easing: Easing.out(Easing.quad) };
+
+/** A linear loop, for continuously drifting artwork (orb blobs, aura fields). */
+export const loopTiming = (duration: number): WithTimingConfig => ({ duration, easing: Easing.linear });

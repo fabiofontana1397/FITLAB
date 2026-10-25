@@ -221,7 +221,7 @@ function IntroScreen({ mode, onSelect }: { mode: OnboardingMode | null; onSelect
   return (
     <View style={{ gap: Spacing.five }}>
       <View style={{ gap: Spacing.three, alignItems: 'center' }}>
-        <BrandWordmark style={{ width: 128, height: 34 }} />
+        <BrandWordmark height={52} />
         <View style={{ gap: Spacing.two }}>
           <ThemedText type="display" style={{ textAlign: 'center' }}>
             Prima di iniziare

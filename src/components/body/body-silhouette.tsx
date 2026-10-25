@@ -1,5 +1,7 @@
 import Svg, { Circle, Line, Path, Rect } from 'react-native-svg';
 
+import { Palette } from '@/constants/theme';
+
 export type MeasurementZone = 'shouldersCm' | 'chestCm' | 'bicepsCm' | 'waistCm' | 'hipsCm' | 'thighCm';
 
 const BAND: Record<MeasurementZone, { y: number; height: number }> = {
@@ -20,7 +22,7 @@ export type BodySilhouetteProps = {
 };
 
 /** A simple, stylized humanoid front-view outline used to show where a measurement is taken. */
-export function BodySilhouette({ zone, color, outlineColor = '#C7C8CD', width = 140, height = 220 }: BodySilhouetteProps) {
+export function BodySilhouette({ zone, color, outlineColor = Palette.neutral[300], width = 140, height = 220 }: BodySilhouetteProps) {
   const band = BAND[zone];
 
   return (

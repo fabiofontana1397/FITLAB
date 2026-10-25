@@ -1,7 +1,8 @@
 import { DarkTheme, DefaultTheme, Redirect, Stack, ThemeProvider, usePathname } from 'expo-router';
 import { useFonts } from 'expo-font';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type ComponentProps } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
+import { useReducedMotion } from 'react-native-reanimated';
 
 import { WebChrome } from '@/components/web-chrome';
 import { APP_FONTS } from '@/constants/fonts';
@@ -95,8 +96,36 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/**
+ * Defaults for every pushed screen. Kept on the expo-router Stack (rather
+ * than a custom transition) so pushes use the platform's own native screen
+ * animation and iOS's interactive back-swipe, including the full-width
+ * variant — these screens have no back button in a header to fall back on,
+ * since the stack is headerless.
+ *
+ * Under Reduce Motion the slide becomes a cross-fade: the screens still
+ * change, they just no longer travel across the display.
+ */
+type StackScreenOptions = ComponentProps<typeof Stack>['screenOptions'];
+
+function useStackScreenOptions(): StackScreenOptions {
+  const reduceMotion = useReducedMotion();
+
+  return {
+    headerShown: false,
+    animation: reduceMotion ? 'fade' : 'default',
+    // iOS-only, both of them: swipe anywhere on the screen to go back, and
+    // let the transition follow the finger rather than replaying a canned
+    // animation when the gesture is released.
+    gestureEnabled: true,
+    fullScreenGestureEnabled: true,
+    animationMatchesGesture: true,
+  };
+}
+
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+  const stackScreenOptions = useStackScreenOptions();
   const [fontsLoaded, fontError] = useFonts(APP_FONTS);
   useHandleAuthRedirect();
 
@@ -117,7 +146,7 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <AuthGate>
-        <Stack screenOptions={{ headerShown: false }}>
+        <Stack screenOptions={stackScreenOptions}>
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="welcome" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
           <Stack.Screen name="login" />
@@ -127,13 +156,14 @@ export default function RootLayout() {
           <Stack.Screen name="onboarding" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
           <Stack.Screen name="onboarding-created" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
           <Stack.Screen name="onboarding-roadmap" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
-          {/* Profilo and Promemoria are bottom sheets drawn by SheetScreen
+          {/* Profilo, Promemoria and the calorie-chart guide are bottom sheets drawn by SheetScreen
               itself (it owns the slide-up, the backdrop and the drag-down),
               so the route only has to get out of its way: transparent, with
               no presentation animation of its own. */}
           <Stack.Screen name="profile" options={{ presentation: 'transparentModal', animation: 'none' }} />
           <Stack.Screen name="notification-settings" options={{ presentation: 'transparentModal', animation: 'none' }} />
           <Stack.Screen name="chat" options={{ presentation: 'transparentModal', animation: 'none' }} />
+          <Stack.Screen name="energy-guide" options={{ presentation: 'transparentModal', animation: 'none' }} />
           <Stack.Screen name="diet-plan" options={{ presentation: 'modal' }} />
           <Stack.Screen name="training-plan" options={{ presentation: 'modal' }} />
           <Stack.Screen name="monthly-checkin" options={{ presentation: 'modal' }} />

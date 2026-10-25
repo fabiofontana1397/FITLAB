@@ -15,7 +15,7 @@ import { ThemedText } from '@/components/themed-text';
 import { FadeInView } from '@/components/ui/fade-in-view';
 import { Icon } from '@/components/ui/icon';
 import { PrimaryButton } from '@/components/ui/primary-button';
-import { SpringSnappy } from '@/constants/motion';
+import { SpringSnappy, TimingPulse } from '@/constants/motion';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { OnboardingMode } from '@/lib/questionnaire/schema';
@@ -102,8 +102,8 @@ function CelebrationBadge() {
   useEffect(() => {
     circleScale.value = withSpring(1, SpringSnappy);
     checkScale.value = withDelay(220, withSpring(1, SpringSnappy));
-    ringScale.value = withDelay(300, withRepeat(withTiming(1.5, { duration: 1400 }), -1, false));
-    ringOpacity.value = withDelay(300, withRepeat(withTiming(0, { duration: 1400 }), -1, false));
+    ringScale.value = withDelay(300, withRepeat(withTiming(1.5, TimingPulse), -1, false));
+    ringOpacity.value = withDelay(300, withRepeat(withTiming(0, TimingPulse), -1, false));
   }, [circleScale, checkScale, ringScale, ringOpacity]);
 
   const circleStyle = useAnimatedStyle(() => ({ transform: [{ scale: circleScale.value }] }));

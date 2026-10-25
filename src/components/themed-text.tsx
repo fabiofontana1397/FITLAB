@@ -37,70 +37,75 @@ export function ThemedText({ style, type = 'default', themeColor, ...rest }: The
   );
 }
 
+// Mirrors the iOS text styles (HIG), so the app's hierarchy reads the same
+// way the system's does: display ≈ Large Title, title ≈ Title 2, subtitle ≈
+// Headline, default ≈ Callout, small ≈ Subheadline, caption ≈ Footnote,
+// label ≈ Caption 1. Nothing informational goes below 12 pt — the old 11 pt
+// captions were the main reason popups and settings felt hard to read.
 const styles = StyleSheet.create({
   hero: {
     fontSize: 46,
-    lineHeight: 48,
+    lineHeight: 50,
     fontWeight: '700',
     letterSpacing: -1.2,
   },
   display: {
-    fontSize: 33,
-    lineHeight: 37,
+    fontSize: 32,
+    lineHeight: 38,
     fontWeight: '700',
     letterSpacing: -0.8,
   },
   title: {
-    fontSize: 23,
+    fontSize: 22,
     lineHeight: 28,
-    fontWeight: '700',
+    fontWeight: '600',
     letterSpacing: -0.3,
   },
   subtitle: {
     fontSize: 17,
     lineHeight: 22,
     fontWeight: '600',
-    letterSpacing: -0.1,
+    letterSpacing: -0.2,
   },
   default: {
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: '500',
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: '400',
   },
   label: {
-    fontSize: 11,
-    lineHeight: 14,
+    fontSize: 12,
+    lineHeight: 16,
     fontWeight: '600',
-    letterSpacing: 0.3,
+    letterSpacing: 0.4,
     textTransform: 'uppercase',
   },
   caption: {
-    fontSize: 11,
-    lineHeight: 15,
-    fontWeight: '500',
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '400',
   },
   small: {
-    fontSize: 12,
-    lineHeight: 17,
-    fontWeight: '500',
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '400',
   },
   smallBold: {
-    fontSize: 12,
-    lineHeight: 17,
+    fontSize: 14,
+    lineHeight: 20,
     fontWeight: '700',
   },
   link: {
-    lineHeight: 17,
-    fontSize: 12,
+    lineHeight: 20,
+    fontSize: 14,
   },
   linkPrimary: {
-    lineHeight: 17,
-    fontSize: 12,
+    lineHeight: 20,
+    fontSize: 14,
     fontWeight: '600',
   },
   code: {
     fontFamily: Fonts.mono,
     fontWeight: Platform.select({ android: '700' }) ?? '500',
-    fontSize: 11,
+    fontSize: 13,
   },
 });

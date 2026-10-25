@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, type Href } from 'expo-router';
 import { useState } from 'react';
-import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 
 import { EnergyDetailsPopup } from '@/components/home/energy-details-popup';
 import { OggiGauge } from '@/components/home/oggi-gauge';
@@ -15,19 +15,26 @@ import { ThemedText } from '@/components/themed-text';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { SectionHeader } from '@/components/ui/section-header';
-import { BrandWordmark } from '@/components/ui/brand-wordmark';
-import { ProfileAvatarButton } from '@/components/ui/profile-avatar-button';
+import { WeekStrip, type WeekStripDay } from '@/components/home/week-strip';
+import { TabHeader } from '@/components/tab-header';
 import { LoggedActivitiesCard } from '@/components/training/logged-activities-card';
 import { LogActivityModal } from '@/components/training/log-activity-modal';
+import { PlanJourneyHero } from '@/components/training/plan-journey-hero';
+import { PlanOverviewPopup } from '@/components/training/plan-overview-popup';
 import { InfoPopover } from '@/components/ui/info-popover';
+import { DietOverviewPopup } from '@/components/nutrition/diet-overview-popup';
 import { FoodSearchModal } from '@/components/nutrition/food-search-modal';
 import { MealPickerModal } from '@/components/nutrition/meal-picker-modal';
+import { useEnsurePlan } from '@/hooks/use-ensure-plan';
 import { useHealthEnergy } from '@/hooks/use-health-energy';
 import { sumActivityKcalForDate, useWeeklyEnergy } from '@/hooks/use-weekly-energy';
 import { useTheme } from '@/hooks/use-theme';
 import { currentWeekDates, dayOfMonth, daysAgoISO, isoMondayIndex } from '@/lib/mock/dates';
+import { balanceCaption as captionFor, calorieBalance, readBalance } from '@/domain/calorie-balance';
 import { dayEnergy } from '@/domain/energy';
+import { Brand, OnBrand } from '@/constants/theme';
 import { useUserContext } from '@/hooks/use-user-context';
+import { formatKcal, formatSignedKcal } from '@/lib/format-kcal';
 import { WEEKDAY_LABELS } from '@/lib/planning/exercise-library';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
 import { useActivityLogStore } from '@/store/activity-log-store';
@@ -41,23 +48,6 @@ const CARD_RADIUS = 20;
 
 function clamp01(n: number): number {
   return Math.min(Math.max(n, 0), 1);
-}
-
-/** Italian thousands-separated magnitude, e.g. 2450 -> "2.450". Hand-rolled
- * rather than `toLocaleString('it-IT')` — Hermes (and some minimal-ICU
- * browser builds) don't reliably apply grouping for that locale, silently
- * returning "2450" instead. */
-function formatKcal(n: number): string {
-  return Math.round(Math.abs(n))
-    .toString()
-    .replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-}
-
-/** "-2.450" / "+1.200" / "0" (intake minus expenditure: negative = deficit). */
-function formatSignedKcal(n: number): string {
-  const rounded = Math.round(n);
-  if (rounded === 0) return '0';
-  return `${rounded < 0 ? '-' : '+'}${formatKcal(rounded)}`;
 }
 
 /** Soft colored glow under a filled button, like the Figma's. */
@@ -85,6 +75,12 @@ export default function HomeScreen() {
   const [logActivityOpen, setLogActivityOpen] = useState(false);
   const [registerMealOpen, setRegisterMealOpen] = useState(false);
   const [mealSlot, setMealSlot] = useState<MealSlot | null>(null);
+  const [overview, setOverview] = useState<'training' | 'diet' | null>(null);
+  // Home shows both plan cards, so it builds a missing or outdated plan itself instead of waiting for the
+  // person to open Allenamento or Nutrizione. Meanwhile any diet plan the overview can render keeps its card.
+  useEnsurePlan('training');
+  useEnsurePlan('diet');
+  const shownDietPlan = dietPlan && dietPlan.months.length > 0 && dietPlan.months.every((m) => Array.isArray(m.weeklySplit)) ? dietPlan : null;
 
   // On iOS a Modal can't present (or navigation run) while another is still dismissing.
   const afterModal = (fn: () => void) => (Platform.OS === 'ios' ? setTimeout(fn, 350) : fn());
@@ -98,6 +94,10 @@ export default function HomeScreen() {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [detailsFocus, setDetailsFocus] = useState<'day' | 'week' | null>(null);
   const [viewDate, setViewDate] = useState(today);
+  // The calorie card (gauge and its "Dettagli") opens the chart guide: a sheet like Profilo and Notifiche.
+  const openGuide = () => router.push('/energy-guide' as Href);
+  // adjustsFontSizeToFit does nothing on the web, so the three kcal values step down on the narrowest phones.
+  const narrow = useWindowDimensions().width < 360;
 
   // The active month's weekly split: the same weekday-indexed lookup the
   // Training tab uses, so Home and Training agree on what's planned.
@@ -135,7 +135,7 @@ export default function HomeScreen() {
   const trainingBurnKcal = energy.exercise;
   const burnedKcal = energy.total;
   const eatenKcal = todaysTotals.kcal;
-  const balanceKcal = eatenKcal - burnedKcal;
+  const balanceKcal = calorieBalance(eatenKcal, burnedKcal);
 
   // Current calendar week (Mon–Sun) from the shared pipeline, so Home,
   // Progressi and Nutrizione can never disagree on the numbers.
@@ -192,43 +192,40 @@ export default function HomeScreen() {
 
   const viewDateObj = new Date(viewDate);
   const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-  const datePill = `${capitalize(viewDateObj.toLocaleDateString('it-IT', { weekday: 'short' }).replace('.', ''))} ${viewDateObj.getDate()} ${capitalize(
-    viewDateObj.toLocaleDateString('it-IT', { month: 'short' }).replace('.', '')
-  )}`;
+  const viewDateLabel = capitalize(new Date(viewDate).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' }));
+  const stripDays: WeekStripDay[] = weekDaysWithActivity.map((d, i) => ({
+    date: d.date,
+    label: WEEKDAY_LABELS[i].charAt(0),
+    dayOfMonth: dayOfMonth(d.date),
+    isToday: d.isToday,
+    hasHappened: d.date <= today,
+    burnedKcal: d.estimatedExpenditureKcal,
+    eatenKcal: d.eatenKcal,
+  }));
   const dailyGoalKcal = weeklyGoalKcal / 7;
+  // The gauge's semi-ring reads today's balance against the same daily goal the "Obiettivo" column shows.
+  const balanceReading = readBalance({ eatenKcal, burnedKcal, goalKcal: dailyGoalKcal });
+  const balanceCaption = captionFor(balanceReading);
+  const balanceA11y =
+    balanceReading.status === 'missing'
+      ? `Nessun pasto registrato. Bruciate ${formatKcal(burnedKcal)} kcal. Obiettivo ${formatSignedKcal(dailyGoalKcal)} kcal.`
+      : `Bilancio ${formatSignedKcal(balanceKcal)} kcal, ${balanceCaption}. Obiettivo ${formatSignedKcal(dailyGoalKcal)} kcal. Bruciate ${formatKcal(burnedKcal)}, assunte ${formatKcal(eatenKcal)} kcal.`;
   const weekPill = weeklyProgress >= 1 ? 'Obiettivo raggiunto! 🎯' : weeklyProgress >= 0.6 ? 'Ci sei quasi!' : weeklyProgress >= 0.25 ? 'Stai andando bene' : 'Ogni giorno conta';
 
   return (
     <ScreenScroll reveal contentContainerStyle={styles.page}>
-      <View style={styles.headerRow}>
-        <BrandWordmark style={styles.logo} />
-        <View style={styles.headerIcons}>
-          <LiquidGlassButton
-            onPress={() => router.push('/notification-settings' as Href)}
-            hitSlop={8}
-            scaleTo={0.9}
-            accessibilityLabel="Notifiche"
-            size={36}>
-            <Icon name="bell" size={19} color={theme.text} />
+      <TabHeader
+        title={`Ciao ${currentUser.name}`}
+        subtitle={viewDateLabel}
+        accessory={
+          <LiquidGlassButton onPress={() => setCalendarOpen(true)} hitSlop={8} scaleTo={0.9} accessibilityLabel="Apri calendario" size={40}>
+            <Icon name="calendar" size={19} color={theme.text} />
           </LiquidGlassButton>
-          <ProfileAvatarButton size={36} />
-        </View>
-      </View>
+        }
+      />
 
-      <View style={styles.greetingRow}>
-        <View style={{ flex: 1 }}>
-          <ThemedText style={styles.greeting}>Ciao {currentUser.name} 👋</ThemedText>
-          <ThemedText style={styles.subtitle} themeColor="textTertiary">
-            Sei sulla strada giusta!
-          </ThemedText>
-        </View>
-        <LiquidGlassButton
-          onPress={() => setCalendarOpen(true)}
-          accessibilityLabel="Apri calendario"
-          glassStyle={styles.datePill}>
-          <Icon name="calendar" size={16} color={theme.text} />
-          <ThemedText style={styles.datePillText}>{datePill}</ThemedText>
-        </LiquidGlassButton>
+      <View style={styles.weekStrip}>
+        <WeekStrip days={stripDays} selectedDate={viewDate} onSelect={setViewDate} />
       </View>
 
       <FlatCard radius={CARD_RADIUS} style={styles.oggiCard}>
@@ -236,42 +233,43 @@ export default function HomeScreen() {
           <ThemedText style={styles.cardTitle}>
             {viewDate === today ? 'Calorie di oggi' : `Calorie del ${viewDateObj.getDate()} ${viewDateObj.toLocaleDateString('it-IT', { month: 'long' })}`}
           </ThemedText>
-          <Pressable onPress={() => setDetailsFocus('day')} hitSlop={8} style={styles.linkRow}>
+          <Pressable onPress={openGuide} hitSlop={8} style={styles.linkRow} accessibilityRole="button" accessibilityLabel="Dettagli: come leggere il grafico">
             <ThemedText style={[styles.linkText, { color: theme.accent }]}>Dettagli</ThemedText>
             <Icon name="chevronRight" size={13} color={theme.accent} />
           </Pressable>
         </View>
 
-        <Pressable onPress={() => setDetailsFocus('day')} style={styles.gaugeWrap}>
+        <Pressable onPress={openGuide} style={styles.gaugeWrap} accessibilityRole="button" accessibilityLabel={balanceA11y} accessibilityHint="Apre la spiegazione del grafico">
           <OggiGauge
             burnedKcal={burnedKcal}
             eatenKcal={eatenKcal}
             burnedColor={theme.accent}
             eatenColor={theme.brandGreen}
+            reading={balanceReading}
             value={formatSignedKcal(balanceKcal)}
-            caption={balanceKcal >= 0 ? 'in surplus' : 'in deficit'}
+            caption={balanceCaption}
           />
         </Pressable>
 
         <View style={styles.oggiRow}>
           <Pressable onPress={() => setInfoTopic('burned')} style={styles.sideCol}>
             <View style={styles.sideIcon}>
-              <Icon name="flame" size={22} color={theme.accent} />
+              <Icon name="flameLine" size={22} color={theme.accent} />
             </View>
             <ThemedText style={styles.sideLabel} themeColor="textTertiary">
               Bruciate
             </ThemedText>
-            <ThemedText style={styles.sideValue} numberOfLines={1} adjustsFontSizeToFit>{formatKcal(burnedKcal)} kcal</ThemedText>
+            <ThemedText style={[styles.sideValue, narrow && styles.sideValueNarrow]} numberOfLines={1} adjustsFontSizeToFit>{formatKcal(burnedKcal)} kcal</ThemedText>
           </Pressable>
           <View style={[styles.sideDivider, { backgroundColor: theme.border }]} />
           <Pressable onPress={() => setDetailsFocus('day')} style={styles.sideCol}>
             <View style={styles.sideIcon}>
-              <Icon name="target" size={22} color={theme.textSecondary} />
+              <Icon name="crosshair" size={22} color={theme.textSecondary} />
             </View>
             <ThemedText style={styles.sideLabel} themeColor="textTertiary">
               Obiettivo
             </ThemedText>
-            <ThemedText style={styles.sideValue} numberOfLines={1} adjustsFontSizeToFit>{formatSignedKcal(dailyGoalKcal)} kcal</ThemedText>
+            <ThemedText style={[styles.sideValue, narrow && styles.sideValueNarrow]} numberOfLines={1} adjustsFontSizeToFit>{formatSignedKcal(dailyGoalKcal)} kcal</ThemedText>
           </Pressable>
           <View style={[styles.sideDivider, { backgroundColor: theme.border }]} />
           <Pressable onPress={() => setInfoTopic('eaten')} style={styles.sideCol}>
@@ -281,29 +279,52 @@ export default function HomeScreen() {
             <ThemedText style={styles.sideLabel} themeColor="textTertiary">
               Assunte
             </ThemedText>
-            <ThemedText style={styles.sideValue} numberOfLines={1} adjustsFontSizeToFit>{formatKcal(eatenKcal)} kcal</ThemedText>
+            <ThemedText style={[styles.sideValue, narrow && styles.sideValueNarrow]} numberOfLines={1} adjustsFontSizeToFit>{formatKcal(eatenKcal)} kcal</ThemedText>
           </Pressable>
         </View>
       </FlatCard>
 
       <View style={styles.actionsRow}>
         <ActionTile
-          colors={['#FF8A1F', '#FF5E00']}
-          glowColor="#FF6A13"
+          colors={Brand.accentGradientSoft}
+          glowColor={Brand.accentGlow}
           icon="utensils"
-          iconColor="#FF6A13"
+          iconColor={Brand.accentGlow}
           label={'Registra\npasto'}
           onPress={() => setRegisterMealOpen(true)}
         />
         <ActionTile
-          colors={['#34C77B', '#1FA85B']}
-          glowColor="#22B35E"
+          colors={Brand.successGradient}
+          glowColor={Brand.successGlow}
           icon="barbell"
-          iconColor="#1FA85B"
+          iconColor={Brand.successGradient[1]}
           label={'Registra\nallenamento'}
           onPress={() => setLogActivityOpen(true)}
         />
       </View>
+
+      {/* The two plans, moved here from Allenamento and Nutrizione so Home is where a plan is explored from. */}
+      {trainingPlan || shownDietPlan ? (
+        <View style={styles.journeys}>
+          {trainingPlan ? (
+            <PlanJourneyHero
+              totalMonths={trainingPlan.durationMonths}
+              goal={currentUser.goal}
+              onPress={() => setOverview('training')}
+              action={{ label: 'Esplora piano di allenamento', icon: 'calendar', onPress: () => router.push('/training-plan') }}
+            />
+          ) : null}
+          {shownDietPlan ? (
+            <PlanJourneyHero
+              kind="diet"
+              totalMonths={shownDietPlan.durationMonths}
+              goal={currentUser.goal}
+              onPress={() => setOverview('diet')}
+              action={{ label: 'Esplora piano alimentare', icon: 'calendar', onPress: () => router.push('/diet-plan') }}
+            />
+          ) : null}
+        </View>
+      ) : null}
 
       <View style={{ marginTop: 24 }}>
         <SectionHeader title="Questa settimana" action="Riepilogo" onActionPress={() => router.push('/weekly-summary' as Href)} />
@@ -427,6 +448,25 @@ export default function HomeScreen() {
         onSaved={() => afterModal(() => router.navigate('/nutrition'))}
       />
 
+      {trainingPlan ? (
+        <PlanOverviewPopup
+          visible={overview === 'training'}
+          onClose={() => setOverview(null)}
+          plan={trainingPlan}
+          goal={currentUser.goal}
+          currentMonth={currentMonthIndex(trainingPlan)}
+        />
+      ) : null}
+      {shownDietPlan ? (
+        <DietOverviewPopup
+          visible={overview === 'diet'}
+          onClose={() => setOverview(null)}
+          plan={shownDietPlan}
+          goal={currentUser.goal}
+          currentMonth={currentMonthIndex(shownDietPlan)}
+        />
+      ) : null}
+
       <EnergyDetailsPopup
         visible={detailsFocus != null}
         focus={detailsFocus ?? 'day'}
@@ -494,7 +534,7 @@ function ActionTile({
           <Icon name={icon} size={22} color={iconColor} />
         </View>
         <ThemedText style={styles.actionLabel}>{label}</ThemedText>
-        <Icon name="chevronRight" size={15} color="#FFFFFF" />
+        <Icon name="chevronRight" size={15} color={OnBrand.text} />
       </LinearGradient>
     </PressableScale>
   );
@@ -562,44 +602,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  logo: {
-    width: 132,
-    height: 32,
+  headerText: {
+    flex: 1,
+    marginHorizontal: 12,
+  },
+  weekStrip: {
+    marginTop: 14,
+    marginBottom: 6,
   },
   headerIcons: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
   },
-  greetingRow: {
-    marginTop: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
   greeting: {
-    fontSize: 24,
-    lineHeight: 30,
+    fontSize: 18,
+    lineHeight: 23,
     fontWeight: '800',
-    letterSpacing: -0.4,
+    letterSpacing: -0.3,
   },
   subtitle: {
     marginTop: 1,
-    fontSize: 13,
+    fontSize: 14,
     lineHeight: 17,
     fontWeight: '500',
-  },
-  datePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
-  datePillText: {
-    fontSize: 13,
-    lineHeight: 17,
-    fontWeight: '600',
   },
   sectionRow: {
     marginTop: 24,
@@ -641,13 +667,14 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   gaugeWrap: {
+    alignSelf: 'stretch',
     alignItems: 'center',
     marginTop: 4,
   },
   oggiRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginTop: 6,
+    marginTop: 14,
   },
   sideCol: {
     flex: 1,
@@ -670,9 +697,13 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: -0.3,
   },
+  sideValueNarrow: {
+    fontSize: 14,
+    lineHeight: 18,
+  },
   sideLabel: {
-    fontSize: 11.5,
-    lineHeight: 15,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '500',
   },
   actionsRow: {
@@ -696,16 +727,20 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 12,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: OnBrand.text,
     alignItems: 'center',
     justifyContent: 'center',
   },
   actionLabel: {
     flex: 1,
-    color: '#FFFFFF',
+    color: OnBrand.text,
     fontSize: 12.5,
     lineHeight: 17,
     fontWeight: '700',
+  },
+  journeys: {
+    marginTop: 18,
+    gap: 12,
   },
   weekCard: {
     paddingHorizontal: 14,
@@ -757,8 +792,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   weekPillText: {
-    fontSize: 10.5,
-    lineHeight: 14,
+    fontSize: 12,
+    lineHeight: 16,
     fontWeight: '700',
   },
   weekTrack: {
@@ -784,8 +819,8 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   barValue: {
-    fontSize: 11,
-    lineHeight: 14,
+    fontSize: 12,
+    lineHeight: 16,
     fontWeight: '700',
   },
   bar: {
@@ -799,15 +834,15 @@ const styles = StyleSheet.create({
   dayLabel: {
     flex: 1,
     textAlign: 'center',
-    fontSize: 10.5,
-    lineHeight: 14,
+    fontSize: 12,
+    lineHeight: 16,
     fontWeight: '500',
   },
   chartMonth: {
     marginTop: 6,
     textAlign: 'center',
-    fontSize: 10,
-    lineHeight: 13,
+    fontSize: 12,
+    lineHeight: 16,
     fontWeight: '500',
   },
   statsCard: {

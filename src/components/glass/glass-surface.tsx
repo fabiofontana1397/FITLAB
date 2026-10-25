@@ -3,7 +3,7 @@ import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Platform, StyleSheet, View, type LayoutChangeEvent, type StyleProp, type ViewStyle } from 'react-native';
 
-import { Radius } from '@/constants/theme';
+import { GlassMaterial, Radius } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export type GlassLevel = 'subtle' | 'card' | 'raised' | 'overlay';
@@ -74,8 +74,8 @@ export function GlassSurface({
   // A brighter specular band along the top edge fading into a soft wash,
   // the way light catches the top of a curved glass surface.
   const gradientColors = isDark
-    ? (['rgba(255,255,255,0.24)', 'rgba(255,255,255,0.07)', 'rgba(255,255,255,0.02)'] as const)
-    : (['rgba(255,255,255,0.9)', 'rgba(255,255,255,0.45)', 'rgba(255,255,255,0.18)'] as const);
+    ? GlassMaterial.surfaceSheen.dark
+    : GlassMaterial.surfaceSheen.light;
   const gradientLocations = [0, 0.18, 1] as const;
 
   const shadow = LEVEL_SHADOW[level];
@@ -144,8 +144,8 @@ export function GlassSurface({
             {
               borderRadius: radius,
               borderWidth: StyleSheet.hairlineWidth * 1.5,
-              borderColor: isDark ? 'rgba(255,255,255,0.16)' : 'rgba(14,14,17,0.10)',
-              borderTopColor: isDark ? 'rgba(255,255,255,0.30)' : 'rgba(255,255,255,0.9)',
+              borderColor: GlassMaterial.surfaceBorder[isDark ? 'dark' : 'light'],
+              borderTopColor: GlassMaterial.surfaceBorderTop[isDark ? 'dark' : 'light'],
             },
           ]}
         />

@@ -1,12 +1,15 @@
 import { useMemo, useState } from 'react';
 import { FlatList, Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
 
+import { ListDefaults } from '@/constants/scroll';
 import { AppTextInput } from '@/components/ui/app-text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
+import { FoodThumb } from '@/components/nutrition/food-thumb';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon } from '@/components/ui/icon';
+import { useMotionPreference } from '@/hooks/use-motion-preference';
 import { useTheme } from '@/hooks/use-theme';
 import { FOOD_DATABASE, findFood, searchFood, type FoodItem } from '@/lib/mock/food-database';
 import { useNutritionStore, type MealSlot } from '@/store/nutrition-store';
@@ -45,8 +48,9 @@ function macroText(food: FoodItem, ratio: number): string {
  * selection / grams back to defaults (or to the entry being edited) on each
  * open, without syncing that reset through an effect. */
 export function FoodSearchModal({ visible, slot, date, editEntry, onClose, onSaved }: FoodSearchModalProps) {
+  const { modalAnimation } = useMotionPreference();
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} animationType={modalAnimation('slide')} onRequestClose={onClose}>
       <FoodSearchForm key={visible ? (editEntry?.id ?? 'add') : 'closed'} slot={slot} date={date} editEntry={editEntry} onClose={onClose} onSaved={onSaved} />
     </Modal>
   );
@@ -177,18 +181,18 @@ function FoodSearchForm({ slot, date, editEntry, onClose, onSaved }: Omit<FoodSe
       </View>
 
       <FlatList
+        {...ListDefaults}
         data={list}
         keyExtractor={(item) => item.id}
         style={styles.list}
         contentContainerStyle={styles.listContent}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
         renderItem={({ item }) => {
           const isSelected = selected?.id === item.id;
           if (isSelected) {
             return (
               <FlatCard radius={CARD_RADIUS} style={styles.selectedCard}>
                 <View style={styles.rowTop}>
+                  <FoodThumb foodId={item.id} variant="hero" />
                   <View style={styles.rowLeft}>
                     <ThemedText style={styles.foodName}>{item.name}</ThemedText>
                     <ThemedText style={styles.foodMacros} themeColor="textSecondary">
@@ -228,6 +232,7 @@ function FoodSearchForm({ slot, date, editEntry, onClose, onSaved }: Omit<FoodSe
           return (
             <Pressable onPress={() => handlePick(item)}>
               <FlatCard radius={CARD_RADIUS} style={styles.simpleCard}>
+                <FoodThumb foodId={item.id} variant="row" />
                 <View style={styles.rowLeft}>
                   <ThemedText style={styles.foodName}>{item.name}</ThemedText>
                   <ThemedText style={styles.foodMacros} themeColor="textSecondary">
@@ -311,7 +316,7 @@ const styles = StyleSheet.create({
   hint: {
     marginTop: 8,
     paddingHorizontal: PAGE_PADDING,
-    fontSize: 11.5,
+    fontSize: 13,
   },
   tabsTrack: {
     flexDirection: 'row',
@@ -351,15 +356,16 @@ const styles = StyleSheet.create({
   simpleCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingLeft: 14,
+    // HIG list row: 12 pt between the leading image and the text.
+    gap: 12,
+    paddingLeft: 10,
     paddingRight: 10,
-    minHeight: 51,
+    paddingVertical: 8,
   },
   rowTop: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
+    alignItems: 'center',
+    gap: 12,
   },
   rowLeft: {
     flex: 1,
@@ -374,8 +380,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   foodMacros: {
-    fontSize: 10.5,
-    lineHeight: 14,
+    fontSize: 12,
+    lineHeight: 16,
     fontWeight: '500',
   },
   foodGrams: {

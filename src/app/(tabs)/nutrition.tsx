@@ -1,26 +1,24 @@
-import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Image, Platform, Pressable, StyleSheet, Switch, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Switch, View } from 'react-native';
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 
-import { DietOverviewPopup } from '@/components/nutrition/diet-overview-popup';
+import { FoodThumb } from '@/components/nutrition/food-thumb';
 import { FoodSearchModal } from '@/components/nutrition/food-search-modal';
 import { MealPickerModal, mealSlotColor } from '@/components/nutrition/meal-picker-modal';
 import { PressableScale } from '@/components/motion/pressable-scale';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
-import { PlanJourneyHero } from '@/components/training/plan-journey-hero';
 import { DayCalendarModal } from '@/components/ui/day-calendar-modal';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon } from '@/components/ui/icon';
-import { ProfileAvatarButton } from '@/components/ui/profile-avatar-button';
+import { TabHeader } from '@/components/tab-header';
 import { ProgressRing } from '@/components/ui/progress-ring';
 import { TickProgressBar } from '@/components/ui/tick-progress-bar';
 import { useEnsurePlan } from '@/hooks/use-ensure-plan';
 import { useTheme } from '@/hooks/use-theme';
 import { daysAgoISO, isoMondayIndex } from '@/lib/mock/dates';
 import { findFood } from '@/lib/mock/food-database';
-import { foodIcon } from '@/lib/nutrition/food-icons';
+import { Brand, OnBrand } from '@/constants/theme';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
 import {
   entriesForSlot,
@@ -31,7 +29,7 @@ import {
   type MealFoodEntry,
   type MealSlot,
 } from '@/store/nutrition-store';
-import { isValidDietPlan, usePlanStore } from '@/store/plan-store';
+import { usePlanStore } from '@/store/plan-store';
 import { useUserStore } from '@/store/user-store';
 import { hapticSelection, hapticToggle } from '@/lib/haptics';
 
@@ -88,7 +86,6 @@ export default function NutritionScreen() {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [expandedSlot, setExpandedSlot] = useState<MealSlot | null>('colazione');
-  const [overviewOpen, setOverviewOpen] = useState(false);
 
   useEnsurePlan('diet');
 
@@ -152,22 +149,7 @@ export default function NutritionScreen() {
 
   return (
     <ScreenScroll reveal contentContainerStyle={styles.page}>
-      <View style={styles.headerRow}>
-        <ThemedText style={styles.pageTitle}>Nutrizione</ThemedText>
-        <ProfileAvatarButton size={38} />
-      </View>
-
-      {dietPlan && isValidDietPlan(dietPlan) ? (
-        <View style={styles.heroWrap}>
-          <PlanJourneyHero
-            kind="diet"
-            totalMonths={dietPlan.durationMonths}
-            goal={currentUser.goal}
-            onPress={() => setOverviewOpen(true)}
-            action={{ label: 'Esplora piano', icon: 'calendar', onPress: () => router.push('/diet-plan') }}
-          />
-        </View>
-      ) : null}
+      <TabHeader title="Nutrizione" />
 
       <FlatCard radius={CARD_RADIUS} style={styles.calorieCard}>
         <View style={styles.cardTitleRow}>
@@ -222,10 +204,10 @@ export default function NutritionScreen() {
 
       <PressableScale onPress={() => setPickerOpen(true)} haptic="press" accessibilityRole="button" scaleTo={0.97} style={[styles.registerButton, { backgroundColor: theme.accent }]}>
         <View style={styles.registerPlus}>
-          <Icon name="plus" size={20} color="#FFFFFF" />
+          <Icon name="plus" size={20} color={OnBrand.text} />
         </View>
         <ThemedText style={styles.registerLabel}>Registra pasto</ThemedText>
-        <Icon name="chevronRight" size={16} color="#FFFFFF" />
+        <Icon name="chevronRight" size={16} color={OnBrand.text} />
       </PressableScale>
 
       {planDayForSelectedDate ? (
@@ -242,8 +224,8 @@ export default function NutritionScreen() {
             }}
             trackColor={{ false: theme.backgroundElement, true: theme.accent }}
             ios_backgroundColor={theme.backgroundElement}
-            thumbColor="#FFFFFF"
-            {...(Platform.OS === 'web' ? { activeThumbColor: '#FFFFFF' } : null)}
+            thumbColor={OnBrand.text}
+            {...(Platform.OS === 'web' ? { activeThumbColor: OnBrand.text } : null)}
             accessibilityLabel="Inserisci la dieta del giorno nei pasti"
           />
         </View>
@@ -293,11 +275,9 @@ export default function NutritionScreen() {
                           setEditingEntry(entry);
                           setActiveSlot(meta.id);
                         }}>
-                        <View style={[styles.foodIconWrap, { backgroundColor: theme.backgroundElement }]}>
-                          <Image source={foodIcon(entry.foodId)} style={styles.foodIcon} accessibilityIgnoresInvertColors />
-                        </View>
+                        <FoodThumb foodId={entry.foodId} variant="row" />
                         <View style={styles.foodLeft}>
-                          <ThemedText style={styles.foodName} numberOfLines={1}>
+                          <ThemedText style={styles.foodName} numberOfLines={2}>
                             {food?.name ?? entry.foodId}
                           </ThemedText>
                           <ThemedText style={styles.foodGrams} themeColor="textSecondary">
@@ -327,16 +307,6 @@ export default function NutritionScreen() {
           );
         })}
       </View>
-
-      {dietPlan && isValidDietPlan(dietPlan) ? (
-        <DietOverviewPopup
-          visible={overviewOpen}
-          onClose={() => setOverviewOpen(false)}
-          plan={dietPlan}
-          goal={currentUser.goal}
-          currentMonth={monthIndex}
-        />
-      ) : null}
 
       <DayCalendarModal
         visible={calendarOpen}
@@ -385,9 +355,6 @@ const styles = StyleSheet.create({
     lineHeight: 17,
     fontWeight: '600',
   },
-  heroWrap: {
-    marginBottom: 16,
-  },
   registerButton: {
     marginBottom: 12,
     height: 56,
@@ -397,8 +364,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 14,
     ...Platform.select({
-      web: { boxShadow: '0px 6px 14px #FF6A1347' },
-      default: { shadowColor: '#FF6A13', shadowOpacity: 0.28, shadowRadius: 10, shadowOffset: { width: 0, height: 5 }, elevation: 3 },
+      web: { boxShadow: `0px 6px 14px ${Brand.accentShadow}` },
+      default: { shadowColor: Brand.accentGlow, shadowOpacity: 0.28, shadowRadius: 10, shadowOffset: { width: 0, height: 5 }, elevation: 3 },
     }),
   },
   registerPlus: {
@@ -407,11 +374,11 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.22)',
+    backgroundColor: OnBrand.divider,
   },
   registerLabel: {
     flex: 1,
-    color: '#FFFFFF',
+    color: OnBrand.text,
     fontSize: 16,
     lineHeight: 20,
     fontWeight: '700',
@@ -459,8 +426,8 @@ const styles = StyleSheet.create({
   },
   statusText: {
     flexShrink: 1,
-    fontSize: 11.5,
-    lineHeight: 15,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '700',
   },
   calorieBar: {
@@ -538,8 +505,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   mealTime: {
-    fontSize: 11.5,
-    lineHeight: 15,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '500',
   },
   mealTotalsCol: {
@@ -551,7 +518,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   mealMacros: {
-    fontSize: 11,
+    fontSize: 12,
     lineHeight: 15,
     fontWeight: '500',
   },
@@ -565,19 +532,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 10,
+    // HIG list row: 12 pt between the leading image and the text.
+    gap: 12,
     paddingVertical: 5,
-  },
-  foodIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  foodIcon: {
-    width: 26,
-    height: 26,
   },
   foodLeft: {
     flex: 1,
@@ -610,8 +567,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   addFoodText: {
-    fontSize: 11.5,
-    lineHeight: 15,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '700',
   },
   followRow: {

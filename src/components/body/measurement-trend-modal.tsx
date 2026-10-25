@@ -6,6 +6,7 @@ import { GlassSurface } from '@/components/glass/glass-surface';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
 import { Radius, Spacing } from '@/constants/theme';
+import { useMotionPreference } from '@/hooks/use-motion-preference';
 import { useTheme } from '@/hooks/use-theme';
 import { formatDayMonth } from '@/lib/mock/dates';
 import type { BodyMetricSnapshot } from '@/lib/mock/types';
@@ -63,6 +64,7 @@ export type MeasurementTrendModalProps = {
  * plotted over every entry logged so far, with real axes instead of a bare
  * sparkline. */
 export function MeasurementTrendModal({ zone, label, entries, color, onClose }: MeasurementTrendModalProps) {
+  const { modalAnimation } = useMotionPreference();
   const theme = useTheme();
   if (!zone) return null;
 
@@ -76,13 +78,13 @@ export function MeasurementTrendModal({ zone, label, entries, color, onClose }: 
   const chart = hasEnoughData ? buildChart(values) : null;
 
   return (
-    <Modal visible={zone != null} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose}>
+    <Modal visible={zone != null} transparent animationType={modalAnimation('fade')} onRequestClose={onClose}>
+      <Pressable style={[styles.backdrop, { backgroundColor: theme.scrim }]} onPress={onClose}>
         <Pressable onPress={(e) => e.stopPropagation()}>
           <GlassSurface level="overlay" radius={Radius.xlarge} style={styles.card}>
             <View style={styles.header}>
               <ThemedText type="subtitle">Andamento: {label}</ThemedText>
-              <Pressable onPress={onClose} hitSlop={8}>
+              <Pressable onPress={onClose} hitSlop={11} accessibilityRole="button" accessibilityLabel="Chiudi">
                 <Icon name="close" size={22} color={theme.text} />
               </Pressable>
             </View>
@@ -109,7 +111,7 @@ export function MeasurementTrendModal({ zone, label, entries, color, onClose }: 
                 {chart.yTicks.map((tick, i) => (
                   <Text
                     key={i}
-                    style={{ position: 'absolute', left: 0, width: PADDING_LEFT - 6, top: tick.y - 7, fontSize: 10, color: theme.textTertiary, textAlign: 'right' }}>
+                    style={{ position: 'absolute', left: 0, width: PADDING_LEFT - 6, top: tick.y - 7, fontSize: 11, color: theme.textTertiary, textAlign: 'right' }}>
                     {tick.label}
                   </Text>
                 ))}
@@ -122,7 +124,7 @@ export function MeasurementTrendModal({ zone, label, entries, color, onClose }: 
                       left: chart.xy[i].x - 22,
                       width: 44,
                       top: CHART_HEIGHT - PADDING_BOTTOM + 6,
-                      fontSize: 9,
+                      fontSize: 11,
                       color: theme.textTertiary,
                       textAlign: 'center',
                     }}>
@@ -136,7 +138,7 @@ export function MeasurementTrendModal({ zone, label, entries, color, onClose }: 
                     left: chart.xy[chart.xy.length - 1].x - 22,
                     width: 44,
                     top: chart.xy[chart.xy.length - 1].y - 20,
-                    fontSize: 10,
+                    fontSize: 11,
                     fontWeight: '700',
                     textAlign: 'center',
                     color,
@@ -161,7 +163,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.45)',
     padding: Spacing.four,
   },
   card: {

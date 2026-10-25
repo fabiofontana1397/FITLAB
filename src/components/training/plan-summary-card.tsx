@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Icon, type IconName } from '@/components/ui/icon';
+import { Brand, OnBrand } from '@/constants/theme';
 import type { Goal } from '@/lib/mock/types';
 import { currentMonthIndex, currentMonthProgress } from '@/lib/planning/plan-progress';
 import type { DietPlan, TrainingPlan } from '@/lib/planning/types';
@@ -126,12 +127,12 @@ function PlanSpecCard({
 }) {
   return (
     <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={accessibilityLabel}>
-      <LinearGradient colors={['#FF8F2A', '#FF6A13', '#F25A00']} locations={[0, 0.6, 1]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.card}>
+      <LinearGradient colors={Brand.accentGradient} locations={[0, 0.6, 1]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.card}>
         <View style={styles.topRow}>
           <ThemedText style={styles.tag}>{tag}</ThemedText>
           <View style={styles.details}>
             <ThemedText style={styles.detailsText}>Dettagli</ThemedText>
-            <Icon name="chevronRight" size={13} color="#FFFFFF" />
+            <Icon name="chevronRight" size={13} color={OnBrand.text} />
           </View>
         </View>
 
@@ -160,7 +161,7 @@ function PlanSpecCard({
         <View style={styles.stats}>
           {stats.map((s) => (
             <View key={s.label} style={styles.stat}>
-              <Icon name={s.icon} size={15} color="#FFFFFF" />
+              <Icon name={s.icon} size={15} color={OnBrand.text} />
               <View style={{ flexShrink: 1 }}>
                 <ThemedText style={styles.statValue} numberOfLines={1}>
                   {s.value}
@@ -189,9 +190,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   tag: {
-    color: 'rgba(255,255,255,0.9)',
-    fontSize: 10,
-    lineHeight: 13,
+    color: OnBrand.textMuted,
+    fontSize: 12,
+    lineHeight: 16,
     fontWeight: '700',
     letterSpacing: 1.1,
   },
@@ -202,23 +203,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.22)',
+    backgroundColor: OnBrand.divider,
   },
   detailsText: {
-    color: '#FFFFFF',
+    color: OnBrand.text,
     fontSize: 12,
     lineHeight: 15,
     fontWeight: '700',
   },
   title: {
-    color: '#FFFFFF',
+    color: OnBrand.text,
     fontSize: 28,
     lineHeight: 33,
     fontWeight: '800',
     letterSpacing: -0.6,
   },
   subtitle: {
-    color: 'rgba(255,255,255,0.88)',
+    color: OnBrand.textMuted,
     fontSize: 13,
     lineHeight: 17,
     fontWeight: '600',
@@ -229,13 +230,13 @@ const styles = StyleSheet.create({
     alignItems: 'baseline',
   },
   progressStrong: {
-    color: '#FFFFFF',
+    color: OnBrand.text,
     fontSize: 13,
     lineHeight: 17,
     fontWeight: '700',
   },
   progressSoft: {
-    color: 'rgba(255,255,255,0.85)',
+    color: OnBrand.textMuted,
     fontSize: 12,
     lineHeight: 15,
     fontWeight: '600',
@@ -243,13 +244,13 @@ const styles = StyleSheet.create({
   track: {
     height: 8,
     borderRadius: 4,
-    backgroundColor: 'rgba(255,255,255,0.28)',
+    backgroundColor: OnBrand.fillStrong,
     overflow: 'hidden',
   },
   fill: {
     height: '100%',
     borderRadius: 4,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: OnBrand.text,
   },
   // Month boundaries on the plan-wide progress bar.
   tick: {
@@ -258,7 +259,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: 2,
     marginLeft: -1,
-    backgroundColor: 'rgba(242,90,0,0.55)',
+    backgroundColor: Brand.accentWell,
   },
   stats: {
     flexDirection: 'row',
@@ -272,18 +273,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 8,
     borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.18)',
+    backgroundColor: OnBrand.fill,
   },
   statValue: {
-    color: '#FFFFFF',
+    color: OnBrand.text,
     fontSize: 14,
     lineHeight: 18,
     fontWeight: '800',
   },
   statLabel: {
-    color: 'rgba(255,255,255,0.85)',
-    fontSize: 10.5,
-    lineHeight: 13,
+    color: OnBrand.textMuted,
+    fontSize: 12,
+    lineHeight: 16,
     fontWeight: '600',
   },
 });

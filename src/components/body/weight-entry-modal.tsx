@@ -5,6 +5,7 @@ import { GlassPopup } from '@/components/glass/glass-popup';
 import { ThemedText } from '@/components/themed-text';
 import { DayCalendarModal } from '@/components/ui/day-calendar-modal';
 import { Icon } from '@/components/ui/icon';
+import { OnBrand } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { daysAgoISO } from '@/lib/mock/dates';
 import { hapticSuccess } from '@/lib/haptics';
@@ -115,7 +116,7 @@ function WeightEntryForm({
         <View style={[styles.rulerBadge, { backgroundColor: theme.backgroundElement }]}>
           <Icon name="scale" size={24} color={theme.text} />
         </View>
-        <Pressable onPress={onClose} hitSlop={8} style={styles.close}>
+        <Pressable onPress={onClose} hitSlop={11} accessibilityRole="button" accessibilityLabel="Chiudi" style={styles.close}>
           <Icon name="close" size={22} color={theme.text} />
         </Pressable>
       </View>
@@ -331,7 +332,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   saveLabel: {
-    color: '#FFFFFF',
+    color: OnBrand.text,
     fontSize: 15,
     lineHeight: 20,
     fontWeight: '700',

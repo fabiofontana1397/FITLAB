@@ -1,6 +1,6 @@
 import { findFood, type FoodItem } from '@/lib/mock/food-database';
 
-/** The pictures available in assets/images/food-icons (see food-icons.ts). */
+/** The food pictures the meal tracker can draw (each one's image is in food-icons.ts). */
 export const FOOD_ICON_KEYS = ['avocado', 'bacon', 'banana', 'beans', 'bellPepper', 'blueberries', 'bowl', 'bread', 'broccoli', 'butter', 'canned', 'carrot', 'cheese', 'cherries', 'chestnut', 'chocolate', 'coconut', 'corn', 'croissant', 'cucumber', 'custard', 'drink', 'egg', 'eggplant', 'fish', 'garlic', 'grains', 'grapes', 'greenApple', 'honey', 'hotPepper', 'jar', 'kiwi', 'leafy', 'lemon', 'mango', 'meat', 'meatOnBone', 'melon', 'milk', 'mushroom', 'octopus', 'olive', 'onion', 'orange', 'oyster', 'pasta', 'peaPod', 'peach', 'peanuts', 'pear', 'pineapple', 'pizza', 'potato', 'poultry', 'redApple', 'rice', 'riceCracker', 'salad', 'salt', 'seedling', 'shrimp', 'squid', 'strawberry', 'sunflower', 'sweetPotato', 'tomato', 'watermelon'] as const;
 export type FoodIconKey = (typeof FOOD_ICON_KEYS)[number];
 

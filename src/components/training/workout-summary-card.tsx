@@ -5,6 +5,7 @@ import { PressableScale } from '@/components/motion/pressable-scale';
 import { ThemedText } from '@/components/themed-text';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon } from '@/components/ui/icon';
+import { Brand, OnBrand } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { PlanPhaseKind } from '@/lib/planning/types';
 
@@ -26,11 +27,11 @@ export function levelLabel(phase: PlanPhaseKind | undefined): string {
 export function WorkoutBadge({ size = 60 }: { size?: number }) {
   return (
     <LinearGradient
-      colors={['#FF8F2A', '#FF6A13']}
+      colors={Brand.badgeGradient}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={[styles.badge, { width: size, height: size, borderRadius: size * 0.22 }]}>
-      <Icon name="barbell" size={size / 2} color="#FFFFFF" />
+      <Icon name="barbell" size={size / 2} color={OnBrand.text} />
     </LinearGradient>
   );
 }
@@ -83,15 +84,15 @@ export function WorkoutSummaryCard({ title, subtitle, minutes, kcal, onOpen, onS
           styles.startButton,
           { backgroundColor: theme.brandGreen },
           Platform.select({
-            web: { boxShadow: '0px 6px 14px rgba(34,179,94,0.28)' },
-            default: { shadowColor: '#22B35E', shadowOpacity: 0.28, shadowRadius: 10, shadowOffset: { width: 0, height: 5 }, elevation: 3 },
+            web: { boxShadow: `0px 6px 14px ${Brand.successShadow}` },
+            default: { shadowColor: Brand.successGlow, shadowOpacity: 0.28, shadowRadius: 10, shadowOffset: { width: 0, height: 5 }, elevation: 3 },
           }),
         ]}>
         <View style={styles.playCircle}>
           <Icon name="play" size={14} color={theme.brandGreen} />
         </View>
         <ThemedText style={styles.startLabel}>Inizia allenamento</ThemedText>
-        <Icon name="chevronRight" size={16} color="#FFFFFF" />
+        <Icon name="chevronRight" size={16} color={OnBrand.text} />
       </PressableScale>
     </FlatCard>
   );
@@ -153,14 +154,14 @@ const styles = StyleSheet.create({
     width: 26,
     height: 26,
     borderRadius: 13,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: OnBrand.text,
     alignItems: 'center',
     justifyContent: 'center',
     paddingLeft: 2,
   },
   startLabel: {
     flex: 1,
-    color: '#FFFFFF',
+    color: OnBrand.text,
     fontSize: 15,
     lineHeight: 19,
     fontWeight: '700',

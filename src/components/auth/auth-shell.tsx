@@ -54,7 +54,7 @@ export function AuthShell({ title, subtitle, onBack, icon, footer, children }: A
             ) : (
               <View style={styles.back} />
             )}
-            <BrandWordmark style={styles.logo} />
+            <BrandWordmark height={30} />
             <View style={styles.back} />
           </View>
         </View>
@@ -91,7 +91,6 @@ const styles = StyleSheet.create({
   column: { width: '100%', maxWidth: MaxContentWidth, alignSelf: 'center', paddingHorizontal: Spacing.four },
   topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   back: { width: 36, height: 36, borderRadius: Radius.pill, alignItems: 'center', justifyContent: 'center' },
-  logo: { width: 104, height: 28 },
   scroll: { flexGrow: 1, justifyContent: 'center', paddingVertical: Spacing.four },
   iconDisc: { width: 72, height: 72, borderRadius: Radius.pill, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.two },
   centered: { textAlign: 'center' },
