@@ -43,12 +43,12 @@ export type WorkoutSummaryCardProps = {
   kcal: number;
   /** Opens the session detail (the chevron and the card). */
   onOpen: () => void;
-  /** The green "Inizia allenamento" button. */
+  /** The orange "Inizia allenamento" button. */
   onStart: () => void;
 };
 
 /** "Allenamento di oggi": session thumbnail, name, "Forza - Livello base",
- * duration + estimated kcal, and a full-width green start button. */
+ * duration + estimated kcal, and a full-width orange start button. */
 export function WorkoutSummaryCard({ title, subtitle, minutes, kcal, onOpen, onStart }: WorkoutSummaryCardProps) {
   const theme = useTheme();
   return (
@@ -82,14 +82,14 @@ export function WorkoutSummaryCard({ title, subtitle, minutes, kcal, onOpen, onS
         accessibilityRole="button"
         style={[
           styles.startButton,
-          { backgroundColor: theme.brandGreen },
+          { backgroundColor: theme.accent },
           Platform.select({
-            web: { boxShadow: `0px 6px 14px ${Brand.successShadow}` },
-            default: { shadowColor: Brand.successGlow, shadowOpacity: 0.28, shadowRadius: 10, shadowOffset: { width: 0, height: 5 }, elevation: 3 },
+            web: { boxShadow: `0px 6px 14px ${Brand.accentShadow}` },
+            default: { shadowColor: Brand.accentGlow, shadowOpacity: 0.28, shadowRadius: 10, shadowOffset: { width: 0, height: 5 }, elevation: 3 },
           }),
         ]}>
         <View style={styles.playCircle}>
-          <Icon name="play" size={14} color={theme.brandGreen} />
+          <Icon name="play" size={14} color={theme.accent} />
         </View>
         <ThemedText style={styles.startLabel}>Inizia allenamento</ThemedText>
         <Icon name="chevronRight" size={16} color={OnBrand.text} />

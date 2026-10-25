@@ -1,11 +1,10 @@
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { PressableScale } from '@/components/motion/pressable-scale';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
-import { DayCalendarModal } from '@/components/ui/day-calendar-modal';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon } from '@/components/ui/icon';
 import { TabHeader } from '@/components/tab-header';
@@ -17,7 +16,7 @@ import { WorkoutSessionModal } from '@/components/training/workout-session-modal
 import { useEnsurePlan } from '@/hooks/use-ensure-plan';
 import { useUserContext } from '@/hooks/use-user-context';
 import { useTheme } from '@/hooks/use-theme';
-import { addDaysISO, currentWeekDates, daysAgoISO, isoMondayIndex } from '@/lib/mock/dates';
+import { currentWeekDates, daysAgoISO, isoMondayIndex } from '@/lib/mock/dates';
 import { sessionKcal as plannedSessionKcal, sessionMinutes as plannedSessionMinutes } from '@/domain/energy';
 import { OnBrand } from '@/constants/theme';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
@@ -49,14 +48,12 @@ export default function TrainingScreen() {
   const toggleCompleted = useTrainingProgressStore((s) => s.toggleCompleted);
   const addActivityEntry = useActivityLogStore((s) => s.addEntry);
   const [isLogActivityVisible, setLogActivityVisible] = useState(false);
-  const [calendarOpen, setCalendarOpen] = useState(false);
   const [sessionOpen, setSessionOpen] = useState(false);
 
   const today = daysAgoISO(0);
   const [selectedDate, setSelectedDate] = useState(today);
-  const [weekOffset, setWeekOffset] = useState(0);
 
-  const viewedWeekDates = useMemo(() => currentWeekDates(new Date(addDaysISO(today, weekOffset * 7))), [today, weekOffset]);
+  const viewedWeekDates = useMemo(() => currentWeekDates(new Date(today)), [today]);
 
   useEnsurePlan('training');
 
@@ -90,17 +87,6 @@ export default function TrainingScreen() {
     });
   };
 
-  // Whole Monday-to-Monday weeks between the picked date and today — a
-  // plain (date-today)/7 day-diff rounds wrong whenever the two dates
-  // fall on different weekdays, landing the strip on a week that doesn't
-  // even contain the picked date.
-  const selectDateFromCalendar = (date: string) => {
-    setSelectedDate(date);
-    const dateMonday = addDaysISO(date, -isoMondayIndex(date));
-    const todayMonday = addDaysISO(today, -isoMondayIndex(today));
-    setWeekOffset(Math.round((new Date(dateMonday).getTime() - new Date(todayMonday).getTime()) / (7 * 86400000)));
-  };
-
   const weightKg = ctx.weightKg;
   // What the day's planned session takes and burns — the same model the diet's calorie targets use.
   const sessionKcal = plannedSessionKcal(selectedDay, ctx);
@@ -117,13 +103,6 @@ export default function TrainingScreen() {
     <ScreenScroll reveal contentContainerStyle={styles.page}>
       <TabHeader title="Allenamento" />
 
-      <View style={styles.sectionRow}>
-        <ThemedText style={styles.sectionTitle}>La tua settimana</ThemedText>
-        <Pressable onPress={() => setCalendarOpen(true)} hitSlop={8} accessibilityLabel="Apri calendario">
-          <ThemedText style={[styles.link, { color: theme.accent }]}>Vedi calendario ›</ThemedText>
-        </Pressable>
-      </View>
-
       <TrainingWeekCard
         weekDates={viewedWeekDates}
         selectedDate={selectedDate}
@@ -138,9 +117,9 @@ export default function TrainingScreen() {
         accessibilityRole="button"
         haptic="press"
         scaleTo={0.97}
-        style={[styles.registerButton, { backgroundColor: theme.brandGreen }]}>
+        style={[styles.registerButton, { backgroundColor: theme.accent }]}>
         <View style={styles.registerPlus}>
-          <Icon name="plus" size={18} color={theme.brandGreen} />
+          <Icon name="plus" size={18} color={theme.accent} />
         </View>
         <ThemedText style={styles.registerLabel}>Registra allenamento</ThemedText>
         <Icon name="chevronRight" size={16} color={OnBrand.text} />
@@ -196,14 +175,6 @@ export default function TrainingScreen() {
       )}
 
       <LoggedActivitiesCard date={selectedDate} />
-
-      <DayCalendarModal
-        visible={calendarOpen}
-        selectedDate={selectedDate}
-        isDayMarked={isDayComplete}
-        onSelectDate={selectDateFromCalendar}
-        onClose={() => setCalendarOpen(false)}
-      />
 
       {selectedDay?.type === 'workout' ? (
         <WorkoutSessionModal
@@ -284,11 +255,6 @@ const styles = StyleSheet.create({
     fontSize: 15.5,
     lineHeight: 20,
     fontWeight: '700',
-  },
-  link: {
-    fontSize: 13,
-    lineHeight: 17,
-    fontWeight: '600',
   },
   statusPill: {
     paddingHorizontal: 12,
