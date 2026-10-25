@@ -17,6 +17,8 @@ type Page = {
   id: string;
   title: string;
   body: (day: DemoDay) => string;
+  /** Short phones skip the intro line (the chart's own notes say it). */
+  skipBodyWhenCompact?: boolean;
   chart: (day: DemoDay, play: boolean, compact: boolean) => React.ReactNode;
 };
 
@@ -48,6 +50,7 @@ const PAGES: Page[] = [
     id: 'fitlab',
     title: 'Come leggere il grafico di FitLab',
     body: () => 'Il grafico della Home, con i numeri dell’esempio.',
+    skipBodyWhenCompact: true,
     chart: (day, play, compact) => <FitLabChartDemo day={day} play={play} compact={compact} />,
   },
 ];
@@ -134,10 +137,12 @@ export function EnergyGuideCarousel({ onDone, values = DEMO_CONFIG.initial }: { 
                 <ThemedText style={styles.title} accessibilityRole="header">
                   {page.title}
                 </ThemedText>
-                <ThemedText style={styles.body} themeColor="textSecondary">
-                  {page.body(day)}
-                </ThemedText>
-                <FlatCard style={styles.card}>{page.chart(day, visited[i], compact)}</FlatCard>
+                {compact && page.skipBodyWhenCompact ? null : (
+                  <ThemedText style={styles.body} themeColor="textSecondary">
+                    {page.body(day)}
+                  </ThemedText>
+                )}
+                <FlatCard style={[styles.card, compact && styles.cardCompact]}>{page.chart(day, visited[i], compact)}</FlatCard>
                 {compact ? null : (
                   <ThemedText style={styles.footnote} themeColor="textTertiary">
                     Valori dimostrativi, non sono i tuoi dati. Le calorie consumate sono una stima.
@@ -205,6 +210,9 @@ const styles = StyleSheet.create({
   card: {
     marginTop: 4,
     padding: 14,
+  },
+  cardCompact: {
+    padding: 10,
   },
   footnote: {
     fontSize: 12,

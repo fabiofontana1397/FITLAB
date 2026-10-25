@@ -1,27 +1,23 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
 
-import { AppTextInput } from '@/components/ui/app-text';
-
-import { ScreenScroll } from '@/components/screen-scroll';
-import { ThemedText } from '@/components/themed-text';
-import { Icon } from '@/components/ui/icon';
+import { AuthField } from '@/components/auth/auth-field';
+import { AuthShell } from '@/components/auth/auth-shell';
 import { PrimaryButton } from '@/components/ui/primary-button';
-import { Radius, Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
 import { goBackOr } from '@/lib/navigation/go-back';
 import { useAuthStore } from '@/store/auth-store';
 
 export default function ForgotPasswordScreen() {
-  const theme = useTheme();
   const requestPasswordReset = useAuthStore((s) => s.requestPasswordReset);
   const [email, setEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
 
+  const canSubmit = email.includes('@') && !isSubmitting;
+
   const handleSubmit = async () => {
+    if (!canSubmit) return;
     setIsSubmitting(true);
     const { error: resetError } = await requestPasswordReset(email.trim());
     setIsSubmitting(false);
@@ -35,77 +31,45 @@ export default function ForgotPasswordScreen() {
     setSent(true);
   };
 
+  if (sent) {
+    return (
+      <AuthShell
+        icon="mail"
+        title="Controlla la tua email"
+        subtitle={`Se esiste un account per ${email.trim()}, ti abbiamo inviato un link per reimpostare la password.`}
+        onBack={() => goBackOr('/login')}
+        footer={<PrimaryButton label="Torna al login" onPress={() => router.replace('/login')} />}
+      />
+    );
+  }
+
   return (
-    <ScreenScroll>
-      <View style={styles.header}>
-        <Pressable onPress={() => goBackOr('/login')} hitSlop={8}>
-          <Icon name="arrowBack" size={22} color={theme.text} />
-        </Pressable>
-      </View>
-
-      {sent ? (
-        <View style={{ gap: Spacing.one }}>
-          <ThemedText type="display">Controlla la tua email</ThemedText>
-          <ThemedText type="default" themeColor="textSecondary">
-            Se esiste un account per {email.trim()}, ti abbiamo inviato un link per reimpostare la password.
-          </ThemedText>
-        </View>
-      ) : (
+    <AuthShell
+      title="Password dimenticata?"
+      subtitle="Inserisci la tua email: ti mandiamo un link per reimpostarla."
+      onBack={() => goBackOr('/login')}
+      footer={
         <>
-          <View style={{ gap: Spacing.one }}>
-            <ThemedText type="display">Password dimenticata?</ThemedText>
-            <ThemedText type="default" themeColor="textSecondary">
-              Inserisci la tua email: ti mandiamo un link per reimpostarla.
-            </ThemedText>
-          </View>
-
-          <View style={{ gap: Spacing.three }}>
-            <View style={{ gap: Spacing.one }}>
-              <ThemedText type="label" themeColor="textSecondary">
-                Email
-              </ThemedText>
-              <AppTextInput
-                value={email}
-                onChangeText={(t) => {
-                  setEmail(t);
-                  setError(null);
-                }}
-                autoCapitalize="none"
-                keyboardType="email-address"
-                placeholder="tu@esempio.com"
-                placeholderTextColor={theme.textTertiary}
-                style={[styles.input, { color: theme.text, backgroundColor: theme.backgroundElement, borderColor: theme.border }]}
-              />
-            </View>
-            {error ? (
-              <ThemedText type="caption" style={{ color: theme.danger }}>
-                {error}
-              </ThemedText>
-            ) : null}
-          </View>
-
-          <PrimaryButton label="Invia link" onPress={handleSubmit} disabled={!email.includes('@') || isSubmitting} />
+          <PrimaryButton label={isSubmitting ? 'Invio in corso…' : 'Invia link'} onPress={handleSubmit} disabled={!canSubmit} />
+          <PrimaryButton label="Torna al login" variant="ghost" onPress={() => router.replace('/login')} />
         </>
-      )}
-
-      <Pressable onPress={() => router.replace('/login')} hitSlop={8}>
-        <ThemedText type="caption" style={{ textAlign: 'center', color: theme.accent }}>
-          Torna al login
-        </ThemedText>
-      </Pressable>
-    </ScreenScroll>
+      }>
+      <AuthField
+        label="Email"
+        value={email}
+        onChangeText={(t) => {
+          setEmail(t);
+          setError(null);
+        }}
+        autoCapitalize="none"
+        keyboardType="email-address"
+        autoComplete="email"
+        textContentType="emailAddress"
+        returnKeyType="send"
+        onSubmitEditing={handleSubmit}
+        placeholder="tu@esempio.com"
+        error={error}
+      />
+    </AuthShell>
   );
 }
-
-const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-  },
-  input: {
-    borderWidth: 1,
-    borderRadius: Radius.small,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: 12,
-    fontSize: 15,
-  },
-});

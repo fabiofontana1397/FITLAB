@@ -134,14 +134,16 @@ async function test(name: string, fn: () => Promise<void>) {
 /** Every page fits in the pager: nothing to scroll vertically, on any page. */
 async function assertPagesFit(page: Page) {
   const pager = await page.getByTestId('energy-guide-pager').boundingBox();
+  const problems: string[] = [];
   for (let i = 0; i < 4; i++) {
     await swipeTo(page, i);
     await pause(900);
     const fit = await pageEl(page, i).evaluate((el: HTMLElement) => ({ content: el.scrollHeight, shown: el.parentElement!.clientHeight }));
-    assert.ok(fit.content <= fit.shown + 1, `page ${i + 1}: content ${fit.content}px in ${fit.shown}px`);
+    if (fit.content > fit.shown + 1) problems.push(`page ${i + 1}: content ${fit.content}px in ${fit.shown}px`);
     const box = await pageEl(page, i).boundingBox();
-    assert.ok(box.y + box.height <= pager.y + pager.height + 1, `page ${i + 1} ends below the pager`);
+    if (box.y + box.height > pager.y + pager.height + 1) problems.push(`page ${i + 1} ends below the pager`);
   }
+  assert.deepEqual(problems, []);
   await swipeTo(page, 0);
 }
 

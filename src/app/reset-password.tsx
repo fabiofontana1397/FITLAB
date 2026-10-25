@@ -1,14 +1,10 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { useRef, useState } from 'react';
+import type { TextInput } from 'react-native';
 
-import { AppTextInput } from '@/components/ui/app-text';
-
-import { ScreenScroll } from '@/components/screen-scroll';
-import { ThemedText } from '@/components/themed-text';
+import { AuthField } from '@/components/auth/auth-field';
+import { AuthShell } from '@/components/auth/auth-shell';
 import { PrimaryButton } from '@/components/ui/primary-button';
-import { Radius, Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
 import { useAppStore } from '@/store/app-store';
 import { useAuthStore } from '@/store/auth-store';
 
@@ -18,17 +14,18 @@ import { useAuthStore } from '@/store/auth-store';
  * supabase.auth.updateUser needs to actually change the password. No
  * back button: there's nothing to go back to mid-recovery. */
 export default function ResetPasswordScreen() {
-  const theme = useTheme();
   const updatePassword = useAuthStore((s) => s.updatePassword);
   const hasOnboarded = useAppStore((s) => s.hasOnboarded);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const confirmRef = useRef<TextInput>(null);
 
   const canSubmit = password.length >= 6 && password === confirmPassword && !isSubmitting;
 
   const handleSubmit = async () => {
+    if (!canSubmit) return;
     setIsSubmitting(true);
     const { error: updateError } = await updatePassword(password);
     setIsSubmitting(false);
@@ -39,76 +36,45 @@ export default function ResetPasswordScreen() {
     router.replace(hasOnboarded ? '/' : '/onboarding');
   };
 
+  const tooShort = password.length > 0 && password.length < 6;
+  const mismatch = confirmPassword.length > 0 && password !== confirmPassword;
+
   return (
-    <ScreenScroll>
-      <View style={{ gap: Spacing.one }}>
-        <ThemedText type="display">Nuova password</ThemedText>
-        <ThemedText type="default" themeColor="textSecondary">
-          Scegli una nuova password per il tuo account.
-        </ThemedText>
-      </View>
-
-      <View style={{ gap: Spacing.three }}>
-        <View style={{ gap: Spacing.one }}>
-          <ThemedText type="label" themeColor="textSecondary">
-            Nuova password
-          </ThemedText>
-          <AppTextInput
-            value={password}
-            onChangeText={(t) => {
-              setPassword(t);
-              setError(null);
-            }}
-            secureTextEntry
-            placeholder="••••••••"
-            placeholderTextColor={theme.textTertiary}
-            style={[styles.input, { color: theme.text, backgroundColor: theme.backgroundElement, borderColor: theme.border }]}
-          />
-        </View>
-        <View style={{ gap: Spacing.one }}>
-          <ThemedText type="label" themeColor="textSecondary">
-            Conferma password
-          </ThemedText>
-          <AppTextInput
-            value={confirmPassword}
-            onChangeText={(t) => {
-              setConfirmPassword(t);
-              setError(null);
-            }}
-            secureTextEntry
-            placeholder="••••••••"
-            placeholderTextColor={theme.textTertiary}
-            style={[styles.input, { color: theme.text, backgroundColor: theme.backgroundElement, borderColor: theme.border }]}
-          />
-        </View>
-        {password.length > 0 && password.length < 6 ? (
-          <ThemedText type="caption" style={{ color: theme.danger }}>
-            Almeno 6 caratteri.
-          </ThemedText>
-        ) : null}
-        {confirmPassword.length > 0 && password !== confirmPassword ? (
-          <ThemedText type="caption" style={{ color: theme.danger }}>
-            Le password non coincidono.
-          </ThemedText>
-        ) : null}
-        {error ? (
-          <ThemedText type="caption" style={{ color: theme.danger }}>
-            {error}
-          </ThemedText>
-        ) : null}
-      </View>
-
-      <PrimaryButton label="Salva nuova password" onPress={handleSubmit} disabled={!canSubmit} />
-    </ScreenScroll>
+    <AuthShell
+      title="Nuova password"
+      subtitle="Scegli una nuova password per il tuo account."
+      footer={<PrimaryButton label={isSubmitting ? 'Salvataggio…' : 'Salva nuova password'} onPress={handleSubmit} disabled={!canSubmit} />}>
+      <AuthField
+        label="Nuova password"
+        secure
+        value={password}
+        onChangeText={(t) => {
+          setPassword(t);
+          setError(null);
+        }}
+        autoComplete="new-password"
+        textContentType="newPassword"
+        returnKeyType="next"
+        onSubmitEditing={() => confirmRef.current?.focus()}
+        placeholder="••••••••"
+        error={tooShort ? 'Almeno 6 caratteri.' : null}
+      />
+      <AuthField
+        ref={confirmRef}
+        label="Conferma password"
+        secure
+        value={confirmPassword}
+        onChangeText={(t) => {
+          setConfirmPassword(t);
+          setError(null);
+        }}
+        autoComplete="new-password"
+        textContentType="newPassword"
+        returnKeyType="go"
+        onSubmitEditing={handleSubmit}
+        placeholder="••••••••"
+        error={mismatch ? 'Le password non coincidono.' : error}
+      />
+    </AuthShell>
   );
 }
-
-const styles = StyleSheet.create({
-  input: {
-    borderWidth: 1,
-    borderRadius: Radius.small,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: 12,
-    fontSize: 15,
-  },
-});
