@@ -12,16 +12,10 @@
  * which is also the proof that the carousel never shows or writes real data.
  */
 import assert from 'node:assert/strict';
-import { createReadStream, existsSync, statSync } from 'node:fs';
-import { createServer } from 'node:http';
-import { createRequire } from 'node:module';
-import { extname, join } from 'node:path';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 
-// Playwright is resolved at runtime (it is not a dependency), so its types are not available here.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Browser = any;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Page = any;
+import { loadChromium, openApp as openHarnessApp, serve, type Page } from '../lib/web-harness';
 
 const distDir = process.argv[2];
 if (!distDir || !existsSync(join(distDir, 'index.html'))) {
@@ -29,62 +23,20 @@ if (!distDir || !existsSync(join(distDir, 'index.html'))) {
   process.exit(2);
 }
 
-const { chromium } = createRequire(import.meta.url)(process.env.PLAYWRIGHT_MODULE ?? 'playwright');
-
-const MIME: Record<string, string> = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.ttf': 'font/ttf', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
-
-/** Static server with the clean URLs Vercel gives the export (/energy-guide → energy-guide.html). */
-function serve(root: string): Promise<{ url: string; close: () => void }> {
-  const server = createServer((req, res) => {
-    const path = decodeURIComponent((req.url ?? '/').split('?')[0]);
-    const candidates = [join(root, path), join(root, `${path}.html`), join(root, path, 'index.html')];
-    const file = candidates.find((f) => existsSync(f) && statSync(f).isFile()) ?? join(root, 'index.html');
-    res.writeHead(200, { 'content-type': MIME[extname(file)] ?? 'application/octet-stream' });
-    createReadStream(file).pipe(res);
-  });
-  return new Promise((resolve) => server.listen(0, '127.0.0.1', () => {
-    const address = server.address();
-    resolve({ url: `http://127.0.0.1:${typeof address === 'object' && address ? address.port : 0}`, close: () => server.close() });
-  }));
-}
-
-const b64 = (o: object) => Buffer.from(JSON.stringify(o)).toString('base64url');
-const USER = { id: '00000000-0000-4000-8000-000000000001', aud: 'authenticated', role: 'authenticated', email: 'demo@example.com', app_metadata: {}, user_metadata: { name: 'Demo' }, created_at: '2026-01-01T00:00:00Z' };
-const expiresAt = Math.floor(Date.now() / 1000) + 24 * 3600;
-const SESSION = {
-  access_token: `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub: USER.id, exp: expiresAt, role: 'authenticated' })}.sig`,
-  refresh_token: 'refresh',
-  token_type: 'bearer',
-  expires_in: 24 * 3600,
-  expires_at: expiresAt,
-  user: USER,
-};
+const chromium = loadChromium();
 
 /** `seedPastMeals`: meals logged on the two days before today, to see their rings in the week strip. */
-async function openApp(browser: Browser, base: string, reducedMotion: 'reduce' | 'no-preference', viewport = { width: 390, height: 844 }, seedPastMeals = false): Promise<Page> {
-  const context = await browser.newContext({ viewport, deviceScaleFactor: 2, reducedMotion });
-  // A plain string, so the test runner's transpiler adds no helpers to what runs in the page.
-  await context.addInitScript(`
-    localStorage.setItem('sb-127-auth-token', ${JSON.stringify(JSON.stringify(SESSION))});
-    localStorage.setItem('fitlab/app', JSON.stringify({ state: { hasOnboarded: true, redoingQuestionnaire: false, appearance: 'light' }, version: 0 }));
-    if (${seedPastMeals}) {
+function openApp(browser: Parameters<typeof openHarnessApp>[0], base: string, reducedMotion: 'reduce' | 'no-preference', viewport = { width: 390, height: 844 }, seedPastMeals = false) {
+  return openHarnessApp(browser, base, {
+    reducedMotion,
+    viewport,
+    initScript: seedPastMeals
+      ? `
       var iso = function (n) { var d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10); };
-      var entries = [1, 2].map(function (n) { return { id: 'seed-' + n, date: iso(n), slot: 'pranzo', foodId: 'chicken-breast', grams: 1000 }; });
-      localStorage.setItem('fitlab/nutrition', JSON.stringify({ state: { entries: entries, seededDates: [] }, version: 0 }));
-    }
-  `);
-  // The stubbed backend: the session's user, and an empty account everywhere else.
-  await context.route('http://127.0.0.1:54321/**', (route: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
-    const url = route.request().url();
-    if (url.includes('/auth/v1/user')) return route.fulfill({ json: USER });
-    if (url.includes('/auth/v1/')) return route.fulfill({ json: SESSION });
-    const single = (route.request().headers()['accept'] ?? '').includes('vnd.pgrst.object');
-    return route.fulfill({ json: single ? null : [], status: single ? 406 : 200 });
+      var entries2 = [1, 2].map(function (n) { return { id: 'seed-' + n, date: iso(n), slot: 'pranzo', foodId: 'chicken-breast', grams: 1000 }; });
+      localStorage.setItem('fitlab/nutrition', JSON.stringify({ state: { entries: entries2, seededDates: [] }, version: 0 }));`
+      : '',
   });
-  const page = await context.newPage();
-  page.on('pageerror', (e: Error) => console.log('  [pageerror]', e.message));
-  await page.goto(base + '/');
-  return page;
 }
 
 const pageEl = (page: Page, i: number) => page.getByTestId(`energy-guide-page-${i}`);

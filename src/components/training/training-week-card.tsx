@@ -38,6 +38,7 @@ export function TrainingWeekCard({ weekDates, selectedDate, onSelectDate, isDayC
           return (
             <Pressable
               key={date}
+              testID={`week-day-${date}`}
               onPress={() => {
                 if (!selected) hapticSelection();
                 onSelectDate(date);

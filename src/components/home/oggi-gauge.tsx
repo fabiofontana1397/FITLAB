@@ -55,10 +55,11 @@ const FADE_FLOOR = 0.4;
 const FADE_MIN_SPAN_DEG = 90;
 /** How far toward the card surface the faded colour sits. */
 const FADE_TOWARD_SURFACE = 0.6;
-/** The goal zone on the semi-ring track: full green around the goal, fading to the track's grey over this many degrees. */
-const GOAL_ZONE_STEP_DEG = 3;
-const GOAL_ZONE_MIN_CORE_DEG = 6;
-const GOAL_ZONE_FADE_DEG = 70;
+/** The goal zone on the semi-ring track: a narrow full-green core around the goal, a short fade out of it, grey everywhere else. */
+const GOAL_ZONE_STEP_DEG = 1.5;
+const GOAL_ZONE_MIN_CORE_DEG = 1.5;
+const GOAL_ZONE_MAX_CORE_DEG = 4;
+const GOAL_ZONE_FADE_DEG = 9;
 const CY = TOP_PAD + SEMI_R + SEMI_STROKE / 2;
 const BASE_H = CY + MAIN_R * Math.cos(((180 - MAIN_HALF_SPAN) * Math.PI) / 180) + MAIN_STROKE / 2 + 4;
 
@@ -248,12 +249,12 @@ export function OggiGauge({ burnedKcal, eatenKcal, burnedColor, eatenColor, read
   const goalZone = useMemo(() => {
     const surface = rgbOf(theme.backgroundElevated, rgbOf(theme.background));
     const track = rgbOf(theme.backgroundElement, surface);
-    const green = rgbOf(theme.balanceGoalScale[3]);
+    const green = rgbOf(theme.balanceGoalScale[2]);
     const count = Math.ceil((SEMI_HALF_SPAN * 2) / GOAL_ZONE_STEP_DEG);
-    const core = Math.max(GOAL_ZONE_MIN_CORE_DEG, (toleranceKcal / reading.halfRangeKcal) * SEMI_HALF_SPAN);
+    const core = Math.min(GOAL_ZONE_MAX_CORE_DEG, Math.max(GOAL_ZONE_MIN_CORE_DEG, ((toleranceKcal / reading.halfRangeKcal) * SEMI_HALF_SPAN) * 0.3));
     return Array.from({ length: count }, (_, i) => {
       const from = -SEMI_HALF_SPAN + i * GOAL_ZONE_STEP_DEG;
-      const to = Math.min(SEMI_HALF_SPAN, from + GOAL_ZONE_STEP_DEG + 0.4);
+      const to = Math.min(SEMI_HALF_SPAN, from + GOAL_ZONE_STEP_DEG + 0.3);
       const x = Math.min(1, Math.max(0, (Math.abs((from + to) / 2 - goalDeg) - core) / GOAL_ZONE_FADE_DEG));
       const keep = 1 - x * x * (3 - 2 * x);
       const c = track && green ? mixRgb(track, green, keep) : null;
