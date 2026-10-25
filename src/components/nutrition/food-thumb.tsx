@@ -1,8 +1,7 @@
-import { Image } from 'expo-image';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { FoodGlyph } from '@/components/nutrition/food-glyph';
-import { cornerSafeInset } from '@/components/nutrition/photo-fit';
+import { PhotoTile } from '@/components/ui/photo-tile';
 import { useTheme } from '@/hooks/use-theme';
 import { foodPhoto } from '@/lib/nutrition/food-photos';
 
@@ -60,36 +59,23 @@ export function FoodThumb({ foodId, variant = 'row' }: { foodId: string; variant
   // system gives app icons and list thumbnails, at any size.
   const radius = Math.round(size * 0.24);
 
-  return (
-    <View
-      aria-hidden
-      style={[
-        styles.tile,
-        {
-          width: size,
-          height: size,
-          borderRadius: radius,
-          backgroundColor: theme.backgroundElement,
-        },
-        photo ? { padding: cornerSafeInset(radius) } : null,
-      ]}>
-      {photo ? (
-        // Always the whole photo, scaled down to fit (see photo-fit.ts).
-        <Image source={photo} style={styles.photo} contentFit="contain" contentPosition="center" transition={0} accessibilityIgnoresInvertColors />
-      ) : (
-        <FoodGlyph foodId={foodId} size={Math.round(size * 0.5)} />
-      )}
-    </View>
-  );
+  const glyph = <FoodGlyph foodId={foodId} size={Math.round(size * 0.5)} />;
+
+  if (!photo) {
+    return (
+      <View aria-hidden style={[styles.tile, { width: size, height: size, borderRadius: radius, backgroundColor: theme.backgroundElement }]}>
+        {glyph}
+      </View>
+    );
+  }
+
+  // The whole photo, scaled down to fit (PhotoTile); a file that fails to
+  // load falls back to the same glyph a food without a photo gets.
+  return <PhotoTile source={photo} width={size} radius={radius} background={theme.backgroundElement} fallback={glyph} recyclingKey={foodId} />;
 }
 
 const styles = StyleSheet.create({
-  photo: {
-    width: '100%',
-    height: '100%',
-  },
   tile: {
-    overflow: 'hidden',
     borderCurve: 'continuous',
     alignItems: 'center',
     justifyContent: 'center',
