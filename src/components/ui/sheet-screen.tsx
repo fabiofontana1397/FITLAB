@@ -1,3 +1,4 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { type Href } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -41,6 +42,8 @@ const TOP_GAP_MIN = 8;
 const CLOSE_SIZE = 44;
 const CLOSE_INSET = 16;
 const SHEET_RADIUS = 40;
+/** Height of the fade under the fixed title, and the scroll distance over which it comes in. */
+const EDGE_FADE_HEIGHT = 28;
 /** Drag past this (or flick faster than this) and the sheet goes away. */
 const DRAG_CLOSE_DISTANCE = 120;
 const DRAG_CLOSE_VELOCITY = 0.8;
@@ -143,6 +146,9 @@ export function SheetScreen({ title, eyebrow, children, fallbackHref = '/', cont
     opacity: interpolate(translateY.value, [0, height], [1, 0], 'clamp'),
   }));
 
+  const edgeFade = useSharedValue(0);
+  const edgeFadeStyle = useAnimatedStyle(() => ({ opacity: edgeFade.value }));
+
   const sheetStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
   }));
@@ -180,12 +186,23 @@ export function SheetScreen({ title, eyebrow, children, fallbackHref = '/', cont
           </Pressable>
 
           {scroll ? (
-            <ScrollView
-              {...ScrollDefaults}
-              style={styles.scroll}
-              contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + Spacing.five }, contentContainerStyle]}>
-              {children}
-            </ScrollView>
+            <View style={styles.scroll}>
+              <ScrollView
+                {...ScrollDefaults}
+                style={styles.scroll}
+                onScroll={(e) => {
+                  // eslint-disable-next-line react-hooks/immutability
+                  edgeFade.value = Math.min(1, Math.max(0, e.nativeEvent.contentOffset.y / EDGE_FADE_HEIGHT));
+                }}
+                scrollEventThrottle={16}
+                contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + Spacing.five }, contentContainerStyle]}>
+                {children}
+              </ScrollView>
+              {/* Under the fixed title the content dissolves instead of being cut by a hard edge; the fade grows in as you scroll. */}
+              <Animated.View pointerEvents="none" style={[styles.edgeFade, edgeFadeStyle]}>
+                <LinearGradient colors={[theme.background, `${theme.background}00`]} style={StyleSheet.absoluteFill} />
+              </Animated.View>
+            </View>
           ) : (
             <View style={[styles.scroll, styles.scrollContent, { paddingBottom: insets.bottom + Spacing.three }, contentContainerStyle]}>{children}</View>
           )}
@@ -253,6 +270,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     boxShadow: '0px 2px 10px rgba(0,0,0,0.08)',
+  },
+  edgeFade: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: EDGE_FADE_HEIGHT,
   },
   scroll: {
     flex: 1,
