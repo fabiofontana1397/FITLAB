@@ -1,14 +1,11 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { useRef, useState } from 'react';
+import { Pressable, StyleSheet, type TextInput } from 'react-native';
 
-import { AppTextInput } from '@/components/ui/app-text';
-
-import { ScreenScroll } from '@/components/screen-scroll';
+import { AuthField } from '@/components/auth/auth-field';
+import { AuthShell } from '@/components/auth/auth-shell';
 import { ThemedText } from '@/components/themed-text';
-import { Icon } from '@/components/ui/icon';
 import { PrimaryButton } from '@/components/ui/primary-button';
-import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { goBackOr } from '@/lib/navigation/go-back';
 import { useAuthStore } from '@/store/auth-store';
@@ -24,11 +21,14 @@ export default function RegisterScreen() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [needsEmailConfirmation, setNeedsEmailConfirmation] = useState(false);
+  const emailRef = useRef<TextInput>(null);
+  const passwordRef = useRef<TextInput>(null);
 
   // Supabase's own minimum_password_length default (see supabase/config.toml).
   const canSubmit = name.trim().length > 0 && email.includes('@') && password.length >= 6 && !isSubmitting;
 
   const handleRegister = async () => {
+    if (!canSubmit) return;
     setIsSubmitting(true);
     const { error: registerError, needsEmailConfirmation: pending } = await register(name.trim(), email.trim(), password);
     setIsSubmitting(false);
@@ -46,114 +46,75 @@ export default function RegisterScreen() {
 
   if (needsEmailConfirmation) {
     return (
-      <ScreenScroll>
-        <View style={{ gap: Spacing.one }}>
-          <ThemedText type="display">Conferma la tua email</ThemedText>
-          <ThemedText type="default" themeColor="textSecondary">
-            Ti abbiamo mandato un link di conferma a {email.trim()}. Aprilo per attivare l&apos;account, poi torna qui.
-          </ThemedText>
-        </View>
-        <Pressable onPress={() => router.replace('/login')} hitSlop={8}>
-          <ThemedText type="caption" style={{ textAlign: 'center', color: theme.accent }}>
-            Torna al login
-          </ThemedText>
-        </Pressable>
-      </ScreenScroll>
+      <AuthShell
+        icon="mail"
+        title="Conferma la tua email"
+        subtitle={`Ti abbiamo mandato un link di conferma a ${email.trim()}. Aprilo per attivare l'account, poi torna qui.`}
+        footer={<PrimaryButton label="Torna al login" onPress={() => router.replace('/login')} />}
+      />
     );
   }
 
   return (
-    <ScreenScroll>
-      <View style={styles.header}>
-        <Pressable onPress={() => goBackOr('/welcome')} hitSlop={8}>
-          <Icon name="arrowBack" size={22} color={theme.text} />
-        </Pressable>
-      </View>
-
-      <View style={{ gap: Spacing.one }}>
-        <ThemedText type="display">Crea il tuo account</ThemedText>
-        <ThemedText type="default" themeColor="textSecondary">
-          Poi ti faremo qualche domanda per costruire il tuo piano su misura.
-        </ThemedText>
-      </View>
-
-      <View style={{ gap: Spacing.three }}>
-        <Field label="Nome" value={name} onChangeText={setName} placeholder="Il tuo nome" theme={theme} />
-        <Field
-          label="Email"
-          value={email}
-          onChangeText={setEmail}
-          placeholder="tu@esempio.com"
-          keyboardType="email-address"
-          autoCapitalize="none"
-          theme={theme}
-        />
-        <Field label="Password" value={password} onChangeText={setPassword} placeholder="••••••••" secureTextEntry theme={theme} />
-        {error ? (
-          <ThemedText type="caption" style={{ color: theme.danger }}>
-            {error}
-          </ThemedText>
-        ) : null}
-      </View>
-
-      <PrimaryButton label="Continua" onPress={handleRegister} disabled={!canSubmit} />
-
-      <Pressable onPress={() => router.replace('/login')} hitSlop={8}>
-        <ThemedText type="caption" style={{ textAlign: 'center', color: theme.accent }}>
-          Hai già un account? Accedi
-        </ThemedText>
-      </Pressable>
-    </ScreenScroll>
-  );
-}
-
-function Field({
-  label,
-  value,
-  onChangeText,
-  placeholder,
-  secureTextEntry,
-  keyboardType,
-  autoCapitalize,
-  theme,
-}: {
-  label: string;
-  value: string;
-  onChangeText: (t: string) => void;
-  placeholder: string;
-  secureTextEntry?: boolean;
-  keyboardType?: 'email-address';
-  autoCapitalize?: 'none';
-  theme: ReturnType<typeof useTheme>;
-}) {
-  return (
-    <View style={{ gap: Spacing.one }}>
-      <ThemedText type="label" themeColor="textSecondary">
-        {label}
-      </ThemedText>
-      <AppTextInput
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor={theme.textTertiary}
-        secureTextEntry={secureTextEntry}
-        keyboardType={keyboardType}
-        autoCapitalize={autoCapitalize}
-        style={[styles.input, { color: theme.text, backgroundColor: theme.backgroundElement, borderColor: theme.border }]}
+    <AuthShell
+      title="Crea il tuo account"
+      subtitle="Poi ti faremo qualche domanda per costruire il tuo piano su misura."
+      onBack={() => goBackOr('/welcome')}
+      footer={
+        <>
+          <PrimaryButton label={isSubmitting ? 'Creazione in corso…' : 'Continua'} onPress={handleRegister} disabled={!canSubmit} />
+          <Pressable onPress={() => router.replace('/login')} hitSlop={8} accessibilityRole="button" style={styles.switchRow}>
+            <ThemedText type="small" themeColor="textSecondary">
+              Hai già un account?{' '}
+            </ThemedText>
+            <ThemedText type="smallBold" style={{ color: theme.accent }}>
+              Accedi
+            </ThemedText>
+          </Pressable>
+        </>
+      }>
+      <AuthField
+        label="Nome"
+        value={name}
+        onChangeText={setName}
+        placeholder="Il tuo nome"
+        autoComplete="given-name"
+        textContentType="givenName"
+        autoCapitalize="words"
+        returnKeyType="next"
+        onSubmitEditing={() => emailRef.current?.focus()}
       />
-    </View>
+      <AuthField
+        ref={emailRef}
+        label="Email"
+        value={email}
+        onChangeText={setEmail}
+        placeholder="tu@esempio.com"
+        keyboardType="email-address"
+        autoCapitalize="none"
+        autoComplete="email"
+        textContentType="emailAddress"
+        returnKeyType="next"
+        onSubmitEditing={() => passwordRef.current?.focus()}
+      />
+      <AuthField
+        ref={passwordRef}
+        label="Password"
+        secure
+        value={password}
+        onChangeText={setPassword}
+        placeholder="••••••••"
+        autoComplete="new-password"
+        textContentType="newPassword"
+        returnKeyType="go"
+        onSubmitEditing={handleRegister}
+        hint="Almeno 6 caratteri."
+        error={error}
+      />
+    </AuthShell>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-  },
-  input: {
-    borderWidth: 1,
-    borderRadius: Radius.small,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: 12,
-    fontSize: 15,
-  },
+  switchRow: { flexDirection: 'row', alignSelf: 'center', alignItems: 'center', paddingVertical: 8 },
 });

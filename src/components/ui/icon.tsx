@@ -104,6 +104,9 @@ const ICONS = {
   homeOutline: { set: 'ion', name: 'home-outline' },
   tree: { set: 'mci', name: 'tree' },
   shuffle: { set: 'ion', name: 'shuffle' },
+  eye: { set: 'ion', name: 'eye-outline' },
+  eyeOff: { set: 'ion', name: 'eye-off-outline' },
+  mail: { set: 'ion', name: 'mail-outline' },
 } as const satisfies Record<string, { set: 'mci' | 'ion'; name: MCIName | IonName }>;
 
 export type IconName = keyof typeof ICONS;
