@@ -91,6 +91,19 @@ const ICONS = {
   edit: { set: 'ion', name: 'create-outline' },
   link: { set: 'ion', name: 'link' },
   watch: { set: 'mci', name: 'watch-variant' },
+
+  // Onboarding question/option icons (see lib/questionnaire/presentation.ts).
+  genderMale: { set: 'mci', name: 'gender-male' },
+  genderFemale: { set: 'mci', name: 'gender-female' },
+  laptop: { set: 'mci', name: 'laptop' },
+  walk: { set: 'mci', name: 'walk' },
+  standing: { set: 'mci', name: 'human-handsup' },
+  leaf: { set: 'mci', name: 'leaf' },
+  sprout: { set: 'mci', name: 'sprout' },
+  fish: { set: 'mci', name: 'fish' },
+  homeOutline: { set: 'ion', name: 'home-outline' },
+  tree: { set: 'mci', name: 'tree' },
+  shuffle: { set: 'ion', name: 'shuffle' },
 } as const satisfies Record<string, { set: 'mci' | 'ion'; name: MCIName | IonName }>;
 
 export type IconName = keyof typeof ICONS;

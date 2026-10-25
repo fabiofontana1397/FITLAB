@@ -9,8 +9,8 @@ import {
   type NativeSyntheticEvent,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 
+import { PlanGenerationScreen } from '@/components/onboarding/plan-generation-screen';
 import { ThemedText } from '@/components/themed-text';
 import { FadeInView } from '@/components/ui/fade-in-view';
 import { Icon } from '@/components/ui/icon';
@@ -29,13 +29,6 @@ import type { OnboardingMode } from '@/lib/questionnaire/schema';
 import { useAppStore } from '@/store/app-store';
 import { useOnboardingStore } from '@/store/onboarding-store';
 import { usePlanStore } from '@/store/plan-store';
-
-const GENERATING_MESSAGES = [
-  'Stiamo creando il tuo piano personalizzato…',
-  'Analizziamo i tuoi obiettivi e le tue abitudini…',
-  'Costruiamo la struttura mese per mese…',
-  'Quasi pronto…',
-];
 
 type RoadmapPage = { id: string; kicker: string; title: string; subtitle: string; steps: RoadmapStep[] };
 
@@ -82,6 +75,9 @@ export default function OnboardingRoadmapScreen() {
   const answers = useOnboardingStore((s) => s.answers);
   const completeOnboarding = useAppStore((s) => s.completeOnboarding);
   const isGenerating = usePlanStore((s) => s.isGenerating);
+  const dietPlan = usePlanStore((s) => s.dietPlan);
+  const trainingPlan = usePlanStore((s) => s.trainingPlan);
+  const generatePlans = usePlanStore((s) => s.generatePlans);
 
   const mode = (answers.mode as OnboardingMode) ?? 'both';
   const pages = useMemo(
@@ -106,19 +102,39 @@ export default function OnboardingRoadmapScreen() {
   // piano generato") for a minute, show that it's still working and only
   // navigate once isGenerating actually flips false. If it's already done
   // by the time they get here, this resolves on the very next render.
+  //
+  // generatePlans swallows its own failures (see plan-store.ts), so "done"
+  // alone isn't success: the plans the chosen mode asks for have to exist.
+  // If they don't, the user is offered a retry here instead of landing on an
+  // empty dashboard — their answers are saved either way.
+  const generationFailed =
+    !isGenerating && ((mode !== 'training' && dietPlan == null) || (mode !== 'diet' && trainingPlan == null));
+
   useEffect(() => {
-    if (isFinishing && !isGenerating) {
+    if (isFinishing && !isGenerating && !generationFailed) {
       completeOnboarding();
       router.replace('/');
     }
-  }, [isFinishing, isGenerating, completeOnboarding]);
+  }, [isFinishing, isGenerating, generationFailed, completeOnboarding]);
 
   const finish = () => {
     setIsFinishing(true);
   };
 
+  const enterAnyway = () => {
+    completeOnboarding();
+    router.replace('/');
+  };
+
   if (isFinishing) {
-    return <GeneratingPlanView />;
+    return (
+      <PlanGenerationScreen
+        isGenerating={isGenerating}
+        failed={generationFailed}
+        onRetry={() => void generatePlans(answers, { trigger: 'onboarding' })}
+        onContinueAnyway={enterAnyway}
+      />
+    );
   }
 
   return (
@@ -193,54 +209,6 @@ export default function OnboardingRoadmapScreen() {
   );
 }
 
-/** Shown between "Vai alla dashboard" and actually landing on Home while
- * generatePlans (a real AI call — web search + RAG, 1-2 minutes) is still
- * running — see the isFinishing effect above. Cycles through a few
- * status lines so a full-minute wait doesn't look stalled. */
-function GeneratingPlanView() {
-  const theme = useTheme();
-  const insets = useSafeAreaInsets();
-  const pulse = useSharedValue(0);
-  const [messageIndex, setMessageIndex] = useState(0);
-
-  useEffect(() => {
-    pulse.value = withRepeat(withTiming(1, { duration: 1100 }), -1, true);
-  }, [pulse]);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setMessageIndex((i) => Math.min(i + 1, GENERATING_MESSAGES.length - 1));
-    }, 3200);
-    return () => clearInterval(interval);
-  }, []);
-
-  const badgeStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: 1 + pulse.value * 0.12 }],
-    opacity: 0.7 + pulse.value * 0.3,
-  }));
-
-  return (
-    <View
-      style={[
-        styles.container,
-        styles.generatingContainer,
-        { backgroundColor: theme.background, paddingTop: insets.top, paddingBottom: insets.bottom },
-      ]}>
-      <Animated.View style={[styles.readyBadge, { backgroundColor: theme.accentSoft }, badgeStyle]}>
-        <Icon name="sparkle" size={32} color={theme.accent} />
-      </Animated.View>
-      <View style={{ gap: Spacing.two, alignItems: 'center' }}>
-        <ThemedText type="display" style={{ textAlign: 'center' }}>
-          Un attimo…
-        </ThemedText>
-        <ThemedText type="default" themeColor="textSecondary" style={{ textAlign: 'center', maxWidth: 320 }}>
-          {GENERATING_MESSAGES[messageIndex]}
-        </ThemedText>
-      </View>
-    </View>
-  );
-}
-
 function TimelineRow({ step, isLast }: { step: RoadmapStep; isLast: boolean }) {
   const theme = useTheme();
   return (
@@ -267,12 +235,6 @@ function TimelineRow({ step, isLast }: { step: RoadmapStep; isLast: boolean }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  generatingContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.six,
-    paddingHorizontal: Spacing.four,
   },
   pageInner: {
     width: '100%',
