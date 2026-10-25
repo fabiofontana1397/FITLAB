@@ -11,8 +11,6 @@ import { Icon } from '@/components/ui/icon';
 import { ProfileAvatarButton } from '@/components/ui/profile-avatar-button';
 import { LogActivityModal } from '@/components/training/log-activity-modal';
 import { LoggedActivitiesCard } from '@/components/training/logged-activities-card';
-import { PlanJourneyHero } from '@/components/training/plan-journey-hero';
-import { PlanOverviewPopup } from '@/components/training/plan-overview-popup';
 import { TrainingWeekCard } from '@/components/training/training-week-card';
 import { levelLabel, WorkoutSummaryCard } from '@/components/training/workout-summary-card';
 import { WorkoutSessionModal } from '@/components/training/workout-session-modal';
@@ -53,7 +51,6 @@ export default function TrainingScreen() {
   const [isLogActivityVisible, setLogActivityVisible] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [sessionOpen, setSessionOpen] = useState(false);
-  const [overviewOpen, setOverviewOpen] = useState(false);
 
   const today = daysAgoISO(0);
   const [selectedDate, setSelectedDate] = useState(today);
@@ -122,15 +119,6 @@ export default function TrainingScreen() {
         <ThemedText style={styles.pageTitle}>Allenamento</ThemedText>
         <ProfileAvatarButton size={38} />
       </View>
-
-      {trainingPlan ? (
-        <PlanJourneyHero
-          totalMonths={trainingPlan.durationMonths}
-          goal={currentUser.goal}
-          onPress={() => setOverviewOpen(true)}
-          action={{ label: 'Esplora piano', icon: 'calendar', onPress: () => router.push('/training-plan') }}
-        />
-      ) : null}
 
       <View style={styles.sectionRow}>
         <ThemedText style={styles.sectionTitle}>La tua settimana</ThemedText>
@@ -241,15 +229,6 @@ export default function TrainingScreen() {
         }
       />
 
-      {trainingPlan ? (
-        <PlanOverviewPopup
-          visible={overviewOpen}
-          onClose={() => setOverviewOpen(false)}
-          plan={trainingPlan}
-          goal={currentUser.goal}
-          currentMonth={monthIndex}
-        />
-      ) : null}
     </ScreenScroll>
   );
 }

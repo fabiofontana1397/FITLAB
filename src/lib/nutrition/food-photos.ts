@@ -5,8 +5,8 @@ import { findFood } from '@/lib/mock/food-database';
 /**
  * Photos of individual foods for the meal tracker (assets/images/foods, see
  * the README there for where they come from). A food without a fitting
- * photo keeps its lucide glyph (food-icons.ts), so this map only has to be
- * right, never complete.
+ * photo shows its 3D picture instead (food-icons.ts), so this map only has
+ * to be right, never complete.
  */
 const PHOTOS = {
   arancia: require('@/assets/images/foods/arancia.webp'),

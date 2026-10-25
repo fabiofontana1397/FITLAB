@@ -1,8 +1,9 @@
-import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Image } from 'expo-image';
+import { useWindowDimensions } from 'react-native';
 
-import { FoodGlyph } from '@/components/nutrition/food-glyph';
-import { PhotoTile } from '@/components/ui/photo-tile';
+import { cornerSafeInset, PhotoTile } from '@/components/ui/photo-tile';
 import { useTheme } from '@/hooks/use-theme';
+import { foodIcon } from '@/lib/nutrition/food-icons';
 import { foodPhoto } from '@/lib/nutrition/food-photos';
 
 /**
@@ -45,39 +46,32 @@ export function useFoodThumbSize(variant: FoodThumbVariant): number {
 }
 
 /**
- * What a food looks like in the meal tracker: its photo when there is one
- * (lib/nutrition/food-photos.ts), otherwise its lucide glyph tinted by its
- * main macro, on a tile sized for the space available. Decorative — the
- * food's name always sits beside it — so it is hidden from screen readers.
+ * What a food looks like in the meal tracker, on a tile sized for the space
+ * available: its photo when there is one (lib/nutrition/food-photos.ts),
+ * otherwise its 3D picture (lib/nutrition/food-icons.ts), which exists for
+ * every food. Both are cut out on a transparent background and shown whole,
+ * through PhotoTile like every other food or dish photo.
+ * Decorative — the food's name always sits beside it — so it is hidden from
+ * screen readers.
  */
 export function FoodThumb({ foodId, variant = 'row' }: { foodId: string; variant?: FoodThumbVariant }) {
   const theme = useTheme();
   const size = useFoodThumbSize(variant);
-  const photo = foodPhoto(foodId);
-
   // A quarter of the side, on iOS's continuous curve: the same rounding the
   // system gives app icons and list thumbnails, at any size.
   const radius = Math.round(size * 0.24);
+  const icon = foodIcon(foodId);
+  const inner = size - 2 * cornerSafeInset(radius);
 
-  const glyph = <FoodGlyph foodId={foodId} size={Math.round(size * 0.5)} />;
-
-  if (!photo) {
-    return (
-      <View aria-hidden style={[styles.tile, { width: size, height: size, borderRadius: radius, backgroundColor: theme.backgroundElement }]}>
-        {glyph}
-      </View>
-    );
-  }
-
-  // The whole photo, scaled down to fit (PhotoTile); a file that fails to
-  // load falls back to the same glyph a food without a photo gets.
-  return <PhotoTile source={photo} width={size} radius={radius} background={theme.backgroundElement} fallback={glyph} recyclingKey={foodId} />;
+  // A photo file that fails to load falls back to the food's 3D picture.
+  return (
+    <PhotoTile
+      source={foodPhoto(foodId) ?? icon}
+      width={size}
+      radius={radius}
+      background={theme.backgroundElement}
+      fallback={<Image source={icon} style={{ width: inner, height: inner }} contentFit="contain" transition={0} />}
+      recyclingKey={foodId}
+    />
+  );
 }
-
-const styles = StyleSheet.create({
-  tile: {
-    borderCurve: 'continuous',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});

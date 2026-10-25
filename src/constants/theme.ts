@@ -67,13 +67,10 @@ export const Brand = {
   successGlow: '#22B35E',
   green: '#22B35E',
   yellow: '#F6B21B',
-  /** Blobs that orbit inside the coach orb and the Home aura. */
+  /** Blobs that orbit inside the coach orb. */
   orbWarm: ['#D9660F', '#FF7A1A', '#FFB454'] as const,
   orbDeep: ['#7A1E00', '#B33A0A', '#E8590C'] as const,
   orbBright: ['#C24E12', '#FF7A1A', '#FFA83D'] as const,
-  auraWarm: ['#7A1E00', '#E8590C', '#FF8A1F'] as const,
-  auraDeep: ['#5A1600', '#B33A0A', '#FF7A1A'] as const,
-  auraBright: ['#C24E12', '#FF7A1A', '#FFB454'] as const,
 } as const;
 
 /**
@@ -90,9 +87,6 @@ export const OnBrand = {
   fill: 'rgba(255,255,255,0.18)',
   fillStrong: 'rgba(255,255,255,0.28)',
   divider: 'rgba(255,255,255,0.22)',
-  /** Watermark artwork bled into the fill behind the copy. */
-  artwork: 'rgba(255,255,255,0.10)',
-  artworkFaint: 'rgba(255,255,255,0.08)',
   /**
    * Band painted over the top safe area of the iOS Home Screen web app.
    * Black in both schemes on purpose: that status bar is
@@ -175,26 +169,6 @@ export const Colors = {
     washTop: '#F2F2F1',
     washBottom: '#DEDEDD',
 
-    // "Spotlight": the deliberately dark hero/coach card that sits on the
-    // light page (plan journey hero, Home coach card). It stays dark in both
-    // schemes — it is a dark card *by design*, the way a photo stays a photo
-    // — so the tokens carry the contrast with them instead of each component
-    // hard-coding #15161A and a pile of white alphas.
-    spotlight: '#15161A',
-    spotlightElevated: 'rgba(255,255,255,0.10)',
-    spotlightGradient: ['#2B2B30', '#17171A', '#0E0E10'] as const,
-    spotlightText: '#FFFFFF',
-    spotlightTextMuted: 'rgba(255,255,255,0.85)',
-    spotlightTextFaint: 'rgba(255,255,255,0.55)',
-    spotlightBorder: 'rgba(255,255,255,0.18)',
-    /** High-contrast CTA sitting on a spotlight card ("Esplora piano"). */
-    spotlightAction: '#FFFFFF',
-    /** Hairline accent glow outlining an "AI" surface. */
-    accentRim: 'rgba(255,122,0,0.28)',
-    /** Fade that lifts the aura artwork off the copy behind it. */
-    spotlightScrim: ['rgba(21,22,26,0.92)', 'rgba(21,22,26,0.55)', 'rgba(21,22,26,0)'] as const,
-
-
     /** Dimming layer behind a sheet or popup. */
     scrim: 'rgba(0,0,0,0.45)',
     /** Softer dim used by glass popups, which already blur what is behind. */
@@ -260,22 +234,6 @@ export const Colors = {
     washTop: neutral[950],
     washBottom: neutral[950],
 
-    // On a near-black page the spotlight card can no longer separate itself
-    // by being darker, so it lifts *up* to the raised card grey instead.
-    // Same role, inverted direction — which is exactly what a semantic token
-    // is for.
-    spotlight: neutral[800],
-    spotlightElevated: 'rgba(255,255,255,0.10)',
-    spotlightGradient: ['#2E2F36', '#212229', '#17181D'] as const,
-    spotlightText: '#FFFFFF',
-    spotlightTextMuted: 'rgba(255,255,255,0.85)',
-    spotlightTextFaint: 'rgba(255,255,255,0.55)',
-    spotlightBorder: 'rgba(255,255,255,0.18)',
-    spotlightAction: '#FFFFFF',
-    accentRim: 'rgba(255,122,0,0.38)',
-    spotlightScrim: ['rgba(28,29,34,0.92)', 'rgba(28,29,34,0.55)', 'rgba(28,29,34,0)'] as const,
-
-
     scrim: 'rgba(0,0,0,0.55)',
     scrimSoft: 'rgba(0,0,0,0.38)',
     // Black notches vanish on a dark track; white ones read the same way
@@ -296,8 +254,8 @@ export const Colors = {
 type ThemeTokenName = keyof typeof Colors.light & keyof typeof Colors.dark;
 
 /** The tokens that resolve to one color in both schemes — the only ones a
- *  `color`/`backgroundColor` prop can take (ThemedText, ThemedView). Gradient
- *  tokens like `spotlightGradient` are excluded by construction. */
+ *  `color`/`backgroundColor` prop can take (ThemedText, ThemedView). Scale
+ *  tokens like `balanceGoalScale` are excluded by construction. */
 export type ThemeColor = {
   [K in ThemeTokenName]: typeof Colors.light[K] extends string
     ? typeof Colors.dark[K] extends string

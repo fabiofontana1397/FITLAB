@@ -1,8 +1,8 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { StyleSheet, View } from 'react-native';
 
 import { PressableScale } from '@/components/motion/pressable-scale';
 import { ThemedText } from '@/components/themed-text';
+import { FlatCard } from '@/components/ui/flat-card';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { OnBrand } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -56,9 +56,10 @@ export type PlanJourneyHeroProps = {
   action?: { label: string; icon: IconName; onPress: () => void };
 };
 
-/** The "Il tuo percorso" banner at the top of the training plan: dark card
- * selling the whole program in one line. Tapping it opens the full
- * program description (PlanOverviewPopup). */
+/** The "Il tuo percorso" banner on Home, one for the training program and
+ * one for the diet: a card in the same milky glass as the rest of Home,
+ * selling the whole plan in one line. Tapping it opens the full plan
+ * description (PlanOverviewPopup / DietOverviewPopup). */
 export function PlanJourneyHero({ totalMonths, goal, onPress, kind = 'training', action }: PlanJourneyHeroProps) {
   const theme = useTheme();
   const promise = GOAL_PROMISE[goal];
@@ -66,23 +67,25 @@ export function PlanJourneyHero({ totalMonths, goal, onPress, kind = 'training',
   const label = diet ? 'Scopri il tuo piano alimentare' : 'Scopri il tuo percorso';
   const copy = (
     <>
-      <ThemedText style={[styles.tag, { color: theme.spotlightTextMuted }]}>IL TUO PERCORSO</ThemedText>
+      <ThemedText style={[styles.tag, { color: theme.accent }]}>IL TUO PERCORSO · {diet ? 'ALIMENTAZIONE' : 'ALLENAMENTO'}</ThemedText>
       <View style={styles.copy}>
-        <ThemedText style={[styles.months, { color: theme.spotlightText }]}>
+        <ThemedText style={styles.months}>
           {totalMonths} {totalMonths === 1 ? 'mese' : 'mesi'}
         </ThemedText>
-        <ThemedText style={[styles.headline, { color: theme.spotlightText }]}>per una versione {promise.adjective} di te.</ThemedText>
-        <ThemedText style={[styles.body, { color: theme.spotlightTextMuted }]}>{diet ? DIET_BODY[goal] : promise.body}</ThemedText>
+        <ThemedText style={styles.headline}>per una versione {promise.adjective} di te.</ThemedText>
+        <ThemedText style={styles.body} themeColor="textSecondary">
+          {diet ? DIET_BODY[goal] : promise.body}
+        </ThemedText>
       </View>
     </>
   );
   const card = (
-    <LinearGradient colors={theme.spotlightGradient} locations={[0, 0.55, 1]} start={{ x: 1, y: 0 }} end={{ x: 0, y: 1 }} style={styles.card}>
+    <FlatCard radius={20} style={styles.card}>
       <View pointerEvents="none" style={styles.artBig}>
-        <Icon name={diet ? 'utensils' : 'barbell'} size={diet ? 120 : 136} color={OnBrand.artwork} />
+        <Icon name={diet ? 'utensils' : 'barbell'} size={diet ? 120 : 136} color={theme.accentSoft} />
       </View>
       <View pointerEvents="none" style={styles.artSmall}>
-        <Icon name={diet ? 'nutrition' : 'training'} size={60} color={OnBrand.artworkFaint} />
+        <Icon name={diet ? 'nutrition' : 'training'} size={60} color={theme.accentSoft} />
       </View>
 
       {action ? (
@@ -93,9 +96,9 @@ export function PlanJourneyHero({ totalMonths, goal, onPress, kind = 'training',
         copy
       )}
       {action ? (
-        <PressableScale onPress={action.onPress} accessibilityRole="button" style={[styles.actionButton, { backgroundColor: theme.spotlightAction }]}>
-          <View style={[styles.actionIcon, { backgroundColor: theme.accentSoft }]}>
-            <Icon name={action.icon} size={16} color={theme.accent} />
+        <PressableScale onPress={action.onPress} accessibilityRole="button" style={[styles.actionButton, { backgroundColor: theme.accentSoft }]}>
+          <View style={[styles.actionIcon, { backgroundColor: theme.accent }]}>
+            <Icon name={action.icon} size={16} color={OnBrand.text} />
           </View>
           <ThemedText style={[styles.actionLabel, { color: theme.accent }]}>{action.label}</ThemedText>
           <Icon name="chevronRight" size={16} color={theme.accent} />
@@ -106,7 +109,7 @@ export function PlanJourneyHero({ totalMonths, goal, onPress, kind = 'training',
           <Icon name="chevronRight" size={15} color={theme.accent} />
         </View>
       )}
-    </LinearGradient>
+    </FlatCard>
   );
 
   // With its own action button the card can't also be one big button (on
@@ -125,10 +128,8 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   card: {
-    borderRadius: 20,
     padding: 16,
     gap: 8,
-    overflow: 'hidden',
   },
   artBig: {
     position: 'absolute',

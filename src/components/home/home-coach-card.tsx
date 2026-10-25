@@ -4,7 +4,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { ScrollDefaults } from '@/constants/scroll';
 import { CoachOrb } from '@/components/chat/coach-orb';
-import { CoachAura, PulseDot } from '@/components/home/coach-aura';
+import { PulseDot } from '@/components/home/pulse-dot';
 import { ThemedText } from '@/components/themed-text';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon } from '@/components/ui/icon';
@@ -15,41 +15,38 @@ import { useMotionPreference } from '@/hooks/use-motion-preference';
 import { useCoachInsights } from '@/hooks/use-coach-insights';
 import { useTheme } from '@/hooks/use-theme';
 
-/** The dark "AI Coach" card at the bottom of Home — deliberately always
- * dark regardless of the app's own light/dark setting (a distinct "AI
- * feature" surface). Alive like the chat FAB: the same orange orb as its
- * avatar and slowly drifting orange light behind the text (coach-aura.tsx).
+/** The "AI Coach" card at the bottom of Home, on the same milky glass as
+ * Home's other cards. The orange orb of the chat FAB is its avatar.
  * Shows the latest generated insight and opens the full list in a popup. */
 export function HomeCoachCard({ isWorkoutDayIncomplete }: { isWorkoutDayIncomplete: boolean }) {
   const { modalAnimation } = useMotionPreference();
   const theme = useTheme();
   const { insights, isLoading, refresh } = useCoachInsights();
   const [modalOpen, setModalOpen] = useState(false);
-  const [layout, setLayout] = useState({ width: 0, height: 0 });
   const topInsight = insights[0];
 
   return (
     <>
-      <View style={[styles.card, { backgroundColor: theme.spotlight }]} onLayout={(e) => setLayout({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height })}>
-        <CoachAura width={layout.width} height={layout.height} />
-        <View pointerEvents="none" style={[styles.rim, { borderColor: theme.accentRim }]} />
+      <FlatCard style={styles.card}>
         <Pressable style={styles.headerRow} onPress={() => setModalOpen(true)} hitSlop={4}>
           <View style={styles.orbHalo}>
             <CoachOrb size={30} />
           </View>
           <View style={{ flex: 1 }}>
-            <ThemedText style={[styles.title, { color: theme.spotlightText }]}>AI Coach</ThemedText>
-            <ThemedText style={[styles.subtitle, { color: theme.spotlightTextFaint }]}>Il tuo consiglio di oggi</ThemedText>
+            <ThemedText style={styles.title}>AI Coach</ThemedText>
+            <ThemedText style={styles.subtitle} themeColor="textTertiary">
+              Il tuo consiglio di oggi
+            </ThemedText>
           </View>
           <View style={[styles.pill, { backgroundColor: theme.accentSoft }]}>
             <PulseDot color={theme.accent} />
             <ThemedText style={[styles.pillLabel, { color: theme.accent }]}>Nuovo insight</ThemedText>
           </View>
         </Pressable>
-        <ThemedText numberOfLines={1} style={[styles.headline, { color: theme.spotlightText }]}>
+        <ThemedText numberOfLines={1} style={styles.headline}>
           {topInsight?.headline ?? 'Nessun consiglio ancora'}
         </ThemedText>
-        <ThemedText style={[styles.body, { color: theme.spotlightTextMuted }]} numberOfLines={3}>
+        <ThemedText style={styles.body} themeColor="textSecondary" numberOfLines={3}>
           {topInsight?.body ?? 'Apri per generare un consiglio personalizzato dal coach AI.'}
         </ThemedText>
         <PrimaryButton
@@ -57,7 +54,7 @@ export function HomeCoachCard({ isWorkoutDayIncomplete }: { isWorkoutDayIncomple
           onPress={() => (isWorkoutDayIncomplete ? router.push('/training') : setModalOpen(true))}
           style={styles.button}
         />
-      </View>
+      </FlatCard>
 
       <Modal visible={modalOpen} transparent animationType={modalAnimation('fade')} onRequestClose={() => setModalOpen(false)}>
         <Pressable style={[styles.backdrop, { backgroundColor: theme.scrim }]} onPress={() => setModalOpen(false)}>
@@ -96,19 +93,8 @@ export function HomeCoachCard({ isWorkoutDayIncomplete }: { isWorkoutDayIncomple
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: Radius.large,
     padding: Spacing.four,
     gap: Spacing.two + 2,
-    overflow: 'hidden',
-  },
-  rim: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    borderRadius: Radius.large,
-    borderWidth: StyleSheet.hairlineWidth * 2,
   },
   orbHalo: {
     borderRadius: 999,
