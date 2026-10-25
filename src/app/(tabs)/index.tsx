@@ -199,7 +199,7 @@ export default function HomeScreen() {
 
   const viewDateObj = new Date(viewDate);
   const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-  const todayLabel = capitalize(new Date(today).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' }));
+  const viewDateLabel = capitalize(new Date(viewDate).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' }));
   const stripDays: WeekStripDay[] = weekDaysWithActivity.map((d, i) => ({
     date: d.date,
     label: WEEKDAY_LABELS[i].charAt(0),
@@ -239,7 +239,7 @@ export default function HomeScreen() {
             Ciao {currentUser.name}
           </ThemedText>
           <ThemedText style={styles.subtitle} themeColor="textTertiary" numberOfLines={1}>
-            {todayLabel}
+            {viewDateLabel}
           </ThemedText>
         </View>
         <View style={styles.headerIcons}>
@@ -647,10 +647,10 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   greeting: {
-    fontSize: 24,
-    lineHeight: 30,
+    fontSize: 18,
+    lineHeight: 23,
     fontWeight: '800',
-    letterSpacing: -0.4,
+    letterSpacing: -0.3,
   },
   subtitle: {
     marginTop: 1,
