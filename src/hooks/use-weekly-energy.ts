@@ -93,7 +93,10 @@ export function useWeeklyEnergy(referenceDate?: string): {
     const split = month?.weeklySplit ?? [];
 
     return weekDates.map((date, i) => {
-      if (date < accountStartDate) {
+      // A day before the account's baseline has no estimate to show — unless the
+      // person logged something on it (a meal, an activity), which makes it a real day.
+      const hasLogs = nutritionEntries.some((e) => e.date === date) || activityLogEntries.some((e) => e.date === date);
+      if (date < accountStartDate && !hasLogs) {
         return {
           date,
           label: WEEKDAY_LABELS[i][0],
@@ -137,7 +140,7 @@ export function useWeeklyEnergy(referenceDate?: string): {
       };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [trainingPlan, weekDates, accountStartDate, completedExercises, nutritionEntries, calorieTarget, dietMonth, ctx, today, calibration, measuredFor, stepsFor]);
+  }, [trainingPlan, weekDates, accountStartDate, completedExercises, nutritionEntries, activityLogEntries, calorieTarget, dietMonth, ctx, today, calibration, measuredFor, stepsFor]);
 
   // Folded in as a plain post-processing pass (not inside the useMemo
   // above) so this dependency never touches that hook's own compiler-

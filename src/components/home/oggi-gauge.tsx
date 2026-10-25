@@ -1,24 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 import Animated, { useAnimatedProps, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
-import Svg, { Circle, Defs, Line, Path, Polygon, Text as SvgText, TextPath } from 'react-native-svg';
+import Svg, { Circle, Line, Path } from 'react-native-svg';
 
-import { balanceTone } from '@/components/home/balance-tone';
 import { ThemedText } from '@/components/themed-text';
 import { TimingFill } from '@/constants/motion';
 import { OnBrand, Palette } from '@/constants/theme';
-import { balancePosition, type BalanceReading } from '@/domain/calorie-balance';
+import { BALANCE_SCALE, balancePosition, type BalanceReading } from '@/domain/calorie-balance';
 import { useTheme } from '@/hooks/use-theme';
+import { formatSignedKcal } from '@/lib/format-kcal';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
-const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 // ─── Geometry ──────────────────────────────────────────────────────────────
 // Drawn in a fixed 260-wide coordinate space and scaled to the card, so the
 // two rings stay concentric and in proportion on every iPhone width.
 // Angles are degrees clockwise from 12 o'clock — so on both rings the right
 // side is a deficit, the left a surplus, and the top is equilibrium.
-const BASE_W = 260;
+const BASE_W = 300;
 const CX = BASE_W / 2;
 
 /** Main ring: intake vs burned, open at the bottom like the original gauge. */
@@ -34,20 +33,19 @@ const RING_GAP = 9;
 const SEMI_R = MAIN_R + MAIN_STROKE / 2 + RING_GAP + SEMI_STROKE / 2;
 const SEMI_HALF_SPAN = 90;
 
-/** The goal marker: a triangle outside the semi-ring, its tip on the track pointing at the ring's centre. */
-const GOAL_TIP_R = SEMI_R + SEMI_STROKE / 2 + 1.5;
-const GOAL_TRI_H = 8;
-const GOAL_TRI_HALF_W = 4.6;
-/** Where the "obiettivo" label hangs: just past the triangle's base. */
-const GOAL_LABEL_R = GOAL_TIP_R + GOAL_TRI_H + 7;
-/** "Surplus" / "Deficit" continue the semi-ring's curve just past its two ends (outside the marker knob), on this baseline radius. */
-const END_LABEL_R = SEMI_R + 11;
-const END_LABEL_FROM_DEG = 96;
-const END_LABEL_SPAN_DEG = 40;
-/** Room above the semi-ring for the goal label. */
-const TOP_PAD = 30;
-/** The junction knob sits inside the ring's thickness: its disc plus hairline border stays within the stroke. */
-const KNOB_R = MAIN_STROKE / 2 - 1.2;
+/** The balance marker: a triangle outside the semi-ring, its tip on the track pointing at the ring's centre. */
+const MARKER_TIP_R = SEMI_R + SEMI_STROKE / 2 + 1.5;
+const MARKER_TRI_H = 8;
+const MARKER_TRI_HALF_W = 4.6;
+/** Where the "Equilibrio · 0 kcal" label hangs: just past the triangle's base, at the top. */
+const ZERO_LABEL_R = MARKER_TIP_R + MARKER_TRI_H + 7;
+/** Room above the semi-ring for that label. */
+const TOP_PAD = 34;
+/** The semi-ring's end labels sit under its two ends, nudged outward so they clear the main ring. */
+const END_LABEL_DX = 20;
+const END_LABEL_DY = 16;
+/** The junction knob fills the ring's thickness, leaving a hair of the stroke around it. */
+const KNOB_R = MAIN_STROKE / 2 - 0.5;
 /** The ring is drawn as short segments whose colour follows the distance from the knob. */
 const RING_STEP_DEG = 4;
 const RING_OVERLAP_DEG = 0.6;
@@ -57,6 +55,10 @@ const FADE_FLOOR = 0.4;
 const FADE_MIN_SPAN_DEG = 90;
 /** How far toward the card surface the faded colour sits. */
 const FADE_TOWARD_SURFACE = 0.6;
+/** The goal zone on the semi-ring track: full green around the goal, fading to the track's grey over this many degrees. */
+const GOAL_ZONE_STEP_DEG = 3;
+const GOAL_ZONE_MIN_CORE_DEG = 6;
+const GOAL_ZONE_FADE_DEG = 70;
 const CY = TOP_PAD + SEMI_R + SEMI_STROKE / 2;
 const BASE_H = CY + MAIN_R * Math.cos(((180 - MAIN_HALF_SPAN) * Math.PI) / 180) + MAIN_STROKE / 2 + 4;
 
@@ -141,6 +143,17 @@ function ringColor(mid: number, junction: number, burned: Rgb, eaten: Rgb, faded
   return `rgb(${Math.round(c[0])},${Math.round(c[1])},${Math.round(c[2])})`;
 }
 
+/** The marker triangle at `deg` on the semi-ring, as one path (runs inside the animation worklet). */
+function markerPath(deg: number): string {
+  'worklet';
+  const rad = (deg * Math.PI) / 180;
+  const bx = px(MARKER_TIP_R + MARKER_TRI_H, deg);
+  const by = py(MARKER_TIP_R + MARKER_TRI_H, deg);
+  const dx = Math.cos(rad) * MARKER_TRI_HALF_W;
+  const dy = Math.sin(rad) * MARKER_TRI_HALF_W;
+  return `M ${px(MARKER_TIP_R, deg)} ${py(MARKER_TIP_R, deg)} L ${bx - dx} ${by - dy} L ${bx + dx} ${by + dy} Z`;
+}
+
 export type OggiGaugeProps = {
   burnedKcal: number;
   eatenKcal: number;
@@ -150,7 +163,12 @@ export type OggiGaugeProps = {
   reading: BalanceReading;
   /** The balance as displayed in the centre, already formatted. */
   value: string;
+  /** The daily goal under it, already formatted ("/-300 kcal"). */
+  goalLabel: string;
+  /** What the balance is, in grey under the goal ("deficit", "surplus", "equilibrio"). */
   caption: string;
+  /** Within this many kcal of the goal counts as "on it" (the full-green core of the goal zone). */
+  toleranceKcal?: number;
 };
 
 /**
@@ -158,38 +176,26 @@ export type OggiGaugeProps = {
  *
  * 1. The main ring compares burned (orange, growing clockwise from the left
  *    end) with intake (green, from the right end), each arc proportional to
- *    its share of the two. Where they meet is the day's balance: at the top
- *    when they are equal, right of it in a deficit, left in a surplus.
- * 2. The semi-ring above reads that same balance against the goal, on a
- *    symmetric kcal range: equilibrium at the top, deficit to the right,
- *    surplus to the left, with a notch where the goal sits.
- *
- * Both markers are the same knob in the same colour (balanceTone), sitting on
- * the same side of the top, so they read as one value at two scales — the
- * main ring's coarse split, and the semi-ring's reading against the goal.
+ *    its share of the two. Where they meet (the round knob) is the day's
+ *    balance: at the top when they are equal, right of it in a deficit, left
+ *    in a surplus.
+ * 2. The semi-ring above reads that same balance on a symmetric kcal range:
+ *    equilibrium at the top, deficit to the right, surplus to the left. The
+ *    triangle outside it is the balance; the green stretch of the track is
+ *    the goal — full green where it is met, fading to grey away from it.
  */
-export function OggiGauge({ burnedKcal, eatenKcal, burnedColor, eatenColor, reading, value, caption }: OggiGaugeProps) {
+export function OggiGauge({ burnedKcal, eatenKcal, burnedColor, eatenColor, reading, value, goalLabel, caption, toleranceKcal = BALANCE_SCALE.toleranceKcal }: OggiGaugeProps) {
   const theme = useTheme();
   const [width, setWidth] = useState(BASE_W);
   const k = Math.min(1.15, width / BASE_W);
 
   const empty = burnedKcal + eatenKcal <= 0;
   const missing = reading.status === 'missing';
-  const tone = balanceTone(reading, theme);
 
   const targetJunction = junctionDeg(burnedKcal, eatenKcal);
   const { position } = balancePosition(reading.balanceKcal, reading.halfRangeKcal);
   const targetSemi = missing ? 0 : position * SEMI_HALF_SPAN;
   const goalDeg = balancePosition(reading.goalKcal, reading.halfRangeKcal).position * SEMI_HALF_SPAN;
-  // The goal triangle, from the same arc geometry: tip on the track, base further out along the radius.
-  const goalBase = { x: px(GOAL_TIP_R + GOAL_TRI_H, goalDeg), y: py(GOAL_TIP_R + GOAL_TRI_H, goalDeg) };
-  const goalRad = (goalDeg * Math.PI) / 180;
-  const goalTriangle = [
-    `${px(GOAL_TIP_R, goalDeg)},${py(GOAL_TIP_R, goalDeg)}`,
-    `${goalBase.x - Math.cos(goalRad) * GOAL_TRI_HALF_W},${goalBase.y - Math.sin(goalRad) * GOAL_TRI_HALF_W}`,
-    `${goalBase.x + Math.cos(goalRad) * GOAL_TRI_HALF_W},${goalBase.y + Math.sin(goalRad) * GOAL_TRI_HALF_W}`,
-  ].join(' ');
-
   // The main ring's junction is tweened in React state rather than on the UI
   // thread: the ring's gradient and the knob are redrawn from this one number
   // every frame, so they can never drift apart (colour props don't animate
@@ -221,12 +227,7 @@ export function OggiGauge({ burnedKcal, eatenKcal, burnedColor, eatenColor, read
     semi.value = withTiming(targetSemi, TimingFill);
   }, [targetSemi, semi]);
 
-  const semiFill = useAnimatedProps(() => ({
-    d: arc(SEMI_R, 0, semi.value),
-    strokeOpacity: Math.abs(semi.value) < 1 ? 0 : 1,
-  }));
-  const semiShadow = useAnimatedProps(() => ({ cx: px(SEMI_R, semi.value), cy: py(SEMI_R, semi.value) + 0.9 }));
-  const semiAt = useAnimatedProps(() => ({ cx: px(SEMI_R, semi.value), cy: py(SEMI_R, semi.value) }));
+  const marker = useAnimatedProps(() => ({ d: markerPath(semi.value) }));
 
   const ringColors = useMemo(() => {
     const surface = rgbOf(theme.backgroundElevated, rgbOf(theme.background));
@@ -243,9 +244,22 @@ export function OggiGauge({ burnedKcal, eatenKcal, burnedColor, eatenColor, read
       return { from, to, d: arc(MAIN_R, from, to) };
     });
   }, []);
-  const semiKnob = SEMI_STROKE / 2 + 3.5;
-  // The equilibrium notch is dropped when the goal notch would sit on top of it (a maintenance goal).
-  const showZeroNotch = Math.abs(goalDeg) > 5;
+  // The semi-ring's track, in short pieces: full green around the goal, fading to the track's grey away from it.
+  const goalZone = useMemo(() => {
+    const surface = rgbOf(theme.backgroundElevated, rgbOf(theme.background));
+    const track = rgbOf(theme.backgroundElement, surface);
+    const green = rgbOf(theme.balanceGoalScale[3]);
+    const count = Math.ceil((SEMI_HALF_SPAN * 2) / GOAL_ZONE_STEP_DEG);
+    const core = Math.max(GOAL_ZONE_MIN_CORE_DEG, (toleranceKcal / reading.halfRangeKcal) * SEMI_HALF_SPAN);
+    return Array.from({ length: count }, (_, i) => {
+      const from = -SEMI_HALF_SPAN + i * GOAL_ZONE_STEP_DEG;
+      const to = Math.min(SEMI_HALF_SPAN, from + GOAL_ZONE_STEP_DEG + 0.4);
+      const x = Math.min(1, Math.max(0, (Math.abs((from + to) / 2 - goalDeg) - core) / GOAL_ZONE_FADE_DEG));
+      const keep = 1 - x * x * (3 - 2 * x);
+      const c = track && green ? mixRgb(track, green, keep) : null;
+      return { d: arc(SEMI_R, from, to), color: c ? `rgb(${Math.round(c[0])},${Math.round(c[1])},${Math.round(c[2])})` : theme.backgroundElement };
+    });
+  }, [theme.background, theme.backgroundElevated, theme.backgroundElement, theme.balanceGoalScale, goalDeg, toleranceKcal, reading.halfRangeKcal]);
 
   const onLayout = (e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width);
   const label = (fontSize: number) => ({ fontSize: Math.max(11, fontSize * k), lineHeight: Math.max(14, (fontSize + 3) * k) });
@@ -254,37 +268,19 @@ export function OggiGauge({ burnedKcal, eatenKcal, burnedColor, eatenColor, read
     <View style={styles.root} onLayout={onLayout}>
       <View style={{ width: BASE_W * k, height: BASE_H * k, marginBottom: 0 }}>
         <Svg width={BASE_W * k} height={BASE_H * k} viewBox={`0 0 ${BASE_W} ${BASE_H}`} style={StyleSheet.absoluteFill}>
-          {/* Semi-ring: track, the balance's fill from equilibrium, notches. */}
-          <Path d={arc(SEMI_R, -SEMI_HALF_SPAN, SEMI_HALF_SPAN)} stroke={theme.backgroundElement} strokeWidth={SEMI_STROKE} strokeLinecap="round" fill="none" />
-          {missing ? null : <AnimatedPath animatedProps={semiFill} stroke={tone} strokeWidth={SEMI_STROKE} strokeLinecap="round" fill="none" />}
-          {showZeroNotch ? (
-            <Line
-              x1={px(SEMI_R - SEMI_STROKE / 2 - 2, 0)}
-              y1={py(SEMI_R - SEMI_STROKE / 2 - 2, 0)}
-              x2={px(SEMI_R + SEMI_STROKE / 2 + 2, 0)}
-              y2={py(SEMI_R + SEMI_STROKE / 2 + 2, 0)}
-              stroke={theme.textTertiary}
-              strokeWidth={1.5}
-              strokeLinecap="round"
-            />
-          ) : null}
-          <Polygon points={goalTriangle} fill={theme.text} stroke={theme.text} strokeWidth={1.2} strokeLinejoin="round" />
-
-          {/* "Surplus" and "Deficit" run along the semi-ring, each ending near its end of the arc. */}
-          <Defs>
-            <Path id="oggi-surplus" d={arc(END_LABEL_R, -END_LABEL_FROM_DEG - END_LABEL_SPAN_DEG, -END_LABEL_FROM_DEG)} />
-            <Path id="oggi-deficit" d={arc(END_LABEL_R, END_LABEL_FROM_DEG, END_LABEL_FROM_DEG + END_LABEL_SPAN_DEG)} />
-          </Defs>
-          <SvgText fill={theme.textTertiary} fontSize={11} fontWeight="600" letterSpacing={0.2} textAnchor="end">
-            <TextPath href="#oggi-surplus" startOffset="100%">
-              Surplus
-            </TextPath>
-          </SvgText>
-          <SvgText fill={theme.textTertiary} fontSize={11} fontWeight="600" letterSpacing={0.2}>
-            <TextPath href="#oggi-deficit" startOffset="0">
-              Deficit
-            </TextPath>
-          </SvgText>
+          {/* Semi-ring: the track with its goal zone, and the equilibrium notch. */}
+          {goalZone.map((seg, i) => (
+            <Path key={i} d={seg.d} stroke={seg.color} strokeWidth={SEMI_STROKE} strokeLinecap={i === 0 || i === goalZone.length - 1 ? 'round' : 'butt'} fill="none" />
+          ))}
+          <Line
+            x1={px(SEMI_R - SEMI_STROKE / 2 - 2, 0)}
+            y1={py(SEMI_R - SEMI_STROKE / 2 - 2, 0)}
+            x2={px(SEMI_R + SEMI_STROKE / 2 + 2, 0)}
+            y2={py(SEMI_R + SEMI_STROKE / 2 + 2, 0)}
+            stroke={theme.textTertiary}
+            strokeWidth={1.5}
+            strokeLinecap="round"
+          />
 
           {/* Main ring: burned from the left end, intake from the right, meeting at the junction. */}
           {empty || !ringColors ? (
@@ -302,46 +298,50 @@ export function OggiGauge({ burnedKcal, eatenKcal, burnedColor, eatenColor, read
             ))
           )}
 
-          {/* The two markers: one knob design, one colour — the same balance at two scales. */}
+          {/* The junction knob, filling the ring's thickness, with a soft shadow under it. */}
           {empty ? null : (
             <>
+              <Circle cx={px(MAIN_R, junction)} cy={py(MAIN_R, junction) + 1.6} r={KNOB_R + 2.2} fill={Palette.neutral[950]} opacity={0.07} />
+              <Circle cx={px(MAIN_R, junction)} cy={py(MAIN_R, junction) + 1.4} r={KNOB_R + 1.2} fill={Palette.neutral[950]} opacity={0.12} />
+              <Circle cx={px(MAIN_R, junction)} cy={py(MAIN_R, junction) + 1} r={KNOB_R + 0.2} fill={Palette.neutral[950]} opacity={0.22} />
               <Circle cx={px(MAIN_R, junction)} cy={py(MAIN_R, junction)} r={KNOB_R} fill={OnBrand.text} stroke={Palette.neutral[950]} strokeOpacity={0.12} strokeWidth={0.8} />
-              <Path d={arrowsPath(px(MAIN_R, junction), py(MAIN_R, junction), junction)} stroke={Palette.neutral[800]} strokeWidth={1.15} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+              <Path d={arrowsPath(px(MAIN_R, junction), py(MAIN_R, junction), junction)} stroke={Palette.neutral[800]} strokeWidth={1.3} strokeLinecap="round" strokeLinejoin="round" fill="none" />
             </>
           )}
-          {missing ? null : (
-            <>
-              <AnimatedCircle animatedProps={semiShadow} r={semiKnob + 0.5} fill={Palette.neutral[950]} opacity={0.18} />
-              <AnimatedCircle animatedProps={semiAt} r={semiKnob} fill={OnBrand.text} />
-              <AnimatedCircle animatedProps={semiAt} r={semiKnob * 0.45} fill={tone} />
-            </>
-          )}
+          {/* The balance on the semi-ring: the triangle. */}
+          {missing ? null : <AnimatedPath animatedProps={marker} fill={theme.text} stroke={theme.text} strokeWidth={1.2} strokeLinejoin="round" />}
         </Svg>
 
-        {/* Anchored past the triangle's base and grown away from the ring, so it
-            never sits on the track or on the marker when the day is on target. */}
+        {/* The scale's three labels: equilibrium at the top, the two ends under the semi-ring's ends. */}
         <ThemedText
           themeColor="textSecondary"
-          style={[
-            styles.goalText,
-            label(11),
-            { top: (py(GOAL_LABEL_R, goalDeg) - 14) * k },
-            goalDeg > 8
-              ? { left: px(GOAL_LABEL_R, goalDeg) * k }
-              : goalDeg < -8
-                ? { right: (BASE_W - px(GOAL_LABEL_R, goalDeg)) * k, textAlign: 'right' }
-                : { left: 0, right: 0, textAlign: 'center' },
-          ]}>
-          obiettivo
+          style={[styles.zeroText, label(11), { top: (py(ZERO_LABEL_R, 0) - 14) * k, left: 0, right: 0 }]}>
+          Equilibrio · 0 kcal
         </ThemedText>
+        <EndLabel kcal={-reading.halfRangeKcal} name="Deficit" align="right" x={(CX + SEMI_R + END_LABEL_DX) * k} y={(CY + END_LABEL_DY) * k} size={label(11)} />
+        <EndLabel kcal={reading.halfRangeKcal} name="Surplus" align="left" x={(CX - SEMI_R - END_LABEL_DX) * k} y={(CY + END_LABEL_DY) * k} size={label(11)} />
 
         {/* The number: the balance itself, inside the main ring. */}
         <View pointerEvents="none" style={[styles.centre, { top: (CY - 38) * k, height: 76 * k }]}>
           <ThemedText style={[styles.value, { fontSize: 28 * k, lineHeight: 32 * k }]}>{value}</ThemedText>
-          <ThemedText style={[styles.unit, { fontSize: 12 * k, lineHeight: 16 * k }]}>kcal</ThemedText>
-          <ThemedText style={[styles.caption, { fontSize: 12 * k, lineHeight: 16 * k, color: missing ? theme.textTertiary : theme.textSecondary }]}>{caption}</ThemedText>
+          <ThemedText style={[styles.unit, { fontSize: 12 * k, lineHeight: 16 * k }]}>{goalLabel}</ThemedText>
+          <ThemedText style={[styles.caption, { fontSize: 12 * k, lineHeight: 16 * k, color: theme.textTertiary }]}>{caption}</ThemedText>
         </View>
       </View>
+    </View>
+  );
+}
+
+/** One end of the semi-ring's scale: its kcal value over its name, centred on x. */
+function EndLabel({ kcal, name, align, x, y, size }: { kcal: number; name: string; align: 'left' | 'right'; x: number; y: number; size: { fontSize: number; lineHeight: number } }) {
+  return (
+    <View pointerEvents="none" style={[styles.end, { top: y, width: 80, left: x - 40 }]}>
+      <ThemedText themeColor="textSecondary" style={[styles.endName, size]}>
+        {name}
+      </ThemedText>
+      <ThemedText themeColor="textTertiary" style={[styles.endValue, size]} accessibilityLabel={`${name}, ${formatSignedKcal(kcal)} kcal, ${align === 'right' ? 'a destra' : 'a sinistra'}`}>
+        {formatSignedKcal(kcal)} kcal
+      </ThemedText>
     </View>
   );
 }
@@ -351,9 +351,22 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     alignItems: 'center',
   },
-  goalText: {
+  zeroText: {
     position: 'absolute',
+    textAlign: 'center',
     fontWeight: '700',
+    letterSpacing: 0.2,
+  },
+  end: {
+    position: 'absolute',
+    alignItems: 'center',
+  },
+  endName: {
+    fontWeight: '700',
+    letterSpacing: 0.2,
+  },
+  endValue: {
+    fontWeight: '600',
     letterSpacing: 0.2,
   },
   centre: {

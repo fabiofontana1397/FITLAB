@@ -135,3 +135,9 @@ export function balanceCaption(reading: BalanceReading): string {
   if (reading.status === 'even') return 'in pari';
   return reading.status === 'deficit' ? 'in deficit' : 'in surplus';
 }
+
+/** The grey word under the gauge's goal: which side of equilibrium the day is on. */
+export function balanceSideLabel(reading: BalanceReading): string {
+  if (reading.status === 'missing') return 'nessun pasto';
+  return reading.status === 'even' ? 'equilibrio' : reading.status;
+}

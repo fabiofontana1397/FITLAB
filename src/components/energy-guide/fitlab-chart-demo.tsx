@@ -4,7 +4,7 @@ import { useCountUp } from '@/components/energy-guide/use-play-value';
 import { OggiGauge } from '@/components/home/oggi-gauge';
 import { ThemedText } from '@/components/themed-text';
 import { Icon, type IconName } from '@/components/ui/icon';
-import { readBalance } from '@/domain/calorie-balance';
+import { balanceSideLabel, readBalance } from '@/domain/calorie-balance';
 import { useTheme } from '@/hooks/use-theme';
 import type { DemoDay } from '@/lib/energy-guide/demo-example';
 import { explain, type ExplainTone } from '@/lib/energy-guide/explain';
@@ -13,6 +13,8 @@ import { formatKcal, formatSignedKcal } from '@/lib/format-kcal';
 export type FitLabChartDemoProps = {
   day: DemoDay;
   play: boolean;
+  /** Short screens: the three Home columns are left out (the gauge says the same). */
+  compact?: boolean;
 };
 
 /**
@@ -23,7 +25,7 @@ export type FitLabChartDemoProps = {
  * Until the page is first shown the gauge gets an empty day, so its own
  * glide — the one it does on Home — starts when it comes into view.
  */
-export function FitLabChartDemo({ day, play }: FitLabChartDemoProps) {
+export function FitLabChartDemo({ day, play, compact = false }: FitLabChartDemoProps) {
   const theme = useTheme();
   const burnedKcal = play ? day.burnedKcal : 0;
   const eatenKcal = play ? day.eatenKcal : 0;
@@ -42,10 +44,13 @@ export function FitLabChartDemo({ day, play }: FitLabChartDemoProps) {
           eatenColor={theme.brandGreen}
           reading={reading}
           value={formatSignedKcal(play ? shownBalance : 0)}
-          caption={play ? day.caption : ''}
+          goalLabel={`/${formatSignedKcal(day.goalKcal)} kcal`}
+          caption={play ? balanceSideLabel(day.reading) : ''}
+          toleranceKcal={day.toleranceKcal}
         />
       </View>
 
+      {compact ? null : (
       <View style={styles.row}>
         <Column icon="flame" color={theme.accent} label="Bruciate" value={`${formatKcal(day.burnedKcal)} kcal`} />
         <View style={[styles.divider, { backgroundColor: theme.border }]} />
@@ -53,6 +58,7 @@ export function FitLabChartDemo({ day, play }: FitLabChartDemoProps) {
         <View style={[styles.divider, { backgroundColor: theme.border }]} />
         <Column icon="utensils" color={theme.brandGreen} label="Assunte" value={`${formatKcal(day.eatenKcal)} kcal`} />
       </View>
+      )}
 
       <View style={styles.notes}>
         {explain(day).map((line) => (

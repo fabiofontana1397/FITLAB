@@ -15,7 +15,7 @@ export type TabHeaderProps = {
   title: string;
   /** Small grey line under the title. */
   subtitle?: string;
-  /** Sits right after the title (Home puts its calendar button here). */
+  /** Sits at the right edge, on the title's line (Home puts its calendar button here). */
   accessory?: ReactNode;
 };
 
@@ -60,7 +60,7 @@ const styles = StyleSheet.create({
   topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   actions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 14 },
-  titleText: { flexShrink: 1 },
+  titleText: { flex: 1 },
   title: { fontSize: 26, lineHeight: 32, fontWeight: '700', letterSpacing: -0.5 },
   subtitle: { fontSize: 14, lineHeight: 19, fontWeight: '400', marginTop: 1 },
 });

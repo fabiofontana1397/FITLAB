@@ -59,7 +59,7 @@ export function EnergyExpenditureChart({ basalKcal, movementKcal, trainingKcal, 
         icon="heart"
         color={basalColor}
         title="Metabolismo basale"
-        body="L’energia per le funzioni vitali a riposo: respiro, cuore, temperatura."
+        body="Energia per le funzioni vitali a riposo."
         kcal={basalKcal}
         share={basalShare}
         play={play}
@@ -69,7 +69,7 @@ export function EnergyExpenditureChart({ basalKcal, movementKcal, trainingKcal, 
         icon="footsteps"
         color={movementColor}
         title="Attività fisica e movimento"
-        body={`Allenamenti, camminate e il movimento di tutti i giorni. Di cui allenamento e attività registrate: ${formatKcal(trainingKcal)} kcal.`}
+        body={`Allenamenti, camminate e altro movimento. Di cui allenamento: ${formatKcal(trainingKcal)} kcal.`}
         kcal={movementKcal}
         share={movementShare}
         play={play}
@@ -119,7 +119,7 @@ function Part({
 
 const styles = StyleSheet.create({
   root: {
-    gap: 16,
+    gap: 12,
   },
   totalRow: {
     flexDirection: 'row',
