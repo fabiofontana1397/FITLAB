@@ -120,23 +120,24 @@ export const Colors = {
     // translucent glass cards only a shade lighter than it (their white rim
     // does the separating), recessed wells a shade darker.
     background: PageBackground.light,
-    backgroundElevated: 'rgba(255,255,255,0.42)',
-    backgroundElement: '#E4E4E3',
-    backgroundSelected: '#E1E1E1',
+    // Reference style: a near-white page with plain white cards on it — no
+    // glass, no rim — and wells inside the cards a hair darker.
+    backgroundElevated: '#FFFFFF',
+    backgroundElement: '#F1F1F3',
+    backgroundSelected: '#EAEAEC',
     surfaceGlass: 'rgba(247,247,247,0.72)',
     surfaceGlassStrong: 'rgba(247,247,247,0.88)',
-    border: 'rgba(14,14,17,0.08)',
+    border: 'rgba(14,14,17,0.07)',
     borderStrong: 'rgba(14,14,17,0.14)',
-    // White hairline that gives cards their glass edge on the grey page.
-    cardEdge: 'rgba(255,255,255,0.85)',
+    cardEdge: 'rgba(255,255,255,0)',
     // Round header buttons (notifications, profile…).
     iconButton: '#F4F4F4',
-    text: '#060606',
-    // The reference's #727272 / #9D9D9D read 4.0:1 / 2.5:1 on its own cards,
-    // below the 4.5:1 text minimum: same family, darkened until they pass
-    // (secondary 6.0:1 on cards, tertiary 5.3:1; both clear 4.5:1 on the page).
-    textSecondary: '#5E5E5E',
-    textTertiary: '#666666',
+    // Text colours sampled from the light reference: near-black titles and
+    // values, #89898A for labels and secondary lines, a lighter grey for
+    // what is not there yet (future days, hints).
+    text: '#0B0B0D',
+    textSecondary: '#89898A',
+    textTertiary: '#ABABAD',
     accent: orange[500],
     accentPressed: orange[600],
     accentSoft: orange[50],
@@ -166,8 +167,8 @@ export const Colors = {
     // Page wash: the soft vertical grey gradient painted behind every light
     // screen (ScreenScroll). Dark mode is a flat near-black instead, so both
     // stops collapse onto `background` there.
-    washTop: '#F2F2F1',
-    washBottom: '#DEDEDD',
+    washTop: '#F7F7F7',
+    washBottom: '#F7F7F7',
 
     /** Dimming layer behind a sheet or popup. */
     scrim: 'rgba(0,0,0,0.45)',
@@ -188,25 +189,21 @@ export const Colors = {
   },
   dark: {
     background: PageBackground.dark,
-    // Card surfaces need a clearly different dark gray from the page's
-    // near-black background, or every flat card silently disappears into
-    // it — neutral[900] read as almost the same color as neutral[950] at
-    // a glance, so this jumps to neutral[800] instead (backgroundElement,
-    // used for inset wells/tracks *inside* a card, now reads as a subtly
-    // recessed shade relative to the card surface, which is the right way
-    // around for an elevation hierarchy).
-    backgroundElevated: 'rgba(255,255,255,0.10)',
-    backgroundElement: neutral[850],
-    backgroundSelected: '#26272F',
+    // Reference style: pure black page, graphite cards a step above it, wells a step above the cards.
+    backgroundElevated: '#141519',
+    backgroundElement: '#1D1E23',
+    backgroundSelected: '#26272D',
     surfaceGlass: 'rgba(28,29,34,0.55)',
     surfaceGlassStrong: 'rgba(28,29,34,0.78)',
-    border: 'rgba(255,255,255,0.08)',
+    border: 'rgba(255,255,255,0.07)',
     borderStrong: 'rgba(255,255,255,0.16)',
-    cardEdge: 'rgba(255,255,255,0.12)',
-    iconButton: '#26272F',
-    text: neutral[0],
-    textSecondary: neutral[300],
-    textTertiary: neutral[500],
+    cardEdge: 'rgba(255,255,255,0.04)',
+    iconButton: '#1D1E23',
+    // Text colours sampled from the dark reference: white titles and values,
+    // soft grey for secondary lines, a dimmer grey for hints.
+    text: '#FFFFFF',
+    textSecondary: '#A6A7AD',
+    textTertiary: '#76777D',
     accent: orange[500],
     accentPressed: orange[300],
     accentSoft: 'rgba(255,122,0,0.16)',
@@ -408,8 +405,8 @@ export const GlassMaterial = {
  * a drop shadow that grounds it on the page.
  */
 export const FlatCardShadow = {
-  light: 'inset 0px 1px 0px rgba(255,255,255,0.95), inset 0px 0px 22px rgba(255,255,255,0.5), 0px 10px 30px rgba(20,20,25,0.06)',
-  dark: 'inset 0px 1px 0px rgba(255,255,255,0.12), inset 0px 0px 22px rgba(255,255,255,0.03), 0px 10px 30px rgba(0,0,0,0.45)',
+  light: '0px 1px 2px rgba(20,20,25,0.03)',
+  dark: '0px 0px 0px rgba(0,0,0,0)',
 } as const;
 
 /** Sheets rising from the bottom edge cast upward, not down. */

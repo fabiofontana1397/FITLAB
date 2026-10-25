@@ -16,7 +16,7 @@ import { FlatCard } from '@/components/ui/flat-card';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { SectionHeader } from '@/components/ui/section-header';
 import { WeekStrip, type WeekStripDay } from '@/components/home/week-strip';
-import { ProfileAvatarButton } from '@/components/ui/profile-avatar-button';
+import { TabHeader } from '@/components/tab-header';
 import { LoggedActivitiesCard } from '@/components/training/logged-activities-card';
 import { LogActivityModal } from '@/components/training/log-activity-modal';
 import { PlanJourneyHero } from '@/components/training/plan-journey-hero';
@@ -214,30 +214,15 @@ export default function HomeScreen() {
 
   return (
     <ScreenScroll reveal contentContainerStyle={styles.page}>
-      <View style={styles.headerRow}>
-        <LiquidGlassButton onPress={() => setCalendarOpen(true)} hitSlop={8} scaleTo={0.9} accessibilityLabel="Apri calendario" size={44}>
-          <Icon name="calendar" size={20} color={theme.text} />
-        </LiquidGlassButton>
-        <View style={styles.headerText}>
-          <ThemedText style={styles.greeting} numberOfLines={1}>
-            Ciao {currentUser.name}
-          </ThemedText>
-          <ThemedText style={styles.subtitle} themeColor="textTertiary" numberOfLines={1}>
-            {viewDateLabel}
-          </ThemedText>
-        </View>
-        <View style={styles.headerIcons}>
-          <LiquidGlassButton
-            onPress={() => router.push('/notification-settings' as Href)}
-            hitSlop={8}
-            scaleTo={0.9}
-            accessibilityLabel="Notifiche"
-            size={44}>
-            <Icon name="bell" size={20} color={theme.text} />
+      <TabHeader
+        title={`Ciao ${currentUser.name}`}
+        subtitle={viewDateLabel}
+        accessory={
+          <LiquidGlassButton onPress={() => setCalendarOpen(true)} hitSlop={8} scaleTo={0.9} accessibilityLabel="Apri calendario" size={40}>
+            <Icon name="calendar" size={19} color={theme.text} />
           </LiquidGlassButton>
-          <ProfileAvatarButton size={44} />
-        </View>
-      </View>
+        }
+      />
 
       <View style={styles.weekStrip}>
         <WeekStrip days={stripDays} selectedDate={viewDate} onSelect={setViewDate} />

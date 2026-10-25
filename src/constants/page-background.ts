@@ -8,6 +8,6 @@
  * these, so the three places the page colour appears can never drift.
  */
 export const PageBackground = {
-  light: '#E9E9E8',
+  light: '#F7F7F7',
   dark: '#000000',
 } as const;

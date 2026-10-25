@@ -8,7 +8,7 @@ import { ThemedText } from '@/components/themed-text';
 import { DayCalendarModal } from '@/components/ui/day-calendar-modal';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon } from '@/components/ui/icon';
-import { ProfileAvatarButton } from '@/components/ui/profile-avatar-button';
+import { TabHeader } from '@/components/tab-header';
 import { LogActivityModal } from '@/components/training/log-activity-modal';
 import { LoggedActivitiesCard } from '@/components/training/logged-activities-card';
 import { TrainingWeekCard } from '@/components/training/training-week-card';
@@ -115,10 +115,7 @@ export default function TrainingScreen() {
 
   return (
     <ScreenScroll reveal contentContainerStyle={styles.page}>
-      <View style={styles.headerRow}>
-        <ThemedText style={styles.pageTitle}>Allenamento</ThemedText>
-        <ProfileAvatarButton size={38} />
-      </View>
+      <TabHeader title="Allenamento" />
 
       <View style={styles.sectionRow}>
         <ThemedText style={styles.sectionTitle}>La tua settimana</ThemedText>

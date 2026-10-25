@@ -58,7 +58,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     lineHeight: 28,
-    fontWeight: '700',
+    fontWeight: '600',
     letterSpacing: -0.3,
   },
   subtitle: {
@@ -70,7 +70,7 @@ const styles = StyleSheet.create({
   default: {
     fontSize: 16,
     lineHeight: 22,
-    fontWeight: '500',
+    fontWeight: '400',
   },
   label: {
     fontSize: 12,
@@ -82,12 +82,12 @@ const styles = StyleSheet.create({
   caption: {
     fontSize: 13,
     lineHeight: 18,
-    fontWeight: '500',
+    fontWeight: '400',
   },
   small: {
     fontSize: 14,
     lineHeight: 20,
-    fontWeight: '500',
+    fontWeight: '400',
   },
   smallBold: {
     fontSize: 14,

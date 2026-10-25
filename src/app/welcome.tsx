@@ -13,7 +13,7 @@ export default function WelcomeScreen() {
       <View style={{ flex: 1 }} />
 
       <View style={styles.hero}>
-        <BrandWordmark tagline style={styles.logo} />
+        <BrandWordmark tagline height={84} />
         <ThemedText type="default" themeColor="textSecondary" style={{ textAlign: 'center' }}>
           Il tuo personal operating system per corpo, allenamento e alimentazione.
         </ThemedText>
@@ -31,9 +31,5 @@ const styles = StyleSheet.create({
   hero: {
     alignItems: 'center',
     gap: Spacing.three,
-  },
-  logo: {
-    width: 260,
-    height: 63,
   },
 });
