@@ -227,14 +227,7 @@ export default function TrainingScreen() {
       {/* Fixed: the header and the week never scroll. */}
       <View style={[styles.fixed, { paddingTop: insets.top + Platform.select({ web: Spacing.five, default: Spacing.two }) }]}>
         <View style={styles.inner}>
-          <TabHeader title="Allenamento" />
-
-          <View style={[styles.sectionRow, styles.weekRow]}>
-            <ThemedText style={styles.sectionTitle}>La tua settimana</ThemedText>
-            <Pressable onPress={() => setCalendarOpen(true)} hitSlop={8} accessibilityLabel="Apri calendario">
-              <ThemedText style={[styles.link, { color: theme.accent }]}>Vedi calendario ›</ThemedText>
-            </Pressable>
-          </View>
+          <TabHeader title="Allenamento" onCalendarPress={() => setCalendarOpen(true)} />
 
           <TrainingWeekCard
             weekDates={viewedWeekDates}
@@ -326,9 +319,9 @@ export default function TrainingScreen() {
               accessibilityRole="button"
               haptic="press"
               scaleTo={0.97}
-              style={[styles.registerButton, { backgroundColor: theme.brandGreen }]}>
+              style={[styles.registerButton, { backgroundColor: theme.accent }]}>
               <View style={styles.registerPlus}>
-                <Icon name="plus" size={18} color={theme.brandGreen} />
+                <Icon name="plus" size={18} color={theme.accent} />
               </View>
               <ThemedText style={styles.registerLabel}>Registra allenamento</ThemedText>
               <Icon name="chevronRight" size={16} color={OnBrand.text} />
@@ -390,9 +383,6 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: MaxContentWidth,
     paddingHorizontal: Layout.screenGutter,
-  },
-  weekRow: {
-    marginTop: 10,
   },
   region: {
     flex: 1,
@@ -466,11 +456,6 @@ const styles = StyleSheet.create({
     fontSize: 15.5,
     lineHeight: 20,
     fontWeight: '700',
-  },
-  link: {
-    fontSize: 13,
-    lineHeight: 17,
-    fontWeight: '600',
   },
   statusPill: {
     paddingHorizontal: 12,

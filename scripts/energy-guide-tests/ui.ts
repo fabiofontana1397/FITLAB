@@ -110,13 +110,12 @@ async function main() {
     const homeBefore = await page.locator('body').innerText();
     if (shots) await page.screenshot({ path: join(shots, 'home.png') });
 
-    await test('Home: the calendar button sits on the right edge, in line with the bell and profile', async () => {
+    await test('Home: the calendar button is in the top bar, between notifications and profile', async () => {
       const cal = await page.getByRole('button', { name: 'Apri calendario' }).boundingBox();
       const bell = await page.getByRole('button', { name: 'Notifiche' }).boundingBox();
       const profile = await page.getByRole('button', { name: /profilo/i }).first().boundingBox();
-      const right = (b: { x: number; width: number }) => b.x + b.width;
-      assert.ok(Math.abs(right(cal) - right(profile)) < 2, `calendar right edge ${right(cal)} vs profile ${right(profile)}`);
-      assert.ok(right(bell) < right(profile));
+      assert.ok(bell.x + bell.width <= cal.x + 1 && cal.x + cal.width <= profile.x + 1, 'bell, calendar, profile from left to right');
+      assert.ok(Math.abs(cal.y - bell.y) < 2 && Math.abs(cal.y - profile.y) < 2, 'all on one line');
     });
 
     await test('Home: the gauge shows the balance, the goal under it, then deficit / surplus in grey', async () => {
