@@ -81,7 +81,9 @@
     "agents:test": "tsx scripts/agent-tests/run.ts",
     "agents:excel": "tsx scripts/agent-tests/export-excel.ts",
     "catalog:import": "tsx scripts/catalog/import-catalog.ts",
-    "meals:check": "tsx scripts/check-meal-images.ts"
+    "meals:check": "tsx scripts/check-meal-images.ts",
+    "energy-guide:test": "tsx scripts/energy-guide-tests/run.ts",
+    "energy-guide:ui": "tsx scripts/energy-guide-tests/ui.ts"
   },
   "private": true
 }

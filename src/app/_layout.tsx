@@ -156,13 +156,14 @@ export default function RootLayout() {
           <Stack.Screen name="onboarding" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
           <Stack.Screen name="onboarding-created" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
           <Stack.Screen name="onboarding-roadmap" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
-          {/* Profilo and Promemoria are bottom sheets drawn by SheetScreen
+          {/* Profilo, Promemoria and the calorie-chart guide are bottom sheets drawn by SheetScreen
               itself (it owns the slide-up, the backdrop and the drag-down),
               so the route only has to get out of its way: transparent, with
               no presentation animation of its own. */}
           <Stack.Screen name="profile" options={{ presentation: 'transparentModal', animation: 'none' }} />
           <Stack.Screen name="notification-settings" options={{ presentation: 'transparentModal', animation: 'none' }} />
           <Stack.Screen name="chat" options={{ presentation: 'transparentModal', animation: 'none' }} />
+          <Stack.Screen name="energy-guide" options={{ presentation: 'transparentModal', animation: 'none' }} />
           <Stack.Screen name="diet-plan" options={{ presentation: 'modal' }} />
           <Stack.Screen name="training-plan" options={{ presentation: 'modal' }} />
           <Stack.Screen name="monthly-checkin" options={{ presentation: 'modal' }} />
