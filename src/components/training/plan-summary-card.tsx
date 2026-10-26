@@ -1,13 +1,13 @@
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import Svg, { Circle } from 'react-native-svg';
+import { Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Circle, Defs, LinearGradient as SvgGradient, Path, Stop } from 'react-native-svg';
 
 import { ThemedText } from '@/components/themed-text';
 import { CheckinInfoPopup } from '@/components/training/checkin-info-popup';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon, type IconName } from '@/components/ui/icon';
-import { Radius } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useMonthlyCheckinStore } from '@/store/monthly-checkin-store';
 import type { Goal } from '@/lib/mock/types';
@@ -72,7 +72,7 @@ export function PlanSummaryCard({ plan, goal, onPress }: { plan: TrainingPlan; g
       stats={[
         { icon: 'calendar', value: `${plan.durationMonths} mesi`, label: 'Durata' },
         { icon: 'barbell', value: `${workouts.length + runs}/sett.`, label: 'Sedute' },
-        { icon: 'repsHash', value: avgExercises > 0 ? `~${avgExercises}` : '—', label: 'Esercizi' },
+        { icon: 'categoryAll', value: avgExercises > 0 ? `~${avgExercises}` : '—', label: 'Esercizi' },
       ]}
       onPress={onPress}
       accessibilityLabel="Dettagli del programma"
@@ -222,62 +222,78 @@ function PlanSpecCard({
     );
   });
 
+  const narrow = useWindowDimensions().width < 360;
+  const ringFraction = Math.min(1, monthIndex / durationMonths);
+
   return (
-    <FlatCard radius={Radius.large} style={styles.card}>
+    <FlatCard radius={28} style={styles.card}>
       <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={accessibilityLabel} style={styles.body}>
-        <View style={styles.topRow}>
-          <ThemedText type="label" themeColor="textSecondary">
-            {tag}
-          </ThemedText>
+        {/* A faint orange swoosh behind the title, the card's one flourish. */}
+        <Svg pointerEvents="none" width="100%" height={150} viewBox="0 0 360 150" preserveAspectRatio="none" style={styles.swoosh}>
+          <Defs>
+            <SvgGradient id="swoosh" x1="0" y1="0" x2="1" y2="0">
+              <Stop offset="0" stopColor={theme.accent} stopOpacity={0} />
+              <Stop offset="0.55" stopColor={theme.accent} stopOpacity={0.1} />
+              <Stop offset="1" stopColor={theme.accent} stopOpacity={0.02} />
+            </SvgGradient>
+          </Defs>
+          <Path d="M110 120 C 170 70, 230 10, 300 24 C 330 30, 350 50, 360 70 C 320 50, 260 40, 200 80 C 170 100, 140 125, 110 120 Z" fill="url(#swoosh)" />
+        </Svg>
+
+        <View style={styles.headRow}>
+          <LinearGradient colors={['#FFA11E', '#FF5A00']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} style={styles.slash} />
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <ThemedText type="label" themeColor="textSecondary" numberOfLines={1} style={{ paddingRight: narrow ? 62 : 84 }}>
+              {tag}
+            </ThemedText>
+            <ThemedText style={[styles.title, narrow && styles.titleNarrow]} numberOfLines={1} adjustsFontSizeToFit>
+              {title}
+            </ThemedText>
+            {subtitle ? (
+              <ThemedText type="small" themeColor="textSecondary" numberOfLines={2}>
+                {subtitle}
+              </ThemedText>
+            ) : null}
+          </View>
           <View style={styles.details}>
             <ThemedText style={[styles.detailsText, { color: theme.accent }]}>Dettagli</ThemedText>
             <Icon name="chevronRight" size={13} color={theme.accent} />
           </View>
         </View>
 
-        <View style={{ gap: 2 }}>
-          <ThemedText style={styles.title}>{title}</ThemedText>
-          {subtitle ? (
-            <ThemedText type="small" themeColor="textSecondary">
-              {subtitle}
-            </ThemedText>
-          ) : null}
-        </View>
+        <View style={styles.middle}>
+          <View style={[styles.statsPanel, { backgroundColor: theme.backgroundElevated }]}>
+            {stats.map((st, i) => (
+              <View key={st.label} style={[styles.stat, narrow && styles.statNarrow, i > 0 && { borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: theme.borderStrong }]}>
+                <Icon name={st.icon} size={16} color={theme.accent} />
+                <View style={{ flexShrink: 1 }}>
+                  <ThemedText style={styles.statValue} numberOfLines={1}>
+                    {st.value}
+                  </ThemedText>
+                  <ThemedText style={styles.statLabel} themeColor="textSecondary" numberOfLines={1}>
+                    {st.label}
+                  </ThemedText>
+                </View>
+              </View>
+            ))}
+          </View>
 
-        <View style={{ gap: 8 }}>
-          <View style={styles.progressLabels}>
-            <ThemedText type="smallBold">
-              Mese {monthIndex} di {durationMonths}
-            </ThemedText>
-            <ThemedText type="caption" themeColor="textSecondary">
+          <View style={styles.ringCol}>
+            <MonthRing fraction={ringFraction} month={monthIndex} total={durationMonths} />
+            <ThemedText type="caption" themeColor="textSecondary" numberOfLines={1} style={styles.dayText}>
               Giorno {day} di {totalDays}
             </ThemedText>
           </View>
-          <View onLayout={(e) => setTimelineWidth(e.nativeEvent.layout.width)}>
-            {scrolls ? (
-              <ScrollView ref={timelineRef} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.timeline}>
-                {months}
-              </ScrollView>
-            ) : (
-              <View style={styles.timeline}>{months}</View>
-            )}
-          </View>
         </View>
 
-        <View style={styles.stats}>
-          {stats.map((s) => (
-            <View key={s.label} style={[styles.stat, { backgroundColor: theme.backgroundElement }]}>
-              <Icon name={s.icon} size={15} color={theme.accent} />
-              <View style={{ flexShrink: 1 }}>
-                <ThemedText style={styles.statValue} numberOfLines={1}>
-                  {s.value}
-                </ThemedText>
-                <ThemedText style={styles.statLabel} themeColor="textSecondary" numberOfLines={1}>
-                  {s.label}
-                </ThemedText>
-              </View>
-            </View>
-          ))}
+        <View onLayout={(e) => setTimelineWidth(e.nativeEvent.layout.width)}>
+          {scrolls ? (
+            <ScrollView ref={timelineRef} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.timeline}>
+              {months}
+            </ScrollView>
+          ) : (
+            <View style={styles.timeline}>{months}</View>
+          )}
         </View>
       </Pressable>
 
@@ -298,14 +314,70 @@ function PlanSpecCard({
   );
 }
 
+/** "Mese 1/8" inside a ring whose orange arc shows how many of the plan's months are reached. */
+function MonthRing({ fraction, month, total }: { fraction: number; month: number; total: number }) {
+  const theme = useTheme();
+  const size = 82;
+  const stroke = 8;
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  return (
+    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }} accessibilityLabel={`Mese ${month} di ${total}`}>
+      <Svg width={size} height={size} style={StyleSheet.absoluteFill}>
+        <Defs>
+          <SvgGradient id="ring" x1="0" y1="0" x2="1" y2="1">
+            <Stop offset="0" stopColor="#FFA11E" />
+            <Stop offset="1" stopColor="#FF5A00" />
+          </SvgGradient>
+        </Defs>
+        <Circle cx={size / 2} cy={size / 2} r={r} stroke={theme.backgroundElement} strokeWidth={stroke} fill="none" />
+        <Circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          stroke="url(#ring)"
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          fill="none"
+          strokeDasharray={`${Math.max(fraction, 0.04) * c} ${c}`}
+          transform={`rotate(-90 ${size / 2} ${size / 2})`}
+        />
+      </Svg>
+      <ThemedText style={styles.ringMonth} themeColor="textSecondary">
+        Mese
+      </ThemedText>
+      <ThemedText style={styles.ringValue}>
+        {month}/{total}
+      </ThemedText>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   card: { padding: 16, gap: 14 },
   body: { gap: 14 },
-  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  details: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  swoosh: { position: 'absolute', left: 0, right: 0, top: 20 },
+  headRow: { flexDirection: 'row', alignItems: 'stretch', gap: 10 },
+  // The orange slash beside the title: a slanted rounded bar.
+  slash: { width: 6, borderRadius: 3, transform: [{ skewX: '-12deg' }], marginTop: 2, marginBottom: 2 },
+  details: { position: 'absolute', top: 0, right: 0, flexDirection: 'row', alignItems: 'center', gap: 2 },
   detailsText: { fontSize: 15, lineHeight: 20, fontWeight: '600' },
-  title: { fontSize: 28, lineHeight: 33, fontWeight: '700', letterSpacing: -0.6 },
-  progressLabels: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
+  title: { fontSize: 34, lineHeight: 40, fontWeight: '700', letterSpacing: -0.8 },
+  titleNarrow: { fontSize: 26, lineHeight: 32 },
+  middle: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: -4 },
+  statsPanel: {
+    flex: 1,
+    flexDirection: 'row',
+    borderRadius: 22,
+    paddingVertical: 10,
+    boxShadow: '0px 4px 16px rgba(20,20,25,0.08)',
+  },
+  stat: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 6 },
+  statNarrow: { flexDirection: 'column', gap: 2, paddingHorizontal: 4 },
+  ringCol: { alignItems: 'center', gap: 4 },
+  dayText: { fontSize: 12 },
+  ringMonth: { fontSize: 12, lineHeight: 15, fontWeight: '600' },
+  ringValue: { fontSize: 21, lineHeight: 25, fontWeight: '700', letterSpacing: -0.5 },
   timeline: { flexDirection: 'row' },
   monthCol: { flex: 1, alignItems: 'center', gap: 4 },
   // Joins this month's node to the next one's: from this column's centre to the next column's.
@@ -314,9 +386,7 @@ const styles = StyleSheet.create({
   node: { width: NODE, height: NODE, borderRadius: NODE / 2, alignItems: 'center', justifyContent: 'center' },
   nodeNumber: { fontSize: 13, lineHeight: 16, fontWeight: '700' },
   monthLabelNow: { fontWeight: '700' },
-  stats: { flexDirection: 'row', gap: 8 },
-  stat: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 14 },
-  statValue: { fontSize: 15, lineHeight: 18, fontWeight: '700' },
+  statValue: { fontSize: 14, lineHeight: 18, fontWeight: '700' },
   statLabel: { fontSize: 12, lineHeight: 16, fontWeight: '500' },
   checkin: { minHeight: 48, borderRadius: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 16 },
   checkinText: { fontSize: 16, lineHeight: 21, fontWeight: '600' },
