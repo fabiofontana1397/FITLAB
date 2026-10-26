@@ -20,8 +20,12 @@ const ACTIVITY_ICON: Partial<Record<ActivityType, IconName>> = {
 
 /** "Allenamenti registrati": every activity logged on `date` through
  * "Registra allenamento" — type, intensity, duration and estimated kcal,
- * with a delete button. Renders nothing when the day has none. */
-export function LoggedActivitiesCard({ date, title = 'Allenamenti registrati' }: { date: string; title?: string }) {
+ * with a delete button. Renders nothing when the day has none.
+ *
+ * `inline` is for use inside a day's own section (Allenamento): just the
+ * card, with no section title and no top margin, since the section already
+ * says which day it is. */
+export function LoggedActivitiesCard({ date, title = 'Allenamenti registrati', inline = false }: { date: string; title?: string; inline?: boolean }) {
   const theme = useTheme();
   const allEntries = useActivityLogStore((s) => s.entries);
   const removeEntry = useActivityLogStore((s) => s.removeEntry);
@@ -32,13 +36,15 @@ export function LoggedActivitiesCard({ date, title = 'Allenamenti registrati' }:
   const totalKcal = entries.reduce((sum, e) => sum + e.estimatedKcal, 0);
 
   return (
-    <View style={styles.wrap}>
-      <View style={styles.headRow}>
-        <ThemedText style={styles.title}>{title}</ThemedText>
-        <ThemedText style={styles.total} themeColor="textTertiary">
-          {totalMinutes} min · {Math.round(totalKcal)} kcal
-        </ThemedText>
-      </View>
+    <View style={inline ? undefined : styles.wrap}>
+      {inline ? null : (
+        <View style={styles.headRow}>
+          <ThemedText style={styles.title}>{title}</ThemedText>
+          <ThemedText style={styles.total} themeColor="textTertiary">
+            {totalMinutes} min · {Math.round(totalKcal)} kcal
+          </ThemedText>
+        </View>
+      )}
       <FlatCard radius={20} style={styles.card}>
         {entries.map((entry, i) => {
           const label = ACTIVITY_TYPE_OPTIONS.find((o) => o.value === entry.activityType)?.label ?? 'Attività';
