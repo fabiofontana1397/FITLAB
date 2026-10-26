@@ -1,11 +1,9 @@
-import { Image } from 'expo-image';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { Icon } from '@/components/ui/icon';
-import { cornerSafeInset, PhotoTile } from '@/components/ui/photo-tile';
-import { FOOD_IMAGES_ENABLED } from '@/constants/food-images';
+import { PhotoTile } from '@/components/ui/photo-tile';
+import { FOOD_PHOTOS_ENABLED } from '@/constants/food-images';
 import { useTheme } from '@/hooks/use-theme';
-import { foodIcon } from '@/lib/nutrition/food-icons';
 import { foodPhoto } from '@/lib/nutrition/food-photos';
 
 /**
@@ -51,10 +49,9 @@ export function useFoodThumbSize(variant: FoodThumbVariant): number {
 
 /**
  * What a food looks like in the meal tracker, on a tile sized for the space
- * available: its photo when there is one (lib/nutrition/food-photos.ts),
- * otherwise its 3D picture (lib/nutrition/food-icons.ts), which exists for
- * every food. Both are cut out on a transparent background and shown whole,
- * through PhotoTile like every other food or dish photo.
+ * available: its photo when there is one (lib/nutrition/food-photos.ts, shown
+ * whole on white through PhotoTile like every other food or dish photo),
+ * otherwise a grey tile with a fork and knife.
  * Decorative — the food's name always sits beside it — so it is hidden from
  * screen readers.
  */
@@ -65,25 +62,23 @@ export function FoodThumb({ foodId, variant = 'row' }: { foodId: string; variant
   // system gives app icons and list thumbnails, at any size.
   const radius = Math.round(size * 0.24);
 
-  // Pictures are switched off (constants/food-images.ts): every food is the same grey tile with a fork and knife.
-  if (!FOOD_IMAGES_ENABLED) {
-    return (
-      <View aria-hidden style={[styles.placeholder, { width: size, height: size, borderRadius: radius, backgroundColor: theme.backgroundElement }]}>
-        <Icon name="utensils" size={Math.round(size * 0.42)} color={theme.textTertiary} />
-      </View>
-    );
-  }
-  const icon = foodIcon(foodId);
-  const inner = size - 2 * cornerSafeInset(radius);
+  // No photo for this food (or photos are switched off in constants/food-images.ts): the grey tile with a fork and knife.
+  const photo = FOOD_PHOTOS_ENABLED ? foodPhoto(foodId) : null;
+  const placeholder = (
+    <View aria-hidden style={[styles.placeholder, { width: size, height: size, borderRadius: radius, backgroundColor: theme.backgroundElement }]}>
+      <Icon name="utensils" size={Math.round(size * 0.42)} color={theme.textTertiary} />
+    </View>
+  );
+  if (!photo) return placeholder;
 
-  // A photo file that fails to load falls back to the food's 3D picture.
+  // A photo file that fails to load falls back to the same tile.
   return (
     <PhotoTile
-      source={foodPhoto(foodId) ?? icon}
+      source={photo}
       width={size}
       radius={radius}
-      background={theme.backgroundElement}
-      fallback={<Image source={icon} style={{ width: inner, height: inner }} contentFit="contain" transition={0} />}
+      background="#FFFFFF"
+      fallback={<Icon name="utensils" size={Math.round(size * 0.42)} color={theme.textTertiary} />}
       recyclingKey={foodId}
     />
   );
