@@ -16,10 +16,8 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { WeekStrip, type WeekStripDay } from '@/components/home/week-strip';
 import { TabHeader } from '@/components/tab-header';
 import { LogActivityModal } from '@/components/training/log-activity-modal';
-import { PlanJourneyHero } from '@/components/training/plan-journey-hero';
-import { PlanOverviewPopup } from '@/components/training/plan-overview-popup';
+import { DietPlanSummaryCard, PlanSummaryCard } from '@/components/training/plan-summary-card';
 import { InfoPopover } from '@/components/ui/info-popover';
-import { DietOverviewPopup } from '@/components/nutrition/diet-overview-popup';
 import { FoodSearchModal } from '@/components/nutrition/food-search-modal';
 import { MealPickerModal } from '@/components/nutrition/meal-picker-modal';
 import { useEnsurePlan } from '@/hooks/use-ensure-plan';
@@ -73,7 +71,6 @@ export default function HomeScreen() {
   const [logActivityOpen, setLogActivityOpen] = useState(false);
   const [registerMealOpen, setRegisterMealOpen] = useState(false);
   const [mealSlot, setMealSlot] = useState<MealSlot | null>(null);
-  const [overview, setOverview] = useState<'training' | 'diet' | null>(null);
   // Home shows both plan cards, so it builds a missing or outdated plan itself instead of waiting for the
   // person to open Allenamento or Nutrizione. Meanwhile any diet plan the overview can render keeps its card.
   useEnsurePlan('training');
@@ -298,26 +295,11 @@ export default function HomeScreen() {
         />
       </View>
 
-      {/* The two plans, moved here from Allenamento and Nutrizione so Home is where a plan is explored from. */}
+      {/* The two programs' spec cards: each opens its plan (from the months down) in a sheet. */}
       {trainingPlan || shownDietPlan ? (
         <View style={styles.journeys}>
-          {trainingPlan ? (
-            <PlanJourneyHero
-              totalMonths={trainingPlan.durationMonths}
-              goal={currentUser.goal}
-              onPress={() => setOverview('training')}
-              action={{ label: 'Esplora piano di allenamento', icon: 'calendar', onPress: () => router.push('/training-plan') }}
-            />
-          ) : null}
-          {shownDietPlan ? (
-            <PlanJourneyHero
-              kind="diet"
-              totalMonths={shownDietPlan.durationMonths}
-              goal={currentUser.goal}
-              onPress={() => setOverview('diet')}
-              action={{ label: 'Esplora piano alimentare', icon: 'calendar', onPress: () => router.push('/diet-plan') }}
-            />
-          ) : null}
+          {trainingPlan ? <PlanSummaryCard plan={trainingPlan} goal={currentUser.goal} onPress={() => router.push('/training-plan')} /> : null}
+          {shownDietPlan ? <DietPlanSummaryCard plan={shownDietPlan} goal={currentUser.goal} onPress={() => router.push('/diet-plan')} /> : null}
         </View>
       ) : null}
 
@@ -436,25 +418,6 @@ export default function HomeScreen() {
         onClose={() => setMealSlot(null)}
         onSaved={() => afterModal(() => router.navigate('/nutrition'))}
       />
-
-      {trainingPlan ? (
-        <PlanOverviewPopup
-          visible={overview === 'training'}
-          onClose={() => setOverview(null)}
-          plan={trainingPlan}
-          goal={currentUser.goal}
-          currentMonth={currentMonthIndex(trainingPlan)}
-        />
-      ) : null}
-      {shownDietPlan ? (
-        <DietOverviewPopup
-          visible={overview === 'diet'}
-          onClose={() => setOverview(null)}
-          plan={shownDietPlan}
-          goal={currentUser.goal}
-          currentMonth={currentMonthIndex(shownDietPlan)}
-        />
-      ) : null}
 
       <EnergyDetailsPopup
         visible={detailsFocus != null}
