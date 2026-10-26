@@ -181,6 +181,22 @@ async function main() {
       if (shots) await page.screenshot({ path: join(shots, 'nutrition-list-fade.png') });
     });
 
+    await test('foods show their photo (the supplied set); a food without one keeps the grey tile', async () => {
+      await page.getByRole('button', { name: 'Proteine', exact: true }).click();
+      await pause(900);
+      const list = page.getByTestId('food-list');
+      const imgs = await list.evaluate((el: HTMLElement) =>
+        Array.from(el.querySelectorAll('img')).map((i) => ({ src: (i as HTMLImageElement).currentSrc, w: (i as HTMLImageElement).naturalWidth }))
+      );
+      assert.ok(imgs.length >= 3, `photos in the list: ${imgs.length}`);
+      assert.ok(imgs.every((i: { w: number }) => i.w >= 300), 'every photo loaded at full size');
+      assert.ok(imgs.every((i: { src: string }) => /food-photos|\.webp/.test(i.src)), 'they are the food-photos files');
+      if (shots) await page.screenshot({ path: join(shots, 'nutrition-photos.png') });
+      // A protein with no matching picture (a powder) is still a row, with the tile.
+      const rows = await list.getByRole('button', { name: /kcal ogni 100 g/ }).count();
+      assert.ok(rows > imgs.length, `some of the ${rows} rows have no photo (${imgs.length} do)`);
+    });
+
     await test('closing the sheet goes back to the page', async () => {
       await page.getByRole('button', { name: 'Chiudi' }).first().click();
       await page.getByRole('tab', { name: /Preferiti/ }).waitFor({ state: 'detached' });
