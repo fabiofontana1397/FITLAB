@@ -47,8 +47,8 @@ const easeAt = (t: number) => t * t * (3 - 2 * t);
 /** How much of the page colour the wash reaches at the bar — less than 1, so content under the glass keeps its colour. */
 const WASH_MAX_ALPHA = 0.78;
 
-/** Height of one tab button; with the bar's 3 pt padding the whole bar is 49 pt, the iPhone tab bar's height. */
-const TAB_HEIGHT = 43;
+/** Height of one tab button; with the bar's 3 pt padding the whole bar is 58 pt. */
+const TAB_HEIGHT = 52;
 
 // Tab focus: settles quickly with just a whisper of overshoot on the pill.
 const SpringTab: WithSpringConfig = { damping: 19, mass: 0.7, stiffness: 230 };
@@ -206,7 +206,7 @@ function TabButton({
       <Animated.View style={[styles.focusPill, liquidLensStyle(isDark), pillStyle]} />
       <Animated.View style={[styles.tabContent, contentStyle]}>
         <Animated.View style={iconStyle}>
-          <Icon name={icon} size={19} color={color} />
+          <Icon name={icon} size={22} color={color} />
         </Animated.View>
         {isFocused ? (
           <Animated.View entering={FadeIn.duration(220).delay(60)} exiting={FadeOut.duration(90)}>
@@ -247,7 +247,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     padding: 3,
   },
-  // 43 pt of button in 3 pt of padding makes a 49 pt bar.
+  // 52 pt of button in 3 pt of padding makes a 58 pt bar.
   tabButton: {
     flexBasis: 0,
     height: TAB_HEIGHT,
@@ -268,6 +268,6 @@ const styles = StyleSheet.create({
     borderRadius: TAB_HEIGHT / 2,
   },
   tabLabel: {
-    fontSize: 12,
+    fontSize: 13,
   },
 });
