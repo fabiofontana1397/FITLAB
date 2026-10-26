@@ -1,11 +1,9 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Platform, ScrollView, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
-import Animated, { interpolate, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ScrollView, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 
 import { PressableScale } from '@/components/motion/pressable-scale';
+import { HEADER_FADE_HEIGHT, HEADER_LIST_TOP, ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { DayCalendarModal } from '@/components/ui/day-calendar-modal';
 import { FlatCard } from '@/components/ui/flat-card';
@@ -17,13 +15,11 @@ import { TrainingWeekCard } from '@/components/training/training-week-card';
 import { levelLabel, WorkoutSummaryCard } from '@/components/training/workout-summary-card';
 import { WorkoutSessionModal } from '@/components/training/workout-session-modal';
 import { useEnsurePlan } from '@/hooks/use-ensure-plan';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useUserContext } from '@/hooks/use-user-context';
 import { useTheme } from '@/hooks/use-theme';
 import { addDaysISO, currentWeekDates, daysAgoISO, isoMondayIndex } from '@/lib/mock/dates';
 import { sessionKcal as plannedSessionKcal, sessionMinutes as plannedSessionMinutes } from '@/domain/energy';
-import { ScrollDefaults } from '@/constants/scroll';
-import { BottomTabInset, Layout, MaxContentWidth, OnBrand, Spacing } from '@/constants/theme';
+import { BottomTabInset, OnBrand, Spacing } from '@/constants/theme';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
 import type { Goal } from '@/lib/mock/types';
 import type { TrainingDayPlan } from '@/lib/planning/types';
@@ -31,33 +27,6 @@ import { useActivityLogStore } from '@/store/activity-log-store';
 import { usePlanStore } from '@/store/plan-store';
 import { isExerciseCompleted, useTrainingProgressStore } from '@/store/training-progress-store';
 import { useUserStore } from '@/store/user-store';
-
-/** Room above the first title in the scrolling list, and the height of the fade it dissolves into under the week. */
-const LIST_TOP = 18;
-const FADE_HEIGHT = LIST_TOP;
-
-function hexRgb(hex: string): [number, number, number] | null {
-  const m = /^#([0-9a-f]{6})$/i.exec(hex);
-  if (!m) return null;
-  const n = parseInt(m[1], 16);
-  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
-}
-
-/** The page's grey wash (see ScreenScroll) at `t` (0 top … 1 bottom) of the screen, as hex, so the fade under the week matches it exactly. */
-function washAt(top: string, middle: string, bottom: string, t: number): string {
-  const stops: [number, string][] = [[0, top], [0.45, middle], [1, bottom]];
-  const x = Math.min(1, Math.max(0, t));
-  for (let i = 1; i < stops.length; i++) {
-    if (x <= stops[i][0]) {
-      const a = hexRgb(stops[i - 1][1]);
-      const b = hexRgb(stops[i][1]);
-      if (!a || !b) return middle;
-      const k = (x - stops[i - 1][0]) / (stops[i][0] - stops[i - 1][0]);
-      return `#${[0, 1, 2].map((c) => Math.round(a[c] + (b[c] - a[c]) * k).toString(16).padStart(2, '0')).join('')}`;
-    }
-  }
-  return bottom;
-}
 
 /** Short label for the user's goal, shown next to the session level. */
 const GOAL_SHORT_LABEL: Record<Goal, string> = {
@@ -71,8 +40,6 @@ const GOAL_SHORT_LABEL: Record<Goal, string> = {
 
 export default function TrainingScreen() {
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
-  const isLight = useColorScheme() !== 'dark';
   const trainingPlan = usePlanStore((s) => s.trainingPlan);
   const currentUser = useUserStore();
   const ctx = useUserContext();
@@ -147,6 +114,9 @@ export default function TrainingScreen() {
   // True from a day being picked until the person drags the list themselves: while it holds, the section follows the layout settling.
   const settling = useRef(true);
   const [viewportH, setViewportH] = useState(0);
+  // Where the list has to be scrolled to for a section (at `y` in the list) to sit just under the fade.
+  const LIST_BOTTOM = BottomTabInset + Spacing.six; // the page's own bottom padding (ScreenScroll)
+  const scrollTarget = (y: number) => Math.max(0, HEADER_LIST_TOP + y - HEADER_FADE_HEIGHT);
   const [contentH, setContentH] = useState(0);
   const lastSectionDate = sectionDates[sectionDates.length - 1];
   const [lastY, setLastY] = useState(0);
@@ -154,7 +124,7 @@ export default function TrainingScreen() {
   const scrollToDate = useCallback((date: string) => {
     const y = sectionY.current[date];
     if (y == null) return false;
-    scrollRef.current?.scrollTo({ y: Math.max(0, y - LIST_TOP), animated: true });
+    scrollRef.current?.scrollTo({ y: scrollTarget(y), animated: true });
     return true;
   }, []);
 
@@ -175,7 +145,7 @@ export default function TrainingScreen() {
     sectionY.current[date] = e.nativeEvent.layout.y;
     if (pendingScroll.current === date) {
       pendingScroll.current = null;
-      scrollRef.current?.scrollTo({ y: Math.max(0, e.nativeEvent.layout.y - LIST_TOP), animated: false });
+      scrollRef.current?.scrollTo({ y: scrollTarget(e.nativeEvent.layout.y), animated: false });
     }
   };
 
@@ -185,24 +155,13 @@ export default function TrainingScreen() {
   }, [lastSectionDate, contentH]);
 
   // Room under the last section so that it too can be brought to the top.
-  const tail = Math.max(0, lastY - LIST_TOP + viewportH - contentH);
+  const tail = Math.max(0, lastY - HEADER_FADE_HEIGHT + viewportH - contentH - LIST_BOTTOM);
   // The tail (and the cards' heights) settle after the first paint: keep the picked section on top until the list is touched.
   useEffect(() => {
     if (!settling.current) return;
     const y = sectionY.current[selectedDate];
-    if (y != null) scrollRef.current?.scrollTo({ y: Math.max(0, y - LIST_TOP), animated: false });
+    if (y != null) scrollRef.current?.scrollTo({ y: scrollTarget(y), animated: false });
   }, [tail, contentH, selectedDate]);
-
-  // The list dissolves under the week: a fade in the page's own wash colour,
-  // there only once the list has scrolled.
-  const scrollY = useSharedValue(0);
-  const onScroll = useAnimatedScrollHandler((e) => {
-    scrollY.value = e.contentOffset.y;
-  });
-  const fadeStyle = useAnimatedStyle(() => ({ opacity: interpolate(scrollY.value, [0, 12], [0, 1], 'clamp') }));
-  const [regionTop, setRegionTop] = useState(0);
-  const [rootH, setRootH] = useState(0);
-  const fadeColor = isLight && rootH > 0 ? washAt(theme.washTop, theme.background, theme.washBottom, regionTop / rootH) : theme.background;
 
   const headingOf = (date: string) =>
     date === today
@@ -215,57 +174,42 @@ export default function TrainingScreen() {
   const sessionDay = sessionDate ? dayPlanOf(sessionDate) : undefined;
 
   return (
-    <View style={[styles.root, { backgroundColor: theme.background }]} onLayout={(e) => setRootH(e.nativeEvent.layout.height)}>
-      {isLight ? (
-        <LinearGradient
-          colors={[theme.washTop, theme.background, theme.washBottom]}
-          locations={[0, 0.45, 1]}
-          style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]}
-        />
-      ) : null}
+    <>
+      {/* The top bar and the week are fixed; the week's sessions scroll under them and fade out. */}
+      <ScreenScroll
+        ref={scrollRef}
+        testID="training-list"
+        header={
+          <>
+            <TabHeader title="Allenamento" onCalendarPress={() => setCalendarOpen(true)} />
+            <TrainingWeekCard
+              weekDates={viewedWeekDates}
+              selectedDate={selectedDate}
+              onSelectDate={selectDate}
+              isDayComplete={isDayComplete}
+              onToggleDayComplete={toggleDayComplete}
+              dayType={(date) => (trainingPlan ? dayPlanOf(date)?.type : undefined)}
+            />
 
-      {/* Fixed: the header, the week and "Registra allenamento" never scroll. */}
-      <View style={[styles.fixed, { paddingTop: insets.top + Platform.select({ web: Spacing.five, default: Spacing.two }) }]}>
-        <View style={styles.inner}>
-          <TabHeader title="Allenamento" onCalendarPress={() => setCalendarOpen(true)} />
-
-          <TrainingWeekCard
-            weekDates={viewedWeekDates}
-            selectedDate={selectedDate}
-            onSelectDate={selectDate}
-            isDayComplete={isDayComplete}
-            onToggleDayComplete={toggleDayComplete}
-            dayType={(date) => (trainingPlan ? dayPlanOf(date)?.type : undefined)}
-          />
-
-          <PressableScale
-            onPress={() => setLogActivityVisible(true)}
-            accessibilityRole="button"
-            haptic="press"
-            scaleTo={0.97}
-            style={[styles.registerButton, { backgroundColor: theme.accent }]}>
-            <View style={styles.registerPlus}>
-              <Icon name="plus" size={18} color={theme.accent} />
-            </View>
-            <ThemedText style={styles.registerLabel}>Registra allenamento</ThemedText>
-            <Icon name="chevronRight" size={16} color={OnBrand.text} />
-          </PressableScale>
-        </View>
-      </View>
-
-      {/* The sessions of the week, scrolling under the week. */}
-      <View style={styles.region} onLayout={(e) => { setRegionTop(e.nativeEvent.layout.y); setViewportH(e.nativeEvent.layout.height); }}>
-        <Animated.ScrollView
-          ref={scrollRef as never}
-          testID="training-list"
-          {...ScrollDefaults}
-          onScroll={onScroll}
-          onScrollBeginDrag={() => {
-            settling.current = false;
-          }}
-          contentContainerStyle={styles.listContent}>
-          <View style={styles.inner} onLayout={(e) => setContentH(e.nativeEvent.layout.height)}>
-            <View style={{ height: LIST_TOP }} />
+            <PressableScale
+              onPress={() => setLogActivityVisible(true)}
+              accessibilityRole="button"
+              haptic="press"
+              scaleTo={0.97}
+              style={[styles.registerButton, { backgroundColor: theme.accent }]}>
+              <View style={styles.registerPlus}>
+                <Icon name="plus" size={18} color={theme.accent} />
+              </View>
+              <ThemedText style={styles.registerLabel}>Registra allenamento</ThemedText>
+              <Icon name="chevronRight" size={16} color={OnBrand.text} />
+            </PressableScale>
+          </>
+        }
+        onLayout={(e) => setViewportH(e.nativeEvent.layout.height)}
+        onScrollBeginDrag={() => {
+          settling.current = false;
+        }}>
+        <View onLayout={(e) => setContentH(e.nativeEvent.layout.height)}>
             {sectionDates.map((date) => {
               const day = dayPlanOf(date);
               const done = isDayComplete(date);
@@ -329,16 +273,9 @@ export default function TrainingScreen() {
 
             <LoggedActivitiesCard date={selectedDate} />
 
-            <View style={{ height: BottomTabInset + Spacing.six }} />
-          </View>
-          <View style={{ height: tail }} />
-        </Animated.ScrollView>
-
-        {/* Under the week the list dissolves instead of being cut by a hard edge. */}
-        <Animated.View testID="training-fade" style={[styles.fade, { height: FADE_HEIGHT, pointerEvents: 'none' }, fadeStyle]}>
-          <LinearGradient colors={[fadeColor, `${fadeColor}00`]} style={StyleSheet.absoluteFill} />
-        </Animated.View>
-      </View>
+        </View>
+        <View style={{ height: tail }} />
+      </ScreenScroll>
 
       <DayCalendarModal
         visible={calendarOpen}
@@ -368,35 +305,11 @@ export default function TrainingScreen() {
           addActivityEntry(activityType, intensity, durationMinutes, weightKg, selectedDate > today ? today : selectedDate)
         }
       />
-    </View>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-  },
-  fixed: {
-    alignItems: 'center',
-  },
-  inner: {
-    width: '100%',
-    maxWidth: MaxContentWidth,
-    paddingHorizontal: Layout.screenGutter,
-  },
-  region: {
-    flex: 1,
-    marginTop: 6,
-  },
-  listContent: {
-    alignItems: 'center',
-  },
-  fade: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-  },
   daySection: {
     marginBottom: 6,
   },

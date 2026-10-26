@@ -1,16 +1,16 @@
 import { useMemo, useState } from 'react';
-import { Platform, Pressable, StyleSheet, Switch, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 
 import { FoodThumb } from '@/components/nutrition/food-thumb';
 import { FoodSearchModal } from '@/components/nutrition/food-search-modal';
-import { MealPickerModal, mealSlotColor } from '@/components/nutrition/meal-picker-modal';
-import { PressableScale } from '@/components/motion/pressable-scale';
+import { mealSlotColor } from '@/components/nutrition/meal-picker-modal';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { DayCalendarModal } from '@/components/ui/day-calendar-modal';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon } from '@/components/ui/icon';
+import { IosSwitch } from '@/components/ui/ios-switch';
 import { TabHeader } from '@/components/tab-header';
 import { ProgressRing } from '@/components/ui/progress-ring';
 import { TickProgressBar } from '@/components/ui/tick-progress-bar';
@@ -18,7 +18,6 @@ import { useEnsurePlan } from '@/hooks/use-ensure-plan';
 import { useTheme } from '@/hooks/use-theme';
 import { daysAgoISO, isoMondayIndex } from '@/lib/mock/dates';
 import { findFood } from '@/lib/mock/food-database';
-import { Brand, OnBrand } from '@/constants/theme';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
 import {
   entriesForSlot,
@@ -84,7 +83,6 @@ export default function NutritionScreen() {
   const today = daysAgoISO(0);
   const [selectedDate, setSelectedDate] = useState(today);
   const [calendarOpen, setCalendarOpen] = useState(false);
-  const [pickerOpen, setPickerOpen] = useState(false);
   const [expandedSlot, setExpandedSlot] = useState<MealSlot | null>('colazione');
 
   useEnsurePlan('diet');
@@ -118,16 +116,6 @@ export default function NutritionScreen() {
       ? 'Pasti di oggi'
       : `Pasti del ${new Date(selectedDate).toLocaleDateString('it-IT', { day: 'numeric', month: 'long' })}`;
 
-  // Picking a meal in the "Registra pasto" popup hands over to "Registra
-  // alimento". On iOS a Modal can't present while another is still
-  // dismissing, so wait a beat there.
-  const pickMeal = (slot: MealSlot) => {
-    setPickerOpen(false);
-    setEditingEntry(null);
-    if (Platform.OS === 'ios') setTimeout(() => setActiveSlot(slot), 350);
-    else setActiveSlot(slot);
-  };
-
   const loggedDates = useMemo(() => new Set(entries.map((e) => e.date)), [entries]);
 
   const dayEntries = entries.filter((e) => e.date === selectedDate);
@@ -148,9 +136,7 @@ export default function NutritionScreen() {
   ];
 
   return (
-    <ScreenScroll reveal contentContainerStyle={styles.page}>
-      <TabHeader title="Nutrizione" onCalendarPress={() => setCalendarOpen(true)} />
-
+    <ScreenScroll reveal header={<TabHeader title="Nutrizione" onCalendarPress={() => setCalendarOpen(true)} />} contentContainerStyle={styles.page}>
       <FlatCard radius={CARD_RADIUS} style={styles.calorieCard}>
         <View style={styles.cardTitleRow}>
           <Icon name="flame" size={16} color={theme.accent} />
@@ -197,36 +183,20 @@ export default function NutritionScreen() {
 
       <View style={styles.mealsHeader}>
         <ThemedText style={styles.sectionTitle}>{mealsHeading}</ThemedText>
-        <Pressable onPress={() => setCalendarOpen(true)} hitSlop={8} accessibilityLabel="Apri calendario">
-          <ThemedText style={[styles.link, { color: theme.accent }]}>Vedi calendario ›</ThemedText>
-        </Pressable>
       </View>
-
-      <PressableScale onPress={() => setPickerOpen(true)} haptic="press" accessibilityRole="button" scaleTo={0.97} style={[styles.registerButton, { backgroundColor: theme.accent }]}>
-        <View style={styles.registerPlus}>
-          <Icon name="plus" size={20} color={OnBrand.text} />
-        </View>
-        <ThemedText style={styles.registerLabel}>Registra pasto</ThemedText>
-        <Icon name="chevronRight" size={16} color={OnBrand.text} />
-      </PressableScale>
 
       {planDayForSelectedDate ? (
         <View style={[styles.followRow, { backgroundColor: theme.backgroundElevated, borderColor: theme.border }]}>
           <ThemedText style={styles.followText}>
             {selectedDate === today ? 'Inserisci la dieta di oggi nei pasti' : 'Inserisci la dieta di questo giorno nei pasti'}
           </ThemedText>
-          <Switch
+          <IosSwitch
             value={isFollowingPlan}
             onValueChange={(on) => {
               hapticToggle(on);
               if (on) seedDayFromPlan(selectedDate, planDayForSelectedDate.meals);
               else unseedDay(selectedDate);
             }}
-            trackColor={{ false: theme.backgroundElement, true: theme.accent }}
-            ios_backgroundColor={theme.backgroundElement}
-            thumbColor={OnBrand.text}
-            {...(Platform.OS === 'web' ? { activeThumbColor: OnBrand.text } : null)}
-            accessibilityLabel="Inserisci la dieta del giorno nei pasti"
           />
         </View>
       ) : null}
@@ -316,8 +286,6 @@ export default function NutritionScreen() {
         onClose={() => setCalendarOpen(false)}
       />
 
-      <MealPickerModal visible={pickerOpen} date={selectedDate} onClose={() => setPickerOpen(false)} onPick={pickMeal} />
-
       <FoodSearchModal
         visible={activeSlot != null}
         slot={activeSlot}
@@ -349,39 +317,6 @@ const styles = StyleSheet.create({
     lineHeight: 34,
     fontWeight: '800',
     letterSpacing: -0.5,
-  },
-  link: {
-    fontSize: 13,
-    lineHeight: 17,
-    fontWeight: '600',
-  },
-  registerButton: {
-    marginBottom: 12,
-    height: 56,
-    borderRadius: 20,
-    paddingHorizontal: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    ...Platform.select({
-      web: { boxShadow: `0px 6px 14px ${Brand.accentShadow}` },
-      default: { shadowColor: Brand.accentGlow, shadowOpacity: 0.28, shadowRadius: 10, shadowOffset: { width: 0, height: 5 }, elevation: 3 },
-    }),
-  },
-  registerPlus: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: OnBrand.divider,
-  },
-  registerLabel: {
-    flex: 1,
-    color: OnBrand.text,
-    fontSize: 16,
-    lineHeight: 20,
-    fontWeight: '700',
   },
   calorieCard: {
     padding: CARD_PADDING,

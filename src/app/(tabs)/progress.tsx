@@ -124,9 +124,7 @@ export default function ProgressScreen() {
   };
 
   return (
-    <ScreenScroll reveal contentContainerStyle={styles.page}>
-      <TabHeader title="Progressi" />
-
+    <ScreenScroll reveal header={<TabHeader title="Progressi" />} contentContainerStyle={styles.page}>
       <View style={styles.tabs}>
         <SegmentedControl
           options={[

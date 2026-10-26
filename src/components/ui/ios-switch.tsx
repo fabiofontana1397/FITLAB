@@ -45,6 +45,7 @@ export function IosSwitch({ value, onValueChange, disabled }: IosSwitchProps) {
       hitSlop={6}
       accessibilityRole="switch"
       accessibilityState={{ checked: value, disabled: !!disabled }}
+      aria-checked={value}
       style={[
         styles.track,
         value ? { backgroundColor: ON_COLOR, borderColor: ON_COLOR } : { backgroundColor: offTrack, borderColor: offLine },
