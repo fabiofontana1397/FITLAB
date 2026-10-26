@@ -130,6 +130,8 @@ export default function HomeScreen() {
   const burnedKcal = energy.total;
   const eatenKcal = todaysTotals.kcal;
   const balanceKcal = calorieBalance(eatenKcal, burnedKcal);
+  // A day that hasn't happened yet has nothing to read: the gauge stays grey and every figure empty.
+  const isFutureDay = viewDate > today;
 
   // Current calendar week (Mon–Sun) from the shared pipeline, so Home,
   // Progressi and Nutrizione can never disagree on the numbers.
@@ -200,10 +202,11 @@ export default function HomeScreen() {
   }));
   const dailyGoalKcal = weeklyGoalKcal / 7;
   // The gauge's semi-ring reads today's balance against the same daily goal the "Obiettivo" column shows.
-  const balanceReading = readBalance({ eatenKcal, burnedKcal, goalKcal: dailyGoalKcal });
+  const balanceReading = readBalance({ eatenKcal: isFutureDay ? 0 : eatenKcal, burnedKcal: isFutureDay ? 0 : burnedKcal, goalKcal: dailyGoalKcal });
   const balanceCaption = captionFor(balanceReading);
-  const balanceA11y =
-    balanceReading.status === 'missing'
+  const balanceA11y = isFutureDay
+    ? 'Giorno non ancora iniziato: nessun dato.'
+    : balanceReading.status === 'missing'
       ? `Nessun pasto registrato. Bruciate ${formatKcal(burnedKcal)} kcal. Obiettivo ${formatSignedKcal(dailyGoalKcal)} kcal.`
       : `Bilancio ${formatSignedKcal(balanceKcal)} kcal, ${balanceCaption}. Obiettivo ${formatSignedKcal(dailyGoalKcal)} kcal. Bruciate ${formatKcal(burnedKcal)}, assunte ${formatKcal(eatenKcal)} kcal.`;
   const weekPill = weeklyProgress >= 1 ? 'Obiettivo raggiunto! 🎯' : weeklyProgress >= 0.6 ? 'Ci sei quasi!' : weeklyProgress >= 0.25 ? 'Stai andando bene' : 'Ogni giorno conta';
@@ -227,46 +230,47 @@ export default function HomeScreen() {
 
         <Pressable onPress={openGuide} style={styles.gaugeWrap} accessibilityRole="button" accessibilityLabel={balanceA11y} accessibilityHint="Apre la spiegazione del grafico">
           <OggiGauge
-            burnedKcal={burnedKcal}
-            eatenKcal={eatenKcal}
+            burnedKcal={isFutureDay ? 0 : burnedKcal}
+            eatenKcal={isFutureDay ? 0 : eatenKcal}
             burnedColor={theme.accent}
             eatenColor={theme.brandGreen}
             reading={balanceReading}
-            value={formatSignedKcal(balanceKcal)}
-            goalLabel={`/${formatSignedKcal(dailyGoalKcal)} kcal`}
-            caption={balanceSideLabel(balanceReading)}
+            inactive={isFutureDay}
+            value={isFutureDay ? '—' : formatSignedKcal(balanceKcal)}
+            goalLabel={isFutureDay ? '' : `/${formatSignedKcal(dailyGoalKcal)} kcal`}
+            caption={isFutureDay ? 'nessun dato' : balanceSideLabel(balanceReading)}
           />
         </Pressable>
 
         <View style={styles.oggiRow}>
           <Pressable onPress={() => setInfoTopic('burned')} style={styles.sideCol}>
             <View style={styles.sideIcon}>
-              <Icon name="flameLine" size={22} color={theme.accent} />
+              <Icon name="flameLine" size={22} color={isFutureDay ? theme.textTertiary : theme.accent} />
             </View>
             <ThemedText style={styles.sideLabel} themeColor="textTertiary">
               Bruciate
             </ThemedText>
-            <ThemedText style={[styles.sideValue, narrow && styles.sideValueNarrow]} numberOfLines={1} adjustsFontSizeToFit>{formatKcal(burnedKcal)} kcal</ThemedText>
+            <ThemedText style={[styles.sideValue, narrow && styles.sideValueNarrow]} numberOfLines={1} adjustsFontSizeToFit>{isFutureDay ? '—' : `${formatKcal(burnedKcal)} kcal`}</ThemedText>
           </Pressable>
           <View style={[styles.sideDivider, { backgroundColor: theme.border }]} />
           <Pressable onPress={() => setDetailsFocus('day')} style={styles.sideCol}>
             <View style={styles.sideIcon}>
-              <Icon name="crosshair" size={22} color={theme.textSecondary} />
+              <Icon name="crosshair" size={22} color={isFutureDay ? theme.textTertiary : theme.textSecondary} />
             </View>
             <ThemedText style={styles.sideLabel} themeColor="textTertiary">
               Obiettivo
             </ThemedText>
-            <ThemedText style={[styles.sideValue, narrow && styles.sideValueNarrow]} numberOfLines={1} adjustsFontSizeToFit>{formatSignedKcal(dailyGoalKcal)} kcal</ThemedText>
+            <ThemedText style={[styles.sideValue, narrow && styles.sideValueNarrow]} numberOfLines={1} adjustsFontSizeToFit>{isFutureDay ? '—' : `${formatSignedKcal(dailyGoalKcal)} kcal`}</ThemedText>
           </Pressable>
           <View style={[styles.sideDivider, { backgroundColor: theme.border }]} />
           <Pressable onPress={() => setInfoTopic('eaten')} style={styles.sideCol}>
             <View style={styles.sideIcon}>
-              <Icon name="utensils" size={22} color={theme.brandGreen} />
+              <Icon name="utensils" size={22} color={isFutureDay ? theme.textTertiary : theme.brandGreen} />
             </View>
             <ThemedText style={styles.sideLabel} themeColor="textTertiary">
               Assunte
             </ThemedText>
-            <ThemedText style={[styles.sideValue, narrow && styles.sideValueNarrow]} numberOfLines={1} adjustsFontSizeToFit>{formatKcal(eatenKcal)} kcal</ThemedText>
+            <ThemedText style={[styles.sideValue, narrow && styles.sideValueNarrow]} numberOfLines={1} adjustsFontSizeToFit>{isFutureDay ? '—' : `${formatKcal(eatenKcal)} kcal`}</ThemedText>
           </Pressable>
         </View>
       </FlatCard>
@@ -455,9 +459,9 @@ export default function HomeScreen() {
         goal={currentUser.goal}
         planPhaseTitle={dietMonth?.title}
         calorieTarget={calorieTarget}
-        burnedKcal={burnedKcal}
-        eatenKcal={eatenKcal}
-        balanceKcal={balanceKcal}
+        burnedKcal={isFutureDay ? 0 : burnedKcal}
+        eatenKcal={isFutureDay ? 0 : eatenKcal}
+        balanceKcal={isFutureDay ? 0 : balanceKcal}
         weeklyGoalKcal={weeklyGoalKcal}
         weeklySoFarKcal={weeklySoFarKcal}
         weeklyProgress={weeklyProgress}
