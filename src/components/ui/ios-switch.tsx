@@ -5,12 +5,12 @@ import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-na
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 
-// Half the size of the reference toggle (62 × 36): 31 × 18 pt, with every part scaled with it.
-const TRACK_W = 31;
-const TRACK_H = 18;
-const THUMB_W = 19;
-const THUMB_H = 15;
-const BORDER = 1;
+// The size of the reference toggle (measured on its screenshot): a long pill, 65 × 30 pt, with every part in proportion.
+const TRACK_W = 65;
+const TRACK_H = 30;
+const THUMB_W = 40;
+const THUMB_H = 25;
+const BORDER = 1.5;
 const PAD = (TRACK_H - THUMB_H) / 2;
 const TRAVEL = TRACK_W - THUMB_W - PAD * 2;
 // The visible switch is small, but its touch area still reaches the HIG's 44 × 44 pt.
@@ -84,11 +84,11 @@ const styles = StyleSheet.create({
     borderRadius: THUMB_H / 2,
     borderWidth: BORDER,
     backgroundColor: '#FFFFFF',
-    boxShadow: '0px 1px 2px rgba(0,0,0,0.2)',
+    boxShadow: '0px 1px 3px rgba(0,0,0,0.2)',
   },
   mark: { position: 'absolute', top: 0, bottom: 0, width: TRACK_W - THUMB_W - PAD * 2, alignItems: 'center', justifyContent: 'center' },
   onMark: { left: PAD - BORDER },
   offMark: { right: PAD - BORDER },
-  bar: { width: 1.5, height: 6, borderRadius: 0.75, backgroundColor: '#FFFFFF' },
-  ring: { width: 6, height: 6, borderRadius: 3, borderWidth: 1 },
+  bar: { width: 2.5, height: 11, borderRadius: 1.25, backgroundColor: '#FFFFFF' },
+  ring: { width: 10, height: 10, borderRadius: 5, borderWidth: 1.6 },
 });
