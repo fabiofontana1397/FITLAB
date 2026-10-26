@@ -1,9 +1,8 @@
 import { useMemo, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, View, useWindowDimensions, type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+import { ScrollView, StyleSheet, View, type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { useReducedMotion } from 'react-native-reanimated';
 
 import { CalorieComparisonChart } from '@/components/energy-guide/calorie-comparison-chart';
-import { EnergyBalanceChart } from '@/components/energy-guide/energy-balance-chart';
 import { EnergyExpenditureChart } from '@/components/energy-guide/energy-expenditure-chart';
 import { FitLabChartDemo } from '@/components/energy-guide/fitlab-chart-demo';
 import { ThemedText } from '@/components/themed-text';
@@ -19,7 +18,7 @@ type Page = {
   body: (day: DemoDay) => string;
   /** Short phones skip the intro line (the chart's own notes say it). */
   skipBodyWhenCompact?: boolean;
-  chart: (day: DemoDay, play: boolean, compact: boolean) => React.ReactNode;
+  chart: (day: DemoDay, play: boolean, compact: boolean, overflowPx: number) => React.ReactNode;
 };
 
 const PAGES: Page[] = [
@@ -38,27 +37,21 @@ const PAGES: Page[] = [
     chart: (day, play) => <EnergyExpenditureChart basalKcal={day.basalKcal} movementKcal={day.movementKcal} trainingKcal={day.trainingKcal} play={play} />,
   },
   {
-    id: 'balance',
-    title: 'Deficit, equilibrio e surplus',
-    body: (day) =>
-      `Il bilancio è calorie assunte meno calorie consumate: se consumi di più sei in deficit, se assumi di più in surplus. Qui “equilibrio” è uno scarto entro ±${formatKcal(day.toleranceKcal)} kcal: una convenzione di lettura, non una soglia fisiologica.`,
-    chart: (day, play) => (
-      <EnergyBalanceChart balanceKcal={day.balanceKcal} halfRangeKcal={day.reading.halfRangeKcal} toleranceKcal={day.toleranceKcal} play={play} />
-    ),
-  },
-  {
     id: 'fitlab',
     title: 'Come leggere il grafico di FitLab',
     body: () => 'Il grafico della Home, con i numeri dell’esempio.',
     skipBodyWhenCompact: true,
-    chart: (day, play, compact) => <FitLabChartDemo day={day} play={play} compact={compact} />,
+    chart: (day, play, compact, overflowPx) => <FitLabChartDemo day={day} play={play} compact={compact} overflowPx={overflowPx} />,
   },
 ];
 
 export const ENERGY_GUIDE_PAGE_COUNT = PAGES.length;
 
+/** Below this many px of room the pages go compact. */
+const COMPACT_BELOW = 520;
+
 /**
- * "Come leggere il grafico": four swipeable pages explaining Home's calorie
+ * "Come leggere il grafico": three swipeable pages explaining Home's calorie
  * chart on a worked example, all on one screen (nothing scrolls vertically).
  *
  * The example's numbers come from the `values` prop (the demo config unless
@@ -70,8 +63,11 @@ export const ENERGY_GUIDE_PAGE_COUNT = PAGES.length;
 export function EnergyGuideCarousel({ onDone, values = DEMO_CONFIG.initial }: { onDone: () => void; values?: DemoValues }) {
   const theme = useTheme();
   const reduceMotion = useReducedMotion();
-  // Short phones (iPhone SE and the like): the page gives up its footnote and the Home columns to stay on one screen.
-  const compact = useWindowDimensions().height < 740;
+  // How much room the pages have (below the sheet's title, above the buttons). Short ones — small phones, or a tall phone's insets —
+  // give up the footnote and the Home columns, and the gauge shrinks to what is left, so the page stays on one screen.
+  const [pagerHeight, setPagerHeight] = useState(0);
+  const [pageHeights, setPageHeights] = useState<number[]>(() => PAGES.map(() => 0));
+  const compact = pagerHeight > 0 && pagerHeight < COMPACT_BELOW;
   const scrollRef = useRef<ScrollView>(null);
   const [width, setWidth] = useState(0);
   const [index, setIndex] = useState(0);
@@ -108,7 +104,7 @@ export function EnergyGuideCarousel({ onDone, values = DEMO_CONFIG.initial }: { 
 
   return (
     <View style={styles.root}>
-      <View onLayout={onLayout} style={styles.pager}>
+      <View onLayout={(e) => { onLayout(e); setPagerHeight(Math.round(e.nativeEvent.layout.height)); }} style={styles.pager}>
         {width > 0 ? (
           <ScrollView
             ref={scrollRef}
@@ -124,6 +120,10 @@ export function EnergyGuideCarousel({ onDone, values = DEMO_CONFIG.initial }: { 
                 key={page.id}
                 testID={`energy-guide-page-${i}`}
                 style={[styles.page, { width }]}
+                onLayout={(e) => {
+                  const h = Math.ceil(e.nativeEvent.layout.height);
+                  setPageHeights((hs) => (hs[i] === h ? hs : hs.map((old, j) => (j === i ? h : old))));
+                }}
                 accessibilityElementsHidden={i !== index}
                 importantForAccessibility={i === index ? 'auto' : 'no-hide-descendants'}>
                 <View style={styles.kickerRow}>
@@ -142,7 +142,7 @@ export function EnergyGuideCarousel({ onDone, values = DEMO_CONFIG.initial }: { 
                     {page.body(day)}
                   </ThemedText>
                 )}
-                <FlatCard style={[styles.card, compact && styles.cardCompact]}>{page.chart(day, visited[i], compact)}</FlatCard>
+                <FlatCard style={[styles.card, compact && styles.cardCompact]}>{page.chart(day, visited[i], compact, pagerHeight > 0 ? Math.max(0, pageHeights[i] - pagerHeight) : 0)}</FlatCard>
                 {compact ? null : (
                   <ThemedText style={styles.footnote} themeColor="textTertiary">
                     Valori dimostrativi, non sono i tuoi dati. Le calorie consumate sono una stima.

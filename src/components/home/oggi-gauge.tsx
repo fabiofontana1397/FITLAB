@@ -63,6 +63,11 @@ const GOAL_ZONE_FADE_DEG = 24;
 const CY = TOP_PAD + SEMI_R + SEMI_STROKE / 2;
 const BASE_H = CY + MAIN_R * Math.cos(((180 - MAIN_HALF_SPAN) * Math.PI) / 180) + MAIN_STROKE / 2 + 4;
 
+/** Height over width of the drawn gauge, for sizing it to the room there is. */
+export const GAUGE_ASPECT = BASE_H / BASE_W;
+/** The widest the gauge is drawn (its scale stops growing there). */
+export const GAUGE_MAX_WIDTH = BASE_W * 1.15;
+
 function px(r: number, deg: number) {
   'worklet';
   return CX + r * Math.sin((deg * Math.PI) / 180);
