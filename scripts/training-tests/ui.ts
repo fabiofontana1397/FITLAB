@@ -69,55 +69,50 @@ async function main() {
     const scrollTop = () => list().evaluate((el: HTMLElement) => el.scrollTop);
     const pageScrollY = () => page.evaluate(() => window.scrollY + document.documentElement.scrollTop);
 
-    await test('one titled section per training day of the week, in calendar order', async () => {
-      const present = [] as string[];
-      for (const date of week) if ((await page.getByTestId(`training-day-${date}`).count()) > 0) present.push(date);
-      // Monday, Wednesday, Thursday and Saturday are sessions; today is always shown.
-      const expected = week.filter((d) => [mon, wed, thu, sat, today].includes(d));
-      assert.deepEqual(present, expected);
-      const tops = [] as number[];
-      for (const date of present) tops.push((await page.getByTestId(`training-day-${date}`).evaluate((el: HTMLElement) => el.offsetTop)));
-      assert.deepEqual([...tops].sort((a, b) => a - b), tops, 'sections follow the week');
-      const text = await list().innerText();
-      assert.match(text, /Petto e tricipiti/);
-      assert.match(text, /Schiena e bicipiti/);
-      assert.match(text, /Gambe/);
-      assert.match(text, /Corsa facile/);
-    });
+    const sessions = [mon, wed, thu, sat];
+    const present = async () => {
+      const found = [] as string[];
+      for (const date of week) if ((await page.getByTestId(`training-day-${date}`).count()) > 0) found.push(date);
+      return found;
+    };
+    const barY = async () => Math.round((await page.getByRole('button', { name: 'Notifiche' }).boundingBox()).y);
 
-    await test('the selected day (today) is at the top of the list, with its own title', async () => {
-      const region = (await list().boundingBox()).y;
-      const section = await top(page, `training-day-${today}`);
-      // Today may be one of the last sections: then the list is scrolled as far as it goes, not further.
-      assert.ok(section >= region - 1, 'section not above the list');
-      assert.ok(section - region < 60, `section ${section - region}px under the list's top`);
+    await test('the list runs from the selected day (today) to the end of the week, in calendar order', async () => {
+      // Today is always there; after it, every later session day.
+      assert.deepEqual(await present(), week.filter((d) => d === today || (d > today && sessions.includes(d))));
       assert.match(await page.getByTestId(`training-day-${today}`).innerText(), /Allenamento di oggi/);
     });
 
-    await test('selecting another day scrolls its section to the top of the list', async () => {
-      for (const date of [mon, thu, sat, wed]) {
-        await page.getByTestId(`week-day-${date}`).click();
-        await pause(900);
-        const region = (await list().boundingBox()).y;
-        const section = await top(page, `training-day-${date}`);
-        // The first section of the week cannot go lower than the list's own top padding; the others sit just under the fade.
-        const under = section - region;
-        assert.ok(date === mon ? under >= 0 && under <= 22 : Math.abs(under - 18) < 8, `${date}: section ${Math.round(under)}px under the list's top`);
-      }
+    await test('selecting a day starts the list at that day: earlier days drop out, later sessions follow', async () => {
+      await page.getByTestId(`week-day-${thu}`).click();
+      await pause(600);
+      assert.deepEqual(await present(), [thu, sat]);
+      const text = await page.locator('body').innerText();
+      assert.match(text, /Schiena e bicipiti/);
+      assert.match(text, /Gambe/);
+      assert.doesNotMatch(text, /Petto e tricipiti/);
+      await page.getByTestId(`week-day-${wed}`).click();
+      await pause(600);
+      assert.deepEqual(await present(), [wed, thu, sat]);
+      assert.match(await page.locator('body').innerText(), /Corsa facile/);
+      await page.getByTestId(`week-day-${mon}`).click();
+      await pause(600);
+      assert.deepEqual(await present(), sessions);
     });
 
-    await test('the header and the week stay put while the list scrolls', async () => {
-      await page.getByTestId(`week-day-${mon}`).click();
-      await pause(900);
-      const before = await top(page, `week-day-${mon}`);
-      await list().evaluate((el: HTMLElement) => { el.scrollTop = el.scrollHeight; });
-      await pause(400);
-      assert.ok((await scrollTop()) > 100, 'the list scrolled');
-      assert.equal(await top(page, `week-day-${mon}`), before, 'the week did not move');
-      assert.equal(await pageScrollY(), 0, 'the page itself does not scroll');
+    await test('only the top bar is fixed: the week scrolls away with the page, under the fade', async () => {
+      const bar = await barY();
+      const weekBefore = await top(page, `week-day-${mon}`);
+      await list().evaluate((el: HTMLElement) => { el.scrollTop = 300; });
+      await pause(500);
+      assert.ok((await scrollTop()) > 100, 'the page scrolled');
+      assert.equal(await barY(), bar, 'the top bar did not move');
+      assert.ok((await top(page, `week-day-${mon}`)) < weekBefore - 100, 'the week moved up with the page');
+      assert.equal(await pageScrollY(), 0, 'the browser page itself does not scroll');
+      if (shots) await page.screenshot({ path: join(shots, 'training-scrolled.png') });
       await list().evaluate((el: HTMLElement) => { el.scrollTop = 0; });
-      await pause(300);
-      assert.equal(await top(page, `week-day-${mon}`), before);
+      await pause(400);
+      assert.equal(await top(page, `week-day-${mon}`), weekBefore, 'back at the top, the week is where it was');
       if (shots) await page.screenshot({ path: join(shots, 'training-top.png') });
     });
 
@@ -125,14 +120,25 @@ async function main() {
       await list().evaluate((el: HTMLElement) => { el.scrollTop = el.scrollHeight; });
       await pause(400);
       const region = await list().boundingBox();
-      const lastDate = sat; // Monday is selected here, so today's rest day is no longer listed
-      const box = await page.getByTestId(`training-day-${lastDate}`).boundingBox();
+      const box = await page.getByTestId(`training-day-${sat}`).boundingBox();
       assert.ok(box.y < region.y + region.height, 'the last section is on screen');
-      assert.ok(await page.getByText('Registra allenamento').isVisible(), 'the register button stays in view: it is part of the fixed header');
       if (shots) await page.screenshot({ path: join(shots, 'training-bottom.png') });
     });
 
-    await test('the list fades under the week once scrolled, and not at rest', async () => {
+    await test('picking a day scrolls the page back to the top', async () => {
+      await list().evaluate((el: HTMLElement) => { el.scrollTop = el.scrollHeight; });
+      await pause(300);
+      await page.getByTestId(`training-day-${sat}`).waitFor();
+      await list().evaluate((el: HTMLElement) => { el.scrollTop = 150; });
+      await pause(300);
+      await page.getByTestId(`week-day-${thu}`).click({ force: true });
+      await pause(1000);
+      assert.equal(await scrollTop(), 0);
+    });
+
+    await test('the list fades under the top bar once scrolled, and not at the top', async () => {
+      await page.getByTestId(`week-day-${mon}`).click();
+      await pause(600);
       await list().evaluate((el: HTMLElement) => { el.scrollTop = 0; });
       await pause(300);
       const opacity = () => page.getByTestId('screen-top-fade').evaluate((el: HTMLElement) => Number(getComputedStyle(el).opacity));

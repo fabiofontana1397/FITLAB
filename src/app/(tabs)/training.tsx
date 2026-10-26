@@ -1,9 +1,9 @@
 import { router } from 'expo-router';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
+import { useMemo, useRef, useState } from 'react';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { PressableScale } from '@/components/motion/pressable-scale';
-import { HEADER_FADE_HEIGHT, HEADER_LIST_TOP, ScreenScroll } from '@/components/screen-scroll';
+import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { DayCalendarModal } from '@/components/ui/day-calendar-modal';
 import { FlatCard } from '@/components/ui/flat-card';
@@ -19,7 +19,7 @@ import { useUserContext } from '@/hooks/use-user-context';
 import { useTheme } from '@/hooks/use-theme';
 import { addDaysISO, currentWeekDates, daysAgoISO, isoMondayIndex } from '@/lib/mock/dates';
 import { sessionKcal as plannedSessionKcal, sessionMinutes as plannedSessionMinutes } from '@/domain/energy';
-import { BottomTabInset, OnBrand, Spacing } from '@/constants/theme';
+import { OnBrand } from '@/constants/theme';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
 import type { Goal } from '@/lib/mock/types';
 import type { TrainingDayPlan } from '@/lib/planning/types';
@@ -101,67 +101,21 @@ export default function TrainingScreen() {
 
   const weightKg = ctx.weightKg;
 
-  // The week's sessions, one section each, in calendar order: every workout or
-  // cardio day, plus the selected day whatever it is (a rest day says so).
+  // The sessions from the selected day to the end of the week, one section each,
+  // in calendar order: the selected day whatever it is (a rest day says so), then
+  // every later workout or cardio day. An earlier day is one tap on the week away.
   const sectionDates = trainingPlan
-    ? viewedWeekDates.filter((date) => date === selectedDate || dayPlanOf(date)?.type === 'workout' || dayPlanOf(date)?.type === 'cardio')
+    ? viewedWeekDates.filter(
+        (date) => date === selectedDate || (date > selectedDate && (dayPlanOf(date)?.type === 'workout' || dayPlanOf(date)?.type === 'cardio'))
+      )
     : [selectedDate];
 
-  // ── The scrolling list under the fixed week ───────────────────────────────
+  // Picking a day starts the list at that day: back to the top, where the week is.
   const scrollRef = useRef<ScrollView>(null);
-  const sectionY = useRef<Record<string, number>>({});
-  const pendingScroll = useRef<string | null>(selectedDate);
-  // True from a day being picked until the person drags the list themselves: while it holds, the section follows the layout settling.
-  const settling = useRef(true);
-  const [viewportH, setViewportH] = useState(0);
-  // Where the list has to be scrolled to for a section (at `y` in the list) to sit just under the fade.
-  const LIST_BOTTOM = BottomTabInset + Spacing.six; // the page's own bottom padding (ScreenScroll)
-  const scrollTarget = (y: number) => Math.max(0, HEADER_LIST_TOP + y - HEADER_FADE_HEIGHT);
-  const [contentH, setContentH] = useState(0);
-  const lastSectionDate = sectionDates[sectionDates.length - 1];
-  const [lastY, setLastY] = useState(0);
-
-  const scrollToDate = useCallback((date: string) => {
-    const y = sectionY.current[date];
-    if (y == null) return false;
-    scrollRef.current?.scrollTo({ y: scrollTarget(y), animated: true });
-    return true;
-  }, []);
-
-  // Picking a day in the week brings its section to the top of the list.
   const selectDate = (date: string) => {
-    settling.current = true;
     setSelectedDate(date);
-    pendingScroll.current = date;
-    if (scrollToDate(date)) pendingScroll.current = null;
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
   };
-  useEffect(() => {
-    settling.current = true;
-    pendingScroll.current = selectedDate;
-    if (scrollToDate(selectedDate)) pendingScroll.current = null;
-  }, [selectedDate, viewedWeekDates, scrollToDate]);
-
-  const onSectionLayout = (date: string) => (e: LayoutChangeEvent) => {
-    sectionY.current[date] = e.nativeEvent.layout.y;
-    if (pendingScroll.current === date) {
-      pendingScroll.current = null;
-      scrollRef.current?.scrollTo({ y: scrollTarget(e.nativeEvent.layout.y), animated: false });
-    }
-  };
-
-  // The sections' heights settle after their first paint: re-read where the last one starts whenever the content's height changes.
-  useEffect(() => {
-    setLastY(sectionY.current[lastSectionDate] ?? 0);
-  }, [lastSectionDate, contentH]);
-
-  // Room under the last section so that it too can be brought to the top.
-  const tail = Math.max(0, lastY - HEADER_FADE_HEIGHT + viewportH - contentH - LIST_BOTTOM);
-  // The tail (and the cards' heights) settle after the first paint: keep the picked section on top until the list is touched.
-  useEffect(() => {
-    if (!settling.current) return;
-    const y = sectionY.current[selectedDate];
-    if (y != null) scrollRef.current?.scrollTo({ y: scrollTarget(y), animated: false });
-  }, [tail, contentH, selectedDate]);
 
   const headingOf = (date: string) =>
     date === today
@@ -179,102 +133,92 @@ export default function TrainingScreen() {
       <ScreenScroll
         ref={scrollRef}
         testID="training-list"
-        header={
-          <>
-            <TabHeader title="Allenamento" onCalendarPress={() => setCalendarOpen(true)} />
-            <TrainingWeekCard
-              weekDates={viewedWeekDates}
-              selectedDate={selectedDate}
-              onSelectDate={selectDate}
-              isDayComplete={isDayComplete}
-              onToggleDayComplete={toggleDayComplete}
-              dayType={(date) => (trainingPlan ? dayPlanOf(date)?.type : undefined)}
-            />
+        header={<TabHeader title="Allenamento" onCalendarPress={() => setCalendarOpen(true)} />}>
+        <TrainingWeekCard
+          weekDates={viewedWeekDates}
+          selectedDate={selectedDate}
+          onSelectDate={selectDate}
+          isDayComplete={isDayComplete}
+          onToggleDayComplete={toggleDayComplete}
+          dayType={(date) => (trainingPlan ? dayPlanOf(date)?.type : undefined)}
+        />
 
-            <PressableScale
-              onPress={() => setLogActivityVisible(true)}
-              accessibilityRole="button"
-              haptic="press"
-              scaleTo={0.97}
-              style={[styles.registerButton, { backgroundColor: theme.accent }]}>
-              <View style={styles.registerPlus}>
-                <Icon name="plus" size={18} color={theme.accent} />
-              </View>
-              <ThemedText style={styles.registerLabel}>Registra allenamento</ThemedText>
-              <Icon name="chevronRight" size={16} color={OnBrand.text} />
-            </PressableScale>
-          </>
-        }
-        onLayout={(e) => setViewportH(e.nativeEvent.layout.height)}
-        onScrollBeginDrag={() => {
-          settling.current = false;
-        }}>
-        <View onLayout={(e) => setContentH(e.nativeEvent.layout.height)}>
-            {sectionDates.map((date) => {
-              const day = dayPlanOf(date);
-              const done = isDayComplete(date);
-              const statusLabel = done ? 'Completato' : date < today ? 'Non completato' : 'In programma';
-              const statusColor = done ? theme.brandGreen : date < today ? theme.textTertiary : theme.accent;
-              return (
-                <View key={date} testID={`training-day-${date}`} onLayout={onSectionLayout(date)} style={styles.daySection}>
-                  <View style={styles.dayHeadingRow}>
-                    <ThemedText style={styles.sectionTitle} accessibilityRole="header">
-                      {headingOf(date)}
-                    </ThemedText>
-                    {day?.type === 'workout' ? (
-                      <View style={[styles.statusPill, { backgroundColor: statusColor + '1F' }]}>
-                        <ThemedText style={[styles.statusText, { color: statusColor }]}>{statusLabel}</ThemedText>
-                      </View>
-                    ) : null}
+        <PressableScale
+          onPress={() => setLogActivityVisible(true)}
+          accessibilityRole="button"
+          haptic="press"
+          scaleTo={0.97}
+          style={[styles.registerButton, { backgroundColor: theme.accent }]}>
+          <View style={styles.registerPlus}>
+            <Icon name="plus" size={18} color={theme.accent} />
+          </View>
+          <ThemedText style={styles.registerLabel}>Registra allenamento</ThemedText>
+          <Icon name="chevronRight" size={16} color={OnBrand.text} />
+        </PressableScale>
+
+        {sectionDates.map((date) => {
+          const day = dayPlanOf(date);
+          const done = isDayComplete(date);
+          const statusLabel = done ? 'Completato' : date < today ? 'Non completato' : 'In programma';
+          const statusColor = done ? theme.brandGreen : date < today ? theme.textTertiary : theme.accent;
+          return (
+            <View key={date} testID={`training-day-${date}`} style={styles.daySection}>
+              <View style={styles.dayHeadingRow}>
+                <ThemedText style={styles.sectionTitle} accessibilityRole="header">
+                  {headingOf(date)}
+                </ThemedText>
+                {day?.type === 'workout' ? (
+                  <View style={[styles.statusPill, { backgroundColor: statusColor + '1F' }]}>
+                    <ThemedText style={[styles.statusText, { color: statusColor }]}>{statusLabel}</ThemedText>
                   </View>
+                ) : null}
+              </View>
 
-                  {!trainingPlan ? (
-                    <FlatCard radius={20} style={styles.messageCard}>
-                      <ThemedText style={styles.cardTitle}>{ctx.mode === 'diet' ? 'Programma di allenamento non richiesto' : 'Nessun programma generato'}</ThemedText>
-                      <ThemedText style={styles.cardBody} themeColor="textSecondary">
-                        {ctx.mode === 'diet'
-                          ? 'Hai scelto un piano solo alimentare. Per aggiungere l’allenamento rifai il questionario dal Profilo.'
-                          : 'Rifai il questionario scegliendo sala pesi o corsa tra le attività per generarne uno.'}
-                      </ThemedText>
-                    </FlatCard>
-                  ) : day?.type === 'workout' ? (
-                    <WorkoutSummaryCard
-                      title={day.title}
-                      subtitle={GOAL_SHORT_LABEL[currentUser.goal] + ' - ' + levelLabel(currentMonth?.phase)}
-                      minutes={plannedSessionMinutes(day, ctx)}
-                      kcal={plannedSessionKcal(day, ctx)}
-                      onOpen={() => router.push({ pathname: '/workout-detail', params: { date } })}
-                      onStart={() => setSessionDate(date)}
-                    />
-                  ) : day?.type === 'cardio' ? (
-                    <FlatCard radius={20} style={styles.messageCard}>
-                      <View style={[styles.dayIcon, { backgroundColor: theme.accentSoft }]}>
-                        <Icon name="running" size={26} color={theme.accent} />
-                      </View>
-                      <ThemedText style={styles.cardTitle}>{day.title}</ThemedText>
-                      <ThemedText style={styles.cardBody} themeColor="textSecondary">
-                        {day.note}
-                      </ThemedText>
-                    </FlatCard>
-                  ) : (
-                    <FlatCard radius={20} style={styles.messageCard}>
-                      <View style={[styles.dayIcon, { backgroundColor: theme.backgroundElement }]}>
-                        <Icon name="moon" size={26} color={theme.textSecondary} />
-                      </View>
-                      <ThemedText style={styles.cardTitle}>Giorno di riposo</ThemedText>
-                      <ThemedText style={[styles.cardBody, { textAlign: 'center' }]} themeColor="textSecondary">
-                        Il recupero fa parte del piano: dormi bene e resta idratato.
-                      </ThemedText>
-                    </FlatCard>
-                  )}
-                </View>
-              );
-            })}
+              {!trainingPlan ? (
+                <FlatCard radius={20} style={styles.messageCard}>
+                  <ThemedText style={styles.cardTitle}>{ctx.mode === 'diet' ? 'Programma di allenamento non richiesto' : 'Nessun programma generato'}</ThemedText>
+                  <ThemedText style={styles.cardBody} themeColor="textSecondary">
+                    {ctx.mode === 'diet'
+                      ? 'Hai scelto un piano solo alimentare. Per aggiungere l’allenamento rifai il questionario dal Profilo.'
+                      : 'Rifai il questionario scegliendo sala pesi o corsa tra le attività per generarne uno.'}
+                  </ThemedText>
+                </FlatCard>
+              ) : day?.type === 'workout' ? (
+                <WorkoutSummaryCard
+                  title={day.title}
+                  subtitle={GOAL_SHORT_LABEL[currentUser.goal] + ' - ' + levelLabel(currentMonth?.phase)}
+                  minutes={plannedSessionMinutes(day, ctx)}
+                  kcal={plannedSessionKcal(day, ctx)}
+                  onOpen={() => router.push({ pathname: '/workout-detail', params: { date } })}
+                  onStart={() => setSessionDate(date)}
+                />
+              ) : day?.type === 'cardio' ? (
+                <FlatCard radius={20} style={styles.messageCard}>
+                  <View style={[styles.dayIcon, { backgroundColor: theme.accentSoft }]}>
+                    <Icon name="running" size={26} color={theme.accent} />
+                  </View>
+                  <ThemedText style={styles.cardTitle}>{day.title}</ThemedText>
+                  <ThemedText style={styles.cardBody} themeColor="textSecondary">
+                    {day.note}
+                  </ThemedText>
+                </FlatCard>
+              ) : (
+                <FlatCard radius={20} style={styles.messageCard}>
+                  <View style={[styles.dayIcon, { backgroundColor: theme.backgroundElement }]}>
+                    <Icon name="moon" size={26} color={theme.textSecondary} />
+                  </View>
+                  <ThemedText style={styles.cardTitle}>Giorno di riposo</ThemedText>
+                  <ThemedText style={[styles.cardBody, { textAlign: 'center' }]} themeColor="textSecondary">
+                    Il recupero fa parte del piano: dormi bene e resta idratato.
+                  </ThemedText>
+                </FlatCard>
+              )}
+            </View>
+          );
+        })}
 
-            <LoggedActivitiesCard date={selectedDate} />
+        <LoggedActivitiesCard date={selectedDate} />
 
-        </View>
-        <View style={{ height: tail }} />
       </ScreenScroll>
 
       <DayCalendarModal
