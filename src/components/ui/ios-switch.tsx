@@ -5,12 +5,16 @@ import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-na
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 
-const TRACK_W = 62;
-const TRACK_H = 36;
-const THUMB_W = 38;
-const THUMB_H = 30;
+// Half the size of the reference toggle (62 × 36): 31 × 18 pt, with every part scaled with it.
+const TRACK_W = 31;
+const TRACK_H = 18;
+const THUMB_W = 19;
+const THUMB_H = 15;
+const BORDER = 1;
 const PAD = (TRACK_H - THUMB_H) / 2;
 const TRAVEL = TRACK_W - THUMB_W - PAD * 2;
+// The visible switch is small, but its touch area still reaches the HIG's 44 × 44 pt.
+const HIT_SLOP = { top: (44 - TRACK_H) / 2, bottom: (44 - TRACK_H) / 2, left: (44 - TRACK_W) / 2, right: (44 - TRACK_W) / 2 };
 
 export type IosSwitchProps = {
   value: boolean;
@@ -43,7 +47,7 @@ export function IosSwitch({ value, onValueChange, disabled }: IosSwitchProps) {
     <Pressable
       onPress={() => onValueChange?.(!value)}
       disabled={disabled}
-      hitSlop={6}
+      hitSlop={HIT_SLOP}
       accessibilityRole="switch"
       accessibilityState={{ checked: value, disabled: !!disabled }}
       aria-checked={value}
@@ -68,23 +72,23 @@ const styles = StyleSheet.create({
     width: TRACK_W,
     height: TRACK_H,
     borderRadius: TRACK_H / 2,
-    borderWidth: 1.5,
+    borderWidth: BORDER,
     justifyContent: 'center',
   },
   disabled: { opacity: 0.45 },
   thumb: {
     position: 'absolute',
-    left: PAD - 1.5,
+    left: PAD - BORDER,
     width: THUMB_W,
     height: THUMB_H,
     borderRadius: THUMB_H / 2,
-    borderWidth: 1.5,
+    borderWidth: BORDER,
     backgroundColor: '#FFFFFF',
-    boxShadow: '0px 1px 3px rgba(0,0,0,0.18)',
+    boxShadow: '0px 1px 2px rgba(0,0,0,0.2)',
   },
   mark: { position: 'absolute', top: 0, bottom: 0, width: TRACK_W - THUMB_W - PAD * 2, alignItems: 'center', justifyContent: 'center' },
-  onMark: { left: PAD - 1.5 },
-  offMark: { right: PAD - 1.5 },
-  bar: { width: 2.5, height: 12, borderRadius: 1.25, backgroundColor: '#FFFFFF' },
-  ring: { width: 11, height: 11, borderRadius: 5.5, borderWidth: 1.8 },
+  onMark: { left: PAD - BORDER },
+  offMark: { right: PAD - BORDER },
+  bar: { width: 1.5, height: 6, borderRadius: 0.75, backgroundColor: '#FFFFFF' },
+  ring: { width: 6, height: 6, borderRadius: 3, borderWidth: 1 },
 });
