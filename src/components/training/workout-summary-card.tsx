@@ -35,9 +35,8 @@ export function WorkoutBadge({ size = 60 }: { size?: number }) {
   );
 }
 
-/** The orange rounded square that starts the session: the box's leading image,
- * a play glyph where the dumbbell used to be. 56 pt, comfortably over the
- * HIG's 44 pt touch target. */
+/** The button that starts the session: an orange play triangle in an orange ring,
+ * with no fill. 56 pt, comfortably over the HIG's 44 pt touch target. */
 const PLAY_SIZE = 56;
 
 export type WorkoutSummaryCardProps = {
@@ -61,13 +60,9 @@ export function WorkoutSummaryCard({ title, subtitle, minutes, kcal, onOpen, onS
       <Pressable onPress={onOpen} accessibilityRole="button" accessibilityLabel={`Dettagli: ${title}`} style={StyleSheet.absoluteFill} />
       <View style={styles.row} pointerEvents="box-none">
         <PressableScale onPress={onStart} haptic="press" accessibilityRole="button" accessibilityLabel={`Inizia allenamento: ${title}`}>
-          <LinearGradient
-            colors={Brand.badgeGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={[styles.play, { width: PLAY_SIZE, height: PLAY_SIZE, borderRadius: PLAY_SIZE * 0.26 }]}>
-            <Icon name="play" size={24} color={OnBrand.text} />
-          </LinearGradient>
+          <View style={[styles.play, { width: PLAY_SIZE, height: PLAY_SIZE, borderRadius: PLAY_SIZE / 2, borderColor: theme.accent }]}>
+            <Icon name="play" size={24} color={theme.accent} />
+          </View>
         </PressableScale>
 
         <View style={styles.open} pointerEvents="none">
@@ -112,6 +107,7 @@ const styles = StyleSheet.create({
   play: {
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 2,
     // The triangle's weight sits to its left: nudge it so it reads as centred.
     paddingLeft: 3,
   },

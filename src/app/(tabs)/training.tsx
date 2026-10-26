@@ -11,6 +11,7 @@ import { Icon } from '@/components/ui/icon';
 import { TabHeader } from '@/components/tab-header';
 import { LogActivityModal } from '@/components/training/log-activity-modal';
 import { LoggedActivitiesCard } from '@/components/training/logged-activities-card';
+import { MissedWorkoutsCard, type MissedWorkout } from '@/components/training/missed-workouts-card';
 import { TrainingWeekCard } from '@/components/training/training-week-card';
 import { levelLabel, WorkoutSummaryCard } from '@/components/training/workout-summary-card';
 import { WorkoutSessionModal } from '@/components/training/workout-session-modal';
@@ -101,6 +102,17 @@ export default function TrainingScreen() {
 
   const weightKg = ctx.weightKg;
 
+  // Planned workouts of the last week that were not done, newest first (never from before the plan existed).
+  const planStart = trainingPlan?.generatedAt.slice(0, 10);
+  const missedWorkouts: MissedWorkout[] = trainingPlan
+    ? Array.from({ length: 7 }, (_, i) => addDaysISO(today, -(i + 1)))
+        .filter((date) => (!planStart || date >= planStart) && dayPlanOf(date)?.type === 'workout' && !isDayComplete(date))
+        .map((date) => {
+          const day = dayPlanOf(date);
+          return { date, title: day?.title ?? 'Allenamento', minutes: plannedSessionMinutes(day, ctx), kcal: plannedSessionKcal(day, ctx) };
+        })
+    : [];
+
   // The sessions from the selected day to the end of the week, one section each,
   // in calendar order: the selected day whatever it is (a rest day says so), then
   // every later workout or cardio day. An earlier day is one tap on the week away.
@@ -156,15 +168,23 @@ export default function TrainingScreen() {
           <Icon name="chevronRight" size={16} color={OnBrand.text} />
         </PressableScale>
 
+        <MissedWorkoutsCard
+          workouts={missedWorkouts}
+          onRecover={setSessionDate}
+          onOpen={(date) => router.push({ pathname: '/workout-detail', params: { date } })}
+        />
+
         {sectionDates.map((date) => {
           const day = dayPlanOf(date);
+          // Today's section (or the day picked in the week) is the main thing on the page; the days after it keep quiet.
+          const emphasized = date === today || date === selectedDate;
           const done = isDayComplete(date);
           const statusLabel = done ? 'Completato' : date < today ? 'Non completato' : 'In programma';
           const statusColor = done ? theme.brandGreen : date < today ? theme.textTertiary : theme.accent;
           return (
             <View key={date} testID={`training-day-${date}`} style={styles.daySection}>
               <View style={styles.dayHeadingRow}>
-                <ThemedText style={styles.sectionTitle} accessibilityRole="header">
+                <ThemedText style={emphasized ? styles.sectionTitle : [styles.sectionTitleQuiet, { color: theme.text }]} accessibilityRole="header">
                   {headingOf(date)}
                 </ThemedText>
                 {day?.type === 'workout' ? (
@@ -302,6 +322,13 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     fontWeight: '700',
     letterSpacing: -0.2,
+  },
+  // The days after today: dark grey and a size down, so today's workout leads.
+  sectionTitleQuiet: {
+    fontSize: 14,
+    lineHeight: 19,
+    fontWeight: '600',
+    opacity: 0.6,
   },
   registerButton: {
     marginTop: 12,
