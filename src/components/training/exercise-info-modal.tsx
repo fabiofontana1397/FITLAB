@@ -1,10 +1,11 @@
-import { Image, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Image, Modal, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ScrollDefaults } from '@/constants/scroll';
 import { GlassSurface } from '@/components/glass/glass-surface';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
+import { PopupScrollView } from '@/components/ui/swipe-dismiss';
 import { Radius, Spacing } from '@/constants/theme';
 import { useMotionPreference } from '@/hooks/use-motion-preference';
 import { useTheme } from '@/hooks/use-theme';
@@ -49,7 +50,7 @@ export function ExerciseInfoModal({ visible, exerciseName, media, sets, reps, te
   return (
     <Modal visible={visible} transparent animationType={modalAnimation('slide')} onRequestClose={onClose}>
       <View style={[styles.backdrop, { backgroundColor: theme.scrim }]}>
-        <GlassSurface
+        <GlassSurface swipeToDismiss={onClose}
           level="overlay"
           radius={Radius.xlarge}
           style={[styles.sheet, { paddingBottom: insets.bottom + Spacing.four }]}>
@@ -62,7 +63,7 @@ export function ExerciseInfoModal({ visible, exerciseName, media, sets, reps, te
             </Pressable>
           </View>
 
-          <ScrollView {...ScrollDefaults}>
+          <PopupScrollView {...ScrollDefaults}>
             <View style={[styles.detailsCard, { backgroundColor: theme.backgroundElement }]}>
               <DetailRow icon="repsHash" label="Serie e ripetizioni" value={`${sets} serie × ${reps} rip.`} />
               <DetailRow icon="hourglass" label="Modalità di esecuzione" value={tempo} />
@@ -123,7 +124,7 @@ export function ExerciseInfoModal({ visible, exerciseName, media, sets, reps, te
                 Descrizione non ancora disponibile per questo esercizio.
               </ThemedText>
             )}
-          </ScrollView>
+          </PopupScrollView>
         </GlassSurface>
       </View>
     </Modal>

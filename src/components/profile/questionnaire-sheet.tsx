@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ScrollDefaults } from '@/constants/scroll';
@@ -7,6 +7,7 @@ import { GlassSurface } from '@/components/glass/glass-surface';
 import { ThemedText } from '@/components/themed-text';
 import { FadeInView } from '@/components/ui/fade-in-view';
 import { Icon } from '@/components/ui/icon';
+import { PopupScrollView, SwipeDismiss } from '@/components/ui/swipe-dismiss';
 import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useMotionPreference } from '@/hooks/use-motion-preference';
 import type { SaveOutcome } from '@/hooks/use-answers-editor';
@@ -43,7 +44,8 @@ export function QuestionnaireSheet({ visible, onClose, groups, answers, mode, on
 
   return (
     <Modal visible={visible} animationType={modalAnimation('slide')} presentationStyle="pageSheet" onRequestClose={onClose}>
-      <View style={[styles.root, { backgroundColor: theme.background, paddingTop: Platform.OS === 'android' ? insets.top : 0 }]}>
+      {/* iOS's own page sheet already swipes down; elsewhere this does it. */}
+      <SwipeDismiss onDismiss={Platform.OS === 'ios' ? undefined : onClose} style={[styles.root, { backgroundColor: theme.background, paddingTop: Platform.OS === 'android' ? insets.top : 0 }]}>
         <View style={[styles.header, { borderBottomColor: theme.border }]}>
           <View style={{ flex: 1 }}>
             <ThemedText type="subtitle">Il tuo questionario</ThemedText>
@@ -60,7 +62,7 @@ export function QuestionnaireSheet({ visible, onClose, groups, answers, mode, on
           </Pressable>
         </View>
 
-        <ScrollView {...ScrollDefaults} contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + Spacing.five }]}>
+        <PopupScrollView {...ScrollDefaults} contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + Spacing.five }]}>
           <View style={styles.inner}>
             <OutcomeBanner saving={saving} isGenerating={isGenerating} outcome={outcome} />
 
@@ -83,9 +85,9 @@ export function QuestionnaireSheet({ visible, onClose, groups, answers, mode, on
               <GroupCard key={group.id} group={group} answers={answers} onEdit={() => onEdit(group)} />
             ))}
           </View>
-        </ScrollView>
+        </PopupScrollView>
         {children}
-      </View>
+      </SwipeDismiss>
     </Modal>
   );
 }

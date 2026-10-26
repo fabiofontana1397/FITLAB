@@ -2,6 +2,10 @@ import { BlurView } from 'expo-blur';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Platform, StyleSheet, View, type LayoutChangeEvent, type StyleProp, type ViewStyle } from 'react-native';
+import Animated from 'react-native-reanimated';
+
+import { SheetGrabber } from '@/components/ui/sheet-grabber';
+import { ScrollRegistryContext, useSwipeDismiss } from '@/components/ui/swipe-dismiss';
 
 import { GlassMaterial, Radius } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -42,6 +46,10 @@ export type GlassSurfaceProps = {
    * gradient sheen, no hairline border) that hasn't been checked against
    * every surface this component is used for yet. */
   nativeGlass?: boolean;
+  /** Makes the surface a swipe-to-dismiss popup: it gets the iPhone grabber at
+   * the top and slides away when dragged down, then calls this. Give it the
+   * popup's close handler. Ignored when `nativeGlass` renders the OS material. */
+  swipeToDismiss?: () => void;
 };
 
 // Properties that arrange *children* (as opposed to sizing/positioning the
@@ -66,10 +74,13 @@ export function GlassSurface({
   bordered = true,
   onLayout,
   nativeGlass = false,
+  swipeToDismiss,
 }: GlassSurfaceProps) {
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
   const useRealGlass = nativeGlass && isLiquidGlassAvailable();
+  const swipe = useSwipeDismiss(swipeToDismiss);
+  const Outer = swipeToDismiss ? Animated.View : View;
 
   // A brighter specular band along the top edge fading into a soft wash,
   // the way light catches the top of a curved glass surface.
@@ -106,9 +117,10 @@ export function GlassSurface({
     );
   }
 
-  return (
-    <View
+  const surface = (
+    <Outer
       onLayout={onLayout}
+      {...(swipeToDismiss ? swipe.panHandlers : null)}
       style={[
         { borderRadius: radius, overflow: 'hidden' },
         Platform.select({
@@ -118,6 +130,7 @@ export function GlassSurface({
           default: null,
         }),
         outerStyle,
+        swipeToDismiss ? swipe.animatedStyle : null,
       ]}>
       <BlurView
         intensity={intensity ?? LEVEL_INTENSITY[level]}
@@ -151,8 +164,11 @@ export function GlassSurface({
         />
       ) : null}
       <View style={[styles.content, contentStyle]}>{children}</View>
-    </View>
+      {swipeToDismiss ? <SheetGrabber top={8} /> : null}
+    </Outer>
   );
+
+  return swipeToDismiss ? <ScrollRegistryContext.Provider value={swipe.registry}>{surface}</ScrollRegistryContext.Provider> : surface;
 }
 
 const styles = StyleSheet.create({

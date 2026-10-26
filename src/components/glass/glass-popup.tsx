@@ -25,7 +25,7 @@ export type GlassPopupProps = {
 /** The app's centered popup: a Liquid-Glass card floating in the middle of
  * the screen while everything behind it is blurred (and slightly dimmed, so
  * the card still reads on Android, where blur support is partial). Tapping
- * outside the card dismisses it. Used for calendars, "Registra allenamento"
+ * outside the card, or swiping it down, dismisses it. Used for calendars, "Registra allenamento"
  * and the "Registra pasto" meal picker. */
 export function GlassPopup({ visible, onClose, children, style, maxWidth = POPUP_MAX_WIDTH }: GlassPopupProps) {
   const { modalAnimation } = useMotionPreference();
@@ -45,7 +45,8 @@ export function GlassPopup({ visible, onClose, children, style, maxWidth = POPUP
           <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.scrimSoft }]} />
         </Pressable>
         <PopupCard style={[styles.cardWrap, { maxWidth }]}>
-          <GlassSurface level="overlay" radius={Radius.xlarge} style={[styles.card, style]}>
+          {/* Swiping the card down dismisses it, like an iPhone sheet; the grabber says so. */}
+          <GlassSurface level="overlay" radius={Radius.xlarge} style={[styles.card, style]} swipeToDismiss={onClose}>
             {children}
           </GlassSurface>
         </PopupCard>

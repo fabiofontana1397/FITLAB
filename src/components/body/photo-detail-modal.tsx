@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Image, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Image, Modal, Pressable, StyleSheet, View } from 'react-native';
 
 import { ScrollDefaults } from '@/constants/scroll';
 import { GlassSurface } from '@/components/glass/glass-surface';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
 import { PrimaryButton } from '@/components/ui/primary-button';
+import { PopupScrollView } from '@/components/ui/swipe-dismiss';
 import { Radius, Spacing } from '@/constants/theme';
 import { useMotionPreference } from '@/hooks/use-motion-preference';
 import { useTheme } from '@/hooks/use-theme';
@@ -64,7 +65,7 @@ export function PhotoDetailModal({ photo, allPhotos, entries, onClose }: PhotoDe
     <Modal visible={photo != null} transparent animationType={modalAnimation('fade')} onRequestClose={onClose}>
       <Pressable style={[styles.backdrop, { backgroundColor: theme.scrim }]} onPress={onClose}>
         <Pressable onPress={(e) => e.stopPropagation()}>
-          <GlassSurface level="overlay" radius={Radius.xlarge} style={styles.card}>
+          <GlassSurface swipeToDismiss={onClose} level="overlay" radius={Radius.xlarge} style={styles.card}>
             <View style={styles.header}>
               <View>
                 <ThemedText type="subtitle">{POSE_LABELS[photo.pose] ?? 'Foto'}</ThemedText>
@@ -79,7 +80,7 @@ export function PhotoDetailModal({ photo, allPhotos, entries, onClose }: PhotoDe
 
             <Image source={{ uri: photo.uri }} style={styles.image} resizeMode="cover" />
 
-            <ScrollView {...ScrollDefaults} style={styles.insightScroll}>
+            <PopupScrollView {...ScrollDefaults} style={styles.insightScroll}>
               <View style={styles.insightRow}>
                 <Icon name="sparkle" size={16} color={theme.accent} />
                 <ThemedText type="small" themeColor="textSecondary" style={{ flex: 1 }}>
@@ -101,7 +102,7 @@ export function PhotoDetailModal({ photo, allPhotos, entries, onClose }: PhotoDe
                   Analisi non disponibile al momento. Riprova più tardi.
                 </ThemedText>
               ) : null}
-            </ScrollView>
+            </PopupScrollView>
 
             {AI_COACH_ENABLED && !aiObservation ? (
               <PrimaryButton

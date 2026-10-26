@@ -26,6 +26,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScrollDefaults } from '@/constants/scroll';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
+import { SheetGrabber } from '@/components/ui/sheet-grabber';
 import { SpringSheet, TimingExit } from '@/constants/motion';
 import { Layout, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -142,12 +143,14 @@ export function SheetScreen({ title, eyebrow, leading, children, fallbackHref = 
     return () => subscription.remove();
   }, [close]);
 
-  // Only the header drags — hanging this off the whole sheet would fight
-  // the scroll view for every vertical swipe.
+  // The whole sheet drags down, but only from the top of its content: while the
+  // list is scrolled, a downward swipe belongs to the list.
+  const scrolledY = useSharedValue(0);
   const dragHandlers = useMemo(
     () =>
       PanResponder.create({
-        onMoveShouldSetPanResponder: (_, gesture) => gesture.dy > 6 && Math.abs(gesture.dy) > Math.abs(gesture.dx),
+        onMoveShouldSetPanResponderCapture: (_, gesture) =>
+          scrolledY.get() <= 0 && gesture.dy > 8 && gesture.dy > Math.abs(gesture.dx) * 1.5,
         onPanResponderMove: (_, gesture) => {
           // Downwards only: dragging up would lift the sheet off the bottom edge.
           moveTo(Math.max(0, gesture.dy));
@@ -168,7 +171,7 @@ export function SheetScreen({ title, eyebrow, leading, children, fallbackHref = 
           moveTo(withSpring(0, SpringSheet));
         },
       }),
-    [close, moveTo, pastThreshold, setPast]
+    [close, moveTo, pastThreshold, scrolledY, setPast]
   );
 
   const backdropStyle = useAnimatedStyle(() => ({
@@ -192,8 +195,8 @@ export function SheetScreen({ title, eyebrow, leading, children, fallbackHref = 
       </Animated.View>
 
       <View style={[styles.sheetArea, { top }]}>
-        <Animated.View style={[styles.sheet, { backgroundColor: theme.background }, sheetStyle]}>
-          <View style={styles.header} {...dragHandlers.panHandlers}>
+        <Animated.View style={[styles.sheet, { backgroundColor: theme.background }, sheetStyle]} {...dragHandlers.panHandlers}>
+          <View style={styles.header}>
             {leading}
             <View style={styles.headingText}>
               <ThemedText type="display" style={styles.title} accessibilityRole="header">
@@ -206,6 +209,8 @@ export function SheetScreen({ title, eyebrow, leading, children, fallbackHref = 
               ) : null}
             </View>
           </View>
+
+          <SheetGrabber top={8} />
 
           <Pressable
             onPress={close}
@@ -222,6 +227,7 @@ export function SheetScreen({ title, eyebrow, leading, children, fallbackHref = 
                 {...ScrollDefaults}
                 style={styles.scroll}
                 onScroll={(e) => {
+                  scrolledY.set(e.nativeEvent.contentOffset.y);
                   // eslint-disable-next-line react-hooks/immutability
                   edgeFade.value = Math.min(1, Math.max(0, e.nativeEvent.contentOffset.y / EDGE_FADE_HEIGHT));
                 }}

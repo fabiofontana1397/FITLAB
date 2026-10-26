@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, View } from 'react-native';
 
 import { ScrollDefaults } from '@/constants/scroll';
 import { GlassSurface } from '@/components/glass/glass-surface';
@@ -7,6 +7,7 @@ import { ThemedText } from '@/components/themed-text';
 import { AppTextInput } from '@/components/ui/app-text';
 import { Icon } from '@/components/ui/icon';
 import { PrimaryButton } from '@/components/ui/primary-button';
+import { PopupScrollView, SwipeDismiss } from '@/components/ui/swipe-dismiss';
 import { Radius, Spacing } from '@/constants/theme';
 import { useMotionPreference } from '@/hooks/use-motion-preference';
 import { useTheme } from '@/hooks/use-theme';
@@ -90,7 +91,7 @@ export function FoodPicker({ question, value, onChange }: FoodPickerProps) {
       <Modal visible={open} transparent animationType={modalAnimation('fade')} onRequestClose={close} statusBarTranslucent>
         <View style={[styles.backdrop, { backgroundColor: theme.scrim }]}>
           <Pressable style={StyleSheet.absoluteFill} onPress={close} accessibilityLabel="Chiudi" />
-          <View style={[styles.card, { backgroundColor: theme.backgroundElevated, borderColor: theme.border }]}>
+          <SwipeDismiss onDismiss={close} style={[styles.card, { backgroundColor: theme.backgroundElevated, borderColor: theme.border }]}>
         <View style={styles.header}>
           <View style={{ flex: 1 }}>
             <ThemedText type="subtitle">{PICKER_TITLE[component]}</ThemedText>
@@ -111,7 +112,7 @@ export function FoodPicker({ question, value, onChange }: FoodPickerProps) {
           style={[styles.search, { color: theme.text, backgroundColor: theme.backgroundElement, borderColor: theme.border }]}
         />
 
-        <ScrollView {...ScrollDefaults} style={styles.list}>
+        <PopupScrollView {...ScrollDefaults} style={styles.list}>
           {groups.length === 0 ? (
             <ThemedText type="caption" themeColor="textSecondary">
               Nessun alimento trovato.
@@ -137,7 +138,7 @@ export function FoodPicker({ question, value, onChange }: FoodPickerProps) {
               })}
             </View>
           ))}
-        </ScrollView>
+        </PopupScrollView>
 
         <View style={{ gap: Spacing.two }}>
           {selected.size > 0 ? (
@@ -149,7 +150,7 @@ export function FoodPicker({ question, value, onChange }: FoodPickerProps) {
           ) : null}
           <PrimaryButton label="Fatto" onPress={close} />
         </View>
-          </View>
+          </SwipeDismiss>
         </View>
       </Modal>
     </View>

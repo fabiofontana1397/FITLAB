@@ -45,7 +45,7 @@ export function QuickMeasurementSheet({ visible, label, currentValueCm, onClose,
       onRequestClose={onClose}
       onShow={() => setValue(String(currentValueCm))}>
       <View style={[styles.backdrop, { backgroundColor: theme.scrim }]}>
-        <GlassSurface level="overlay" radius={Radius.xlarge} style={[styles.sheet, { paddingBottom: insets.bottom + Spacing.four }]}>
+        <GlassSurface swipeToDismiss={onClose} level="overlay" radius={Radius.xlarge} style={[styles.sheet, { paddingBottom: insets.bottom + Spacing.four }]}>
           <View style={styles.header}>
             <ThemedText type="subtitle">Nuova misura: {label}</ThemedText>
             <Pressable onPress={onClose} hitSlop={11} accessibilityRole="button" accessibilityLabel="Chiudi">

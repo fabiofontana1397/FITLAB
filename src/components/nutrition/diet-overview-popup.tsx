@@ -1,9 +1,10 @@
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ScrollDefaults } from '@/constants/scroll';
 import { GlassPopup } from '@/components/glass/glass-popup';
 import { ThemedText } from '@/components/themed-text';
 import { Icon, type IconName } from '@/components/ui/icon';
+import { PopupScrollView } from '@/components/ui/swipe-dismiss';
 import { OnBrand } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { Goal } from '@/lib/mock/types';
@@ -83,7 +84,7 @@ export function DietOverviewPopup({ visible, onClose, plan, goal, currentMonth }
         </Pressable>
       </View>
 
-      <ScrollView {...ScrollDefaults} style={styles.scroll} contentContainerStyle={styles.content}>
+      <PopupScrollView {...ScrollDefaults} style={styles.scroll} contentContainerStyle={styles.content}>
         <Section icon="target" title={`Obiettivo: ${copy.name}`}>
           <Body>
             {`Un percorso di ${plan.durationMonths} ${plan.durationMonths === 1 ? 'mese' : 'mesi'} costruito sulle risposte del tuo questionario: obiettivo, peso, attività, numero di pasti, preferenze, intolleranze e allergie. ${copy.why}`}
@@ -156,7 +157,7 @@ export function DietOverviewPopup({ visible, onClose, plan, goal, currentMonth }
             sezione Nutrizione. Se sgarri non compensare con il digiuno: riprendi dal pasto successivo.
           </Body>
         </Section>
-      </ScrollView>
+      </PopupScrollView>
     </GlassPopup>
   );
 }

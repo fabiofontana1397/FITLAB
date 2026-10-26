@@ -26,7 +26,7 @@ export function PosePickerSheet({ visible, onClose, onSelect }: PosePickerSheetP
   return (
     <Modal visible={visible} transparent animationType={modalAnimation('slide')} onRequestClose={onClose}>
       <View style={[styles.backdrop, { backgroundColor: theme.scrim }]}>
-        <GlassSurface level="overlay" radius={Radius.xlarge} style={[styles.sheet, { paddingBottom: insets.bottom + Spacing.four }]}>
+        <GlassSurface swipeToDismiss={onClose} level="overlay" radius={Radius.xlarge} style={[styles.sheet, { paddingBottom: insets.bottom + Spacing.four }]}>
           <View style={styles.header}>
             <ThemedText type="subtitle">Che posa è?</ThemedText>
             <Pressable onPress={onClose} hitSlop={11} accessibilityRole="button" accessibilityLabel="Chiudi">
