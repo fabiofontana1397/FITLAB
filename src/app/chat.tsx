@@ -22,6 +22,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { SUGGESTED_PROMPTS } from '@/lib/assistant/local-coach';
 import { goBackOr } from '@/lib/navigation/go-back';
 import { useChatStore, type ChatMessage } from '@/store/chat-store';
+import { hapticTap } from '@/lib/haptics';
 
 // The chat FAB sits bottom-right, docked beside the tab bar (see
 // app-tabs.tsx) — this screen grows out of / shrinks back into that same
@@ -80,6 +81,7 @@ export default function ChatScreen() {
 
   const handleSend = (text: string) => {
     if (!text.trim()) return;
+    hapticTap();
     send(text);
     setDraft('');
     requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));

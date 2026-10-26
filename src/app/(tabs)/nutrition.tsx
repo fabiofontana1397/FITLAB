@@ -29,7 +29,7 @@ import {
 } from '@/store/nutrition-store';
 import { usePlanStore } from '@/store/plan-store';
 import { useUserStore } from '@/store/user-store';
-import { hapticSelection, hapticToggle } from '@/lib/haptics';
+import { hapticSelection } from '@/lib/haptics';
 
 const SCREEN_PADDING = Layout.screenGutter;
 const CARD_RADIUS = Radius.large;
@@ -190,7 +190,6 @@ export default function NutritionScreen() {
           <IosSwitch
             value={isFollowingPlan}
             onValueChange={(on) => {
-              hapticToggle(on);
               if (on) seedDayFromPlan(selectedDate, planDayForSelectedDate.meals);
               else unseedDay(selectedDate);
             }}
@@ -220,7 +219,6 @@ export default function NutritionScreen() {
                 setActiveSlot(meta.id);
               }}
               onDeleteEntry={(entry) => {
-                hapticToggle(false);
                 removeEntry(entry.id);
               }}
               onAddFood={() => {

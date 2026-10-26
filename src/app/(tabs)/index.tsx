@@ -39,6 +39,7 @@ import { useNutritionStore, sumMacros, type MealSlot } from '@/store/nutrition-s
 import { usePlanStore } from '@/store/plan-store';
 import { isExerciseCompleted, useTrainingProgressStore } from '@/store/training-progress-store';
 import { useUserStore } from '@/store/user-store';
+import { hapticTap } from '@/lib/haptics';
 
 const SCREEN_PADDING = Layout.screenGutter;
 const CARD_RADIUS = Radius.large;
@@ -92,7 +93,10 @@ export default function HomeScreen() {
   const [detailsFocus, setDetailsFocus] = useState<'day' | 'week' | null>(null);
   const [viewDate, setViewDate] = useState(today);
   // The calorie card (gauge and its "Dettagli") opens the chart guide: a sheet like Profilo and Notifiche.
-  const openGuide = () => router.push('/energy-guide' as Href);
+  const openGuide = () => {
+    hapticTap();
+    router.push('/energy-guide' as Href);
+  };
   // adjustsFontSizeToFit does nothing on the web, so the three kcal values step down on the narrowest phones.
   const narrow = useWindowDimensions().width < 360;
 

@@ -8,6 +8,7 @@ import { FlatCard } from '@/components/ui/flat-card';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { SwipeToDelete } from '@/components/ui/swipe-to-delete';
 import { useTheme } from '@/hooks/use-theme';
+import { hapticTap } from '@/lib/haptics';
 import { findFood } from '@/lib/mock/food-database';
 import { macrosForEntry, type MealFoodEntry } from '@/store/nutrition-store';
 
@@ -119,7 +120,10 @@ export function MealCard({ label, time, icon, color, entries, totals, expanded, 
             );
           })}
           <Pressable
-            onPress={onAddFood}
+            onPress={() => {
+              hapticTap();
+              onAddFood();
+            }}
             accessibilityRole="button"
             style={[styles.addButton, { borderColor: theme.borderStrong }, entries.length > 0 && styles.addButtonAfterRows]}>
             <Icon name="plus" size={18} color={theme.textSecondary} />

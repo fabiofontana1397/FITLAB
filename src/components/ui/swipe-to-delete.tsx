@@ -6,7 +6,7 @@ import { ThemedText } from '@/components/themed-text';
 import { TimingQuick } from '@/constants/motion';
 import { OnBrand } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { hapticSelection } from '@/lib/haptics';
+import { hapticHeavy, hapticRigid, hapticSelection, hapticTap } from '@/lib/haptics';
 
 /** Width of the red action once the row has been swiped open. */
 const ACTION_WIDTH = 92;
@@ -41,6 +41,8 @@ export function SwipeToDelete({ children, onDelete, onPress, label = 'Elimina', 
   const rowWidth = useSharedValue(0);
   // When the last drag ended: the click that follows a drag must not count as a tap on the row.
   const dragEndedAt = useSharedValue(0);
+  // Which threshold the finger is past (0 none, 1 far enough to stay open, 2 far enough to delete): each crossing is felt once.
+  const zone = useSharedValue(0);
   const [open, setOpen] = useState(false);
 
   const settle = (to: number) => {
@@ -56,15 +58,23 @@ export function SwipeToDelete({ children, onDelete, onPress, label = 'Elimina', 
         onPanResponderTerminationRequest: () => false,
         onPanResponderGrant: () => {
           start.value = x.value;
+          zone.value = x.value <= -ACTION_WIDTH / 2 ? 1 : 0;
         },
         onPanResponderMove: (_, g) => {
           x.value = Math.min(0, Math.max(-rowWidth.value, start.value + g.dx));
+          const past = -x.value > rowWidth.value * FULL_SWIPE ? 2 : -x.value > ACTION_WIDTH / 2 ? 1 : 0;
+          if (past !== zone.value) {
+            // Up to the "stay open" mark a light tick; up to the "delete" mark the sharp pop of a force-press.
+            if (past === 2) hapticRigid();
+            else hapticSelection();
+            zone.value = past;
+          }
         },
         onPanResponderRelease: (_, g) => {
           dragEndedAt.value = clock();
           const current = Math.min(0, start.value + g.dx);
           if (rowWidth.value > 0 && -current > rowWidth.value * FULL_SWIPE) {
-            hapticSelection();
+            hapticHeavy();
             x.value = withTiming(-rowWidth.value, TimingQuick);
             onDelete();
             return;
@@ -92,7 +102,7 @@ export function SwipeToDelete({ children, onDelete, onPress, label = 'Elimina', 
       <Animated.View style={[styles.action, { backgroundColor: theme.danger }, actionStyle]}>
         <Pressable
           onPress={() => {
-            hapticSelection();
+            hapticHeavy();
             onDelete();
           }}
           accessibilityRole="button"
@@ -108,7 +118,10 @@ export function SwipeToDelete({ children, onDelete, onPress, label = 'Elimina', 
           onPress={() => {
             if (clock() - dragEndedAt.value < TAP_AFTER_DRAG_MS) return;
             if (open) settle(0);
-            else onPress?.();
+            else {
+              hapticTap();
+              onPress?.();
+            }
           }}
           accessibilityRole="button"
           accessibilityLabel={accessibilityLabel}>

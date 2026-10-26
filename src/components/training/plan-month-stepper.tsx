@@ -7,6 +7,7 @@ import { OnBrand } from '@/constants/theme';
 import { ProgressRing } from '@/components/ui/progress-ring';
 import { useTheme } from '@/hooks/use-theme';
 import type { PlanPhaseKind } from '@/lib/planning/types';
+import { hapticSelection } from '@/lib/haptics';
 
 export const PHASE_SHORT_LABEL: Record<PlanPhaseKind, string> = {
   adattamento: 'Adattamento e tecnica',
@@ -47,7 +48,10 @@ export function PlanMonthStepper({ months, currentMonth, currentFraction, select
     return (
       <Pressable
         key={m.monthIndex}
-        onPress={() => onSelectMonth(m.monthIndex)}
+        onPress={() => {
+          hapticSelection();
+          onSelectMonth(m.monthIndex);
+        }}
         accessibilityRole="button"
         accessibilityState={{ selected }}
         accessibilityLabel={`Mese ${m.monthIndex}${done ? ', completato' : current ? ', in corso' : ', bloccato'}`}
