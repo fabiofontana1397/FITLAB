@@ -53,7 +53,10 @@ export type SheetScreenProps = {
   title: string;
   /** Small grey line under the title (what the sheet is about). */
   eyebrow?: string;
-  children: React.ReactNode;
+  /** A tile (icon, image) to the left of the title, as in the logged-workout sheet. */
+  leading?: React.ReactNode;
+  /** Content, or a function of the sheet's own `close` for buttons that dismiss it with the usual slide down. */
+  children: React.ReactNode | ((close: () => void) => React.ReactNode);
   /** Where to land when there's nothing to pop — a deep link, or a web
    * refresh while the sheet is open, starts with an empty history stack. */
   fallbackHref?: Href;
@@ -76,7 +79,7 @@ export type SheetScreenProps = {
  * same way on iOS, Android and web rather than leaving the sheet to each
  * platform's own modal presentation.
  */
-export function SheetScreen({ title, eyebrow, children, fallbackHref = '/', contentContainerStyle, onClose, scroll = true }: SheetScreenProps) {
+export function SheetScreen({ title, eyebrow, leading, children, fallbackHref = '/', contentContainerStyle, onClose, scroll = true }: SheetScreenProps) {
   const theme = useTheme();
   const dark = useColorScheme() === 'dark';
   const insets = useSafeAreaInsets();
@@ -179,6 +182,7 @@ export function SheetScreen({ title, eyebrow, children, fallbackHref = '/', cont
     transform: [{ translateY: translateY.value }],
   }));
 
+  const body = typeof children === 'function' ? children(close) : children;
   const top = Math.max(insets.top + TOP_GAP_MIN, Math.round(height * TOP_GAP_SHARE));
 
   return (
@@ -190,6 +194,7 @@ export function SheetScreen({ title, eyebrow, children, fallbackHref = '/', cont
       <View style={[styles.sheetArea, { top }]}>
         <Animated.View style={[styles.sheet, { backgroundColor: theme.background }, sheetStyle]}>
           <View style={styles.header} {...dragHandlers.panHandlers}>
+            {leading}
             <View style={styles.headingText}>
               <ThemedText type="display" style={styles.title} accessibilityRole="header">
                 {title}
@@ -222,7 +227,7 @@ export function SheetScreen({ title, eyebrow, children, fallbackHref = '/', cont
                 }}
                 scrollEventThrottle={16}
                 contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + Spacing.five }, contentContainerStyle]}>
-                {children}
+                {body}
               </ScrollView>
               {/* Under the fixed title the content dissolves instead of being cut by a hard edge; the fade grows in as you scroll. */}
               <Animated.View pointerEvents="none" style={[styles.edgeFade, edgeFadeStyle]}>
@@ -230,7 +235,7 @@ export function SheetScreen({ title, eyebrow, children, fallbackHref = '/', cont
               </Animated.View>
             </View>
           ) : (
-            <View style={[styles.scroll, styles.scrollContent, { paddingBottom: insets.bottom + Spacing.three }, contentContainerStyle]}>{children}</View>
+            <View style={[styles.scroll, styles.scrollContent, { paddingBottom: insets.bottom + Spacing.three }, contentContainerStyle]}>{body}</View>
           )}
         </Animated.View>
       </View>
@@ -273,11 +278,15 @@ const styles = StyleSheet.create({
   },
   // The close button floats at the top right; the title sits below it, as in iOS Settings.
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
     paddingHorizontal: Layout.screenGutter,
     paddingTop: CLOSE_INSET + CLOSE_SIZE + Spacing.three,
     paddingBottom: Spacing.three,
   },
   headingText: {
+    flexShrink: 1,
     gap: 2,
   },
   title: {
