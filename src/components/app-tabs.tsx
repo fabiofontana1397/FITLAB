@@ -31,23 +31,21 @@ import { useTheme } from '@/hooks/use-theme';
 const FADE_HEIGHT = BottomTabInset + Spacing.six;
 
 // A single BlurView turns on at full strength the instant content crosses
-// its top edge — a visible seam, since there's nothing to ramp through.
-// Slicing the fade zone into several non-overlapping horizontal stripes,
-// each a little stronger than the one above it, approximates a blur that
-// gradually deepens instead of cutting on. Each stripe is drawn ONLY across
-// its own slice (never down to the bottom of the mask) — stacking them
-// cumulatively was the previous approach, but compositing multiple
-// translucent tinted BlurViews on top of each other visibly brightened
-// scrolled content ("i colori si accendono") instead of just blurring it,
-// worst right above the bar where every band overlapped at once. Seven
-// stripes starting from a barely-there first step (rather than four
-// starting stronger) so even that very first step is too small to read as
-// a seam. web/native use different absolute scales for `intensity`, so
-// each is its own progression.
-const BLUR_BANDS = {
-  web: [1, 2, 3, 5, 8, 12, 17],
-  default: [2, 3, 5, 8, 12, 17, 23],
-} as const;
+// its top edge — a visible seam. On the web the blur is therefore one layer
+// whose own opacity is masked with a smooth ramp (nothing to see a step in).
+// Native has no mask, so there the fade zone is cut into many thin stripes,
+// each a hair stronger than the one above it on an eased curve, so no single
+// step is large enough to read as an edge. Stripes never overlap: stacking
+// translucent tinted blurs brightened scrolled content ("i colori si
+// accendono"). The tint stays light for the same reason.
+const NATIVE_BANDS = 16;
+const MAX_BLUR = { web: 22, default: 26 };
+const bandIntensity = (i: number, max: number) => Math.max(1, Math.round(max * Math.pow((i + 1) / NATIVE_BANDS, 2)));
+/** Eased 0→1 ramp for the colour wash and the web mask: slow start, no kink. */
+const EASE_STOPS = [0, 0.1, 0.25, 0.45, 0.7, 1] as const;
+const easeAt = (t: number) => t * t * (3 - 2 * t);
+/** How much of the page colour the wash reaches at the bar — less than 1, so content under the glass keeps its colour. */
+const WASH_MAX_ALPHA = 0.78;
 
 // Tab focus: settles quickly with just a whisper of overshoot on the pill.
 const SpringTab: WithSpringConfig = { damping: 19, mass: 0.7, stiffness: 230 };
@@ -86,26 +84,41 @@ export default function AppTabs() {
 function ScrollFadeMask() {
   const theme = useTheme();
   const isDark = useColorScheme() === 'dark';
-  const bands = Platform.OS === 'web' ? BLUR_BANDS.web : BLUR_BANDS.default;
-  const stripeHeight = FADE_HEIGHT / bands.length;
+  const web = Platform.OS === 'web';
+  const stripeHeight = FADE_HEIGHT / NATIVE_BANDS;
+  const wash = EASE_STOPS.map((t) => withAlpha(theme.background, easeAt(t) * WASH_MAX_ALPHA));
+  const webMask = `linear-gradient(to bottom, rgba(0,0,0,0) 0%, ${EASE_STOPS.map((t) => `rgba(0,0,0,${easeAt(t).toFixed(3)}) ${Math.round(t * 100)}%`).join(', ')})`;
   return (
     <View pointerEvents="none" style={[styles.fadeMask, { height: FADE_HEIGHT }]}>
-      {bands.map((intensity, i) => (
+      {web ? (
         <BlurView
-          key={i}
-          intensity={intensity}
+          intensity={MAX_BLUR.web}
           tint={isDark ? 'dark' : 'light'}
-          blurMethod="dimezisBlurViewSdk31Plus"
-          style={{ position: 'absolute', top: stripeHeight * i, left: 0, right: 0, height: stripeHeight }}
+          style={[StyleSheet.absoluteFill, { maskImage: webMask, WebkitMaskImage: webMask } as object]}
         />
-      ))}
-      {/* Spans the full mask height (not just its lower portion) so the
-          color ramp itself has no flat, fully-opaque stretch right above
-          the bar — that flat zone next to the bar's own translucent glass
-          was the other half of the reported hard edge. */}
-      <LinearGradient colors={['transparent', theme.background]} locations={[0, 1]} style={StyleSheet.absoluteFill} />
+      ) : (
+        Array.from({ length: NATIVE_BANDS }, (_, i) => (
+          <BlurView
+            key={i}
+            intensity={bandIntensity(i, MAX_BLUR.default)}
+            tint={isDark ? 'dark' : 'light'}
+            blurMethod="dimezisBlurViewSdk31Plus"
+            style={{ position: 'absolute', top: stripeHeight * i, left: 0, right: 0, height: stripeHeight + 0.5 }}
+          />
+        ))
+      )}
+      {/* The colour wash over the whole zone, eased and never fully opaque. */}
+      <LinearGradient colors={wash as [string, string, ...string[]]} locations={EASE_STOPS as unknown as [number, number, ...number[]]} style={StyleSheet.absoluteFill} />
     </View>
   );
+}
+
+/** `#rrggbb` + alpha → `rgba()`; any other colour string is returned as is. */
+function withAlpha(color: string, alpha: number): string {
+  const m = /^#([0-9a-f]{6})$/i.exec(color);
+  if (!m) return color;
+  const n = parseInt(m[1], 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha.toFixed(3)})`;
 }
 
 /** The bar spans the screen between the same side gutters as the page's
@@ -190,7 +203,7 @@ function TabButton({
       <Animated.View style={[styles.focusPill, liquidLensStyle(isDark), pillStyle]} />
       <Animated.View style={[styles.tabContent, contentStyle]}>
         <Animated.View style={iconStyle}>
-          <Icon name={icon} size={20} color={color} />
+          <Icon name={icon} size={19} color={color} />
         </Animated.View>
         {isFocused ? (
           <Animated.View entering={FadeIn.duration(220).delay(60)} exiting={FadeOut.duration(90)}>
@@ -229,11 +242,11 @@ const styles = StyleSheet.create({
   },
   barRow: {
     flexDirection: 'row',
-    padding: 5,
+    padding: 4,
   },
   tabButton: {
     flexBasis: 0,
-    height: 56,
+    height: 46,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -248,7 +261,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    borderRadius: 28,
+    borderRadius: 23,
   },
   tabLabel: {
     fontSize: 13,
