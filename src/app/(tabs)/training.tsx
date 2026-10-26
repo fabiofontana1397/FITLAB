@@ -317,7 +317,7 @@ const styles = StyleSheet.create({
   registerLabel: {
     flex: 1,
     color: OnBrand.text,
-    fontSize: 15.5,
+    fontSize: 15,
     lineHeight: 20,
     fontWeight: '700',
   },
@@ -350,7 +350,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   cardBody: {
-    fontSize: 12.5,
+    fontSize: 12,
     lineHeight: 17,
     fontWeight: '500',
   },

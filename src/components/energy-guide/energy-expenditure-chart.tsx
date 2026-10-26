@@ -167,22 +167,22 @@ const styles = StyleSheet.create({
   },
   partTitle: {
     flexShrink: 1,
-    fontSize: 14.5,
+    fontSize: 15,
     lineHeight: 19,
     fontWeight: '700',
   },
   partValue: {
-    fontSize: 14.5,
+    fontSize: 15,
     lineHeight: 19,
     fontWeight: '800',
   },
   partBody: {
-    fontSize: 12.5,
+    fontSize: 12,
     lineHeight: 17,
     fontWeight: '500',
   },
   partShare: {
-    fontSize: 12.5,
+    fontSize: 12,
     lineHeight: 16,
     fontWeight: '700',
   },

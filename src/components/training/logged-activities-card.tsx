@@ -102,7 +102,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
   },
   total: {
-    fontSize: 12.5,
+    fontSize: 12,
     lineHeight: 16,
     fontWeight: '600',
   },

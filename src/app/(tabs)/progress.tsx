@@ -19,6 +19,7 @@ import { TabHeader } from '@/components/tab-header';
 import { InsightCard } from '@/components/ui/insight-card';
 import { SegmentedControl } from '@/components/ui/segmented-control';
 import { TrendChart } from '@/components/ui/trend-chart';
+import { Layout, Radius } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useWeightSeries, weightDateGranularity, type WeightRange } from '@/hooks/use-weight-series';
 import { generatePhotoInsight } from '@/lib/assistant/photo-insight';
@@ -27,8 +28,8 @@ import { addDaysISO, daysAgoISO, formatFullDay } from '@/lib/mock/dates';
 import { POSE_LABELS, useBodyStore, type BodyPhoto, type BodyPhotoPose } from '@/store/body-store';
 import { useUserStore } from '@/store/user-store';
 
-const SCREEN_PADDING = 20;
-const CARD_RADIUS = 20;
+const SCREEN_PADDING = Layout.screenGutter;
+const CARD_RADIUS = Radius.large;
 
 // Top to bottom, roughly following the body itself.
 const MEASUREMENTS: { zone: MeasurementZone; label: string }[] = [
@@ -640,7 +641,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   measureValue: {
-    fontSize: 12.5,
+    fontSize: 12,
     lineHeight: 16,
     fontWeight: '600',
   },

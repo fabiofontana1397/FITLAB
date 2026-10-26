@@ -15,6 +15,7 @@ import { TabHeader } from '@/components/tab-header';
 import { ProgressRing } from '@/components/ui/progress-ring';
 import { TickProgressBar } from '@/components/ui/tick-progress-bar';
 import { useEnsurePlan } from '@/hooks/use-ensure-plan';
+import { Layout, Radius } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { daysAgoISO, isoMondayIndex } from '@/lib/mock/dates';
 import { findFood } from '@/lib/mock/food-database';
@@ -32,8 +33,8 @@ import { usePlanStore } from '@/store/plan-store';
 import { useUserStore } from '@/store/user-store';
 import { hapticSelection, hapticToggle } from '@/lib/haptics';
 
-const SCREEN_PADDING = 20;
-const CARD_RADIUS = 20;
+const SCREEN_PADDING = Layout.screenGutter;
+const CARD_RADIUS = Radius.large;
 const CARD_PADDING = 14;
 // Opening a meal grows its card (and slides the ones below) instead of snapping.
 const MEAL_CARD_TRANSITION = LinearTransition.springify().damping(24).stiffness(220).mass(0.9);
@@ -405,7 +406,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   sectionTitle: {
-    fontSize: 19,
+    fontSize: 20,
     lineHeight: 24,
     fontWeight: '700',
     letterSpacing: -0.2,

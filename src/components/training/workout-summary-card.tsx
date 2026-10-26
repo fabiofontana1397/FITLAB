@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     marginTop: 3,
-    fontSize: 12.5,
+    fontSize: 12,
     lineHeight: 16,
     fontWeight: '500',
   },
@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   statText: {
-    fontSize: 12.5,
+    fontSize: 12,
     lineHeight: 16,
     fontWeight: '500',
   },
