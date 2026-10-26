@@ -1,22 +1,13 @@
+import { router } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { FlatCard } from '@/components/ui/flat-card';
-import { Icon, type IconName } from '@/components/ui/icon';
+import { ACTIVITY_ICON } from '@/components/training/activity-presentation';
+import { Icon } from '@/components/ui/icon';
 import { useTheme } from '@/hooks/use-theme';
-import { ACTIVITY_INTENSITY_OPTIONS, ACTIVITY_TYPE_OPTIONS, type ActivityType } from '@/lib/nutrition/activity-log';
+import { ACTIVITY_INTENSITY_OPTIONS, ACTIVITY_TYPE_OPTIONS } from '@/lib/nutrition/activity-log';
 import { useActivityLogStore } from '@/store/activity-log-store';
-
-const ACTIVITY_ICON: Partial<Record<ActivityType, IconName>> = {
-  gym: 'gym',
-  running: 'running',
-  cycling: 'cycling',
-  swimming: 'swimming',
-  walking: 'footsteps',
-  functional: 'functional',
-  tennis: 'tennis',
-  hiking: 'footsteps',
-};
 
 /** "Allenamenti registrati": every activity logged on `date` through
  * "Registra allenamento" — type, intensity, duration and estimated kcal,
@@ -51,29 +42,36 @@ export function LoggedActivitiesCard({ date, title = 'Allenamenti registrati', i
           const intensity = ACTIVITY_INTENSITY_OPTIONS.find((o) => o.value === entry.intensity)?.label ?? '';
           return (
             <View key={entry.id} style={[styles.row, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.border }]}>
-              <View style={[styles.icon, { backgroundColor: theme.brandGreen + '1F' }]}>
-                <Icon name={ACTIVITY_ICON[entry.activityType] ?? 'otherSport'} size={22} color={theme.brandGreen} />
-              </View>
-              <View style={{ flex: 1, gap: 2 }}>
-                <ThemedText style={styles.name} numberOfLines={1}>
-                  {label}
-                </ThemedText>
-                <View style={styles.metaRow}>
-                  <Icon name="clock" size={13} color={theme.textTertiary} />
+              {/* The whole row opens the workout's sheet; the bin stays its own button. */}
+              <Pressable
+                onPress={() => router.push({ pathname: '/logged-activity', params: { id: entry.id } })}
+                accessibilityRole="button"
+                accessibilityLabel={`Dettagli: ${label}`}
+                style={({ pressed }) => [styles.open, pressed && styles.pressed]}>
+                <View style={[styles.icon, { backgroundColor: theme.brandGreen + '1F' }]}>
+                  <Icon name={ACTIVITY_ICON[entry.activityType] ?? 'otherSport'} size={22} color={theme.brandGreen} />
+                </View>
+                <View style={{ flex: 1, gap: 2 }}>
+                  <ThemedText style={styles.name} numberOfLines={1}>
+                    {label}
+                  </ThemedText>
+                  <View style={styles.metaRow}>
+                    <Icon name="clock" size={13} color={theme.textTertiary} />
+                    <ThemedText style={styles.meta} themeColor="textTertiary">
+                      {entry.durationMinutes} min{intensity ? ` · ${intensity}` : ''}
+                    </ThemedText>
+                  </View>
+                </View>
+                <View style={styles.kcalCol}>
+                  <View style={styles.metaRow}>
+                    <Icon name="flame" size={14} color={theme.accent} />
+                    <ThemedText style={styles.kcal}>{Math.round(entry.estimatedKcal)}</ThemedText>
+                  </View>
                   <ThemedText style={styles.meta} themeColor="textTertiary">
-                    {entry.durationMinutes} min{intensity ? ` · ${intensity}` : ''}
+                    kcal stimate
                   </ThemedText>
                 </View>
-              </View>
-              <View style={styles.kcalCol}>
-                <View style={styles.metaRow}>
-                  <Icon name="flame" size={14} color={theme.accent} />
-                  <ThemedText style={styles.kcal}>{Math.round(entry.estimatedKcal)}</ThemedText>
-                </View>
-                <ThemedText style={styles.meta} themeColor="textTertiary">
-                  kcal stimate
-                </ThemedText>
-              </View>
+              </Pressable>
               <Pressable onPress={() => removeEntry(entry.id)} hitSlop={8} accessibilityLabel={`Elimina ${label}`} style={styles.trash}>
                 <Icon name="trash" size={18} color={theme.textTertiary} />
               </Pressable>
@@ -115,6 +113,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     paddingVertical: 12,
+  },
+  open: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  pressed: {
+    opacity: 0.6,
   },
   icon: {
     width: 44,

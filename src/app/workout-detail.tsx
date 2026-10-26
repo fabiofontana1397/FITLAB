@@ -1,15 +1,14 @@
 import { useLocalSearchParams } from 'expo-router';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
-import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon } from '@/components/ui/icon';
+import { SheetScreen } from '@/components/ui/sheet-screen';
 import { PlanExerciseRow } from '@/components/training/plan-exercise-row';
 import { difficultyLabel, WorkoutBadge } from '@/components/training/workout-summary-card';
 import { useTheme } from '@/hooks/use-theme';
 import { daysAgoISO, isoMondayIndex } from '@/lib/mock/dates';
-import { goBackOr } from '@/lib/navigation/go-back';
 import { sessionKcal, sessionMinutes } from '@/domain/energy';
 import { useUserContext } from '@/hooks/use-user-context';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
@@ -21,9 +20,10 @@ import {
   useTrainingProgressStore,
 } from '@/store/training-progress-store';
 
-/** The Figma "Dettaglio allenamento": back chevron + title, the session
- * summary card (name, day + duration, kcal / minutes / difficulty) and the
- * exercise list with the same check-off and load logging as before. */
+/** A planned session, opened from its box on the Allenamento page: a bottom
+ * sheet like Profilo and Promemoria, with the session's name and day as its
+ * title, kcal / minutes / difficulty, and the exercise list with the same
+ * check-off and load logging as before. A cardio day shows its note. */
 export default function WorkoutDetailScreen() {
   const theme = useTheme();
   const { date: dateParam } = useLocalSearchParams<{ date?: string }>();
@@ -47,96 +47,74 @@ export default function WorkoutDetailScreen() {
     date === daysAgoISO(0) ? 'Oggi' : new Date(date).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
 
   return (
-    <ScreenScroll contentContainerStyle={styles.page}>
-      <View style={styles.header}>
-        <Pressable onPress={() => goBackOr('/training')} hitSlop={10} accessibilityLabel="Indietro">
-          <Icon name="arrowBack" size={24} color={theme.text} />
-        </Pressable>
-        <ThemedText style={styles.title}>Dettaglio allenamento</ThemedText>
-      </View>
+    <SheetScreen
+      title={day?.title ?? 'Allenamento'}
+      eyebrow={day?.type === 'workout' ? `${dayLabel} · ${minutes} min` : dayLabel}
+      fallbackHref="/training"
+      leading={day?.type === 'workout' ? <WorkoutBadge size={64} /> : undefined}>
+      {day?.type === 'cardio' ? (
+        <FlatCard radius={24} style={styles.sessionCard}>
+          <ThemedText style={styles.sessionTitle}>Sessione di cardio</ThemedText>
+          <ThemedText style={styles.sessionSub} themeColor="textSecondary">
+            {day.note}
+          </ThemedText>
+        </FlatCard>
+      ) : (
+        <>
+          <FlatCard radius={24} style={styles.sessionCard}>
+            <View style={styles.statsRow}>
+              <View style={styles.stat}>
+                <Icon name="flame" size={17} color={theme.accent} />
+                <ThemedText style={styles.statText}>{kcal} kcal</ThemedText>
+              </View>
+              <View style={styles.stat}>
+                <Icon name="clock" size={17} color={theme.textTertiary} />
+                <ThemedText style={styles.statText}>{minutes} min</ThemedText>
+              </View>
+              <View style={styles.stat}>
+                <Icon name="barChart" size={17} color={theme.textTertiary} />
+                <View>
+                  <ThemedText style={styles.statLabel} themeColor="textTertiary">
+                    Difficoltà
+                  </ThemedText>
+                  <ThemedText style={styles.statText}>{difficultyLabel(month?.phase)}</ThemedText>
+                </View>
+              </View>
+            </View>
+          </FlatCard>
 
-      <FlatCard radius={20} style={styles.sessionCard}>
-        <View style={styles.sessionTop}>
-          <WorkoutBadge />
-          <View style={{ flex: 1, minWidth: 0 }}>
-            <ThemedText style={styles.sessionTitle} numberOfLines={1}>
-              {day?.title ?? 'Allenamento'}
-            </ThemedText>
-            <ThemedText style={styles.sessionSub} themeColor="textTertiary">
-              {dayLabel}, {minutes} min
-            </ThemedText>
-          </View>
-        </View>
-        <View style={styles.statsRow}>
-          <View style={styles.stat}>
-            <Icon name="flame" size={17} color={theme.accent} />
-            <ThemedText style={styles.statText}>{kcal} kcal</ThemedText>
-          </View>
-          <View style={styles.stat}>
-            <Icon name="clock" size={17} color={theme.textTertiary} />
-            <ThemedText style={styles.statText}>{minutes} min</ThemedText>
-          </View>
-          <View style={styles.stat}>
-            <Icon name="barChart" size={17} color={theme.textTertiary} />
-            <View>
-              <ThemedText style={styles.statLabel} themeColor="textTertiary">
-                Difficoltà
+          <View>
+            <View style={styles.listHeader}>
+              <ThemedText style={styles.listTitle}>Esercizi</ThemedText>
+              <ThemedText style={styles.listCount} themeColor="textTertiary">
+                {exercises.length} esercizi
               </ThemedText>
-              <ThemedText style={styles.statText}>{difficultyLabel(month?.phase)}</ThemedText>
+            </View>
+
+            <View style={styles.list}>
+              {exercises.map((exercise) => (
+                <PlanExerciseRow
+                  key={exercise.id}
+                  exercise={exercise}
+                  history={historyForExercise(progressSets, exercise.id)}
+                  latestWeightKg={latestWeightForExercise(progressSets, exercise.id)}
+                  completed={isExerciseCompleted(completedExercises, exercise.id, date)}
+                  onToggleCompleted={() => toggleCompleted(exercise.id, date)}
+                  onAddLoad={(reps, weightKg, rir) => logSet(exercise.id, exercise.name, reps, weightKg, date, rir)}
+                />
+              ))}
             </View>
           </View>
-        </View>
-      </FlatCard>
-
-      <View style={styles.listHeader}>
-        <ThemedText style={styles.listTitle}>Esercizi</ThemedText>
-        <ThemedText style={styles.listCount} themeColor="textTertiary">
-          {exercises.length} esercizi
-        </ThemedText>
-      </View>
-
-      <View style={styles.list}>
-        {exercises.map((exercise) => (
-          <PlanExerciseRow
-            key={exercise.id}
-            exercise={exercise}
-            history={historyForExercise(progressSets, exercise.id)}
-            latestWeightKg={latestWeightForExercise(progressSets, exercise.id)}
-            completed={isExerciseCompleted(completedExercises, exercise.id, date)}
-            onToggleCompleted={() => toggleCompleted(exercise.id, date)}
-            onAddLoad={(reps, weightKg, rir) => logSet(exercise.id, exercise.name, reps, weightKg, date, rir)}
-          />
-        ))}
-      </View>
-    </ScreenScroll>
+        </>
+      )}
+    </SheetScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  page: {
-    paddingHorizontal: 20,
-    gap: 0,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 16,
-  },
-  title: {
-    fontSize: 22,
-    lineHeight: 28,
-    fontWeight: '700',
-    letterSpacing: -0.3,
-  },
   sessionCard: {
     padding: 16,
-    gap: 16,
-  },
-  sessionTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
+    gap: 8,
   },
   sessionTitle: {
     fontSize: 17,
@@ -170,7 +148,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   listHeader: {
-    marginTop: 24,
     marginBottom: 14,
     flexDirection: 'row',
     alignItems: 'baseline',

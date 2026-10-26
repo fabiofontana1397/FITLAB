@@ -132,6 +132,7 @@ const ICONS = {
   barChart: { set: 'ion', name: 'stats-chart' },
   star: { set: 'ion', name: 'star' },
   clock: { set: 'ion', name: 'time-outline' },
+  gauge: { set: 'mci', name: 'speedometer' },
   personFilled: { set: 'ion', name: 'person' },
   bell: { set: 'ion', name: 'notifications-outline' },
   play: { set: 'ion', name: 'play' },

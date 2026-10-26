@@ -196,15 +196,21 @@ export default function TrainingScreen() {
                   onStart={() => setSessionDate(date)}
                 />
               ) : day?.type === 'cardio' ? (
-                <FlatCard radius={20} style={styles.messageCard}>
-                  <View style={[styles.dayIcon, { backgroundColor: theme.accentSoft }]}>
-                    <Icon name="running" size={26} color={theme.accent} />
-                  </View>
-                  <ThemedText style={styles.cardTitle}>{day.title}</ThemedText>
-                  <ThemedText style={styles.cardBody} themeColor="textSecondary">
-                    {day.note}
-                  </ThemedText>
-                </FlatCard>
+                <PressableScale
+                  onPress={() => router.push({ pathname: '/workout-detail', params: { date } })}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Dettagli: ${day.title}`}
+                  scaleTo={0.98}>
+                  <FlatCard radius={20} style={styles.messageCard}>
+                    <View style={[styles.dayIcon, { backgroundColor: theme.accentSoft }]}>
+                      <Icon name="running" size={26} color={theme.accent} />
+                    </View>
+                    <ThemedText style={styles.cardTitle}>{day.title}</ThemedText>
+                    <ThemedText style={styles.cardBody} themeColor="textSecondary">
+                      {day.note}
+                    </ThemedText>
+                  </FlatCard>
+                </PressableScale>
               ) : (
                 <FlatCard radius={20} style={styles.messageCard}>
                   <View style={[styles.dayIcon, { backgroundColor: theme.backgroundElement }]}>

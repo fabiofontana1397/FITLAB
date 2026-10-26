@@ -52,12 +52,14 @@ export type WorkoutSummaryCardProps = {
 };
 
 /** A day's session: the play button that starts it, its name, "Forza - Livello base"
- * and its duration + estimated kcal; the rest of the box opens the detail. */
+ * and its duration + estimated kcal. The whole box opens the session's sheet,
+ * except the play button, which starts it. */
 export function WorkoutSummaryCard({ title, subtitle, minutes, kcal, onOpen, onStart }: WorkoutSummaryCardProps) {
   const theme = useTheme();
   return (
     <FlatCard radius={20} style={styles.card}>
-      <View style={styles.row}>
+      <Pressable onPress={onOpen} accessibilityRole="button" accessibilityLabel={`Dettagli: ${title}`} style={StyleSheet.absoluteFill} />
+      <View style={styles.row} pointerEvents="box-none">
         <PressableScale onPress={onStart} haptic="press" accessibilityRole="button" accessibilityLabel={`Inizia allenamento: ${title}`}>
           <LinearGradient
             colors={Brand.badgeGradient}
@@ -68,7 +70,7 @@ export function WorkoutSummaryCard({ title, subtitle, minutes, kcal, onOpen, onS
           </LinearGradient>
         </PressableScale>
 
-        <Pressable onPress={onOpen} accessibilityRole="button" accessibilityLabel={`Dettagli: ${title}`} style={styles.open}>
+        <View style={styles.open} pointerEvents="none">
           <View style={styles.textCol}>
             <ThemedText style={styles.title} numberOfLines={1}>
               {title}
@@ -88,7 +90,7 @@ export function WorkoutSummaryCard({ title, subtitle, minutes, kcal, onOpen, onS
             </View>
           </View>
           <Icon name="chevronRight" size={18} color={theme.textTertiary} />
-        </Pressable>
+        </View>
       </View>
     </FlatCard>
   );

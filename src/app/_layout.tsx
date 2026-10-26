@@ -155,6 +155,8 @@ export default function RootLayout() {
               no presentation animation of its own. */}
           <Stack.Screen name="profile" options={{ presentation: 'transparentModal', animation: 'none' }} />
           <Stack.Screen name="notification-settings" options={{ presentation: 'transparentModal', animation: 'none' }} />
+          <Stack.Screen name="workout-detail" options={{ presentation: 'transparentModal', animation: 'none' }} />
+          <Stack.Screen name="logged-activity" options={{ presentation: 'transparentModal', animation: 'none' }} />
           <Stack.Screen name="chat" options={{ presentation: 'transparentModal', animation: 'none' }} />
           <Stack.Screen name="energy-guide" options={{ presentation: 'transparentModal', animation: 'none' }} />
           <Stack.Screen name="diet-plan" options={{ presentation: 'modal' }} />
