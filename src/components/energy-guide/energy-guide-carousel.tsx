@@ -10,7 +10,6 @@ import { FlatCard } from '@/components/ui/flat-card';
 import { PrimaryButton } from '@/components/ui/primary-button';
 import { useTheme } from '@/hooks/use-theme';
 import { buildDemoDay, DEMO_CONFIG, type DemoDay, type DemoValues } from '@/lib/energy-guide/demo-example';
-import { formatKcal } from '@/lib/format-kcal';
 
 type Page = {
   id: string;

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { useCountUp } from '@/components/energy-guide/use-play-value';
@@ -36,13 +36,15 @@ export function FitLabChartDemo({ day, play, compact = false, overflowPx = 0 }: 
   // Shrinking is cumulative: the overflow is what is left after the last shrink, so it settles in a pass or two.
   const [available, setAvailable] = useState(0);
   const [cap, setCap] = useState<number | null>(null);
-  useEffect(() => {
-    if (overflowPx <= 1 || available <= 0) return;
-    const drawn = Math.min(cap ?? Infinity, available, GAUGE_MAX_WIDTH);
-    setCap(Math.max(MIN_GAUGE_WIDTH, drawn - overflowPx / GAUGE_ASPECT - 1));
-    // `overflowPx` alone drives it: `available` and `cap` are read as they stand.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [overflowPx]);
+  const [seenOverflow, setSeenOverflow] = useState(0);
+  if (overflowPx !== seenOverflow) {
+    // Adjusting state while rendering, from a changed prop: the way React asks for it.
+    setSeenOverflow(overflowPx);
+    if (overflowPx > 1 && available > 0) {
+      const drawn = Math.min(cap ?? Infinity, available, GAUGE_MAX_WIDTH);
+      setCap(Math.max(MIN_GAUGE_WIDTH, drawn - overflowPx / GAUGE_ASPECT - 1));
+    }
+  }
   const burnedKcal = play ? day.burnedKcal : 0;
   const eatenKcal = play ? day.eatenKcal : 0;
   const reading = play ? day.reading : readBalance({ eatenKcal: 0, burnedKcal: 0, goalKcal: day.goalKcal, toleranceKcal: day.toleranceKcal });
