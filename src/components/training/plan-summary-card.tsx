@@ -215,9 +215,6 @@ function PlanSpecCard({
           </View>
         ) : null}
         <MonthNode index={index} state={state} fraction={fraction} />
-        <ThemedText type="caption" themeColor={state === 'current' ? 'text' : 'textSecondary'} style={state === 'current' ? styles.monthLabelNow : undefined}>
-          Mese {index}
-        </ThemedText>
       </View>
     );
   });
@@ -385,7 +382,6 @@ const styles = StyleSheet.create({
   lineFill: { height: '100%', borderRadius: LINE / 2 },
   node: { width: NODE, height: NODE, borderRadius: NODE / 2, alignItems: 'center', justifyContent: 'center' },
   nodeNumber: { fontSize: 13, lineHeight: 16, fontWeight: '700' },
-  monthLabelNow: { fontWeight: '700' },
   statValue: { fontSize: 14, lineHeight: 18, fontWeight: '700' },
   statLabel: { fontSize: 12, lineHeight: 16, fontWeight: '500' },
   checkin: { minHeight: 48, borderRadius: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 16 },
