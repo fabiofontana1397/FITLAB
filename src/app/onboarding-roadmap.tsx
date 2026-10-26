@@ -31,6 +31,7 @@ import type { OnboardingMode } from '@/lib/questionnaire/schema';
 import { useAppStore } from '@/store/app-store';
 import { useOnboardingStore } from '@/store/onboarding-store';
 import { usePlanStore } from '@/store/plan-store';
+import { hapticSuccess } from '@/lib/haptics';
 
 type RoadmapPage = { id: string; kicker: string; title: string; subtitle: string; steps: RoadmapStep[] };
 
@@ -120,6 +121,7 @@ export default function OnboardingRoadmapScreen() {
   }, [isFinishing, isGenerating, generationFailed, completeOnboarding]);
 
   const finish = () => {
+    hapticSuccess();
     setIsFinishing(true);
   };
 

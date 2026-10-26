@@ -9,6 +9,7 @@ import { Radius, Spacing } from '@/constants/theme';
 import { useMotionPreference } from '@/hooks/use-motion-preference';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
+import { hapticSoft } from '@/lib/haptics';
 
 const POPUP_MAX_WIDTH = 380;
 
@@ -61,6 +62,7 @@ function PopupCard({ style, children }: { style?: StyleProp<ViewStyle>; children
 
   useEffect(() => {
     progress.value = withSpring(1, SpringPopup);
+    hapticSoft();
   }, [progress]);
 
   const animatedStyle = useAnimatedStyle(() => ({

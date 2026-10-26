@@ -30,6 +30,7 @@ import { SpringSheet, TimingExit } from '@/constants/motion';
 import { Layout, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
+import { hapticSelection, hapticSoft } from '@/lib/haptics';
 import { goBackOr } from '@/lib/navigation/go-back';
 
 /** Strip of the screen underneath left visible above the sheet, like an iOS
@@ -86,6 +87,14 @@ export function SheetScreen({ title, eyebrow, children, fallbackHref = '/', cont
   // dims and undims the page behind along with the sheet.
   const translateY = useSharedValue(height);
   const [closing, setClosing] = useState(false);
+  const pastThreshold = useSharedValue(false);
+  const setPast = useCallback(
+    (value: boolean) => {
+      // eslint-disable-next-line react-hooks/immutability
+      pastThreshold.value = value;
+    },
+    [pastThreshold]
+  );
 
   // Shared values are stable handles meant to be reassigned via `.value`
   // from effects, gestures and callbacks alike — that's the reanimated
@@ -100,6 +109,7 @@ export function SheetScreen({ title, eyebrow, children, fallbackHref = '/', cont
 
   useEffect(() => {
     moveTo(withSpring(0, SpringSheet));
+    hapticSoft();
   }, [moveTo]);
 
   const finish = useCallback(() => {
@@ -112,6 +122,7 @@ export function SheetScreen({ title, eyebrow, children, fallbackHref = '/', cont
     // twice…) restarting the animation and popping two screens.
     if (closing) return;
     setClosing(true);
+    hapticSoft();
     moveTo(
       withTiming(height, TimingExit, (finished) => {
         if (finished) runOnJS(finish)();
@@ -137,16 +148,24 @@ export function SheetScreen({ title, eyebrow, children, fallbackHref = '/', cont
         onPanResponderMove: (_, gesture) => {
           // Downwards only: dragging up would lift the sheet off the bottom edge.
           moveTo(Math.max(0, gesture.dy));
+          // A tick the moment the drag has gone far enough to dismiss — and another if it comes back.
+          const past = gesture.dy > DRAG_CLOSE_DISTANCE;
+          if (past !== pastThreshold.get()) {
+            setPast(past);
+            hapticSelection();
+          }
         },
         onPanResponderRelease: (_, gesture) => {
+          setPast(false);
           if (gesture.dy > DRAG_CLOSE_DISTANCE || gesture.vy > DRAG_CLOSE_VELOCITY) close();
           else moveTo(withSpring(0, SpringSheet));
         },
         onPanResponderTerminate: () => {
+          setPast(false);
           moveTo(withSpring(0, SpringSheet));
         },
       }),
-    [close, moveTo]
+    [close, moveTo, pastThreshold, setPast]
   );
 
   const backdropStyle = useAnimatedStyle(() => ({

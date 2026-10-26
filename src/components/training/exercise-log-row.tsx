@@ -10,6 +10,7 @@ import { TrendChart } from '@/components/ui/trend-chart';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { ExerciseSetLog, ExerciseTemplate } from '@/store/training-store';
+import { hapticSelection, hapticSuccess } from '@/lib/haptics';
 
 export type ExerciseLogRowProps = {
   exercise: ExerciseTemplate;
@@ -29,6 +30,7 @@ export function ExerciseLogRow({ exercise, setsToday, history, onAddSet }: Exerc
     const repsNum = parseInt(reps, 10);
     const weightNum = parseFloat(weight.replace(',', '.'));
     if (!Number.isFinite(repsNum) || !Number.isFinite(weightNum) || repsNum <= 0) return;
+    hapticSuccess();
     onAddSet(repsNum, weightNum);
   };
 
@@ -38,7 +40,7 @@ export function ExerciseLogRow({ exercise, setsToday, history, onAddSet }: Exerc
 
   return (
     <GlassSurface level="card" radius={Radius.large}>
-      <Pressable onPress={() => setExpanded((e) => !e)} style={styles.header}>
+      <Pressable onPress={() => (hapticSelection(), setExpanded((e) => !e))} style={styles.header}>
         <View style={{ flex: 1, gap: 2 }}>
           <ThemedText type="smallBold">{exercise.name}</ThemedText>
           <ThemedText type="caption" themeColor="textSecondary">

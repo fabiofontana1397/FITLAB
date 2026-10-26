@@ -10,6 +10,7 @@ import { FlatCard } from '@/components/ui/flat-card';
 import { PrimaryButton } from '@/components/ui/primary-button';
 import { useTheme } from '@/hooks/use-theme';
 import { buildDemoDay, DEMO_CONFIG, type DemoDay, type DemoValues } from '@/lib/energy-guide/demo-example';
+import { hapticSelection, hapticSuccess } from '@/lib/haptics';
 
 type Page = {
   id: string;
@@ -76,6 +77,7 @@ export function EnergyGuideCarousel({ onDone, values = DEMO_CONFIG.initial }: { 
 
   const show = (next: number) => {
     const clamped = Math.max(0, Math.min(next, PAGES.length - 1));
+    if (clamped !== index) hapticSelection();
     setIndex(clamped);
     setVisited((v) => (v[clamped] ? v : v.map((seen, i) => seen || i === clamped)));
   };
@@ -161,7 +163,7 @@ export function EnergyGuideCarousel({ onDone, values = DEMO_CONFIG.initial }: { 
 
       <View style={styles.nav}>
         {index > 0 ? <PrimaryButton variant="ghost" label="Indietro" onPress={() => goTo(index - 1)} style={{ flex: 1 }} /> : null}
-        <PrimaryButton label={isLast ? 'Ho capito' : 'Avanti'} onPress={isLast ? onDone : () => goTo(index + 1)} style={{ flex: 1 }} />
+        <PrimaryButton label={isLast ? 'Ho capito' : 'Avanti'} onPress={isLast ? () => (hapticSuccess(), onDone()) : () => goTo(index + 1)} style={{ flex: 1 }} />
       </View>
     </View>
   );

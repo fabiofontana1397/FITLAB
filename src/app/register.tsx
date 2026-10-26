@@ -10,6 +10,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { goBackOr } from '@/lib/navigation/go-back';
 import { useAuthStore } from '@/store/auth-store';
 import { useUserStore } from '@/store/user-store';
+import { hapticError, hapticSuccess } from '@/lib/haptics';
 
 export default function RegisterScreen() {
   const theme = useTheme();
@@ -33,9 +34,11 @@ export default function RegisterScreen() {
     const { error: registerError, needsEmailConfirmation: pending } = await register(name.trim(), email.trim(), password);
     setIsSubmitting(false);
     if (registerError) {
+      hapticError();
       setError(registerError);
       return;
     }
+    hapticSuccess();
     if (pending) {
       setNeedsEmailConfirmation(true);
       return;

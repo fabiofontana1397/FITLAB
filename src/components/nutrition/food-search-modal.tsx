@@ -12,7 +12,7 @@ import { SheetScreen } from '@/components/ui/sheet-screen';
 import { HorizontalScrollDefaults, ListDefaults, ScrollDefaults } from '@/constants/scroll';
 import { Layout } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { hapticSelection, hapticSuccess } from '@/lib/haptics';
+import { hapticSelection, hapticSuccess, hapticToggle } from '@/lib/haptics';
 import { FOOD_DATABASE, findFood, searchFood, type FoodItem } from '@/lib/mock/food-database';
 import { useFavoriteFoodsStore } from '@/store/favorite-foods-store';
 import { useNutritionStore, type MealSlot } from '@/store/nutrition-store';
@@ -450,7 +450,7 @@ function FavoriteStar({ active, name, onPress }: { active: boolean; name: string
   return (
     <Pressable
       onPress={() => {
-        hapticSelection();
+        hapticToggle(!active);
         onPress();
       }}
       hitSlop={6}

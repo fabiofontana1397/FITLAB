@@ -10,6 +10,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { goBackOr } from '@/lib/navigation/go-back';
 import { useAppStore } from '@/store/app-store';
 import { useAuthStore } from '@/store/auth-store';
+import { hapticError, hapticSuccess } from '@/lib/haptics';
 
 export default function LoginScreen() {
   const theme = useTheme();
@@ -29,9 +30,11 @@ export default function LoginScreen() {
     const { error: loginError } = await login(email, password);
     setIsSubmitting(false);
     if (loginError) {
+      hapticError();
       setError(loginError);
       return;
     }
+    hapticSuccess();
     router.replace(hasOnboarded ? '/' : '/onboarding');
   };
 

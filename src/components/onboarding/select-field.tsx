@@ -7,6 +7,7 @@ import { Icon } from '@/components/ui/icon';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { QuestionOption } from '@/lib/questionnaire/schema';
+import { hapticSelection } from '@/lib/haptics';
 
 export type SelectFieldProps = {
   options: QuestionOption[];
@@ -23,7 +24,7 @@ export function SelectField({ options, value, onChange, placeholder = 'Seleziona
 
   return (
     <GlassSurface level="card" radius={Radius.medium} style={[styles.box, (open || current) && { borderColor: open ? theme.accent : theme.border }]}>
-      <Pressable onPress={() => setOpen((o) => !o)} style={styles.header} accessibilityRole="button" accessibilityState={{ expanded: open }}>
+      <Pressable onPress={() => (hapticSelection(), setOpen((o) => !o))} style={styles.header} accessibilityRole="button" accessibilityState={{ expanded: open }}>
         <ThemedText type="small" style={{ flex: 1 }} themeColor={current ? undefined : 'textTertiary'}>
           {current?.label ?? placeholder}
         </ThemedText>
@@ -37,6 +38,7 @@ export function SelectField({ options, value, onChange, placeholder = 'Seleziona
               <Pressable
                 key={o.value}
                 onPress={() => {
+                  if (!selected) hapticSelection();
                   onChange(o.value);
                   setOpen(false);
                 }}

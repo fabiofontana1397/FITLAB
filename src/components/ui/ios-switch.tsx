@@ -4,6 +4,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-na
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
+import { hapticToggle } from '@/lib/haptics';
 
 // The size of the reference toggle (measured on its screenshot): a long pill, 65 × 30 pt, with every part in proportion.
 const TRACK_W = 65;
@@ -45,7 +46,10 @@ export function IosSwitch({ value, onValueChange, disabled }: IosSwitchProps) {
 
   return (
     <Pressable
-      onPress={() => onValueChange?.(!value)}
+      onPress={() => {
+        hapticToggle(!value);
+        onValueChange?.(!value);
+      }}
       disabled={disabled}
       hitSlop={HIT_SLOP}
       accessibilityRole="switch"
