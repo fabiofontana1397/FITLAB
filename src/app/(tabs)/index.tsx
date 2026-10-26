@@ -479,14 +479,16 @@ function ActionTile({
   label: string;
   onPress: () => void;
 }) {
+  // On the narrowest phones the chevron makes way so the two-line label keeps its room.
+  const narrow = useWindowDimensions().width < 360;
   return (
     <PressableScale onPress={onPress} haptic="press" accessibilityRole="button" style={[styles.actionWrap, glow(glowColor, 0.28)]}>
       <LinearGradient colors={colors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.actionTile}>
         <View style={styles.actionIcon}>
-          <Icon name={icon} size={22} color={iconColor} />
+          <Icon name={icon} size={20} color={iconColor} />
         </View>
-        <ThemedText style={styles.actionLabel}>{label}</ThemedText>
-        <Icon name="chevronRight" size={15} color={OnBrand.text} />
+        <ThemedText style={[styles.actionLabel, narrow && { fontSize: 11 }]}>{label}</ThemedText>
+        {narrow ? null : <Icon name="chevronRight" size={15} color={OnBrand.text} />}
       </LinearGradient>
     </PressableScale>
   );
@@ -663,22 +665,24 @@ const styles = StyleSheet.create({
     gap: 12,
     marginTop: 18,
   },
+  // Pill-shaped: a short bar whose ends are half circles (radius = half the height), with a round icon disc at its start.
   actionWrap: {
     flex: 1,
-    borderRadius: 20,
+    borderRadius: 26,
   },
   actionTile: {
-    height: 76,
-    borderRadius: 20,
+    height: 52,
+    borderRadius: 26,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingHorizontal: 10,
+    paddingLeft: 8,
+    paddingRight: 12,
   },
   actionIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: OnBrand.text,
     alignItems: 'center',
     justifyContent: 'center',
@@ -687,7 +691,7 @@ const styles = StyleSheet.create({
     flex: 1,
     color: OnBrand.text,
     fontSize: 12,
-    lineHeight: 17,
+    lineHeight: 15,
     fontWeight: '700',
   },
   journeys: {
