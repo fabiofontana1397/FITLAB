@@ -158,50 +158,53 @@ function PlanSpecCard({
           <Path d="M110 120 C 170 70, 230 10, 300 24 C 330 30, 350 50, 360 70 C 320 50, 260 40, 200 80 C 170 100, 140 125, 110 120 Z" fill="url(#swoosh)" />
         </Svg>
 
-        <View style={styles.headRow}>
-          <LinearGradient colors={['#FFA11E', '#FF5A00']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} style={styles.slash} />
-          <View style={{ flex: 1, minWidth: 0 }}>
-            <ThemedText type="label" themeColor="textSecondary" numberOfLines={1} style={{ paddingRight: narrow ? 62 : 84 }}>
-              {tag}
-            </ThemedText>
-            <ThemedText style={[styles.title, narrow && styles.titleNarrow]} numberOfLines={1} adjustsFontSizeToFit>
-              {title}
-            </ThemedText>
-            {subtitle ? (
-              <ThemedText type="small" themeColor="textSecondary" numberOfLines={2}>
-                {subtitle}
-              </ThemedText>
-            ) : null}
-          </View>
+        {/* Top line: the card's name on the left, "Dettagli" on the right. */}
+        <View style={styles.topRow}>
+          <ThemedText type="label" themeColor="textSecondary" numberOfLines={1} style={styles.tag}>
+            {tag}
+          </ThemedText>
           <View style={styles.details}>
             <ThemedText style={[styles.detailsText, { color: theme.accent }]}>Dettagli</ThemedText>
             <Icon name="chevronRight" size={13} color={theme.accent} />
           </View>
         </View>
 
-        <View style={styles.middle}>
-          <View style={[styles.statsPanel, { backgroundColor: theme.backgroundElevated }]}>
-            {stats.map((st, i) => (
-              <View key={st.label} style={[styles.stat, narrow && styles.statNarrow, i > 0 && { borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: theme.borderStrong }]}>
-                <Icon name={st.icon} size={16} color={theme.accent} />
-                <View style={{ flexShrink: 1 }}>
-                  <ThemedText style={styles.statValue} numberOfLines={1}>
-                    {st.value}
-                  </ThemedText>
-                  <ThemedText style={styles.statLabel} themeColor="textSecondary" numberOfLines={1}>
-                    {st.label}
-                  </ThemedText>
-                </View>
-              </View>
-            ))}
+        {/* Then the slash with the goal on the left, the month ring on the right. */}
+        <View style={styles.heroRow}>
+          <View style={styles.heroTitle}>
+            <LinearGradient colors={['#FFA11E', '#FF5A00']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} style={styles.slash} />
+            <View style={styles.heroText}>
+              <ThemedText style={[styles.title, narrow && styles.titleNarrow]} numberOfLines={1} adjustsFontSizeToFit>
+                {title}
+              </ThemedText>
+              {subtitle ? (
+                <ThemedText type="small" themeColor="textSecondary" numberOfLines={2}>
+                  {subtitle}
+                </ThemedText>
+              ) : null}
+            </View>
           </View>
-
           <View style={styles.ringCol}>
-            <MonthRing fraction={ringFraction} month={monthIndex} total={durationMonths} />
+            <MonthRing fraction={ringFraction} month={monthIndex} total={durationMonths} size={narrow ? 70 : 82} />
             <ThemedText type="caption" themeColor="textSecondary" numberOfLines={1} style={styles.dayText}>
               Giorno {day} di {totalDays}
             </ThemedText>
           </View>
+        </View>
+
+        {/* The plan's three figures, side by side across the whole width. */}
+        <View style={[styles.statsPanel, { backgroundColor: theme.backgroundElevated }]}>
+          {stats.map((st, i) => (
+            <View key={st.label} style={[styles.stat, i > 0 && { borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: theme.borderStrong }]}>
+              <Icon name={st.icon} size={20} color={theme.accent} />
+              <ThemedText style={styles.statValue} numberOfLines={1}>
+                {st.value}
+              </ThemedText>
+              <ThemedText style={styles.statLabel} themeColor="textSecondary" numberOfLines={1}>
+                {st.label}
+              </ThemedText>
+            </View>
+          ))}
         </View>
       </Pressable>
 
@@ -221,9 +224,8 @@ function PlanSpecCard({
 }
 
 /** "Mese 1/8" inside a ring whose orange arc shows how many of the plan's months are reached. */
-function MonthRing({ fraction, month, total }: { fraction: number; month: number; total: number }) {
+function MonthRing({ fraction, month, total, size = 82 }: { fraction: number; month: number; total: number; size?: number }) {
   const theme = useTheme();
-  const size = 82;
   const stroke = 8;
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
@@ -263,28 +265,29 @@ const styles = StyleSheet.create({
   card: { padding: 16, gap: 14 },
   body: { gap: 14 },
   swoosh: { position: 'absolute', left: 0, right: 0, top: 20 },
-  headRow: { flexDirection: 'row', alignItems: 'stretch', gap: 10 },
+  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  tag: { flexShrink: 1 },
+  heroRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  heroTitle: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'stretch', gap: 10 },
+  heroText: { flex: 1, minWidth: 0 },
   // The orange slash beside the title: a slanted rounded bar.
-  slash: { width: 6, borderRadius: 3, transform: [{ skewX: '-12deg' }], marginTop: 2, marginBottom: 2 },
-  details: { position: 'absolute', top: 0, right: 0, flexDirection: 'row', alignItems: 'center', gap: 2 },
+  slash: { width: 6, alignSelf: 'stretch', borderRadius: 3, transform: [{ skewX: '-12deg' }] },
+  details: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   detailsText: { fontSize: 15, lineHeight: 20, fontWeight: '600' },
-  title: { fontSize: 34, lineHeight: 40, fontWeight: '700', letterSpacing: -0.8 },
-  titleNarrow: { fontSize: 26, lineHeight: 32 },
-  middle: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: -4 },
+  title: { fontSize: 28, lineHeight: 34, fontWeight: '700', letterSpacing: -0.6 },
+  titleNarrow: { fontSize: 20, lineHeight: 26 },
   statsPanel: {
-    flex: 1,
     flexDirection: 'row',
     borderRadius: 22,
-    paddingVertical: 10,
+    paddingVertical: 14,
     boxShadow: '0px 4px 16px rgba(20,20,25,0.08)',
   },
-  stat: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 6 },
-  statNarrow: { flexDirection: 'column', gap: 2, paddingHorizontal: 4 },
+  stat: { flex: 1, minWidth: 0, alignItems: 'center', gap: 3, paddingHorizontal: 6 },
   ringCol: { alignItems: 'center', gap: 4 },
   dayText: { fontSize: 12 },
   ringMonth: { fontSize: 12, lineHeight: 15, fontWeight: '600' },
   ringValue: { fontSize: 21, lineHeight: 25, fontWeight: '700', letterSpacing: -0.5 },
-  statValue: { fontSize: 14, lineHeight: 18, fontWeight: '700' },
+  statValue: { fontSize: 16, lineHeight: 21, fontWeight: '700' },
   statLabel: { fontSize: 12, lineHeight: 16, fontWeight: '500' },
   checkin: { minHeight: 48, borderRadius: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 16 },
   checkinText: { fontSize: 16, lineHeight: 21, fontWeight: '600' },
