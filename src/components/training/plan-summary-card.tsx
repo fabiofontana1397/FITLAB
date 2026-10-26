@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 
 import { ThemedText } from '@/components/themed-text';
@@ -110,6 +110,8 @@ export function DietPlanSummaryCard({ plan, goal, onPress }: { plan: DietPlan; g
   );
 }
 
+/** At most this many months show at once; a longer plan scrolls sideways. */
+const MAX_VISIBLE_MONTHS = 6;
 const NODE = 30;
 const LINE = 4;
 
@@ -192,6 +194,34 @@ function PlanSpecCard({
   const { end, daysLeft } = monthEndInfo(plan, monthIndex);
   const endDate = end.toLocaleDateString('it-IT', { day: 'numeric', month: 'long' });
 
+  const scrolls = durationMonths > MAX_VISIBLE_MONTHS;
+  const [timelineWidth, setTimelineWidth] = useState(0);
+  const timelineRef = useRef<ScrollView>(null);
+  const colWidth = scrolls ? timelineWidth / MAX_VISIBLE_MONTHS : undefined;
+  // A long plan opens with the current month in view, roughly centred.
+  useEffect(() => {
+    if (!scrolls || !colWidth) return;
+    timelineRef.current?.scrollTo({ x: Math.max(0, (monthIndex - 1 - (MAX_VISIBLE_MONTHS - 1) / 2) * colWidth), animated: false });
+  }, [scrolls, colWidth, monthIndex]);
+  const months = Array.from({ length: durationMonths }, (_, i) => {
+    const index = i + 1;
+    const state: MonthState = index < monthIndex ? 'done' : index === monthIndex ? 'current' : 'locked';
+    const lineFill = index < monthIndex ? 1 : index === monthIndex ? fraction : 0;
+    return (
+      <View key={index} style={[styles.monthCol, colWidth ? { flexGrow: 0, flexShrink: 0, flexBasis: colWidth, width: colWidth } : null]}>
+        {i < durationMonths - 1 ? (
+          <View style={[styles.line, { backgroundColor: theme.backgroundSelected }]}>
+            <View style={[styles.lineFill, { width: `${lineFill * 100}%`, backgroundColor: index < monthIndex ? theme.brandGreen : theme.accent }]} />
+          </View>
+        ) : null}
+        <MonthNode index={index} state={state} fraction={fraction} />
+        <ThemedText type="caption" themeColor={state === 'current' ? 'text' : 'textSecondary'} style={state === 'current' ? styles.monthLabelNow : undefined}>
+          Mese {index}
+        </ThemedText>
+      </View>
+    );
+  });
+
   return (
     <FlatCard radius={Radius.large} style={styles.card}>
       <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={accessibilityLabel} style={styles.body}>
@@ -223,25 +253,14 @@ function PlanSpecCard({
               Giorno {day} di {totalDays}
             </ThemedText>
           </View>
-          <View style={styles.timeline}>
-            {Array.from({ length: durationMonths }, (_, i) => {
-              const index = i + 1;
-              const state: MonthState = index < monthIndex ? 'done' : index === monthIndex ? 'current' : 'locked';
-              const lineFill = index < monthIndex ? 1 : index === monthIndex ? fraction : 0;
-              return (
-                <View key={index} style={styles.monthCol}>
-                  {i < durationMonths - 1 ? (
-                    <View style={[styles.line, { backgroundColor: theme.backgroundSelected }]}>
-                      <View style={[styles.lineFill, { width: `${lineFill * 100}%`, backgroundColor: index < monthIndex ? theme.brandGreen : theme.accent }]} />
-                    </View>
-                  ) : null}
-                  <MonthNode index={index} state={state} fraction={fraction} />
-                  <ThemedText type="caption" themeColor={state === 'current' ? 'text' : 'textSecondary'} style={state === 'current' ? styles.monthLabelNow : undefined}>
-                    Mese {index}
-                  </ThemedText>
-                </View>
-              );
-            })}
+          <View onLayout={(e) => setTimelineWidth(e.nativeEvent.layout.width)}>
+            {scrolls ? (
+              <ScrollView ref={timelineRef} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.timeline}>
+                {months}
+              </ScrollView>
+            ) : (
+              <View style={styles.timeline}>{months}</View>
+            )}
           </View>
         </View>
 
