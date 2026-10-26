@@ -136,6 +136,8 @@ export default function HomeScreen() {
   // Progressi and Nutrizione can never disagree on the numbers.
   const { weekDaysWithActivity, weekEstimatedExpenditureSoFar, weeklyGoalKcal } = useWeeklyEnergy();
   const weekDates = currentWeekDates(new Date());
+  // The day strip follows the day picked (with the strip itself or the calendar), so it shows that day's week; the cards around keep the current one.
+  const { weekDaysWithActivity: stripWeek } = useWeeklyEnergy(viewDate);
 
   const eatenSoFarThisWeek = weekDaysWithActivity.filter((d) => d.hasHappened).reduce((sum, d) => sum + d.eatenKcal, 0);
   const weeklySoFarKcal = eatenSoFarThisWeek - weekEstimatedExpenditureSoFar;
@@ -188,7 +190,7 @@ export default function HomeScreen() {
   const viewDateObj = new Date(viewDate);
   const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
   const viewDateLabel = capitalize(new Date(viewDate).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' }));
-  const stripDays: WeekStripDay[] = weekDaysWithActivity.map((d, i) => ({
+  const stripDays: WeekStripDay[] = stripWeek.map((d, i) => ({
     date: d.date,
     label: WEEKDAY_LABELS[i].charAt(0),
     dayOfMonth: dayOfMonth(d.date),
