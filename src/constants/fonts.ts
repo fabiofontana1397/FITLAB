@@ -1,31 +1,25 @@
-import {
-  PlusJakartaSans_400Regular,
-  PlusJakartaSans_500Medium,
-  PlusJakartaSans_600SemiBold,
-  PlusJakartaSans_700Bold,
-  PlusJakartaSans_800ExtraBold,
-} from '@expo-google-fonts/plus-jakarta-sans';
+import { Platform, type TextStyle } from 'react-native';
 
-/** Every Plus Jakarta Sans face the app uses, keyed by the family name
- * registered with expo-font (see useFonts in the root layout). Custom fonts
- * have no automatic weight synthesis on native, so each weight is its own
- * family. */
-export const APP_FONTS = {
-  PlusJakartaSans_400Regular,
-  PlusJakartaSans_500Medium,
-  PlusJakartaSans_600SemiBold,
-  PlusJakartaSans_700Bold,
-  PlusJakartaSans_800ExtraBold,
-};
+/**
+ * The app's typeface is the system font — San Francisco on iPhone — so type
+ * looks, sizes and scales like the rest of iOS. On the web the stack leads
+ * with Apple's system font (what Safari on iPhone and Mac resolves it to) and
+ * falls back to each platform's own UI font; on native, leaving `fontFamily`
+ * unset is what selects the system font, with every weight built in.
+ */
+export const SYSTEM_FONT_FAMILY = Platform.select<string | undefined>({
+  web: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+  default: undefined,
+});
 
-type AppFamily = keyof typeof APP_FONTS;
-
-/** The app family closest to a CSS-style fontWeight ('600', 'bold', 700…). */
-export function appFamilyForWeight(weight: unknown): AppFamily {
-  const n = weight === 'bold' ? 700 : weight === 'normal' || weight == null ? 400 : Number(weight);
-  if (!Number.isFinite(n) || n <= 400) return 'PlusJakartaSans_400Regular';
-  if (n <= 500) return 'PlusJakartaSans_500Medium';
-  if (n <= 600) return 'PlusJakartaSans_600SemiBold';
-  if (n <= 700) return 'PlusJakartaSans_700Bold';
-  return 'PlusJakartaSans_800ExtraBold';
+/** A fontWeight in the range iOS text styles use: Regular, Medium, Semibold, Bold. 800 and 900 read heavier than any system style, so they step down to Bold. */
+export function systemFontWeight(weight: unknown): TextStyle['fontWeight'] {
+  if (weight === 'bold') return '700';
+  if (weight == null || weight === 'normal') return '400';
+  const n = Number(weight);
+  if (!Number.isFinite(n)) return '400';
+  if (n <= 400) return '400';
+  if (n <= 500) return '500';
+  if (n <= 600) return '600';
+  return '700';
 }

@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
   },
   monthLabel: {
     marginTop: 8,
-    fontSize: 13.5,
+    fontSize: 13,
     lineHeight: 17,
     fontWeight: '700',
   },

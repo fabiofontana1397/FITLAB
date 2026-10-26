@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
   },
   sessionSub: {
     marginTop: 3,
-    fontSize: 12.5,
+    fontSize: 12,
     lineHeight: 16,
     fontWeight: '500',
   },

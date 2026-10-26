@@ -196,13 +196,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   title: {
-    fontSize: 21,
+    fontSize: 22,
     lineHeight: 26,
     fontWeight: '700',
     letterSpacing: -0.4,
   },
   body: {
-    fontSize: 13.5,
+    fontSize: 13,
     lineHeight: 19,
     fontWeight: '500',
   },

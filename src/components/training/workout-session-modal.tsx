@@ -688,7 +688,7 @@ const styles = StyleSheet.create({
   },
   doneBadgeText: {
     color: C.green,
-    fontSize: 12.5,
+    fontSize: 12,
     lineHeight: 16,
     fontWeight: '700',
   },

@@ -335,7 +335,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   tabLabel: {
-    fontSize: 12.5,
+    fontSize: 12,
     fontWeight: '700',
   },
   list: {
@@ -385,7 +385,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   foodGrams: {
-    fontSize: 12.5,
+    fontSize: 12,
     lineHeight: 16,
     fontWeight: '700',
   },
