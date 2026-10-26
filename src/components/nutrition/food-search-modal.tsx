@@ -8,13 +8,14 @@ import { AppTextInput } from '@/components/ui/app-text';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { HorizontalScrollDefaults, ListDefaults, ScrollDefaults } from '@/constants/scroll';
+import { Layout } from '@/constants/theme';
 import { useMotionPreference } from '@/hooks/use-motion-preference';
 import { useTheme } from '@/hooks/use-theme';
 import { hapticSelection, hapticSuccess } from '@/lib/haptics';
 import { FOOD_DATABASE, findFood, searchFood, type FoodItem } from '@/lib/mock/food-database';
 import { useNutritionStore, type MealSlot } from '@/store/nutrition-store';
 
-const PAGE_PADDING = 20;
+const PAGE_PADDING = Layout.screenGutter;
 /** The browser's black focus ring around a text field: the field's own box is the affordance. */
 const webNoOutline = (Platform.OS === 'web' ? { outlineStyle: 'none' } : {}) as object;
 /** How far the − and + buttons move the quantity. */
@@ -671,7 +672,7 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   summaryMacroLabel: {
-    fontSize: 11.5,
+    fontSize: 12,
     lineHeight: 15,
     fontWeight: '500',
   },

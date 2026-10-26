@@ -266,7 +266,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   sectionTitle: {
-    fontSize: 13.5,
+    fontSize: 13,
     lineHeight: 18,
     fontWeight: '700',
   },

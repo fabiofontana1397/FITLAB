@@ -29,7 +29,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { currentWeekDates, dayOfMonth, daysAgoISO, isoMondayIndex } from '@/lib/mock/dates';
 import { balanceCaption as captionFor, balanceSideLabel, calorieBalance, readBalance } from '@/domain/calorie-balance';
 import { dayEnergy } from '@/domain/energy';
-import { Brand, OnBrand } from '@/constants/theme';
+import { Brand, Layout, OnBrand, Radius } from '@/constants/theme';
 import { useUserContext } from '@/hooks/use-user-context';
 import { formatKcal, formatSignedKcal } from '@/lib/format-kcal';
 import { WEEKDAY_LABELS } from '@/lib/planning/exercise-library';
@@ -40,8 +40,8 @@ import { usePlanStore } from '@/store/plan-store';
 import { isExerciseCompleted, useTrainingProgressStore } from '@/store/training-progress-store';
 import { useUserStore } from '@/store/user-store';
 
-const SCREEN_PADDING = 20;
-const CARD_RADIUS = 20;
+const SCREEN_PADDING = Layout.screenGutter;
+const CARD_RADIUS = Radius.large;
 
 function clamp01(n: number): number {
   return Math.min(Math.max(n, 0), 1);
@@ -715,7 +715,7 @@ const styles = StyleSheet.create({
   actionLabel: {
     flex: 1,
     color: OnBrand.text,
-    fontSize: 12.5,
+    fontSize: 12,
     lineHeight: 17,
     fontWeight: '700',
   },
@@ -739,7 +739,7 @@ const styles = StyleSheet.create({
     gap: 9,
   },
   weekTitle: {
-    fontSize: 13.5,
+    fontSize: 13,
     lineHeight: 18,
     fontWeight: '700',
   },

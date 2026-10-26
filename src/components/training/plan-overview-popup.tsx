@@ -243,7 +243,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     flex: 1,
-    fontSize: 14.5,
+    fontSize: 15,
     lineHeight: 19,
     fontWeight: '700',
   },
@@ -274,7 +274,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   monthTitle: {
-    fontSize: 13.5,
+    fontSize: 13,
     lineHeight: 18,
     fontWeight: '700',
   },
