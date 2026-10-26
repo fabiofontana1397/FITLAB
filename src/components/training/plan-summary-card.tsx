@@ -1,6 +1,5 @@
-import { router } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { useState } from 'react';
+import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, Defs, LinearGradient as SvgGradient, Path, Stop } from 'react-native-svg';
 
@@ -9,7 +8,6 @@ import { CheckinInfoPopup } from '@/components/training/checkin-info-popup';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { useTheme } from '@/hooks/use-theme';
-import { useMonthlyCheckinStore } from '@/store/monthly-checkin-store';
 import type { Goal } from '@/lib/mock/types';
 import { currentMonthIndex, currentMonthProgress, monthEndInfo } from '@/lib/planning/plan-progress';
 import type { DietPlan, TrainingPlan } from '@/lib/planning/types';
@@ -110,53 +108,6 @@ export function DietPlanSummaryCard({ plan, goal, onPress }: { plan: DietPlan; g
   );
 }
 
-/** At most this many months show at once; a longer plan scrolls sideways. */
-const MAX_VISIBLE_MONTHS = 6;
-const NODE = 30;
-const LINE = 4;
-
-type MonthState = 'done' | 'current' | 'locked';
-
-/** One month on the timeline: a tick once it has passed, a progress ring while it runs, a lock while it is still to come. */
-function MonthNode({ index, state, fraction }: { index: number; state: MonthState; fraction: number }) {
-  const theme = useTheme();
-  if (state === 'done') {
-    return (
-      <View style={[styles.node, { backgroundColor: theme.brandGreen }]} accessibilityLabel={`Mese ${index} completato`}>
-        <Icon name="check" size={16} color="#FFFFFF" />
-      </View>
-    );
-  }
-  if (state === 'locked') {
-    return (
-      <View style={[styles.node, { backgroundColor: theme.backgroundElement }]} accessibilityLabel={`Mese ${index} ancora da sbloccare`}>
-        <Icon name="lock" size={14} color={theme.textTertiary} />
-      </View>
-    );
-  }
-  const r = (NODE - 4) / 2;
-  const c = 2 * Math.PI * r;
-  return (
-    <View style={[styles.node, { backgroundColor: theme.background }]} accessibilityLabel={`Mese ${index} in corso, ${Math.round(fraction * 100)}%`}>
-      <Svg width={NODE} height={NODE} style={StyleSheet.absoluteFill}>
-        <Circle cx={NODE / 2} cy={NODE / 2} r={r} stroke={theme.backgroundSelected} strokeWidth={3} fill="none" />
-        <Circle
-          cx={NODE / 2}
-          cy={NODE / 2}
-          r={r}
-          stroke={theme.accent}
-          strokeWidth={3}
-          strokeLinecap="round"
-          fill="none"
-          strokeDasharray={`${Math.max(fraction, 0.04) * c} ${c}`}
-          transform={`rotate(-90 ${NODE / 2} ${NODE / 2})`}
-        />
-      </Svg>
-      <ThemedText style={[styles.nodeNumber, { color: theme.accent }]}>{index}</ThemedText>
-    </View>
-  );
-}
-
 function PlanSpecCard({
   tag,
   title,
@@ -183,41 +134,11 @@ function PlanSpecCard({
   accessibilityLabel: string;
 }) {
   const theme = useTheme();
-  const completedMonths = useMonthlyCheckinStore((s) => s.completedMonths);
   const [infoOpen, setInfoOpen] = useState(false);
-  const { fraction } = currentMonthProgress(plan);
 
-  // The month that just ended is the one whose check-in is due (same rule as the check-in screen).
-  const endedMonth = monthIndex - 1;
-  const checkinDue = endedMonth >= 1 && !completedMonths.includes(endedMonth);
-  const checkinMonth = checkinDue ? endedMonth : monthIndex;
+  // The check-in stays locked for the whole running month and opens with the next one; until then it only explains itself.
   const { end, daysLeft } = monthEndInfo(plan, monthIndex);
   const endDate = end.toLocaleDateString('it-IT', { day: 'numeric', month: 'long' });
-
-  const scrolls = durationMonths > MAX_VISIBLE_MONTHS;
-  const [timelineWidth, setTimelineWidth] = useState(0);
-  const timelineRef = useRef<ScrollView>(null);
-  const colWidth = scrolls ? timelineWidth / MAX_VISIBLE_MONTHS : undefined;
-  // A long plan opens with the current month in view, roughly centred.
-  useEffect(() => {
-    if (!scrolls || !colWidth) return;
-    timelineRef.current?.scrollTo({ x: Math.max(0, (monthIndex - 1 - (MAX_VISIBLE_MONTHS - 1) / 2) * colWidth), animated: false });
-  }, [scrolls, colWidth, monthIndex]);
-  const months = Array.from({ length: durationMonths }, (_, i) => {
-    const index = i + 1;
-    const state: MonthState = index < monthIndex ? 'done' : index === monthIndex ? 'current' : 'locked';
-    const lineFill = index < monthIndex ? 1 : index === monthIndex ? fraction : 0;
-    return (
-      <View key={index} style={[styles.monthCol, colWidth ? { flexGrow: 0, flexShrink: 0, flexBasis: colWidth, width: colWidth } : null]}>
-        {i < durationMonths - 1 ? (
-          <View style={[styles.line, { backgroundColor: theme.backgroundSelected }]}>
-            <View style={[styles.lineFill, { width: `${lineFill * 100}%`, backgroundColor: index < monthIndex ? theme.brandGreen : theme.accent }]} />
-          </View>
-        ) : null}
-        <MonthNode index={index} state={state} fraction={fraction} />
-      </View>
-    );
-  });
 
   const narrow = useWindowDimensions().width < 360;
   const ringFraction = Math.min(1, monthIndex / durationMonths);
@@ -282,31 +203,19 @@ function PlanSpecCard({
             </ThemedText>
           </View>
         </View>
-
-        <View onLayout={(e) => setTimelineWidth(e.nativeEvent.layout.width)}>
-          {scrolls ? (
-            <ScrollView ref={timelineRef} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.timeline}>
-              {months}
-            </ScrollView>
-          ) : (
-            <View style={styles.timeline}>{months}</View>
-          )}
-        </View>
       </Pressable>
 
       <Pressable
-        onPress={() => (checkinDue ? router.push('/monthly-checkin') : setInfoOpen(true))}
+        onPress={() => setInfoOpen(true)}
         accessibilityRole="button"
-        accessibilityLabel={checkinDue ? `Fai il check-in del Mese ${checkinMonth}` : `Check-in del Mese ${checkinMonth} bloccato`}
-        accessibilityState={{ disabled: !checkinDue }}
-        style={[styles.checkin, checkinDue ? { backgroundColor: theme.accent } : { backgroundColor: theme.backgroundElement }]}>
-        <Icon name={checkinDue ? 'checkCircle' : 'lock'} size={18} color={checkinDue ? theme.onAccent : theme.textTertiary} />
-        <ThemedText style={[styles.checkinText, { color: checkinDue ? theme.onAccent : theme.textSecondary }]}>
-          {checkinDue ? `Fai il check-in · Mese ${checkinMonth}` : `Check-in · Mese ${checkinMonth}`}
-        </ThemedText>
+        accessibilityLabel={`Check-in del Mese ${monthIndex} bloccato fino alla fine del mese`}
+        accessibilityState={{ disabled: true }}
+        style={[styles.checkin, { backgroundColor: theme.backgroundElement }]}>
+        <Icon name="lock" size={18} color={theme.textTertiary} />
+        <ThemedText style={[styles.checkinText, { color: theme.textSecondary }]}>Check-in · Mese {monthIndex}</ThemedText>
       </Pressable>
 
-      <CheckinInfoPopup visible={infoOpen} onClose={() => setInfoOpen(false)} monthIndex={checkinMonth} daysLeft={daysLeft} endDate={endDate} />
+      <CheckinInfoPopup visible={infoOpen} onClose={() => setInfoOpen(false)} monthIndex={monthIndex} daysLeft={daysLeft} endDate={endDate} />
     </FlatCard>
   );
 }
@@ -375,13 +284,6 @@ const styles = StyleSheet.create({
   dayText: { fontSize: 12 },
   ringMonth: { fontSize: 12, lineHeight: 15, fontWeight: '600' },
   ringValue: { fontSize: 21, lineHeight: 25, fontWeight: '700', letterSpacing: -0.5 },
-  timeline: { flexDirection: 'row' },
-  monthCol: { flex: 1, alignItems: 'center', gap: 4 },
-  // Joins this month's node to the next one's: from this column's centre to the next column's.
-  line: { position: 'absolute', top: NODE / 2 - LINE / 2, left: '50%', width: '100%', height: LINE, borderRadius: LINE / 2, overflow: 'hidden' },
-  lineFill: { height: '100%', borderRadius: LINE / 2 },
-  node: { width: NODE, height: NODE, borderRadius: NODE / 2, alignItems: 'center', justifyContent: 'center' },
-  nodeNumber: { fontSize: 13, lineHeight: 16, fontWeight: '700' },
   statValue: { fontSize: 14, lineHeight: 18, fontWeight: '700' },
   statLabel: { fontSize: 12, lineHeight: 16, fontWeight: '500' },
   checkin: { minHeight: 48, borderRadius: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 16 },
