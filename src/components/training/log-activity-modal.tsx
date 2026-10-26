@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { AppTextInput } from '@/components/ui/app-text';
 
@@ -7,6 +7,7 @@ import { GlassPopup } from '@/components/glass/glass-popup';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
 import { PrimaryButton } from '@/components/ui/primary-button';
+import { PopupScrollView } from '@/components/ui/swipe-dismiss';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { ACTIVITY_INTENSITY_OPTIONS, ACTIVITY_TYPE_OPTIONS, estimateActivityKcal, type ActivityIntensity, type ActivityType } from '@/lib/nutrition/activity-log';
@@ -88,7 +89,7 @@ function LogActivityForm({
         </Pressable>
         {isTypeMenuOpen ? (
           <View style={[styles.dropdownMenu, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
-            <ScrollView style={styles.dropdownScroll} nestedScrollEnabled>
+            <PopupScrollView style={styles.dropdownScroll} nestedScrollEnabled>
               {ACTIVITY_TYPE_OPTIONS.map((option) => {
                 const selected = activityType === option.value;
                 return (
@@ -106,7 +107,7 @@ function LogActivityForm({
                   </Pressable>
                 );
               })}
-            </ScrollView>
+            </PopupScrollView>
           </View>
         ) : null}
       </View>

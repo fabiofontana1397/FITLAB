@@ -81,7 +81,7 @@ export function MeasurementTrendModal({ zone, label, entries, color, onClose }: 
     <Modal visible={zone != null} transparent animationType={modalAnimation('fade')} onRequestClose={onClose}>
       <Pressable style={[styles.backdrop, { backgroundColor: theme.scrim }]} onPress={onClose}>
         <Pressable onPress={(e) => e.stopPropagation()}>
-          <GlassSurface level="overlay" radius={Radius.xlarge} style={styles.card}>
+          <GlassSurface swipeToDismiss={onClose} level="overlay" radius={Radius.xlarge} style={styles.card}>
             <View style={styles.header}>
               <ThemedText type="subtitle">Andamento: {label}</ThemedText>
               <Pressable onPress={onClose} hitSlop={11} accessibilityRole="button" accessibilityLabel="Chiudi">

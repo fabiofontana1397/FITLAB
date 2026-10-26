@@ -40,7 +40,7 @@ export function NewLoadModal({ visible, exerciseName, defaultReps, defaultWeight
   return (
     <Modal visible={visible} transparent animationType={modalAnimation('slide')} onRequestClose={onClose}>
       <View style={[styles.backdrop, { backgroundColor: theme.scrim }]}>
-        <GlassSurface
+        <GlassSurface swipeToDismiss={onClose}
           level="overlay"
           radius={Radius.xlarge}
           style={[styles.sheet, { paddingBottom: insets.bottom + Spacing.four }]}>

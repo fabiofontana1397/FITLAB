@@ -1,9 +1,10 @@
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ScrollDefaults } from '@/constants/scroll';
 import { GlassPopup } from '@/components/glass/glass-popup';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
+import { PopupScrollView } from '@/components/ui/swipe-dismiss';
 import { OnBrand } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { isoMondayIndex } from '@/lib/mock/dates';
@@ -63,7 +64,7 @@ export function MealPickerModal({ visible, date, onClose, onPick }: MealPickerMo
         </Pressable>
       </View>
 
-      <ScrollView {...ScrollDefaults} style={styles.scroll} contentContainerStyle={styles.list}>
+      <PopupScrollView {...ScrollDefaults} style={styles.scroll} contentContainerStyle={styles.list}>
         {slots.map((slot) => {
           const color = mealSlotColor(theme, slot.id);
           const logged = sumMacros(entriesForSlot(entries, slot.id, date));
@@ -91,7 +92,7 @@ export function MealPickerModal({ visible, date, onClose, onPick }: MealPickerMo
             </Pressable>
           );
         })}
-      </ScrollView>
+      </PopupScrollView>
     </GlassPopup>
   );
 }

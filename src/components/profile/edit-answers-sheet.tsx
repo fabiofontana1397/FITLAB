@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ScrollDefaults } from '@/constants/scroll';
@@ -8,6 +8,7 @@ import { QuestionBlock } from '@/components/onboarding/question-block';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
 import { PrimaryButton } from '@/components/ui/primary-button';
+import { PopupScrollView, SwipeDismiss } from '@/components/ui/swipe-dismiss';
 import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { buildUserContext } from '@/domain/user-context';
 import { useMotionPreference } from '@/hooks/use-motion-preference';
@@ -43,7 +44,8 @@ export function EditAnswersSheet({ group, answers, onClose, onSave }: EditAnswer
 
   return (
     <Modal visible={group != null} animationType={modalAnimation('slide')} presentationStyle="pageSheet" onRequestClose={onClose}>
-      <View style={[styles.root, { backgroundColor: theme.background, paddingTop: Platform.OS === 'android' ? insets.top : 0 }]}>
+      {/* iOS's own page sheet already swipes down; elsewhere this does it. */}
+      <SwipeDismiss onDismiss={Platform.OS === 'ios' ? undefined : onClose} style={[styles.root, { backgroundColor: theme.background, paddingTop: Platform.OS === 'android' ? insets.top : 0 }]}>
         <View style={[styles.header, { borderBottomColor: theme.border }]}>
           <Pressable onPress={onClose} hitSlop={8} accessibilityLabel="Chiudi">
             <GlassSurface level="card" radius={Radius.pill} style={styles.closeButton}>
@@ -61,7 +63,7 @@ export function EditAnswersSheet({ group, answers, onClose, onSave }: EditAnswer
           <View style={styles.closeButton} />
         </View>
 
-        <ScrollView {...ScrollDefaults} contentContainerStyle={styles.scrollContent}>
+        <PopupScrollView {...ScrollDefaults} contentContainerStyle={styles.scrollContent}>
           <View style={styles.inner}>
             <GlassSurface level="subtle" radius={Radius.large} style={styles.hint}>
               <Icon name="sparkle" size={16} color={theme.accent} />
@@ -92,7 +94,7 @@ export function EditAnswersSheet({ group, answers, onClose, onSave }: EditAnswer
               );
             })}
           </View>
-        </ScrollView>
+        </PopupScrollView>
 
         <View style={[styles.footer, { borderTopColor: theme.border, paddingBottom: insets.bottom + Spacing.three, backgroundColor: theme.background }]}>
           <View style={styles.footerInner}>
@@ -104,7 +106,7 @@ export function EditAnswersSheet({ group, answers, onClose, onSave }: EditAnswer
             <PrimaryButton label="Salva modifiche" disabled={!canSave} onPress={() => group && onSave(group, draft)} />
           </View>
         </View>
-      </View>
+      </SwipeDismiss>
     </Modal>
   );
 }

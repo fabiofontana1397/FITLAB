@@ -42,7 +42,7 @@ export function QuickWeightSheet({ visible, currentWeightKg, onClose, onSave }: 
       onRequestClose={onClose}
       onShow={() => setValue(String(currentWeightKg))}>
       <View style={[styles.backdrop, { backgroundColor: theme.scrim }]}>
-        <GlassSurface level="overlay" radius={Radius.xlarge} style={[styles.sheet, { paddingBottom: insets.bottom + Spacing.four }]}>
+        <GlassSurface swipeToDismiss={onClose} level="overlay" radius={Radius.xlarge} style={[styles.sheet, { paddingBottom: insets.bottom + Spacing.four }]}>
           <View style={styles.header}>
             <ThemedText type="subtitle">Peso di oggi</ThemedText>
             <Pressable onPress={onClose} hitSlop={11} accessibilityRole="button" accessibilityLabel="Chiudi">

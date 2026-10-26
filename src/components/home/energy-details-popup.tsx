@@ -1,9 +1,10 @@
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ScrollDefaults } from '@/constants/scroll';
 import { GlassPopup } from '@/components/glass/glass-popup';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
+import { PopupScrollView } from '@/components/ui/swipe-dismiss';
 import { useTheme } from '@/hooks/use-theme';
 import type { Goal } from '@/lib/mock/types';
 
@@ -172,7 +173,7 @@ export function EnergyDetailsPopup({
         </Pressable>
       </View>
 
-      <ScrollView {...ScrollDefaults} style={styles.scroll} contentContainerStyle={styles.content}>
+      <PopupScrollView {...ScrollDefaults} style={styles.scroll} contentContainerStyle={styles.content}>
         <Section title={`Il tuo obiettivo: ${copy.name}`}>
           <Body>{copy.why}</Body>
         </Section>
@@ -219,7 +220,7 @@ export function EnergyDetailsPopup({
         <ThemedText style={styles.note} themeColor="textTertiary">
           Le calorie bruciate sono una stima (metabolismo basale, attività quotidiana e allenamenti), non una misura.
         </ThemedText>
-      </ScrollView>
+      </PopupScrollView>
     </GlassPopup>
   );
 }
