@@ -35,8 +35,8 @@ export function WorkoutBadge({ size = 60 }: { size?: number }) {
   );
 }
 
-/** The button that starts the session: an orange play triangle in a black circle
- * with an orange rim. 56 pt, comfortably over the HIG's 44 pt touch target. */
+/** The button that starts the session: an orange play triangle in an orange ring,
+ * with no fill. 56 pt, comfortably over the HIG's 44 pt touch target. */
 const PLAY_SIZE = 56;
 
 export type WorkoutSummaryCardProps = {
@@ -107,7 +107,6 @@ const styles = StyleSheet.create({
   play: {
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#000000',
     borderWidth: 2,
     // The triangle's weight sits to its left: nudge it so it reads as centred.
     paddingLeft: 3,
