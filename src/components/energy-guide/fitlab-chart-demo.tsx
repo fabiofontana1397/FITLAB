@@ -1,7 +1,8 @@
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { useCountUp } from '@/components/energy-guide/use-play-value';
-import { OggiGauge } from '@/components/home/oggi-gauge';
+import { GAUGE_ASPECT, GAUGE_MAX_WIDTH, OggiGauge } from '@/components/home/oggi-gauge';
 import { ThemedText } from '@/components/themed-text';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { balanceSideLabel, readBalance } from '@/domain/calorie-balance';
@@ -15,18 +16,35 @@ export type FitLabChartDemoProps = {
   play: boolean;
   /** Short screens: the three Home columns are left out (the gauge says the same). */
   compact?: boolean;
+  /** How many px the page is taller than the room it has (0 when it fits): the gauge shrinks by what that takes, so every note stays in view. */
+  overflowPx?: number;
 };
 
+/** The gauge is never drawn smaller than this wide. */
+const MIN_GAUGE_WIDTH = 170;
+
 /**
- * Page 4: Home's own gauge (OggiGauge, unchanged) fed with the example's
+ * Last page: Home's own gauge (OggiGauge, unchanged) fed with the example's
  * numbers, under the same three columns Home shows, plus a running
  * explanation of what the arcs and the markers are saying right now.
  *
  * Until the page is first shown the gauge gets an empty day, so its own
  * glide — the one it does on Home — starts when it comes into view.
  */
-export function FitLabChartDemo({ day, play, compact = false }: FitLabChartDemoProps) {
+export function FitLabChartDemo({ day, play, compact = false, overflowPx = 0 }: FitLabChartDemoProps) {
   const theme = useTheme();
+  // Shrinking is cumulative: the overflow is what is left after the last shrink, so it settles in a pass or two.
+  const [available, setAvailable] = useState(0);
+  const [cap, setCap] = useState<number | null>(null);
+  const [seenOverflow, setSeenOverflow] = useState(0);
+  if (overflowPx !== seenOverflow) {
+    // Adjusting state while rendering, from a changed prop: the way React asks for it.
+    setSeenOverflow(overflowPx);
+    if (overflowPx > 1 && available > 0) {
+      const drawn = Math.min(cap ?? Infinity, available, GAUGE_MAX_WIDTH);
+      setCap(Math.max(MIN_GAUGE_WIDTH, drawn - overflowPx / GAUGE_ASPECT - 1));
+    }
+  }
   const burnedKcal = play ? day.burnedKcal : 0;
   const eatenKcal = play ? day.eatenKcal : 0;
   const reading = play ? day.reading : readBalance({ eatenKcal: 0, burnedKcal: 0, goalKcal: day.goalKcal, toleranceKcal: day.toleranceKcal });
@@ -35,6 +53,8 @@ export function FitLabChartDemo({ day, play, compact = false }: FitLabChartDemoP
   return (
     <View style={styles.root}>
       <View
+        style={cap != null ? { width: '100%', maxWidth: cap, alignSelf: 'center' } : undefined}
+        onLayout={(e) => setAvailable(e.nativeEvent.layout.width)}
         accessible
         accessibilityLabel={`Esempio del grafico di FitLab: bilancio ${formatSignedKcal(day.balanceKcal)} kcal, ${day.caption}. Obiettivo ${formatSignedKcal(day.goalKcal)} kcal. Consumate ${formatKcal(day.burnedKcal)}, assunte ${formatKcal(day.eatenKcal)} kcal.`}>
         <OggiGauge

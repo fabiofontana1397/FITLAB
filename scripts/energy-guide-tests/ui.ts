@@ -42,15 +42,7 @@ function openApp(browser: Parameters<typeof openHarnessApp>[0], base: string, re
 const pageEl = (page: Page, i: number) => page.getByTestId(`energy-guide-page-${i}`);
 const text = async (page: Page, i: number) => (await pageEl(page, i).innerText()).replace(/\s+/g, ' ');
 
-/** Where page 3's marker sits, in px from the equilibrium tick (+ = right, the deficit side). */
-async function markerOffset(page: Page): Promise<number> {
-  const centre = async (id: string) => {
-    const box = await page.getByTestId(id).boundingBox();
-    return box.x + box.width / 2;
-  };
-  return (await centre('energy-balance-marker')) - (await centre('energy-balance-zero'));
-}
-
+const PAGE_COUNT = 3;
 const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const HOME_LABEL = /^(Bilancio|Nessun pasto registrato)/;
 
@@ -87,7 +79,7 @@ async function test(name: string, fn: () => Promise<void>) {
 async function assertPagesFit(page: Page) {
   const pager = await page.getByTestId('energy-guide-pager').boundingBox();
   const problems: string[] = [];
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < PAGE_COUNT; i++) {
     await swipeTo(page, i);
     await pause(900);
     const fit = await pageEl(page, i).evaluate((el: HTMLElement) => ({ content: el.scrollHeight, shown: el.parentElement!.clientHeight }));
@@ -96,6 +88,15 @@ async function assertPagesFit(page: Page) {
     if (box.y + box.height > pager.y + pager.height + 1) problems.push(`page ${i + 1} ends below the pager`);
   }
   assert.deepEqual(problems, []);
+  // On the last page both notes are read in full, inside the room the pager has.
+  await swipeTo(page, PAGE_COUNT - 1);
+  await pause(900);
+  const bottoms = [] as string[];
+  for (const note of [/Arancione: consumate/, /Il triangolo/]) {
+    const box = await pageEl(page, PAGE_COUNT - 1).getByText(note).boundingBox();
+    if (!box || box.y + box.height > pager.y + pager.height + 1) bottoms.push(`${note} ends below the pager`);
+  }
+  assert.deepEqual(bottoms, []);
   await swipeTo(page, 0);
 }
 
@@ -158,24 +159,16 @@ async function main() {
       await assertPagesFit(page);
     });
 
-    await test('3. page 3 reads Deficit with the marker right of centre', async () => {
+    await test('5. swiping forward and back keeps every page in sync', async () => {
       await swipeTo(page, 2);
       await pause(1300);
-      assert.match(await text(page, 2), /Deficit -281 kcal/);
-      assert.ok((await markerOffset(page)) > 40, 'marker right of centre');
-      if (shots) await page.screenshot({ path: join(shots, 'page3.png') });
-    });
-
-    await test('5. swiping forward and back keeps every page in sync', async () => {
-      await swipeTo(page, 3);
-      await pause(1300);
-      const p4 = await text(page, 3);
-      assert.match(p4, /-281 \/-300 kcal equilibrio|-281 \/-300 kcal deficit/);
-      assert.match(p4, /2\.681 kcal/);
-      assert.match(p4, /2\.400 kcal/);
-      assert.match(p4, /Equilibrio · 0 kcal/);
-      assert.match(p4, /Deficit -600 kcal/);
-      assert.match(p4, /Surplus \+600 kcal/);
+      const p3 = await text(page, 2);
+      assert.match(p3, /-281 \/-300 kcal equilibrio|-281 \/-300 kcal deficit/);
+      assert.match(p3, /2\.681 kcal/);
+      assert.match(p3, /2\.400 kcal/);
+      assert.match(p3, /Equilibrio · 0 kcal/);
+      assert.match(p3, /Deficit -600 kcal/);
+      assert.match(p3, /Surplus \+600 kcal/);
       if (shots) await page.screenshot({ path: join(shots, 'page4.png') });
       await swipeTo(page, 1);
       await pause(1300);
@@ -197,7 +190,7 @@ async function main() {
       await openGuide(page, 'gauge');
       await pause(1400);
       const t = await text(page, 0);
-      assert.match(t, /1 di 4/i);
+      assert.match(t, /1 di 3/i);
       assert.match(t, /2\.400 kcal/);
       assert.equal(await page.getByText('Indietro', { exact: true }).count(), 0, 'back on the first page');
       await page.getByRole('button', { name: 'Chiudi' }).first().click();
@@ -215,16 +208,19 @@ async function main() {
 
     await page.context().close();
 
-    const small = await openApp(browser, server.url, 'no-preference', { width: 375, height: 667 });
-    await test('on a small phone (375×667) every page still fits without scrolling', async () => {
-      await small.getByRole('button', { name: 'Dettagli: come leggere il grafico' }).waitFor({ timeout: 30000 });
-      await openGuide(small);
-      await assertPagesFit(small);
-      await swipeTo(small, 3);
-      await pause(1300);
-      if (shots) await small.screenshot({ path: join(shots, 'small-page4.png') });
-    });
-    await small.context().close();
+    // Tall phones lose room to their insets (not simulated here), so shorter windows stand in for them.
+    for (const size of [{ width: 375, height: 667 }, { width: 390, height: 700 }]) {
+      const small = await openApp(browser, server.url, 'no-preference', size);
+      await test(`on a ${size.width}×${size.height} phone every page fits without scrolling, notes included`, async () => {
+        await small.getByRole('button', { name: 'Dettagli: come leggere il grafico' }).waitFor({ timeout: 30000 });
+        await openGuide(small);
+        await assertPagesFit(small);
+        await swipeTo(small, PAGE_COUNT - 1);
+        await pause(1300);
+        if (shots) await small.screenshot({ path: join(shots, `small-${size.height}.png`) });
+      });
+      await small.context().close();
+    }
 
     const still = await openApp(browser, server.url, 'reduce');
     await test('7. with reduced motion every chart is complete as soon as it is shown', async () => {
@@ -238,11 +234,8 @@ async function main() {
       await still.getByText('Avanti', { exact: true }).click();
       await still.getByText('Avanti', { exact: true }).click();
       await pause(60);
-      assert.match(await text(still, 2), /Deficit -281 kcal/);
-      await still.getByText('Avanti', { exact: true }).click();
-      await pause(60);
-      assert.match(await text(still, 3), /-281 \/-300 kcal deficit/);
-      if (shots) await pageEl(still, 3).screenshot({ path: join(shots, 'reduced-page4.png') });
+      assert.match(await text(still, 2), /-281 \/-300 kcal deficit/);
+      if (shots) await pageEl(still, 2).screenshot({ path: join(shots, 'reduced-page3.png') });
     });
   } finally {
     await browser.close();
