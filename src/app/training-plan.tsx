@@ -4,18 +4,15 @@ import { Alert, Image, Pressable, StyleSheet, View } from 'react-native';
 
 import { GlassSurface } from '@/components/glass/glass-surface';
 import { ExerciseInfoModal } from '@/components/training/exercise-info-modal';
-import { PlanSummaryCard } from '@/components/training/plan-summary-card';
 import { PlanMonthStepper } from '@/components/training/plan-month-stepper';
-import { PlanOverviewPopup } from '@/components/training/plan-overview-popup';
-import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
+import { SheetScreen } from '@/components/ui/sheet-screen';
 import { PrimaryButton } from '@/components/ui/primary-button';
 import { SegmentedControl } from '@/components/ui/segmented-control';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { getExerciseMedia } from '@/lib/exercise-media/exercise-media';
-import { goBackOr } from '@/lib/navigation/go-back';
 import { WEEKDAY_LABELS } from '@/lib/planning/exercise-library';
 import { exportTrainingPlanPdf, type TrainingPlanPdfRow } from '@/lib/planning/pdf-export';
 import { currentMonthIndex, currentMonthProgress, monthProgress } from '@/lib/planning/plan-progress';
@@ -46,7 +43,6 @@ export default function TrainingPlanScreen() {
   const currentUser = useUserStore();
   const progressSets = useTrainingProgressStore((s) => s.sets);
   const [exporting, setExporting] = useState(false);
-  const [overviewOpen, setOverviewOpen] = useState(false);
 
   const completedCheckinMonths = useMonthlyCheckinStore((s) => s.completedMonths);
   const currentMonthIdx = plan ? currentMonthIndex(plan) : 1;
@@ -121,18 +117,7 @@ export default function TrainingPlanScreen() {
   };
 
   return (
-    <ScreenScroll>
-      <View style={styles.header}>
-        <ThemedText style={styles.pageTitle}>Piano di allenamento</ThemedText>
-        <Pressable onPress={() => goBackOr('/')} hitSlop={8} accessibilityLabel="Chiudi">
-          <GlassSurface level="card" radius={Radius.pill} style={styles.closeButton}>
-            <View style={styles.closeInner}>
-              <Icon name="close" size={18} color={theme.text} />
-            </View>
-          </GlassSurface>
-        </Pressable>
-      </View>
-
+    <SheetScreen title="Piano di allenamento">
       {!plan ? (
         <GlassSurface level="card" radius={Radius.large} style={{ padding: Spacing.four, gap: Spacing.two }}>
           <ThemedText style={styles.cardTitle}>Nessun programma generato</ThemedText>
@@ -154,8 +139,6 @@ export default function TrainingPlanScreen() {
               </ThemedText>
             </GlassSurface>
           ) : null}
-
-          <PlanSummaryCard plan={plan} goal={currentUser.goal} onPress={() => setOverviewOpen(true)} />
 
           <PlanMonthStepper
             months={plan.months}
@@ -243,17 +226,9 @@ export default function TrainingPlanScreen() {
               ) : null}
             </>
           )}
-
-          <PlanOverviewPopup
-            visible={overviewOpen}
-            onClose={() => setOverviewOpen(false)}
-            plan={plan}
-            goal={currentUser.goal}
-            currentMonth={currentMonthIdx}
-          />
         </>
       )}
-    </ScreenScroll>
+    </SheetScreen>
   );
 }
 

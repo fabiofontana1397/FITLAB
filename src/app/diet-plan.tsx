@@ -3,13 +3,12 @@ import { useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { GlassSurface } from '@/components/glass/glass-surface';
-import { DIET_PHASE_SHORT_LABEL, DietOverviewPopup } from '@/components/nutrition/diet-overview-popup';
+import { DIET_PHASE_SHORT_LABEL } from '@/components/nutrition/diet-overview-popup';
 import { DishPhoto, DishPlaceholder } from '@/components/nutrition/dish-photo';
-import { DietPlanSummaryCard } from '@/components/training/plan-summary-card';
 import { PlanMonthStepper } from '@/components/training/plan-month-stepper';
-import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
+import { SheetScreen } from '@/components/ui/sheet-screen';
 import { InsightCard } from '@/components/ui/insight-card';
 import { PrimaryButton } from '@/components/ui/primary-button';
 import { SegmentedControl } from '@/components/ui/segmented-control';
@@ -18,7 +17,6 @@ import { Radius, Spacing } from '@/constants/theme';
 import { useEnsurePlan } from '@/hooks/use-ensure-plan';
 import { useTheme } from '@/hooks/use-theme';
 import { useUserContext } from '@/hooks/use-user-context';
-import { goBackOr } from '@/lib/navigation/go-back';
 import { WEEKDAY_LABELS } from '@/lib/planning/exercise-library';
 import { dishImage } from '@/lib/planning/fitlab/dish-images';
 import { exportDietPlanPdf } from '@/lib/planning/pdf-export';
@@ -41,7 +39,6 @@ export default function DietPlanScreen() {
   const plan = isValidDietPlan(rawPlan) ? rawPlan : null;
   const currentUser = useUserStore();
   const [exporting, setExporting] = useState(false);
-  const [overviewOpen, setOverviewOpen] = useState(false);
 
   // Opened straight from the Nutrition header, an outdated plan must be rebuilt here too, not only on the tab.
   useEnsurePlan('diet');
@@ -91,18 +88,7 @@ export default function DietPlanScreen() {
   };
 
   return (
-    <ScreenScroll>
-      <View style={styles.header}>
-        <ThemedText style={styles.pageTitle}>Piano alimentare</ThemedText>
-        <Pressable onPress={() => goBackOr('/')} hitSlop={8} accessibilityLabel="Chiudi">
-          <GlassSurface level="card" radius={Radius.pill} style={styles.closeButton}>
-            <View style={styles.closeInner}>
-              <Icon name="close" size={18} color={theme.text} />
-            </View>
-          </GlassSurface>
-        </Pressable>
-      </View>
-
+    <SheetScreen title="Piano alimentare">
       {!plan ? (
         <GlassSurface level="card" radius={Radius.large} style={{ padding: Spacing.four, gap: Spacing.two }}>
           {trainingOnly ? (
@@ -130,8 +116,6 @@ export default function DietPlanScreen() {
         </GlassSurface>
       ) : (
         <>
-          <DietPlanSummaryCard plan={plan} goal={currentUser.goal} onPress={() => setOverviewOpen(true)} />
-
           <PlanMonthStepper
             months={plan.months}
             currentMonth={currentMonthIdx}
@@ -229,17 +213,9 @@ export default function DietPlanScreen() {
               </View>
             </>
           ) : null}
-
-          <DietOverviewPopup
-            visible={overviewOpen}
-            onClose={() => setOverviewOpen(false)}
-            plan={plan}
-            goal={currentUser.goal}
-            currentMonth={currentMonthIdx}
-          />
         </>
       )}
-    </ScreenScroll>
+    </SheetScreen>
   );
 }
 

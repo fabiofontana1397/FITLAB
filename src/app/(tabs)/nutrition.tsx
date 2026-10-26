@@ -29,7 +29,7 @@ import {
 } from '@/store/nutrition-store';
 import { usePlanStore } from '@/store/plan-store';
 import { useUserStore } from '@/store/user-store';
-import { hapticSelection, hapticToggle } from '@/lib/haptics';
+import { hapticSelection } from '@/lib/haptics';
 
 const SCREEN_PADDING = Layout.screenGutter;
 const CARD_RADIUS = Radius.large;
@@ -72,6 +72,7 @@ export default function NutritionScreen() {
   const seededDates = useNutritionStore((s) => s.seededDates);
   const seedDayFromPlan = useNutritionStore((s) => s.seedDayFromPlan);
   const unseedDay = useNutritionStore((s) => s.unseedDay);
+  const removeEntry = useNutritionStore((s) => s.removeEntry);
   const dietPlan = usePlanStore((s) => s.dietPlan);
   const [activeSlot, setActiveSlot] = useState<MealSlot | null>(null);
   const [editingEntry, setEditingEntry] = useState<MealFoodEntry | null>(null);
@@ -189,7 +190,6 @@ export default function NutritionScreen() {
           <IosSwitch
             value={isFollowingPlan}
             onValueChange={(on) => {
-              hapticToggle(on);
               if (on) seedDayFromPlan(selectedDate, planDayForSelectedDate.meals);
               else unseedDay(selectedDate);
             }}
@@ -209,7 +209,6 @@ export default function NutritionScreen() {
               color={mealSlotColor(theme, meta.id)}
               entries={slotEntries}
               totals={sumMacros(slotEntries)}
-              dayTargetKcal={calorieTarget}
               expanded={!foldedSlots.includes(meta.id)}
               onToggle={() => {
                 hapticSelection();
@@ -218,6 +217,9 @@ export default function NutritionScreen() {
               onEditEntry={(entry) => {
                 setEditingEntry(entry);
                 setActiveSlot(meta.id);
+              }}
+              onDeleteEntry={(entry) => {
+                removeEntry(entry.id);
               }}
               onAddFood={() => {
                 setEditingEntry(null);

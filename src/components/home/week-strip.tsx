@@ -3,6 +3,7 @@ import Svg, { Circle, Path } from 'react-native-svg';
 
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
+import { hapticSelection } from '@/lib/haptics';
 
 export type WeekStripDay = {
   date: string;
@@ -61,7 +62,10 @@ export function WeekStrip({ days, selectedDate, onSelect }: { days: WeekStripDay
         return (
           <Pressable
             key={d.date}
-            onPress={() => onSelect(d.date)}
+            onPress={() => {
+              if (!selected) hapticSelection();
+              onSelect(d.date);
+            }}
             accessibilityRole="tab"
             accessibilityState={{ selected }}
             accessibilityLabel={`${d.label} ${d.dayOfMonth}${d.isToday ? ', oggi' : ''}`}

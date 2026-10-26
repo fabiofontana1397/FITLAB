@@ -16,10 +16,8 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { WeekStrip, type WeekStripDay } from '@/components/home/week-strip';
 import { TabHeader } from '@/components/tab-header';
 import { LogActivityModal } from '@/components/training/log-activity-modal';
-import { PlanJourneyHero } from '@/components/training/plan-journey-hero';
-import { PlanOverviewPopup } from '@/components/training/plan-overview-popup';
+import { DietPlanSummaryCard, PlanSummaryCard } from '@/components/training/plan-summary-card';
 import { InfoPopover } from '@/components/ui/info-popover';
-import { DietOverviewPopup } from '@/components/nutrition/diet-overview-popup';
 import { FoodSearchModal } from '@/components/nutrition/food-search-modal';
 import { MealPickerModal } from '@/components/nutrition/meal-picker-modal';
 import { useEnsurePlan } from '@/hooks/use-ensure-plan';
@@ -39,6 +37,7 @@ import { useNutritionStore, sumMacros, type MealSlot } from '@/store/nutrition-s
 import { usePlanStore } from '@/store/plan-store';
 import { isExerciseCompleted, useTrainingProgressStore } from '@/store/training-progress-store';
 import { useUserStore } from '@/store/user-store';
+import { hapticTap } from '@/lib/haptics';
 
 const SCREEN_PADDING = Layout.screenGutter;
 const CARD_RADIUS = Radius.large;
@@ -72,7 +71,6 @@ export default function HomeScreen() {
   const [logActivityOpen, setLogActivityOpen] = useState(false);
   const [registerMealOpen, setRegisterMealOpen] = useState(false);
   const [mealSlot, setMealSlot] = useState<MealSlot | null>(null);
-  const [overview, setOverview] = useState<'training' | 'diet' | null>(null);
   // Home shows both plan cards, so it builds a missing or outdated plan itself instead of waiting for the
   // person to open Allenamento or Nutrizione. Meanwhile any diet plan the overview can render keeps its card.
   useEnsurePlan('training');
@@ -92,7 +90,10 @@ export default function HomeScreen() {
   const [detailsFocus, setDetailsFocus] = useState<'day' | 'week' | null>(null);
   const [viewDate, setViewDate] = useState(today);
   // The calorie card (gauge and its "Dettagli") opens the chart guide: a sheet like Profilo and Notifiche.
-  const openGuide = () => router.push('/energy-guide' as Href);
+  const openGuide = () => {
+    hapticTap();
+    router.push('/energy-guide' as Href);
+  };
   // adjustsFontSizeToFit does nothing on the web, so the three kcal values step down on the narrowest phones.
   const narrow = useWindowDimensions().width < 360;
 
@@ -130,6 +131,8 @@ export default function HomeScreen() {
   const burnedKcal = energy.total;
   const eatenKcal = todaysTotals.kcal;
   const balanceKcal = calorieBalance(eatenKcal, burnedKcal);
+  // A day that hasn't happened yet has nothing to read: the gauge stays grey and every figure empty.
+  const isFutureDay = viewDate > today;
 
   // Current calendar week (Mon–Sun) from the shared pipeline, so Home,
   // Progressi and Nutrizione can never disagree on the numbers.
@@ -200,10 +203,11 @@ export default function HomeScreen() {
   }));
   const dailyGoalKcal = weeklyGoalKcal / 7;
   // The gauge's semi-ring reads today's balance against the same daily goal the "Obiettivo" column shows.
-  const balanceReading = readBalance({ eatenKcal, burnedKcal, goalKcal: dailyGoalKcal });
+  const balanceReading = readBalance({ eatenKcal: isFutureDay ? 0 : eatenKcal, burnedKcal: isFutureDay ? 0 : burnedKcal, goalKcal: dailyGoalKcal });
   const balanceCaption = captionFor(balanceReading);
-  const balanceA11y =
-    balanceReading.status === 'missing'
+  const balanceA11y = isFutureDay
+    ? 'Giorno non ancora iniziato: nessun dato.'
+    : balanceReading.status === 'missing'
       ? `Nessun pasto registrato. Bruciate ${formatKcal(burnedKcal)} kcal. Obiettivo ${formatSignedKcal(dailyGoalKcal)} kcal.`
       : `Bilancio ${formatSignedKcal(balanceKcal)} kcal, ${balanceCaption}. Obiettivo ${formatSignedKcal(dailyGoalKcal)} kcal. Bruciate ${formatKcal(burnedKcal)}, assunte ${formatKcal(eatenKcal)} kcal.`;
   const weekPill = weeklyProgress >= 1 ? 'Obiettivo raggiunto! 🎯' : weeklyProgress >= 0.6 ? 'Ci sei quasi!' : weeklyProgress >= 0.25 ? 'Stai andando bene' : 'Ogni giorno conta';
@@ -227,46 +231,47 @@ export default function HomeScreen() {
 
         <Pressable onPress={openGuide} style={styles.gaugeWrap} accessibilityRole="button" accessibilityLabel={balanceA11y} accessibilityHint="Apre la spiegazione del grafico">
           <OggiGauge
-            burnedKcal={burnedKcal}
-            eatenKcal={eatenKcal}
+            burnedKcal={isFutureDay ? 0 : burnedKcal}
+            eatenKcal={isFutureDay ? 0 : eatenKcal}
             burnedColor={theme.accent}
             eatenColor={theme.brandGreen}
             reading={balanceReading}
-            value={formatSignedKcal(balanceKcal)}
-            goalLabel={`/${formatSignedKcal(dailyGoalKcal)} kcal`}
-            caption={balanceSideLabel(balanceReading)}
+            inactive={isFutureDay}
+            value={isFutureDay ? '—' : formatSignedKcal(balanceKcal)}
+            goalLabel={isFutureDay ? '' : `/${formatSignedKcal(dailyGoalKcal)} kcal`}
+            caption={isFutureDay ? 'nessun dato' : balanceSideLabel(balanceReading)}
           />
         </Pressable>
 
         <View style={styles.oggiRow}>
           <Pressable onPress={() => setInfoTopic('burned')} style={styles.sideCol}>
             <View style={styles.sideIcon}>
-              <Icon name="flameLine" size={22} color={theme.accent} />
+              <Icon name="flameLine" size={22} color={isFutureDay ? theme.textTertiary : theme.accent} />
             </View>
             <ThemedText style={styles.sideLabel} themeColor="textTertiary">
               Bruciate
             </ThemedText>
-            <ThemedText style={[styles.sideValue, narrow && styles.sideValueNarrow]} numberOfLines={1} adjustsFontSizeToFit>{formatKcal(burnedKcal)} kcal</ThemedText>
+            <ThemedText style={[styles.sideValue, narrow && styles.sideValueNarrow]} numberOfLines={1} adjustsFontSizeToFit>{isFutureDay ? '—' : `${formatKcal(burnedKcal)} kcal`}</ThemedText>
           </Pressable>
           <View style={[styles.sideDivider, { backgroundColor: theme.border }]} />
           <Pressable onPress={() => setDetailsFocus('day')} style={styles.sideCol}>
             <View style={styles.sideIcon}>
-              <Icon name="crosshair" size={22} color={theme.textSecondary} />
+              <Icon name="crosshair" size={22} color={isFutureDay ? theme.textTertiary : theme.textSecondary} />
             </View>
             <ThemedText style={styles.sideLabel} themeColor="textTertiary">
               Obiettivo
             </ThemedText>
-            <ThemedText style={[styles.sideValue, narrow && styles.sideValueNarrow]} numberOfLines={1} adjustsFontSizeToFit>{formatSignedKcal(dailyGoalKcal)} kcal</ThemedText>
+            <ThemedText style={[styles.sideValue, narrow && styles.sideValueNarrow]} numberOfLines={1} adjustsFontSizeToFit>{isFutureDay ? '—' : `${formatSignedKcal(dailyGoalKcal)} kcal`}</ThemedText>
           </Pressable>
           <View style={[styles.sideDivider, { backgroundColor: theme.border }]} />
           <Pressable onPress={() => setInfoTopic('eaten')} style={styles.sideCol}>
             <View style={styles.sideIcon}>
-              <Icon name="utensils" size={22} color={theme.brandGreen} />
+              <Icon name="utensils" size={22} color={isFutureDay ? theme.textTertiary : theme.brandGreen} />
             </View>
             <ThemedText style={styles.sideLabel} themeColor="textTertiary">
               Assunte
             </ThemedText>
-            <ThemedText style={[styles.sideValue, narrow && styles.sideValueNarrow]} numberOfLines={1} adjustsFontSizeToFit>{formatKcal(eatenKcal)} kcal</ThemedText>
+            <ThemedText style={[styles.sideValue, narrow && styles.sideValueNarrow]} numberOfLines={1} adjustsFontSizeToFit>{isFutureDay ? '—' : `${formatKcal(eatenKcal)} kcal`}</ThemedText>
           </Pressable>
         </View>
       </FlatCard>
@@ -290,26 +295,11 @@ export default function HomeScreen() {
         />
       </View>
 
-      {/* The two plans, moved here from Allenamento and Nutrizione so Home is where a plan is explored from. */}
+      {/* The two programs' spec cards: each opens its plan (from the months down) in a sheet. */}
       {trainingPlan || shownDietPlan ? (
         <View style={styles.journeys}>
-          {trainingPlan ? (
-            <PlanJourneyHero
-              totalMonths={trainingPlan.durationMonths}
-              goal={currentUser.goal}
-              onPress={() => setOverview('training')}
-              action={{ label: 'Esplora piano di allenamento', icon: 'calendar', onPress: () => router.push('/training-plan') }}
-            />
-          ) : null}
-          {shownDietPlan ? (
-            <PlanJourneyHero
-              kind="diet"
-              totalMonths={shownDietPlan.durationMonths}
-              goal={currentUser.goal}
-              onPress={() => setOverview('diet')}
-              action={{ label: 'Esplora piano alimentare', icon: 'calendar', onPress: () => router.push('/diet-plan') }}
-            />
-          ) : null}
+          {trainingPlan ? <PlanSummaryCard plan={trainingPlan} goal={currentUser.goal} onPress={() => router.push('/training-plan')} /> : null}
+          {shownDietPlan ? <DietPlanSummaryCard plan={shownDietPlan} goal={currentUser.goal} onPress={() => router.push('/diet-plan')} /> : null}
         </View>
       ) : null}
 
@@ -429,25 +419,6 @@ export default function HomeScreen() {
         onSaved={() => afterModal(() => router.navigate('/nutrition'))}
       />
 
-      {trainingPlan ? (
-        <PlanOverviewPopup
-          visible={overview === 'training'}
-          onClose={() => setOverview(null)}
-          plan={trainingPlan}
-          goal={currentUser.goal}
-          currentMonth={currentMonthIndex(trainingPlan)}
-        />
-      ) : null}
-      {shownDietPlan ? (
-        <DietOverviewPopup
-          visible={overview === 'diet'}
-          onClose={() => setOverview(null)}
-          plan={shownDietPlan}
-          goal={currentUser.goal}
-          currentMonth={currentMonthIndex(shownDietPlan)}
-        />
-      ) : null}
-
       <EnergyDetailsPopup
         visible={detailsFocus != null}
         focus={detailsFocus ?? 'day'}
@@ -455,9 +426,9 @@ export default function HomeScreen() {
         goal={currentUser.goal}
         planPhaseTitle={dietMonth?.title}
         calorieTarget={calorieTarget}
-        burnedKcal={burnedKcal}
-        eatenKcal={eatenKcal}
-        balanceKcal={balanceKcal}
+        burnedKcal={isFutureDay ? 0 : burnedKcal}
+        eatenKcal={isFutureDay ? 0 : eatenKcal}
+        balanceKcal={isFutureDay ? 0 : balanceKcal}
         weeklyGoalKcal={weeklyGoalKcal}
         weeklySoFarKcal={weeklySoFarKcal}
         weeklyProgress={weeklyProgress}

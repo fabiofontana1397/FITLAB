@@ -30,6 +30,7 @@ import { SpringSheet, TimingExit } from '@/constants/motion';
 import { Layout, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
+import { hapticSelection, hapticSoft } from '@/lib/haptics';
 import { goBackOr } from '@/lib/navigation/go-back';
 
 /** Strip of the screen underneath left visible above the sheet, like an iOS
@@ -60,6 +61,8 @@ export type SheetScreenProps = {
    * refresh while the sheet is open, starts with an empty history stack. */
   fallbackHref?: Href;
   contentContainerStyle?: StyleProp<ViewStyle>;
+  /** Called once the sheet has slid away, instead of going back in the router: for a sheet shown inside a Modal rather than as a route. */
+  onClose?: () => void;
   /** False for a sheet whose content fits on one screen: it is laid out in the available height and does not scroll. */
   scroll?: boolean;
 };
@@ -76,7 +79,7 @@ export type SheetScreenProps = {
  * same way on iOS, Android and web rather than leaving the sheet to each
  * platform's own modal presentation.
  */
-export function SheetScreen({ title, eyebrow, leading, children, fallbackHref = '/', contentContainerStyle, scroll = true }: SheetScreenProps) {
+export function SheetScreen({ title, eyebrow, leading, children, fallbackHref = '/', contentContainerStyle, onClose, scroll = true }: SheetScreenProps) {
   const theme = useTheme();
   const dark = useColorScheme() === 'dark';
   const insets = useSafeAreaInsets();
@@ -87,6 +90,14 @@ export function SheetScreen({ title, eyebrow, leading, children, fallbackHref = 
   // dims and undims the page behind along with the sheet.
   const translateY = useSharedValue(height);
   const [closing, setClosing] = useState(false);
+  const pastThreshold = useSharedValue(false);
+  const setPast = useCallback(
+    (value: boolean) => {
+      // eslint-disable-next-line react-hooks/immutability
+      pastThreshold.value = value;
+    },
+    [pastThreshold]
+  );
 
   // Shared values are stable handles meant to be reassigned via `.value`
   // from effects, gestures and callbacks alike — that's the reanimated
@@ -101,19 +112,26 @@ export function SheetScreen({ title, eyebrow, leading, children, fallbackHref = 
 
   useEffect(() => {
     moveTo(withSpring(0, SpringSheet));
+    hapticSoft();
   }, [moveTo]);
+
+  const finish = useCallback(() => {
+    if (onClose) onClose();
+    else goBackOr(fallbackHref);
+  }, [onClose, fallbackHref]);
 
   const close = useCallback(() => {
     // Guard against a second close (button tapped mid-drag, back pressed
     // twice…) restarting the animation and popping two screens.
     if (closing) return;
     setClosing(true);
+    hapticSoft();
     moveTo(
       withTiming(height, TimingExit, (finished) => {
-        if (finished) runOnJS(goBackOr)(fallbackHref);
+        if (finished) runOnJS(finish)();
       })
     );
-  }, [closing, fallbackHref, height, moveTo]);
+  }, [closing, finish, height, moveTo]);
 
   useEffect(() => {
     if (Platform.OS !== 'android') return;
@@ -133,16 +151,24 @@ export function SheetScreen({ title, eyebrow, leading, children, fallbackHref = 
         onPanResponderMove: (_, gesture) => {
           // Downwards only: dragging up would lift the sheet off the bottom edge.
           moveTo(Math.max(0, gesture.dy));
+          // A tick the moment the drag has gone far enough to dismiss — and another if it comes back.
+          const past = gesture.dy > DRAG_CLOSE_DISTANCE;
+          if (past !== pastThreshold.get()) {
+            setPast(past);
+            hapticSelection();
+          }
         },
         onPanResponderRelease: (_, gesture) => {
+          setPast(false);
           if (gesture.dy > DRAG_CLOSE_DISTANCE || gesture.vy > DRAG_CLOSE_VELOCITY) close();
           else moveTo(withSpring(0, SpringSheet));
         },
         onPanResponderTerminate: () => {
+          setPast(false);
           moveTo(withSpring(0, SpringSheet));
         },
       }),
-    [close, moveTo]
+    [close, moveTo, pastThreshold, setPast]
   );
 
   const backdropStyle = useAnimatedStyle(() => ({

@@ -6,6 +6,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { hapticSelection } from '@/lib/haptics';
 import { isToday, mondayIndex } from '@/lib/mock/dates';
 
 const WEEKDAY_LETTERS = ['L', 'M', 'M', 'G', 'V', 'S', 'D'];
@@ -92,11 +93,11 @@ export function DayCalendarModal({ visible, selectedDate, isDayMarked, onSelectD
           </View>
 
           <View style={styles.monthNavRow}>
-            <Pressable onPress={() => goToAdjacentMonth(-1)} hitSlop={8} style={styles.navButton}>
+            <Pressable onPress={() => (hapticSelection(), goToAdjacentMonth(-1))} hitSlop={8} style={styles.navButton}>
               <Icon name="arrowBack" size={18} color={theme.textSecondary} />
             </Pressable>
             <ThemedText type="smallBold">{monthLabel(viewedYear, viewedMonth0)}</ThemedText>
-            <Pressable onPress={() => goToAdjacentMonth(1)} hitSlop={8} style={styles.navButton}>
+            <Pressable onPress={() => (hapticSelection(), goToAdjacentMonth(1))} hitSlop={8} style={styles.navButton}>
               <Icon name="chevronRight" size={18} color={theme.textSecondary} />
             </Pressable>
           </View>
@@ -121,6 +122,7 @@ export function DayCalendarModal({ visible, selectedDate, isDayMarked, onSelectD
                 <View key={date} style={styles.cell}>
                   <Pressable
                     onPress={() => {
+                      hapticSelection();
                       onSelectDate(date);
                       onClose();
                     }}

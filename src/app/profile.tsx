@@ -29,6 +29,7 @@ import { useBodyStore } from '@/store/body-store';
 import { useOnboardingStore, type AnswerValue } from '@/store/onboarding-store';
 import { usePlanStore } from '@/store/plan-store';
 import { useUserStore } from '@/store/user-store';
+import { hapticWarning } from '@/lib/haptics';
 
 const GOAL_LABEL: Record<string, string> = {
   loseFat: 'Perdere grasso',
@@ -87,6 +88,7 @@ export default function ProfileScreen() {
   };
 
   const handleLogout = async () => {
+    hapticWarning();
     await logout();
     router.replace('/welcome');
   };

@@ -25,6 +25,7 @@ import {
   suggestedNextLoadForExercise,
   useTrainingProgressStore,
 } from '@/store/training-progress-store';
+import { hapticHeavy, hapticPress, hapticSelection, hapticTap } from '@/lib/haptics';
 
 // Always dark, like a workout app on the gym floor: black canvas, graphite
 // tiles, neon green for done/go, orange for the countdown. The palette itself
@@ -161,6 +162,7 @@ function SessionView({ onClose, title, exercises, date }: Omit<WorkoutSessionMod
   const completeSet = () => {
     if (!timed && load != null && load > 0) logSet(exercise.id, exercise.name, topReps(exercise.reps), load, date);
     Vibration.vibrate(60);
+    hapticPress();
     const doneNow = setsDone + 1;
     const nextMap = { ...doneMap, [exercise.id]: doneNow };
     setDoneMap(nextMap);
@@ -171,6 +173,8 @@ function SessionView({ onClose, title, exercises, date }: Omit<WorkoutSessionMod
     }
     if (!isExerciseCompleted(completed, exercise.id, date)) toggleCompleted(exercise.id, date);
     if (!exercises.some((ex) => (nextMap[ex.id] ?? 0) < ex.sets)) {
+      // The whole workout is done: the biggest one.
+      hapticHeavy();
       setPhase('done');
       return;
     }
@@ -190,14 +194,17 @@ function SessionView({ onClose, title, exercises, date }: Omit<WorkoutSessionMod
   };
 
   const skipRest = () => {
+    hapticTap();
     setRestEndsAt(null);
     setPausedLeft(null);
     setPhase('ready');
   };
 
   const loadStep = load != null && load >= 20 ? 2.5 : 1;
-  const changeLoad = (delta: number) =>
+  const changeLoad = (delta: number) => {
+    hapticSelection();
     setLoads((l) => ({ ...l, [exercise.id]: Math.max(0, roundLoad((l[exercise.id] ?? 0) + delta)) }));
+  };
 
   if (phase === 'countdown') {
     return (
