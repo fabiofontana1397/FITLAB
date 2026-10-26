@@ -1,18 +1,20 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { useMemo, useState } from 'react';
-import { FlatList, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { FlatList, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 
 import { FoodThumb } from '@/components/nutrition/food-thumb';
 import { ThemedText } from '@/components/themed-text';
 import { AppTextInput } from '@/components/ui/app-text';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon, type IconName } from '@/components/ui/icon';
+import { SheetScreen } from '@/components/ui/sheet-screen';
 import { HorizontalScrollDefaults, ListDefaults, ScrollDefaults } from '@/constants/scroll';
 import { Layout } from '@/constants/theme';
-import { useMotionPreference } from '@/hooks/use-motion-preference';
 import { useTheme } from '@/hooks/use-theme';
 import { hapticSelection, hapticSuccess } from '@/lib/haptics';
 import { FOOD_DATABASE, findFood, searchFood, type FoodItem } from '@/lib/mock/food-database';
+import { useFavoriteFoodsStore } from '@/store/favorite-foods-store';
 import { useNutritionStore, type MealSlot } from '@/store/nutrition-store';
 
 const PAGE_PADDING = Layout.screenGutter;
@@ -20,22 +22,31 @@ const PAGE_PADDING = Layout.screenGutter;
 const webNoOutline = (Platform.OS === 'web' ? { outlineStyle: 'none' } : {}) as object;
 /** How far the − and + buttons move the quantity. */
 const GRAMS_STEP = 10;
+/** Height of the fade under the chips. */
+const FADE_HEIGHT = 22;
 
 /** Shown (in this order) until the user's own history says otherwise. */
 const DEFAULT_FAVORITE_IDS = ['chicken-breast', 'cottage-cheese', 'greek-yogurt', 'apple', 'mixed-salad', 'eggs'];
 
-type CategoryId = 'tutti' | FoodItem['category'];
+type CategoryId = FoodItem['category'];
+type ListTab = 'preferiti' | 'recenti';
+/** What the list shows: one of the two personal lists, or one category of the catalogue. */
+type View_ = { kind: 'tab'; id: ListTab } | { kind: 'category'; id: CategoryId };
 
-/** The chips under the search field. "altro" has no chip of its own: it is only in "Tutti". */
+/** The chips under the search field: the three macros first, then the other categories ("altro" has no chip: it is only found by search). */
 const CATEGORY_CHIPS: { id: CategoryId; label: string; icon: IconName }[] = [
-  { id: 'tutti', label: 'Tutti', icon: 'categoryAll' },
-  { id: 'carboidrati', label: 'Cereali', icon: 'carbs' },
+  { id: 'carboidrati', label: 'Carboidrati', icon: 'carbs' },
   { id: 'proteine', label: 'Proteine', icon: 'protein' },
+  { id: 'grassi', label: 'Grassi', icon: 'fats' },
   { id: 'latticini', label: 'Latticini', icon: 'categoryDairy' },
   { id: 'frutta', label: 'Frutta', icon: 'nutrition' },
   { id: 'verdura', label: 'Verdura', icon: 'foodVeg' },
   { id: 'legumi', label: 'Legumi', icon: 'categoryLegumes' },
-  { id: 'grassi', label: 'Grassi', icon: 'fats' },
+];
+
+const LIST_TABS: { id: ListTab; label: string; icon: IconName }[] = [
+  { id: 'preferiti', label: 'Preferiti', icon: 'star' },
+  { id: 'recenti', label: 'Recenti', icon: 'clock' },
 ];
 
 export type FoodSearchModalProps = {
@@ -60,60 +71,65 @@ function fmt(n: number): string {
  * the step and the grams back to defaults (or to the entry being edited) on
  * each open, without syncing that reset through an effect. */
 export function FoodSearchModal({ visible, slot, date, editEntry, onClose, onSaved }: FoodSearchModalProps) {
-  const { modalAnimation } = useMotionPreference();
   return (
-    <Modal visible={visible} animationType={modalAnimation('slide')} onRequestClose={onClose}>
+    // The sheet animates itself (as Profilo and Promemoria do), so the Modal only has to be transparent.
+    <Modal visible={visible} transparent animationType="none" statusBarTranslucent onRequestClose={onClose}>
       <FoodSearchForm key={visible ? (editEntry?.id ?? 'add') : 'closed'} slot={slot} date={date} editEntry={editEntry} onClose={onClose} onSaved={onSaved} />
     </Modal>
   );
 }
 
 /**
- * "Aggiungi alimento", in two steps as in the reference:
- * 1. the list — title, search field with the barcode button, the category
- *    chips and "Più aggiunti" (or the search results, which swap the title for
- *    a back arrow); a tap on a food opens
+ * "Aggiungi alimento", a bottom sheet like Profilo and Promemoria, in two steps:
+ * 1. the list — the search field with the barcode button, the Preferiti /
+ *    Recenti selector, the category chips (Carboidrati, Proteine, Grassi, then
+ *    the others) and the foods, which scroll under the chips with a fade; each
+ *    food has a star to put it among the Preferiti. A tap on a food opens
  * 2. its detail — a big picture, the name, "Quantità" with − / +, the calories
  *    and macros for that quantity, the values per 100 g and "Aggiungi al pasto".
  * Editing a logged food opens straight on step 2.
  */
 function FoodSearchForm({ slot, date, editEntry, onClose, onSaved }: Omit<FoodSearchModalProps, 'visible'>) {
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
-  // On an iPhone SE / mini the big title steps down so "Aggiungi alimento" stays on one line.
-  const narrow = useWindowDimensions().width < 360;
   const entries = useNutritionStore((s) => s.entries);
   const addEntry = useNutritionStore((s) => s.addEntry);
   const updateEntry = useNutritionStore((s) => s.updateEntry);
   const removeEntry = useNutritionStore((s) => s.removeEntry);
+  const favoriteIds = useFavoriteFoodsStore((s) => s.ids);
+  const toggleFavorite = useFavoriteFoodsStore((s) => s.toggle);
 
   const [query, setQuery] = useState('');
-  const [category, setCategory] = useState<CategoryId>('tutti');
+  const [view, setView] = useState<View_>(() => ({ kind: 'tab', id: favoriteIds.length > 0 ? 'preferiti' : 'recenti' }));
   const [hint, setHint] = useState<string | null>(null);
   const [selected, setSelected] = useState<FoodItem | null>(() => (editEntry ? (findFood(editEntry.foodId) ?? null) : null));
   const [grams, setGrams] = useState(() => (editEntry ? String(editEntry.grams) : String(FOOD_DATABASE[0].defaultPortionG)));
 
-  // What the person logs most, then a sensible default set.
-  const ranked = useMemo(() => {
+  // What the person logs most (for the order inside a category), and what they logged last (for Recenti).
+  const history = useMemo(() => {
     const counts = new Map<string, number>();
     for (const e of entries) counts.set(e.foodId, (counts.get(e.foodId) ?? 0) + 1);
-    return { counts, ids: [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([id]) => id) };
+    const recent: string[] = [];
+    for (let i = entries.length - 1; i >= 0; i--) if (!recent.includes(entries[i].foodId)) recent.push(entries[i].foodId);
+    return { counts, recent };
   }, [entries]);
 
   const searching = query.trim().length > 0;
+  const toFoods = (ids: string[]) => ids.map((id) => findFood(id)).filter((f): f is FoodItem => !!f);
+  /** True when Recenti has nothing to show yet and a starter set stands in for it. */
+  const suggesting = !searching && view.kind === 'tab' && view.id === 'recenti' && history.recent.length === 0;
   const list = useMemo(() => {
     if (searching) return searchFood(query).slice(0, 40);
-    if (category === 'tutti') {
-      const ids = [...ranked.ids, ...DEFAULT_FAVORITE_IDS.filter((id) => !ranked.ids.includes(id))];
-      return ids.map((id) => findFood(id)).filter((f): f is FoodItem => !!f).slice(0, 12);
+    if (view.kind === 'tab') {
+      if (view.id === 'preferiti') return toFoods(favoriteIds);
+      return toFoods(history.recent.length > 0 ? history.recent.slice(0, 30) : DEFAULT_FAVORITE_IDS);
     }
     // A category: the foods of it the person logs most first, then the catalogue's own order.
-    return FOOD_DATABASE.filter((f) => f.category === category)
+    return FOOD_DATABASE.filter((f) => f.category === view.id)
       .map((food, index) => ({ food, index }))
-      .sort((a, b) => (ranked.counts.get(b.food.id) ?? 0) - (ranked.counts.get(a.food.id) ?? 0) || a.index - b.index)
+      .sort((a, b) => (history.counts.get(b.food.id) ?? 0) - (history.counts.get(a.food.id) ?? 0) || a.index - b.index)
       .map(({ food }) => food)
       .slice(0, 60);
-  }, [searching, query, category, ranked]);
+  }, [searching, query, view, history, favoriteIds]);
 
   const gramsNum = parseFloat(grams.replace(',', '.'));
   const validGrams = Number.isFinite(gramsNum) && gramsNum > 0;
@@ -146,7 +162,11 @@ function FoodSearchForm({ slot, date, editEntry, onClose, onSaved }: Omit<FoodSe
     onClose();
   };
 
-  const pagePadding = { backgroundColor: theme.background, paddingTop: insets.top + Platform.select({ web: 32, default: 8 }) };
+  // The list scrolls under the search and the chips: a fade there instead of a hard edge, in once it has scrolled.
+  const scrolled = useSharedValue(0);
+  const fadeStyle = useAnimatedStyle(() => ({ opacity: scrolled.value }));
+
+  const sheetProps = { onClose, scroll: false as const, contentContainerStyle: styles.sheetContent };
 
   // ── Step 2: the food's detail ────────────────────────────────────────────
   if (selected) {
@@ -161,18 +181,19 @@ function FoodSearchForm({ slot, date, editEntry, onClose, onSaved }: Omit<FoodSe
       { label: 'Carboidrati', value: selected.carbs100 * ratio, icon: 'carbs', color: theme.brandGreen },
       { label: 'Grassi', value: selected.fats100 * ratio, icon: 'fats', color: theme.brandYellow },
     ];
+    const favorite = favoriteIds.includes(selected.id);
 
     return (
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={[styles.page, pagePadding]}>
+      <SheetScreen title={editEntry ? 'Modifica alimento' : 'Aggiungi alimento'} {...sheetProps}>
         <View style={styles.detailHeader}>
-          <Pressable
-            onPress={editEntry ? onClose : () => setSelected(null)}
-            hitSlop={10}
-            accessibilityRole="button"
-            accessibilityLabel={editEntry ? 'Chiudi' : 'Indietro'}
-            style={styles.iconButton}>
-            <Icon name="arrowBack" size={26} color={theme.text} />
-          </Pressable>
+          {editEntry ? (
+            <View style={styles.iconButton} />
+          ) : (
+            <Pressable onPress={() => setSelected(null)} hitSlop={10} accessibilityRole="button" accessibilityLabel="Indietro" style={styles.iconButton}>
+              <Icon name="arrowBack" size={26} color={theme.text} />
+            </Pressable>
+          )}
+          <FavoriteStar active={favorite} name={selected.name} onPress={() => toggleFavorite(selected.id)} />
         </View>
 
         <ScrollView {...ScrollDefaults} style={styles.flex} contentContainerStyle={styles.detailContent}>
@@ -253,7 +274,7 @@ function FoodSearchForm({ slot, date, editEntry, onClose, onSaved }: Omit<FoodSe
           </FlatCard>
         </ScrollView>
 
-        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 12) + 4 }]}>
+        <View style={styles.footer}>
           <Pressable
             onPress={handleSave}
             disabled={!validGrams}
@@ -267,36 +288,20 @@ function FoodSearchForm({ slot, date, editEntry, onClose, onSaved }: Omit<FoodSe
             </Pressable>
           ) : null}
         </View>
-      </KeyboardAvoidingView>
+      </SheetScreen>
     );
   }
 
   // ── Step 1: the list ─────────────────────────────────────────────────────
-  const chip = CATEGORY_CHIPS.find((c) => c.id === category) ?? CATEGORY_CHIPS[0];
-  return (
-    <View style={[styles.page, pagePadding]}>
-      {searching ? null : (
-        <View style={styles.titleRow}>
-          <ThemedText style={[styles.title, narrow && styles.titleNarrow]} accessibilityRole="header">
-            Aggiungi alimento
-          </ThemedText>
-          <Pressable
-            onPress={onClose}
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel="Chiudi"
-            style={[styles.closeButton, { backgroundColor: theme.backgroundElevated, borderColor: theme.border }]}>
-            <Icon name="close" size={22} color={theme.text} />
-          </Pressable>
-        </View>
-      )}
+  const emptyText = searching
+    ? 'Nessun alimento trovato'
+    : view.kind === 'tab' && view.id === 'preferiti'
+      ? 'Nessun preferito: tocca la stella accanto a un alimento per aggiungerlo qui.'
+      : 'Nessun alimento in questa categoria';
 
+  return (
+    <SheetScreen title="Aggiungi alimento" {...sheetProps}>
       <View style={styles.searchRow}>
-        {searching ? (
-          <Pressable onPress={() => setQuery('')} hitSlop={10} accessibilityRole="button" accessibilityLabel="Indietro" style={styles.iconButton}>
-            <Icon name="arrowBack" size={26} color={theme.text} />
-          </Pressable>
-        ) : null}
         <View style={[styles.searchField, { backgroundColor: theme.backgroundElement }]}>
           <Icon name="search" size={20} color={theme.textTertiary} />
           <AppTextInput
@@ -334,73 +339,135 @@ function FoodSearchForm({ slot, date, editEntry, onClose, onSaved }: Omit<FoodSe
       ) : null}
 
       {searching ? null : (
-        <ScrollView {...HorizontalScrollDefaults} style={styles.chipsScroll} contentContainerStyle={styles.chips}>
-          {CATEGORY_CHIPS.map((c) => {
-            const active = c.id === category;
-            return (
-              <Pressable
-                key={c.id}
-                onPress={() => {
-                  hapticSelection();
-                  setCategory(c.id);
-                }}
-                accessibilityRole="button"
-                accessibilityState={{ selected: active }}
-                style={[styles.chip, active ? { backgroundColor: theme.accentSoft } : { backgroundColor: theme.backgroundElevated, borderColor: theme.border, borderWidth: StyleSheet.hairlineWidth }]}>
-                <Icon name={c.icon} size={24} color={active ? theme.accent : theme.textSecondary} />
-                <ThemedText style={[styles.chipLabel, { color: active ? theme.accent : theme.text }, active && styles.chipLabelActive]} numberOfLines={1}>
-                  {c.label}
-                </ThemedText>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
+        <>
+          <View style={[styles.tabsTrack, { backgroundColor: theme.backgroundElement }]} accessibilityRole="tablist">
+            {LIST_TABS.map((t) => {
+              const active = view.kind === 'tab' && view.id === t.id;
+              return (
+                <Pressable
+                  key={t.id}
+                  onPress={() => {
+                    hapticSelection();
+                    setView({ kind: 'tab', id: t.id });
+                  }}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: active }}
+                  style={[styles.tab, active && { backgroundColor: theme.accent }]}>
+                  <Icon name={t.icon} size={15} color={active ? theme.onAccent : theme.textSecondary} />
+                  <ThemedText style={[styles.tabLabel, { color: active ? theme.onAccent : theme.textSecondary }]}>{t.label}</ThemedText>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <ScrollView {...HorizontalScrollDefaults} style={styles.chipsScroll} contentContainerStyle={styles.chips}>
+            {CATEGORY_CHIPS.map((c) => {
+              const active = view.kind === 'category' && view.id === c.id;
+              return (
+                <Pressable
+                  key={c.id}
+                  onPress={() => {
+                    hapticSelection();
+                    setView({ kind: 'category', id: c.id });
+                  }}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  style={[styles.chip, active ? { backgroundColor: theme.accentSoft } : { backgroundColor: theme.backgroundElevated, borderColor: theme.border, borderWidth: StyleSheet.hairlineWidth }]}>
+                  <Icon name={c.icon} size={24} color={active ? theme.accent : theme.textSecondary} />
+                  <ThemedText style={[styles.chipLabel, { color: active ? theme.accent : theme.text }, active && styles.chipLabelActive]} numberOfLines={1}>
+                    {c.label}
+                  </ThemedText>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </>
       )}
 
-      <FlatList
-        {...ListDefaults}
-        data={list}
-        keyExtractor={(item) => item.id}
-        style={styles.list}
-        contentContainerStyle={styles.listContent}
-        ListHeaderComponent={
-          searching ? null : (
-            <ThemedText style={styles.sectionTitle} accessibilityRole="header">
-              {category === 'tutti' ? 'Più aggiunti' : chip.label}
+      <View style={styles.listWrap}>
+        <FlatList
+          {...ListDefaults}
+          testID="food-list"
+          data={list}
+          keyExtractor={(item) => item.id}
+          style={styles.list}
+          contentContainerStyle={styles.listContent}
+          onScroll={(e) => {
+            // eslint-disable-next-line react-hooks/immutability
+            scrolled.value = Math.min(1, Math.max(0, e.nativeEvent.contentOffset.y / FADE_HEIGHT));
+          }}
+          ListHeaderComponent={
+            suggesting ? (
+              <ThemedText style={styles.sectionTitle} accessibilityRole="header">
+                Suggeriti
+              </ThemedText>
+            ) : null
+          }
+          renderItem={({ item }) => (
+            <FoodRow food={item} favorite={favoriteIds.includes(item.id)} onOpen={() => openDetail(item)} onToggleFavorite={() => toggleFavorite(item.id)} />
+          )}
+          ListEmptyComponent={
+            <ThemedText style={styles.empty} themeColor="textTertiary">
+              {emptyText}
             </ThemedText>
-          )
-        }
-        renderItem={({ item }) => (
-          <Pressable onPress={() => openDetail(item)} accessibilityRole="button" accessibilityLabel={`${item.name}, ${Math.round(item.kcal100)} kcal ogni 100 g`}>
-            <FlatCard radius={20} style={styles.row}>
-              <FoodThumb foodId={item.id} variant="hero" />
-              <View style={styles.rowText}>
-                <ThemedText style={styles.rowName} numberOfLines={2}>
-                  {item.name}
-                </ThemedText>
-                <ThemedText style={styles.rowSub} themeColor="textTertiary">
-                  {Math.round(item.kcal100)} kcal / 100 g
-                </ThemedText>
-              </View>
-              <View style={[styles.plusCircle, { borderColor: theme.accent }]}>
-                <Icon name="plus" size={20} color={theme.accent} />
-              </View>
-            </FlatCard>
-          </Pressable>
-        )}
-        ListEmptyComponent={
-          <ThemedText style={styles.empty} themeColor="textTertiary">
-            {searching ? 'Nessun alimento trovato' : 'Nessun alimento in questa categoria'}
+          }
+        />
+        {/* Under the search and the chips the foods dissolve instead of being cut by a hard edge. */}
+        <Animated.View testID="food-list-fade" pointerEvents="none" style={[styles.listFade, fadeStyle]}>
+          <LinearGradient colors={[theme.background, `${theme.background}00`]} style={StyleSheet.absoluteFill} />
+        </Animated.View>
+      </View>
+    </SheetScreen>
+  );
+}
+
+function FoodRow({ food, favorite, onOpen, onToggleFavorite }: { food: FoodItem; favorite: boolean; onOpen: () => void; onToggleFavorite: () => void }) {
+  const theme = useTheme();
+  return (
+    <Pressable onPress={onOpen} accessibilityRole="button" accessibilityLabel={`${food.name}, ${Math.round(food.kcal100)} kcal ogni 100 g`}>
+      <FlatCard radius={20} style={styles.row}>
+        <FoodThumb foodId={food.id} variant="hero" />
+        <View style={styles.rowText}>
+          <ThemedText style={styles.rowName} numberOfLines={2}>
+            {food.name}
           </ThemedText>
-        }
-      />
-    </View>
+          <ThemedText style={styles.rowSub} themeColor="textTertiary">
+            {Math.round(food.kcal100)} kcal / 100 g
+          </ThemedText>
+        </View>
+        <FavoriteStar active={favorite} name={food.name} onPress={onToggleFavorite} />
+        <View style={[styles.plusCircle, { borderColor: theme.accent }]}>
+          <Icon name="plus" size={20} color={theme.accent} />
+        </View>
+      </FlatCard>
+    </Pressable>
+  );
+}
+
+/** The star that puts a food among the Preferiti (and takes it out again). */
+function FavoriteStar({ active, name, onPress }: { active: boolean; name: string; onPress: () => void }) {
+  const theme = useTheme();
+  return (
+    <Pressable
+      onPress={() => {
+        hapticSelection();
+        onPress();
+      }}
+      hitSlop={6}
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}
+      accessibilityLabel={active ? `Togli ${name} dai preferiti` : `Aggiungi ${name} ai preferiti`}
+      style={styles.star}>
+      <Icon name={active ? 'star' : 'starOutline'} size={22} color={active ? theme.brandYellow : theme.textTertiary} />
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  page: {
-    flex: 1,
+  // The sheet gives its content no side padding and no gap: the list, the chips and the detail lay themselves out.
+  sheetContent: {
+    paddingHorizontal: 0,
+    gap: 0,
   },
   flex: {
     flex: 1,
@@ -416,32 +483,6 @@ const styles = StyleSheet.create({
   },
 
   // List
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: PAGE_PADDING,
-    marginBottom: 18,
-  },
-  title: {
-    flex: 1,
-    fontSize: 28,
-    lineHeight: 34,
-    fontWeight: '800',
-    letterSpacing: -0.5,
-  },
-  titleNarrow: {
-    fontSize: 24,
-    lineHeight: 30,
-  },
-  closeButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: StyleSheet.hairlineWidth,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -482,9 +523,31 @@ const styles = StyleSheet.create({
     paddingHorizontal: PAGE_PADDING,
     fontSize: 13,
   },
+  tabsTrack: {
+    flexDirection: 'row',
+    alignSelf: 'stretch',
+    marginHorizontal: PAGE_PADDING,
+    marginTop: 14,
+    padding: 3,
+    borderRadius: 14,
+  },
+  tab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    height: 36,
+    borderRadius: 11,
+  },
+  tabLabel: {
+    fontSize: 14,
+    lineHeight: 18,
+    fontWeight: '700',
+  },
   chipsScroll: {
     flexGrow: 0,
-    marginTop: 18,
+    marginTop: 14,
   },
   chips: {
     paddingHorizontal: PAGE_PADDING,
@@ -506,14 +569,31 @@ const styles = StyleSheet.create({
   chipLabelActive: {
     fontWeight: '700',
   },
+  listWrap: {
+    flex: 1,
+    marginTop: 12,
+  },
   list: {
     flex: 1,
-    marginTop: 18,
   },
   listContent: {
     paddingHorizontal: PAGE_PADDING,
-    paddingBottom: 32,
+    paddingTop: 10,
+    paddingBottom: 24,
     gap: 10,
+  },
+  listFade: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: FADE_HEIGHT,
+  },
+  star: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   sectionTitle: {
     fontSize: 19,
@@ -560,6 +640,9 @@ const styles = StyleSheet.create({
 
   // Detail
   detailHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: PAGE_PADDING - 10,
     marginBottom: 4,
   },

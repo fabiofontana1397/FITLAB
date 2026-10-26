@@ -72,6 +72,7 @@ export default function NutritionScreen() {
   const seededDates = useNutritionStore((s) => s.seededDates);
   const seedDayFromPlan = useNutritionStore((s) => s.seedDayFromPlan);
   const unseedDay = useNutritionStore((s) => s.unseedDay);
+  const removeEntry = useNutritionStore((s) => s.removeEntry);
   const dietPlan = usePlanStore((s) => s.dietPlan);
   const [activeSlot, setActiveSlot] = useState<MealSlot | null>(null);
   const [editingEntry, setEditingEntry] = useState<MealFoodEntry | null>(null);
@@ -209,7 +210,6 @@ export default function NutritionScreen() {
               color={mealSlotColor(theme, meta.id)}
               entries={slotEntries}
               totals={sumMacros(slotEntries)}
-              dayTargetKcal={calorieTarget}
               expanded={!foldedSlots.includes(meta.id)}
               onToggle={() => {
                 hapticSelection();
@@ -218,6 +218,10 @@ export default function NutritionScreen() {
               onEditEntry={(entry) => {
                 setEditingEntry(entry);
                 setActiveSlot(meta.id);
+              }}
+              onDeleteEntry={(entry) => {
+                hapticToggle(false);
+                removeEntry(entry.id);
               }}
               onAddFood={() => {
                 setEditingEntry(null);

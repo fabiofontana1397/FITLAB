@@ -57,6 +57,8 @@ export type SheetScreenProps = {
    * refresh while the sheet is open, starts with an empty history stack. */
   fallbackHref?: Href;
   contentContainerStyle?: StyleProp<ViewStyle>;
+  /** Called once the sheet has slid away, instead of going back in the router: for a sheet shown inside a Modal rather than as a route. */
+  onClose?: () => void;
   /** False for a sheet whose content fits on one screen: it is laid out in the available height and does not scroll. */
   scroll?: boolean;
 };
@@ -73,7 +75,7 @@ export type SheetScreenProps = {
  * same way on iOS, Android and web rather than leaving the sheet to each
  * platform's own modal presentation.
  */
-export function SheetScreen({ title, eyebrow, children, fallbackHref = '/', contentContainerStyle, scroll = true }: SheetScreenProps) {
+export function SheetScreen({ title, eyebrow, children, fallbackHref = '/', contentContainerStyle, onClose, scroll = true }: SheetScreenProps) {
   const theme = useTheme();
   const dark = useColorScheme() === 'dark';
   const insets = useSafeAreaInsets();
@@ -100,6 +102,11 @@ export function SheetScreen({ title, eyebrow, children, fallbackHref = '/', cont
     moveTo(withSpring(0, SpringSheet));
   }, [moveTo]);
 
+  const finish = useCallback(() => {
+    if (onClose) onClose();
+    else goBackOr(fallbackHref);
+  }, [onClose, fallbackHref]);
+
   const close = useCallback(() => {
     // Guard against a second close (button tapped mid-drag, back pressed
     // twice…) restarting the animation and popping two screens.
@@ -107,10 +114,10 @@ export function SheetScreen({ title, eyebrow, children, fallbackHref = '/', cont
     setClosing(true);
     moveTo(
       withTiming(height, TimingExit, (finished) => {
-        if (finished) runOnJS(goBackOr)(fallbackHref);
+        if (finished) runOnJS(finish)();
       })
     );
-  }, [closing, fallbackHref, height, moveTo]);
+  }, [closing, finish, height, moveTo]);
 
   useEffect(() => {
     if (Platform.OS !== 'android') return;
