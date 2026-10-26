@@ -131,6 +131,7 @@ const ICONS = {
   barbell: { set: 'ion', name: 'barbell' },
   barChart: { set: 'ion', name: 'stats-chart' },
   star: { set: 'ion', name: 'star' },
+  starOutline: { set: 'ion', name: 'star-outline' },
   clock: { set: 'ion', name: 'time-outline' },
   personFilled: { set: 'ion', name: 'person' },
   bell: { set: 'ion', name: 'notifications-outline' },

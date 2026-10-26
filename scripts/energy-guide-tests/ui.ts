@@ -111,11 +111,11 @@ async function main() {
     const homeBefore = await page.locator('body').innerText();
     if (shots) await page.screenshot({ path: join(shots, 'home.png') });
 
-    await test('Home: the calendar button is in the top bar, between notifications and profile', async () => {
+    await test('Home: calendar, notifications and profile buttons sit on one line of the top bar, in that order', async () => {
       const cal = await page.getByRole('button', { name: 'Apri calendario' }).boundingBox();
       const bell = await page.getByRole('button', { name: 'Notifiche' }).boundingBox();
       const profile = await page.getByRole('button', { name: /profilo/i }).first().boundingBox();
-      assert.ok(bell.x + bell.width <= cal.x + 1 && cal.x + cal.width <= profile.x + 1, 'bell, calendar, profile from left to right');
+      assert.ok(cal.x + cal.width <= bell.x + 1 && bell.x + bell.width <= profile.x + 1, 'calendar, bell, profile from left to right');
       assert.ok(Math.abs(cal.y - bell.y) < 2 && Math.abs(cal.y - profile.y) < 2, 'all on one line');
     });
 

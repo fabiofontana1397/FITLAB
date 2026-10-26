@@ -3,10 +3,10 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
 import { FoodThumb } from '@/components/nutrition/food-thumb';
-import { AnimatedFill } from '@/components/motion/animated-fill';
 import { ThemedText } from '@/components/themed-text';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon, type IconName } from '@/components/ui/icon';
+import { SwipeToDelete } from '@/components/ui/swipe-to-delete';
 import { useTheme } from '@/hooks/use-theme';
 import { findFood } from '@/lib/mock/food-database';
 import { macrosForEntry, type MealFoodEntry } from '@/store/nutrition-store';
@@ -21,11 +21,11 @@ export type MealCardProps = {
   color: string;
   entries: MealFoodEntry[];
   totals: Totals;
-  /** The day's calorie target: the bar under the title is this meal's share of it. */
-  dayTargetKcal: number;
   expanded: boolean;
   onToggle: () => void;
   onEditEntry: (entry: MealFoodEntry) => void;
+  /** A food swiped to the left and deleted. */
+  onDeleteEntry: (entry: MealFoodEntry) => void;
   onAddFood: () => void;
   /** The Reanimated layout transition the card (and the ones below) glide with when it folds. */
   layout?: ComponentProps<typeof FlatCard>['layout'];
@@ -43,16 +43,14 @@ function countLabel(n: number): string {
 /**
  * One meal of the day on Nutrizione, laid out as in the reference:
  * - a round icon, the meal's name and "09:30 · 5 alimenti" on the left; its
- *   kcal in orange with "del totale giornaliero" under them on the right;
- * - a thin bar: the meal's share of the day's calories;
+ *   kcal in orange on the right;
  * - protein / carbs / fat of the meal on one line;
  * - the foods, each with its picture, grams, kcal and P · C · G, separated by
  *   hairlines, then a full-width "+ Aggiungi alimento" outline button.
  * Tapping the header folds the foods away.
  */
-export function MealCard({ label, time, icon, color, entries, totals, dayTargetKcal, expanded, onToggle, onEditEntry, onAddFood, layout }: MealCardProps) {
+export function MealCard({ label, time, icon, color, entries, totals, expanded, onToggle, onEditEntry, onDeleteEntry, onAddFood, layout }: MealCardProps) {
   const theme = useTheme();
-  const share = dayTargetKcal > 0 ? totals.kcal / dayTargetKcal : 0;
 
   return (
     <FlatCard radius={24} style={styles.card} layout={layout}>
@@ -70,15 +68,8 @@ export function MealCard({ label, time, icon, color, entries, totals, dayTargetK
         </View>
         <View style={styles.kcalCol}>
           <ThemedText style={[styles.kcal, { color: theme.accent }]}>{Math.round(totals.kcal)} kcal</ThemedText>
-          <ThemedText style={styles.sub} themeColor="textTertiary" numberOfLines={1}>
-            del totale giornaliero
-          </ThemedText>
         </View>
       </Pressable>
-
-      <View style={[styles.track, { backgroundColor: theme.backgroundElement }]}>
-        <AnimatedFill progress={share} delay={120} style={[styles.fill, { backgroundColor: theme.accent }]} />
-      </View>
 
       <View style={styles.macroRow}>
         {(
@@ -101,28 +92,30 @@ export function MealCard({ label, time, icon, color, entries, totals, dayTargetK
             const food = findFood(entry.foodId);
             const m = macrosForEntry(entry);
             return (
-              <Pressable
-                key={entry.id}
-                onPress={() => onEditEntry(entry)}
-                accessibilityRole="button"
-                accessibilityLabel={`${food?.name ?? entry.foodId}, ${entry.grams} g`}
-                style={[styles.foodRow, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.borderStrong }]}>
-                <FoodThumb foodId={entry.foodId} variant="row" />
-                <View style={styles.foodText}>
-                  <ThemedText style={styles.foodName} numberOfLines={2}>
-                    {food?.name ?? entry.foodId}
-                  </ThemedText>
-                  <ThemedText style={styles.foodGrams} themeColor="textTertiary">
-                    {entry.grams} g
-                  </ThemedText>
-                </View>
-                <View style={styles.foodRight}>
-                  <ThemedText style={styles.foodKcal}>{Math.round(m.kcal)} kcal</ThemedText>
-                  <ThemedText style={styles.foodMacros} themeColor="textTertiary">
-                    P {Math.round(m.protein)} · C {Math.round(m.carbs)} · G {Math.round(m.fats)}
-                  </ThemedText>
-                </View>
-              </Pressable>
+              <View key={entry.id} style={i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.borderStrong }}>
+                <SwipeToDelete
+                  onPress={() => onEditEntry(entry)}
+                  onDelete={() => onDeleteEntry(entry)}
+                  accessibilityLabel={`${food?.name ?? entry.foodId}, ${entry.grams} g`}>
+                  <View style={styles.foodRow}>
+                    <FoodThumb foodId={entry.foodId} variant="row" />
+                    <View style={styles.foodText}>
+                      <ThemedText style={styles.foodName} numberOfLines={2}>
+                        {food?.name ?? entry.foodId}
+                      </ThemedText>
+                      <ThemedText style={styles.foodGrams} themeColor="textTertiary">
+                        {entry.grams} g
+                      </ThemedText>
+                    </View>
+                    <View style={styles.foodRight}>
+                      <ThemedText style={styles.foodKcal}>{Math.round(m.kcal)} kcal</ThemedText>
+                      <ThemedText style={styles.foodMacros} themeColor="textTertiary">
+                        P {Math.round(m.protein)} · C {Math.round(m.carbs)} · G {Math.round(m.fats)}
+                      </ThemedText>
+                    </View>
+                  </View>
+                </SwipeToDelete>
+              </View>
             );
           })}
           <Pressable
@@ -181,21 +174,11 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     fontWeight: '700',
   },
-  track: {
-    height: 6,
-    borderRadius: 3,
-    overflow: 'hidden',
-    marginTop: 14,
-  },
-  fill: {
-    height: '100%',
-    borderRadius: 3,
-  },
   macroRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     gap: 8,
-    marginTop: 12,
+    marginTop: 14,
   },
   macro: {
     fontSize: 13,
