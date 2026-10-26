@@ -15,7 +15,6 @@ import { Icon, type IconName } from '@/components/ui/icon';
 import { SectionHeader } from '@/components/ui/section-header';
 import { WeekStrip, type WeekStripDay } from '@/components/home/week-strip';
 import { TabHeader } from '@/components/tab-header';
-import { LoggedActivitiesCard } from '@/components/training/logged-activities-card';
 import { LogActivityModal } from '@/components/training/log-activity-modal';
 import { PlanJourneyHero } from '@/components/training/plan-journey-hero';
 import { PlanOverviewPopup } from '@/components/training/plan-overview-popup';
@@ -408,8 +407,6 @@ export default function HomeScreen() {
           target={{ goal: dailyGoalKcal, actual: averageBalance }}
         />
       </FlatCard>
-
-      <LoggedActivitiesCard date={viewDate} />
 
       <LogActivityModal
         visible={logActivityOpen}
