@@ -70,3 +70,9 @@ export function monthProgress(
   if (monthIndex > current) return { dayInMonth: 0, fraction: 0 };
   return currentMonthProgress(plan);
 }
+
+/** When month `monthIndex` ends (30 days per month from the plan's start) and how many days are left until then, at least 1. */
+export function monthEndInfo(plan: { generatedAt: string }, monthIndex: number): { end: Date; daysLeft: number } {
+  const end = new Date(new Date(plan.generatedAt).getTime() + monthIndex * 30 * 86_400_000);
+  return { end, daysLeft: Math.max(1, Math.ceil((end.getTime() - Date.now()) / 86_400_000)) };
+}
