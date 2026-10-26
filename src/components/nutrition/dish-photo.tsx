@@ -2,6 +2,7 @@ import { Platform, StyleSheet, View } from 'react-native';
 
 import { Icon } from '@/components/ui/icon';
 import { PhotoTile } from '@/components/ui/photo-tile';
+import { FOOD_IMAGES_ENABLED } from '@/constants/food-images';
 import { useTheme } from '@/hooks/use-theme';
 import type { MealImage } from '@/lib/planning/fitlab/dish-images';
 
@@ -21,8 +22,19 @@ export function mealImageUri(image: MealImage): string | undefined {
  * the whole picture), lazy on the web since the plan lists a whole week of
  * meals. No photo URL, or a file that fails, leaves a plate glyph instead.
  */
+/** The grey tile with a fork and knife that stands in for every dish while pictures are off (constants/food-images.ts). */
+export function DishPlaceholder({ size = 64, radius = 14 }: { size?: number; radius?: number }) {
+  const theme = useTheme();
+  return (
+    <View aria-hidden style={[styles.empty, { width: size, height: size, borderRadius: radius, backgroundColor: theme.backgroundElement }]}>
+      <Icon name="utensils" size={Math.round(size * 0.38)} color={theme.textTertiary} />
+    </View>
+  );
+}
+
 export function DishPhoto({ image, size = 64, radius = 14 }: { image: MealImage; size?: number; radius?: number }) {
   const theme = useTheme();
+  if (!FOOD_IMAGES_ENABLED) return <DishPlaceholder size={size} radius={radius} />;
   const uri = mealImageUri(image);
   const fallback = <Icon name="utensils" size={Math.round(size * 0.38)} color={theme.textTertiary} />;
 
