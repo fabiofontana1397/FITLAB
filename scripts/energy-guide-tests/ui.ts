@@ -111,7 +111,7 @@ async function main() {
     const homeBefore = await page.locator('body').innerText();
     if (shots) await page.screenshot({ path: join(shots, 'home.png') });
 
-    await test('Home: the calendar, notifications and profile buttons are on the top bar's line, in that order', async () => {
+    await test('Home: calendar, notifications and profile buttons sit on one line of the top bar, in that order', async () => {
       const cal = await page.getByRole('button', { name: 'Apri calendario' }).boundingBox();
       const bell = await page.getByRole('button', { name: 'Notifiche' }).boundingBox();
       const profile = await page.getByRole('button', { name: /profilo/i }).first().boundingBox();
