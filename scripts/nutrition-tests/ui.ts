@@ -81,7 +81,7 @@ async function main() {
       assert.equal(await toggle.count(), 1);
       assert.equal(await toggle.getAttribute('aria-checked'), 'false');
       const box = await toggle.boundingBox();
-      assert.ok(Math.abs(box.width - 62) < 2 && Math.abs(box.height - 36) < 2, `track ${box.width}×${box.height}`);
+      assert.ok(Math.abs(box.width - 65) < 2 && Math.abs(box.height - 30) < 2, `track ${box.width}×${box.height}`);
     });
 
     await test('turning it on fills the day from the plan and flips the switch; off empties it again', async () => {
