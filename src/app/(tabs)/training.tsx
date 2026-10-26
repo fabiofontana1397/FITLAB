@@ -174,6 +174,9 @@ export default function TrainingScreen() {
                 ) : null}
               </View>
 
+              {/* What was logged that day sits in the day's own section: before the planned session while that is still to do, after it once it is done. */}
+              <View style={styles.dayBody}>
+              {done ? null : <LoggedActivitiesCard date={date} inline />}
               {!trainingPlan ? (
                 <FlatCard radius={20} style={styles.messageCard}>
                   <ThemedText style={styles.cardTitle}>{ctx.mode === 'diet' ? 'Programma di allenamento non richiesto' : 'Nessun programma generato'}</ThemedText>
@@ -213,11 +216,11 @@ export default function TrainingScreen() {
                   </ThemedText>
                 </FlatCard>
               )}
+              {done ? <LoggedActivitiesCard date={date} inline /> : null}
+              </View>
             </View>
           );
         })}
-
-        <LoggedActivitiesCard date={selectedDate} />
 
       </ScreenScroll>
 
@@ -256,6 +259,9 @@ export default function TrainingScreen() {
 const styles = StyleSheet.create({
   daySection: {
     marginBottom: 6,
+  },
+  dayBody: {
+    gap: 12,
   },
   dayHeadingRow: {
     marginTop: 6,
