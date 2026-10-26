@@ -175,6 +175,8 @@ export type OggiGaugeProps = {
   caption: string;
   /** Within this many kcal of the goal counts as "on it" (the full-green core of the goal zone). */
   toleranceKcal?: number;
+  /** A day with nothing to show (not yet started): the whole gauge stays plain grey, goal zone included. */
+  inactive?: boolean;
 };
 
 /**
@@ -190,7 +192,7 @@ export type OggiGaugeProps = {
  *    triangle outside it is the balance; the green stretch of the track is
  *    the goal — full green where it is met, fading to grey away from it.
  */
-export function OggiGauge({ burnedKcal, eatenKcal, burnedColor, eatenColor, reading, value, goalLabel, caption, toleranceKcal = BALANCE_SCALE.toleranceKcal }: OggiGaugeProps) {
+export function OggiGauge({ burnedKcal, eatenKcal, burnedColor, eatenColor, reading, value, goalLabel, caption, toleranceKcal = BALANCE_SCALE.toleranceKcal, inactive = false }: OggiGaugeProps) {
   const theme = useTheme();
   const [width, setWidth] = useState(BASE_W);
   const k = Math.min(1.15, width / BASE_W);
@@ -262,11 +264,11 @@ export function OggiGauge({ burnedKcal, eatenKcal, burnedColor, eatenColor, read
       const from = -SEMI_HALF_SPAN + i * GOAL_ZONE_STEP_DEG;
       const to = Math.min(SEMI_HALF_SPAN, from + GOAL_ZONE_STEP_DEG + 0.3);
       const x = Math.min(1, Math.max(0, (Math.abs((from + to) / 2 - goalDeg) - core) / GOAL_ZONE_FADE_DEG));
-      const keep = 1 - x * x * (3 - 2 * x);
+      const keep = inactive ? 0 : 1 - x * x * (3 - 2 * x);
       const c = track && green ? mixRgb(track, green, keep) : null;
       return { d: arc(SEMI_R, from, to), color: c ? `rgb(${Math.round(c[0])},${Math.round(c[1])},${Math.round(c[2])})` : theme.backgroundElement };
     });
-  }, [theme.background, theme.backgroundElevated, theme.backgroundElement, theme.balanceGoalScale, theme.tabBarBlur, goalDeg, toleranceKcal, reading.halfRangeKcal]);
+  }, [theme.background, theme.backgroundElevated, theme.backgroundElement, theme.balanceGoalScale, theme.tabBarBlur, goalDeg, toleranceKcal, reading.halfRangeKcal, inactive]);
 
   const onLayout = (e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width);
   const label = (fontSize: number) => ({ fontSize: Math.max(11, fontSize * k), lineHeight: Math.max(14, (fontSize + 3) * k) });
