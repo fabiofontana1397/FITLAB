@@ -1,6 +1,7 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import {
   Apple,
+  Bean,
   Carrot,
   Cookie,
   Crosshair,
@@ -8,6 +9,8 @@ import {
   Drumstick,
   Flame,
   GlassWater,
+  LayoutGrid,
+  Milk,
   Moon,
   ScanBarcode,
   Sun,
@@ -51,6 +54,10 @@ const LUCIDE_ICONS = {
   mealSnack: Cookie,
   // The one food group with no macro glyph of its own.
   foodVeg: Carrot,
+  // The category chips of "Aggiungi alimento".
+  categoryAll: LayoutGrid,
+  categoryDairy: Milk,
+  categoryLegumes: Bean,
 } satisfies Record<string, LucideIcon>;
 
 /**
@@ -102,6 +109,7 @@ const ICONS = {
   send: { set: 'ion', name: 'send' },
   chatBubble: { set: 'ion', name: 'chatbubble-ellipses' },
   minus: { set: 'ion', name: 'remove-circle-outline' },
+  minusSign: { set: 'ion', name: 'remove' },
   addCircle: { set: 'ion', name: 'add-circle' },
   addCircleOutline: { set: 'ion', name: 'add-circle-outline' },
   trash: { set: 'ion', name: 'trash-outline' },

@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
-import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
+import { StyleSheet, View } from 'react-native';
+import { LinearTransition } from 'react-native-reanimated';
 
-import { FoodThumb } from '@/components/nutrition/food-thumb';
 import { FoodSearchModal } from '@/components/nutrition/food-search-modal';
+import { MealCard } from '@/components/nutrition/meal-card';
 import { mealSlotColor } from '@/components/nutrition/meal-picker-modal';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
@@ -17,11 +17,9 @@ import { TickProgressBar } from '@/components/ui/tick-progress-bar';
 import { useEnsurePlan } from '@/hooks/use-ensure-plan';
 import { useTheme } from '@/hooks/use-theme';
 import { daysAgoISO, isoMondayIndex } from '@/lib/mock/dates';
-import { findFood } from '@/lib/mock/food-database';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
 import {
   entriesForSlot,
-  macrosForEntry,
   MEAL_SLOTS,
   sumMacros,
   useNutritionStore,
@@ -52,10 +50,6 @@ function formatKcal(n: number): string {
     .replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 }
 
-function macroLine(m: { protein: number; carbs: number; fats: number }): string {
-  return `P ${Math.round(m.protein)}g / C ${Math.round(m.carbs)}g / G ${Math.round(m.fats)}g`;
-}
-
 /** The calorie card's nudge, driven by how many of the day's meals have at
  * least one food logged: invite to start, push to finish, praise when done. */
 function trackingMessage(
@@ -83,7 +77,8 @@ export default function NutritionScreen() {
   const today = daysAgoISO(0);
   const [selectedDate, setSelectedDate] = useState(today);
   const [calendarOpen, setCalendarOpen] = useState(false);
-  const [expandedSlot, setExpandedSlot] = useState<MealSlot | null>('colazione');
+  // Every meal opens showing its foods; tapping a meal's header folds it.
+  const [foldedSlots, setFoldedSlots] = useState<MealSlot[]>([]);
 
   useEnsurePlan('diet');
 
@@ -204,76 +199,31 @@ export default function NutritionScreen() {
       <View style={styles.mealsList}>
         {mealSlots.map((meta) => {
           const slotEntries = entriesForSlot(entries, meta.id, selectedDate);
-          const slotTotals = sumMacros(slotEntries);
-          const expanded = expandedSlot === meta.id;
-          const color = mealSlotColor(theme, meta.id);
-
           return (
-            <FlatCard key={meta.id} radius={CARD_RADIUS} style={styles.mealCard} layout={MEAL_CARD_TRANSITION}>
-              <Pressable onPress={() => {
-                  hapticSelection();
-                  setExpandedSlot(expanded ? null : meta.id);
-                }} style={styles.mealHeaderRow}>
-                <View style={[styles.mealIcon, { backgroundColor: withAlpha(color, 0.14) }]}>
-                  <Icon name={meta.icon} size={15} color={color} />
-                </View>
-                <View style={styles.mealTitleCol}>
-                  <ThemedText style={styles.mealName}>{meta.label}</ThemedText>
-                  <ThemedText style={styles.mealTime} themeColor="textTertiary">
-                    {meta.time}
-                  </ThemedText>
-                </View>
-                <View style={styles.mealTotalsCol}>
-                  <ThemedText style={[styles.mealKcal, { color: theme.accent }]}>{Math.round(slotTotals.kcal)} kcal</ThemedText>
-                  <ThemedText style={styles.mealMacros} themeColor="textTertiary">
-                    {macroLine(slotTotals)}
-                  </ThemedText>
-                </View>
-              </Pressable>
-
-              {expanded ? (
-                <Animated.View entering={FadeIn.duration(220).delay(70)} exiting={FadeOut.duration(110)}>
-                  <View style={[styles.divider, { backgroundColor: theme.borderStrong }]} />
-                  {slotEntries.map((entry) => {
-                    const food = findFood(entry.foodId);
-                    const m = macrosForEntry(entry);
-                    return (
-                      <Pressable
-                        key={entry.id}
-                        style={styles.foodRow}
-                        onPress={() => {
-                          setEditingEntry(entry);
-                          setActiveSlot(meta.id);
-                        }}>
-                        <FoodThumb foodId={entry.foodId} variant="row" />
-                        <View style={styles.foodLeft}>
-                          <ThemedText style={styles.foodName} numberOfLines={2}>
-                            {food?.name ?? entry.foodId}
-                          </ThemedText>
-                          <ThemedText style={styles.foodGrams} themeColor="textSecondary">
-                            {entry.grams} g
-                          </ThemedText>
-                        </View>
-                        <View style={styles.foodRight}>
-                          <ThemedText style={styles.foodKcal}>{Math.round(m.kcal)} kcal</ThemedText>
-                          <ThemedText style={styles.mealMacros} themeColor="textTertiary">
-                            {macroLine(m)}
-                          </ThemedText>
-                        </View>
-                      </Pressable>
-                    );
-                  })}
-                  <Pressable
-                    onPress={() => {
-                      setEditingEntry(null);
-                      setActiveSlot(meta.id);
-                    }}
-                    style={[styles.addFoodButton, { backgroundColor: theme.backgroundElevated, borderColor: theme.border }]}>
-                    <ThemedText style={[styles.addFoodText, { color: theme.accent }]}>+ Aggiungi alimento</ThemedText>
-                  </Pressable>
-                </Animated.View>
-              ) : null}
-            </FlatCard>
+            <MealCard
+              key={meta.id}
+              label={meta.label}
+              time={meta.time}
+              icon={meta.icon}
+              color={mealSlotColor(theme, meta.id)}
+              entries={slotEntries}
+              totals={sumMacros(slotEntries)}
+              dayTargetKcal={calorieTarget}
+              expanded={!foldedSlots.includes(meta.id)}
+              onToggle={() => {
+                hapticSelection();
+                setFoldedSlots((folded) => (folded.includes(meta.id) ? folded.filter((id) => id !== meta.id) : [...folded, meta.id]));
+              }}
+              onEditEntry={(entry) => {
+                setEditingEntry(entry);
+                setActiveSlot(meta.id);
+              }}
+              onAddFood={() => {
+                setEditingEntry(null);
+                setActiveSlot(meta.id);
+              }}
+              layout={MEAL_CARD_TRANSITION}
+            />
           );
         })}
       </View>
@@ -412,99 +362,6 @@ const styles = StyleSheet.create({
   },
   mealsList: {
     gap: 12,
-  },
-  mealCard: {
-    paddingHorizontal: CARD_PADDING,
-    paddingTop: 20,
-    paddingBottom: 12,
-  },
-  mealHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 11,
-  },
-  mealIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  mealTitleCol: {
-    flex: 1,
-    minWidth: 0,
-  },
-  mealName: {
-    fontSize: 15,
-    lineHeight: 19,
-    fontWeight: '700',
-  },
-  mealTime: {
-    fontSize: 13,
-    lineHeight: 17,
-    fontWeight: '500',
-  },
-  mealTotalsCol: {
-    alignItems: 'flex-end',
-  },
-  mealKcal: {
-    fontSize: 15,
-    lineHeight: 19,
-    fontWeight: '700',
-  },
-  mealMacros: {
-    fontSize: 12,
-    lineHeight: 15,
-    fontWeight: '500',
-  },
-  divider: {
-    height: 1,
-    marginTop: 12,
-    marginBottom: 6,
-    opacity: 0.6,
-  },
-  foodRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    // HIG list row: 12 pt between the leading image and the text.
-    gap: 12,
-    paddingVertical: 5,
-  },
-  foodLeft: {
-    flex: 1,
-    minWidth: 0,
-  },
-  foodName: {
-    fontSize: 13,
-    lineHeight: 17,
-    fontWeight: '700',
-  },
-  foodGrams: {
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: '500',
-  },
-  foodRight: {
-    alignItems: 'flex-end',
-  },
-  foodKcal: {
-    fontSize: 13,
-    lineHeight: 17,
-    fontWeight: '700',
-  },
-  addFoodButton: {
-    marginTop: 8,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: StyleSheet.hairlineWidth,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  addFoodText: {
-    fontSize: 13,
-    lineHeight: 17,
-    fontWeight: '700',
   },
   followRow: {
     marginBottom: 12,

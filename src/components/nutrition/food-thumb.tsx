@@ -1,7 +1,9 @@
 import { Image } from 'expo-image';
-import { useWindowDimensions } from 'react-native';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
+import { Icon } from '@/components/ui/icon';
 import { cornerSafeInset, PhotoTile } from '@/components/ui/photo-tile';
+import { FOOD_IMAGES_ENABLED } from '@/constants/food-images';
 import { useTheme } from '@/hooks/use-theme';
 import { foodIcon } from '@/lib/nutrition/food-icons';
 import { foodPhoto } from '@/lib/nutrition/food-photos';
@@ -10,8 +12,9 @@ import { foodPhoto } from '@/lib/nutrition/food-photos';
  * Where the thumbnail sits:
  * - `row`: the leading image of a list row (meal log, food search results).
  * - `hero`: the food being added, in the selected card with the grams field.
+ * - `display`: the big picture at the top of a food's detail screen.
  */
-export type FoodThumbVariant = 'row' | 'hero';
+export type FoodThumbVariant = 'row' | 'hero' | 'display';
 
 /**
  * Point sizes per width class, after the iOS HIG: 44 pt is both the standard
@@ -24,6 +27,7 @@ export type FoodThumbVariant = 'row' | 'hero';
 const SIZES: Record<FoodThumbVariant, { compact: number; regular: number; large: number }> = {
   row: { compact: 40, regular: 44, large: 48 },
   hero: { compact: 56, regular: 64, large: 72 },
+  display: { compact: 112, regular: 132, large: 148 },
 };
 
 /** Width classes in points: below 360 is an SE / mini, from 428 a Plus / Pro Max. */
@@ -60,6 +64,15 @@ export function FoodThumb({ foodId, variant = 'row' }: { foodId: string; variant
   // A quarter of the side, on iOS's continuous curve: the same rounding the
   // system gives app icons and list thumbnails, at any size.
   const radius = Math.round(size * 0.24);
+
+  // Pictures are switched off (constants/food-images.ts): every food is the same grey tile with a fork and knife.
+  if (!FOOD_IMAGES_ENABLED) {
+    return (
+      <View aria-hidden style={[styles.placeholder, { width: size, height: size, borderRadius: radius, backgroundColor: theme.backgroundElement }]}>
+        <Icon name="utensils" size={Math.round(size * 0.42)} color={theme.textTertiary} />
+      </View>
+    );
+  }
   const icon = foodIcon(foodId);
   const inner = size - 2 * cornerSafeInset(radius);
 
@@ -75,3 +88,11 @@ export function FoodThumb({ foodId, variant = 'row' }: { foodId: string; variant
     />
   );
 }
+
+const styles = StyleSheet.create({
+  placeholder: {
+    borderCurve: 'continuous',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});

@@ -4,7 +4,7 @@ import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from 'react-nat
 
 import { GlassSurface } from '@/components/glass/glass-surface';
 import { DIET_PHASE_SHORT_LABEL, DietOverviewPopup } from '@/components/nutrition/diet-overview-popup';
-import { DishPhoto } from '@/components/nutrition/dish-photo';
+import { DishPhoto, DishPlaceholder } from '@/components/nutrition/dish-photo';
 import { DietPlanSummaryCard } from '@/components/training/plan-summary-card';
 import { PlanMonthStepper } from '@/components/training/plan-month-stepper';
 import { ScreenScroll } from '@/components/screen-scroll';
@@ -13,6 +13,7 @@ import { Icon } from '@/components/ui/icon';
 import { InsightCard } from '@/components/ui/insight-card';
 import { PrimaryButton } from '@/components/ui/primary-button';
 import { SegmentedControl } from '@/components/ui/segmented-control';
+import { FOOD_IMAGES_ENABLED } from '@/constants/food-images';
 import { Radius, Spacing } from '@/constants/theme';
 import { useEnsurePlan } from '@/hooks/use-ensure-plan';
 import { useTheme } from '@/hooks/use-theme';
@@ -270,7 +271,7 @@ function MealCard({ meal }: { meal: PlanMeal }) {
         <>
           {meal.recipe ? (
             <View style={styles.recipeRow}>
-              {photo ? <DishPhoto image={photo} /> : null}
+              {photo ? <DishPhoto image={photo} /> : !FOOD_IMAGES_ENABLED ? <DishPlaceholder /> : null}
               <View style={styles.recipeText}>
                 <ThemedText type="smallBold">{meal.recipe.name}</ThemedText>
                 {meal.recipe.flavorings.length > 0 ? (
