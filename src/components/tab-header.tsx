@@ -15,14 +15,14 @@ export type TabHeaderProps = {
   title: string;
   /** Small grey line under the title (Home: the selected day's full date). */
   subtitle?: string;
-  /** Shows the calendar button between notifications and profile; omit it on pages with no calendar. */
+  /** Shows the calendar button before notifications and profile; omit it on pages with no calendar. */
   onCalendarPress?: () => void;
 };
 
 /**
  * The top bar of every main page, all on one line: the FitLab mark and the
  * page title (with an optional line under it) on the left; on the right, in
- * this order, notifications, calendar (when the page has one) and profile.
+ * this order, calendar (when the page has one), notifications and profile.
  */
 export function TabHeader({ title, subtitle, onCalendarPress }: TabHeaderProps) {
   const theme = useTheme();
@@ -43,14 +43,14 @@ export function TabHeader({ title, subtitle, onCalendarPress }: TabHeaderProps) 
         ) : null}
       </View>
       <View style={[styles.actions, narrow && styles.actionsNarrow]}>
-        <LiquidGlassButton onPress={() => router.push('/notification-settings' as Href)} hitSlop={8} scaleTo={0.9} accessibilityLabel="Notifiche" size={size}>
-          <Icon name="bell" size={iconSize} color={theme.text} />
-        </LiquidGlassButton>
         {onCalendarPress ? (
           <LiquidGlassButton onPress={onCalendarPress} hitSlop={8} scaleTo={0.9} accessibilityLabel="Apri calendario" size={size}>
             <Icon name="calendar" size={iconSize} color={theme.text} />
           </LiquidGlassButton>
         ) : null}
+        <LiquidGlassButton onPress={() => router.push('/notification-settings' as Href)} hitSlop={8} scaleTo={0.9} accessibilityLabel="Notifiche" size={size}>
+          <Icon name="bell" size={iconSize} color={theme.text} />
+        </LiquidGlassButton>
         <ProfileAvatarButton size={size} />
       </View>
     </View>
