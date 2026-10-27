@@ -1,5 +1,6 @@
 import * as Print from 'expo-print';
 
+import { PDF_LOGO_DATA_URI } from './pdf-logo';
 import type { DietDayPlan, PlanMealItem } from './types';
 
 // Native only — expo-print's `html` param works correctly here. The web
@@ -25,20 +26,18 @@ function formatItem(item: PlanMealItem): string {
  * Print stylesheet for the exported PDF. The colours below are deliberately
  * NOT theme tokens and deliberately do not follow the app's light/dark
  * setting: this is ink on paper (or on a white PDF page), so it is always
- * dark text on a light sheet no matter how the phone is set. The one shared
- * value is the brand orange, which matches Palette.orange[500].
+ * dark text on a light sheet no matter how the phone is set.
  */
 const BRAND_STYLE = `
-  .brand { display: flex; align-items: baseline; gap: 8px; margin-bottom: 14px; }
-  .brand-mark { font-size: 20px; font-weight: 800; letter-spacing: 0.5px; color: #16171b; }
-  .brand-mark .accent { color: #FF7A00; }
+  .brand { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .brand-logo { height: 28px; }
   .brand-tagline { font-size: 10px; color: #999; text-transform: uppercase; letter-spacing: 1px; }
 `;
 
 const BRAND_HTML = `
   <div class="brand">
-    <span class="brand-mark">FIT<span class="accent">BRO</span></span>
-    <span class="brand-tagline">Il tuo coach personale</span>
+    <img class="brand-logo" src="${PDF_LOGO_DATA_URI}" alt="FitLab" />
+    <span class="brand-tagline">Build your best</span>
   </div>
 `;
 

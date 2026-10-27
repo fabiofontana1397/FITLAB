@@ -7,6 +7,7 @@
 import jsPDF from 'jspdf/dist/jspdf.es.min.js';
 import autoTable from 'jspdf-autotable';
 
+import { PDF_LOGO_ASPECT, PDF_LOGO_DATA_URI } from './pdf-logo';
 import type { DietDayPlan, PlanMealItem } from './types';
 
 // Web build of pdf-export — resolved automatically instead of pdf-export.ts
@@ -24,18 +25,13 @@ const MARGIN = 40;
 
 function drawLetterhead(doc: jsPDF, pageWidth: number): number {
   let y = 46;
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(16);
-  doc.setTextColor(...INK);
-  doc.text('FIT', MARGIN, y);
-  const fitWidth = doc.getTextWidth('FIT');
-  doc.setTextColor(...ORANGE);
-  doc.text('BRO', MARGIN + fitWidth, y);
+  const logoHeight = 22;
+  doc.addImage(PDF_LOGO_DATA_URI, 'PNG', MARGIN, y - logoHeight + 4, logoHeight * PDF_LOGO_ASPECT, logoHeight);
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
   doc.setTextColor(153, 153, 153);
-  doc.text('IL TUO COACH PERSONALE', pageWidth - MARGIN, y, { align: 'right' });
+  doc.text('BUILD YOUR BEST', pageWidth - MARGIN, y, { align: 'right' });
 
   y += 10;
   doc.setDrawColor(230, 230, 230);
