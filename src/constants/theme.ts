@@ -120,6 +120,8 @@ export const Colors = {
     // translucent glass cards only a shade lighter than it (their white rim
     // does the separating), recessed wells a shade darker.
     background: PageBackground.light,
+    // Sheets and popups: same as the page in light (the dimmed backdrop separates them).
+    surfacePopup: PageBackground.light,
     // Reference style: a near-white page with plain white cards on it — no
     // glass, no rim — and wells inside the cards a hair darker.
     backgroundElevated: '#FFFFFF',
@@ -189,6 +191,8 @@ export const Colors = {
   },
   dark: {
     background: PageBackground.dark,
+    // Sheets and popups: dark grey between the black page and the cards, so their edges show against the page.
+    surfacePopup: '#18191D',
     // Pure black page, dark-grey cards clearly lifted off it (with a faint rim), wells a step above the cards.
     backgroundElevated: '#222328',
     backgroundElement: '#2D2E34',

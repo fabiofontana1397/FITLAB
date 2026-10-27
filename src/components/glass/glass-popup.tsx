@@ -46,7 +46,7 @@ export function GlassPopup({ visible, onClose, children, style, maxWidth = POPUP
         </Pressable>
         <PopupCard style={[styles.cardWrap, { maxWidth }]}>
           {/* Swiping the card down dismisses it, like an iPhone sheet; the grabber says so. */}
-          <GlassSurface level="overlay" radius={Radius.xlarge} style={[styles.card, style]} swipeToDismiss={onClose}>
+          <GlassSurface level="overlay" radius={Radius.xlarge} style={[styles.card, isDark && { backgroundColor: theme.surfacePopup }, style]} swipeToDismiss={onClose}>
             {children}
           </GlassSurface>
         </PopupCard>

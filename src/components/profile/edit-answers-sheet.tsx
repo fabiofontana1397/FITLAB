@@ -45,7 +45,7 @@ export function EditAnswersSheet({ group, answers, onClose, onSave }: EditAnswer
   return (
     <Modal visible={group != null} animationType={modalAnimation('slide')} presentationStyle="pageSheet" onRequestClose={onClose}>
       {/* iOS's own page sheet already swipes down; elsewhere this does it. */}
-      <SwipeDismiss onDismiss={Platform.OS === 'ios' ? undefined : onClose} style={[styles.root, { backgroundColor: theme.background, paddingTop: Platform.OS === 'android' ? insets.top : 0 }]}>
+      <SwipeDismiss onDismiss={Platform.OS === 'ios' ? undefined : onClose} style={[styles.root, { backgroundColor: theme.surfacePopup, paddingTop: Platform.OS === 'android' ? insets.top : 0 }]}>
         <View style={[styles.header, { borderBottomColor: theme.border }]}>
           <Pressable onPress={onClose} hitSlop={8} accessibilityLabel="Chiudi">
             <GlassSurface level="card" radius={Radius.pill} style={styles.closeButton}>
@@ -96,7 +96,7 @@ export function EditAnswersSheet({ group, answers, onClose, onSave }: EditAnswer
           </View>
         </PopupScrollView>
 
-        <View style={[styles.footer, { borderTopColor: theme.border, paddingBottom: insets.bottom + Spacing.three, backgroundColor: theme.background }]}>
+        <View style={[styles.footer, { borderTopColor: theme.border, paddingBottom: insets.bottom + Spacing.three, backgroundColor: theme.surfacePopup }]}>
           <View style={styles.footerInner}>
             {!canSave ? (
               <ThemedText type="caption" style={{ color: theme.danger, textAlign: 'center' }}>

@@ -195,7 +195,7 @@ export function SheetScreen({ title, eyebrow, leading, children, fallbackHref = 
       </Animated.View>
 
       <View style={[styles.sheetArea, { top }]}>
-        <Animated.View style={[styles.sheet, { backgroundColor: theme.background }, sheetStyle]} {...dragHandlers.panHandlers}>
+        <Animated.View style={[styles.sheet, { backgroundColor: theme.surfacePopup }, sheetStyle]} {...dragHandlers.panHandlers}>
           <View style={styles.header}>
             {leading}
             <View style={styles.headingText}>
@@ -237,7 +237,7 @@ export function SheetScreen({ title, eyebrow, leading, children, fallbackHref = 
               </ScrollView>
               {/* Under the fixed title the content dissolves instead of being cut by a hard edge; the fade grows in as you scroll. */}
               <Animated.View pointerEvents="none" style={[styles.edgeFade, edgeFadeStyle]}>
-                <LinearGradient colors={[theme.background, `${theme.background}00`]} style={StyleSheet.absoluteFill} />
+                <LinearGradient colors={[theme.surfacePopup, `${theme.surfacePopup}00`]} style={StyleSheet.absoluteFill} />
               </Animated.View>
             </View>
           ) : (
