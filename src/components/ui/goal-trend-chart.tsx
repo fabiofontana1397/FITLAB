@@ -1,24 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  Pressable,
-  ScrollView,
-  View,
-  type LayoutChangeEvent,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
-} from "react-native";
-import { AppText as Text } from "@/components/ui/app-text";
-import Svg, {
-  Circle,
-  Defs,
-  Line,
-  LinearGradient,
-  Path,
-  Stop,
-} from "react-native-svg";
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Pressable, ScrollView, View, type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+import { AppText as Text } from '@/components/ui/app-text';
+import Svg, { Circle, Defs, Line, LinearGradient, Path, Stop } from 'react-native-svg';
 
-import { useTheme } from "@/hooks/use-theme";
-import { formatDayRange } from "@/lib/mock/dates";
+import { useTheme } from '@/hooks/use-theme';
+import { formatDayRange } from '@/lib/mock/dates';
 
 /** One axis slot (a day/week/month depending on the selected range).
  * `value` is null when nothing was logged for that slot — the slot still
@@ -39,7 +25,7 @@ export type GoalTrendChartProps = {
   target?: number | null;
   /** Whether each point represents a single day or a whole month — changes
    * how the period caption below the chart is worded. */
-  dateGranularity: "day" | "month";
+  dateGranularity: 'day' | 'month';
   width?: number;
   height?: number;
   color: string;
@@ -73,22 +59,12 @@ function buildSegments(xy: (XY | null)[], height: number) {
   const run = xy.filter((p): p is XY => p != null);
   if (run.length === 0) return [];
 
-  const path = run
-    .map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(2)} ${p.y.toFixed(2)}`)
-    .join(" ");
-  const area =
-    run.length > 1
-      ? `${path} L ${run[run.length - 1].x.toFixed(2)} ${height} L ${run[0].x.toFixed(2)} ${height} Z`
-      : "";
+  const path = run.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(2)} ${p.y.toFixed(2)}`).join(' ');
+  const area = run.length > 1 ? `${path} L ${run[run.length - 1].x.toFixed(2)} ${height} L ${run[0].x.toFixed(2)} ${height} Z` : '';
   return [{ path, area }];
 }
 
-function buildChart(
-  points: WeightPoint[],
-  target: number | null | undefined,
-  plotWidth: number,
-  height: number,
-) {
+function buildChart(points: WeightPoint[], target: number | null | undefined, plotWidth: number, height: number) {
   const empty = {
     segments: [] as { path: string; area: string }[],
     xy: [] as XY[],
@@ -98,11 +74,8 @@ function buildChart(
   };
   if (points.length === 0 || plotWidth <= 0) return empty;
 
-  const values = points
-    .map((p) => p.value)
-    .filter((v): v is number => v != null);
-  const rawValues =
-    target != null ? [...values, target] : values.length > 0 ? values : [70];
+  const values = points.map((p) => p.value).filter((v): v is number => v != null);
+  const rawValues = target != null ? [...values, target] : values.length > 0 ? values : [70];
   const rawMin = Math.min(...rawValues);
   const rawMax = Math.max(...rawValues);
   // A little headroom above/below so dots and their value labels near the
@@ -121,16 +94,10 @@ function buildChart(
   // each point is already one fixed axis category (a day/week/month), not a
   // raw timestamp, so a categorical axis is what actually matches the
   // labels underneath it.
-  const toX = (i: number) =>
-    points.length === 1
-      ? plotWidth / 2
-      : INSET_LEFT + (i / (points.length - 1)) * innerWidth;
-  const toY = (value: number) =>
-    PADDING_TOP + plotHeight * (1 - (value - min) / valueRange);
+  const toX = (i: number) => (points.length === 1 ? plotWidth / 2 : INSET_LEFT + (i / (points.length - 1)) * innerWidth);
+  const toY = (value: number) => PADDING_TOP + plotHeight * (1 - (value - min) / valueRange);
 
-  const xy = points.map((p, i) =>
-    p.value == null ? null : { x: toX(i), y: toY(p.value), value: p.value, i },
-  );
+  const xy = points.map((p, i) => (p.value == null ? null : { x: toX(i), y: toY(p.value), value: p.value, i }));
   const segments = buildSegments(xy, height);
 
   const xTicks = points.map((p, i) => ({ x: toX(i), label: p.xLabel }));
@@ -153,10 +120,7 @@ function buildChart(
 function slotIndexAt(x: number, pointCount: number, innerWidth: number) {
   if (pointCount <= 1 || innerWidth <= 0) return 0;
   const t = (x - INSET_LEFT) / innerWidth;
-  return Math.max(
-    0,
-    Math.min(pointCount - 1, Math.round(t * (pointCount - 1))),
-  );
+  return Math.max(0, Math.min(pointCount - 1, Math.round(t * (pointCount - 1))));
 }
 
 const TIP_WIDTH = 104;
@@ -164,10 +128,10 @@ const TIP_HEIGHT = 44;
 
 /** "mar 27 ott" */
 function tipDate(iso: string) {
-  return new Date(iso).toLocaleDateString("it-IT", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
+  return new Date(iso).toLocaleDateString('it-IT', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
   });
 }
 
@@ -179,13 +143,9 @@ function capitalize(s: string) {
 function formatMonthRange(startISO: string, endISO: string) {
   const start = new Date(startISO);
   const end = new Date(endISO);
-  const month = (d: Date) =>
-    capitalize(d.toLocaleDateString("it-IT", { month: "long" }));
+  const month = (d: Date) => capitalize(d.toLocaleDateString('it-IT', { month: 'long' }));
 
-  if (
-    start.getFullYear() === end.getFullYear() &&
-    start.getMonth() === end.getMonth()
-  ) {
+  if (start.getFullYear() === end.getFullYear() && start.getMonth() === end.getMonth()) {
     return `${month(start)} ${start.getFullYear()}`;
   }
   if (start.getFullYear() === end.getFullYear()) {
@@ -206,29 +166,13 @@ function formatMonthRange(startISO: string, endISO: string) {
  * plain React Native Text absolutely positioned over the SVG rather than
  * SVG <Text> — the latter's baseline handling isn't consistent enough
  * across web/iOS/Android to trust for something this small. */
-export function GoalTrendChart({
-  points,
-  target,
-  dateGranularity,
-  width,
-  height = 240,
-  color,
-  targetColor,
-  axisColor,
-  gridColor,
-}: GoalTrendChartProps) {
+export function GoalTrendChart({ points, target, dateGranularity, width, height = 240, color, targetColor, axisColor, gridColor }: GoalTrendChartProps) {
   const [measuredWidth, setMeasuredWidth] = useState(width ?? 0);
   const containerWidth = width ?? measuredWidth;
-  const plotWidth = Math.max(
-    containerWidth - GUTTER_WIDTH,
-    points.length * MIN_SLOT_WIDTH,
-  );
+  const plotWidth = Math.max(containerWidth - GUTTER_WIDTH, points.length * MIN_SLOT_WIDTH);
   const innerWidth = plotWidth - INSET_LEFT - INSET_RIGHT;
 
-  const { segments, xy, targetY, xTicks, yTicks } = useMemo(
-    () => buildChart(points, target, plotWidth, height),
-    [points, target, plotWidth, height],
-  );
+  const { segments, xy, targetY, xTicks, yTicks } = useMemo(() => buildChart(points, target, plotWidth, height), [points, target, plotWidth, height]);
 
   // Sub-pixel-different onLayout measurements (common on web, especially
   // once a horizontal scrollbar for the plot appears/disappears) used to
@@ -241,11 +185,7 @@ export function GoalTrendChart({
   const onLayout = (e: LayoutChangeEvent) => {
     if (width != null) return;
     const measured = e.nativeEvent.layout.width;
-    if (
-      lastMeasuredWidth.current != null &&
-      Math.abs(measured - lastMeasuredWidth.current) < 1
-    )
-      return;
+    if (lastMeasuredWidth.current != null && Math.abs(measured - lastMeasuredWidth.current) < 1) return;
     lastMeasuredWidth.current = measured;
     setMeasuredWidth(measured);
   };
@@ -281,49 +221,34 @@ export function GoalTrendChart({
 
   // The dot tapped for its mini popup (index into `points`); a new set of points clears it.
   const theme = useTheme();
-  const [selected, setSelected] = useState<{ key: string; i: number } | null>(
-    null,
-  );
-  const selectedPoint =
-    selected?.key === resetKey ? xy.find((p) => p.i === selected.i) : undefined;
-  const toggleDot = (i: number) =>
-    setSelected((cur) =>
-      cur?.key === resetKey && cur.i === i ? null : { key: resetKey, i },
-    );
+  const [selected, setSelected] = useState<{ key: string; i: number } | null>(null);
+  const selectedPoint = selected?.key === resetKey ? xy.find((p) => p.i === selected.i) : undefined;
+  const toggleDot = (i: number) => setSelected((cur) => (cur?.key === resetKey && cur.i === i ? null : { key: resetKey, i }));
 
-  const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) =>
-    updateVisibleRange(e.nativeEvent.contentOffset.x);
+  const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => updateVisibleRange(e.nativeEvent.contentOffset.x);
 
   const first = points[visibleRange.first];
   const last = points[visibleRange.last];
-  const periodLabel =
-    first && last
-      ? dateGranularity === "day"
-        ? formatDayRange(first.date, last.date)
-        : formatMonthRange(first.date, last.date)
-      : "";
+  const periodLabel = first && last ? (dateGranularity === 'day' ? formatDayRange(first.date, last.date) : formatMonthRange(first.date, last.date)) : '';
 
   return (
-    <View
-      style={{ width: width ?? "100%", height: height + PERIOD_LABEL_HEIGHT }}
-      onLayout={onLayout}
-    >
+    <View style={{ width: width ?? '100%', height: height + PERIOD_LABEL_HEIGHT }} onLayout={onLayout}>
       {containerWidth > 0 ? (
         <>
-          <View style={{ flexDirection: "row", height, position: "relative" }}>
+          <View style={{ flexDirection: 'row', height, position: 'relative' }}>
             {/* Fixed y-axis gutter, stays put while the plot scrolls under it */}
             <View style={{ width: GUTTER_WIDTH, height }}>
               {yTicks.map((tick, i) => (
                 <Text
                   key={i}
                   style={{
-                    position: "absolute",
+                    position: 'absolute',
                     left: 0,
                     width: GUTTER_WIDTH - 6,
                     top: tick.y - 7,
                     fontSize: 11,
                     color: axisColor,
-                    textAlign: "right",
+                    textAlign: 'right',
                   }}
                 >
                   {tick.label}
@@ -343,13 +268,7 @@ export function GoalTrendChart({
               <View style={{ width: plotWidth, height }}>
                 <Svg width={plotWidth} height={height}>
                   <Defs>
-                    <LinearGradient
-                      id="goalTrendFill"
-                      x1="0"
-                      y1="0"
-                      x2="0"
-                      y2="1"
-                    >
+                    <LinearGradient id="goalTrendFill" x1="0" y1="0" x2="0" y2="1">
                       <Stop offset="0" stopColor={color} stopOpacity={0.28} />
                       <Stop offset="1" stopColor={color} stopOpacity={0} />
                     </LinearGradient>
@@ -357,15 +276,7 @@ export function GoalTrendChart({
 
                   {/* Horizontal gridlines */}
                   {yTicks.map((tick, i) => (
-                    <Line
-                      key={`y${i}`}
-                      x1={0}
-                      y1={tick.y}
-                      x2={plotWidth}
-                      y2={tick.y}
-                      stroke={gridColor}
-                      strokeWidth={1}
-                    />
+                    <Line key={`y${i}`} x1={0} y1={tick.y} x2={plotWidth} y2={tick.y} stroke={gridColor} strokeWidth={1} />
                   ))}
                   {/* Vertical dashed gridlines, one per axis slot */}
                   {xTicks.map((tick, i) => (
@@ -382,51 +293,14 @@ export function GoalTrendChart({
                   ))}
 
                   {/* Target reference line */}
-                  {targetY != null ? (
-                    <Line
-                      x1={0}
-                      y1={targetY}
-                      x2={plotWidth}
-                      y2={targetY}
-                      stroke={targetColor}
-                      strokeWidth={1.5}
-                    />
-                  ) : null}
+                  {targetY != null ? <Line x1={0} y1={targetY} x2={plotWidth} y2={targetY} stroke={targetColor} strokeWidth={1.5} /> : null}
 
-                  {segments.map((seg, i) =>
-                    seg.area ? (
-                      <Path
-                        key={`area${i}`}
-                        d={seg.area}
-                        fill="url(#goalTrendFill)"
-                      />
-                    ) : null,
-                  )}
+                  {segments.map((seg, i) => (seg.area ? <Path key={`area${i}`} d={seg.area} fill="url(#goalTrendFill)" /> : null))}
                   {segments.map((seg, i) => (
-                    <Path
-                      key={`line${i}`}
-                      d={seg.path}
-                      stroke={color}
-                      strokeWidth={2.5}
-                      fill="none"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
+                    <Path key={`line${i}`} d={seg.path} stroke={color} strokeWidth={2.5} fill="none" strokeLinecap="round" strokeLinejoin="round" />
                   ))}
                   {xy.map((p, i) => (
-                    <Circle
-                      key={i}
-                      cx={p.x}
-                      cy={p.y}
-                      r={
-                        p.i === selected?.i && selected.key === resetKey
-                          ? 6
-                          : i === xy.length - 1
-                            ? 4.5
-                            : 3
-                      }
-                      fill={color}
-                    />
+                    <Circle key={i} cx={p.x} cy={p.y} r={p.i === selected?.i && selected.key === resetKey ? 6 : i === xy.length - 1 ? 4.5 : 3} fill={color} />
                   ))}
                 </Svg>
 
@@ -434,7 +308,7 @@ export function GoalTrendChart({
                 {selectedPoint ? (
                   <Pressable
                     style={{
-                      position: "absolute",
+                      position: 'absolute',
                       left: 0,
                       top: 0,
                       width: plotWidth,
@@ -452,7 +326,7 @@ export function GoalTrendChart({
                     accessibilityRole="button"
                     accessibilityLabel={`Peso del ${points[p.i].date}: ${p.value.toFixed(1)} kg`}
                     style={{
-                      position: "absolute",
+                      position: 'absolute',
                       left: p.x - 18,
                       top: p.y - 18,
                       width: 36,
@@ -466,13 +340,13 @@ export function GoalTrendChart({
                   <Text
                     key={i}
                     style={{
-                      position: "absolute",
+                      position: 'absolute',
                       left: tick.x - 20,
                       width: 40,
                       top: height - PADDING_BOTTOM + 6,
                       fontSize: 11,
                       color: axisColor,
-                      textAlign: "center",
+                      textAlign: 'center',
                     }}
                   >
                     {tick.label}
@@ -485,13 +359,13 @@ export function GoalTrendChart({
                   <Text
                     key={i}
                     style={{
-                      position: "absolute",
+                      position: 'absolute',
                       left: p.x - 20,
                       width: 40,
                       top: p.y - 20,
                       fontSize: 11,
-                      fontWeight: "700",
-                      textAlign: "center",
+                      fontWeight: '700',
+                      textAlign: 'center',
                       color,
                     }}
                   >
@@ -503,41 +377,35 @@ export function GoalTrendChart({
                   <View
                     pointerEvents="none"
                     style={{
-                      position: "absolute",
-                      left: Math.min(
-                        Math.max(selectedPoint.x - TIP_WIDTH / 2, 4),
-                        plotWidth - TIP_WIDTH - 4,
-                      ),
-                      top:
-                        selectedPoint.y - TIP_HEIGHT - 12 < 0
-                          ? selectedPoint.y + 14
-                          : selectedPoint.y - TIP_HEIGHT - 12,
+                      position: 'absolute',
+                      left: Math.min(Math.max(selectedPoint.x - TIP_WIDTH / 2, 4), plotWidth - TIP_WIDTH - 4),
+                      top: selectedPoint.y - TIP_HEIGHT - 12 < 0 ? selectedPoint.y + 14 : selectedPoint.y - TIP_HEIGHT - 12,
                       width: TIP_WIDTH,
                       height: TIP_HEIGHT,
                       borderRadius: 12,
                       borderWidth: 1,
                       borderColor: theme.borderStrong,
                       backgroundColor: theme.surfacePopup,
-                      alignItems: "center",
-                      justifyContent: "center",
-                      boxShadow: "0px 4px 14px rgba(0,0,0,0.22)",
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: '0px 4px 14px rgba(0,0,0,0.22)',
                     }}
                   >
                     <Text
                       style={{
                         fontSize: 14,
                         lineHeight: 18,
-                        fontWeight: "800",
+                        fontWeight: '800',
                         color: theme.text,
                       }}
                     >
-                      {selectedPoint.value.toFixed(1).replace(".", ",")} kg
+                      {selectedPoint.value.toFixed(1).replace('.', ',')} kg
                     </Text>
                     <Text
                       style={{
                         fontSize: 11,
                         lineHeight: 14,
-                        fontWeight: "500",
+                        fontWeight: '500',
                         color: theme.textSecondary,
                       }}
                     >
@@ -554,11 +422,11 @@ export function GoalTrendChart({
             {targetY != null && target != null ? (
               <Text
                 style={{
-                  position: "absolute",
+                  position: 'absolute',
                   right: 4,
                   top: Math.max(targetY - 16, 0),
                   fontSize: 11,
-                  fontWeight: "700",
+                  fontWeight: '700',
                   color: targetColor,
                 }}
               >
@@ -572,9 +440,9 @@ export function GoalTrendChart({
               visible slice rather than the whole (possibly off-screen) range. */}
           <Text
             style={{
-              textAlign: "center",
+              textAlign: 'center',
               fontSize: 12,
-              fontWeight: "600",
+              fontWeight: '600',
               color: axisColor,
               height: PERIOD_LABEL_HEIGHT,
             }}
