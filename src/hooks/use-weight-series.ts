@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 
 import type { WeightPoint } from '@/components/ui/goal-trend-chart';
-import { currentWeekDates, monthShortLabel, weekdayShort } from '@/lib/mock/dates';
+import { currentWeekDates, dayOfMonth, monthShortLabel, weekdayShort } from '@/lib/mock/dates';
 import type { BodyMetricSnapshot } from '@/lib/mock/types';
 
 export type WeightRange = 'settimana' | 'mese' | 'anno';
@@ -10,6 +10,27 @@ export type WeightRange = 'settimana' | 'mese' | 'anno';
  * whole month — feeds GoalTrendChart's period-caption wording. */
 export function weightDateGranularity(range: WeightRange): 'day' | 'month' {
   return range === 'anno' ? 'month' : 'day';
+}
+
+/** The last `count` days the user actually weighed in (a day's several
+ * entries averaged), oldest first: only tracked days, so a gap of untracked
+ * days never leaves the chart empty. Feeds the Progress page's "Andamento peso". */
+export function useRecentWeightSeries(bodyEntries: BodyMetricSnapshot[], count = 30): WeightPoint[] {
+  return useMemo<WeightPoint[]>(() => {
+    const byDate = new Map<string, number[]>();
+    for (const e of bodyEntries) {
+      const bucket = byDate.get(e.date) ?? [];
+      bucket.push(e.weightKg);
+      byDate.set(e.date, bucket);
+    }
+    return [...byDate.keys()]
+      .sort()
+      .slice(-count)
+      .map((date) => {
+        const values = byDate.get(date) ?? [];
+        return { xLabel: `${dayOfMonth(date)}`, value: Math.round((values.reduce((sum, v) => sum + v, 0) / values.length) * 10) / 10, date };
+      });
+  }, [bodyEntries, count]);
 }
 
 /** Builds the fixed set of axis slots a weight trend chart shows for the

@@ -21,7 +21,7 @@ import { SegmentedControl } from '@/components/ui/segmented-control';
 import { TrendChart } from '@/components/ui/trend-chart';
 import { Layout, Radius } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { useWeightSeries, weightDateGranularity, type WeightRange } from '@/hooks/use-weight-series';
+import { useRecentWeightSeries } from '@/hooks/use-weight-series';
 import { generatePhotoInsight } from '@/lib/assistant/photo-insight';
 import { latestSnapshot, seriesOf } from '@/lib/mock/body';
 import { addDaysISO, daysAgoISO, formatFullDay } from '@/lib/mock/dates';
@@ -67,9 +67,8 @@ export default function ProgressScreen() {
   const [addMeasurementZone, setAddMeasurementZone] = useState<{ zone: MeasurementZone; label: string } | null>(null);
   const [posePickerOpen, setPosePickerOpen] = useState(false);
   const [detailPhoto, setDetailPhoto] = useState<BodyPhoto | null>(null);
-  const [weightRange, setWeightRange] = useState<WeightRange>('settimana');
   const [tab, setTab] = useState<'peso' | 'misure' | 'foto'>('peso');
-  const weightSeries = useWeightSeries(entries, weightRange);
+  const weightSeries = useRecentWeightSeries(entries, 30);
 
   const latest = useMemo(() => latestSnapshot(entries), [entries]);
   const startBody = entries[0] ?? latest;
@@ -213,19 +212,13 @@ export default function ProgressScreen() {
 
       <FlatCard radius={CARD_RADIUS} style={styles.chartCard}>
         <ThemedText style={styles.chartTitle}>Andamento peso</ThemedText>
-        <SegmentedControl
-          options={[
-            { value: 'settimana', label: 'Settimana' },
-            { value: 'mese', label: 'Mese' },
-            { value: 'anno', label: 'Anno' },
-          ]}
-          value={weightRange}
-          onChange={(v) => setWeightRange(v as WeightRange)}
-        />
+        <ThemedText style={styles.chartSubtitle} themeColor="textTertiary">
+          Ultimi 30 giorni tracciati
+        </ThemedText>
         <GoalTrendChart
           points={weightSeries}
           target={hasGoal ? currentUser.targetWeightKg : null}
-          dateGranularity={weightDateGranularity(weightRange)}
+          dateGranularity="day"
           height={200}
           color={theme.accent}
           targetColor={theme.brandGreen}
@@ -504,6 +497,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 18,
     fontWeight: '700',
+  },
+  chartSubtitle: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '500',
   },
   tabs: {
     marginTop: 16,
