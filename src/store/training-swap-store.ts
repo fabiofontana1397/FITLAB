@@ -1,8 +1,8 @@
-import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
-import { isoMondayIndex } from "@/lib/mock/dates";
-import { appJsonStorage } from "@/store/storage";
+import { isoMondayIndex } from '@/lib/mock/dates';
+import { appJsonStorage } from '@/store/storage';
 
 type TrainingSwapState = {
   /** date → the date whose planned session is done on it. Absent = its own. */
@@ -37,14 +37,11 @@ export const useTrainingSwapStore = create<TrainingSwapState>()(
         }),
       clearLocal: () => set({ swaps: {} }),
     }),
-    { name: "fitlab/training-swaps", storage: appJsonStorage, version: 0 },
-  ),
+    { name: 'fitlab/training-swaps', storage: appJsonStorage, version: 0 }
+  )
 );
 
 /** Index into a month's weeklySplit for `date`, honouring a moved session. */
-export function planIndexFor(
-  date: string,
-  swaps: Record<string, string>,
-): number {
+export function planIndexFor(date: string, swaps: Record<string, string>): number {
   return isoMondayIndex(swaps[date] ?? date);
 }
