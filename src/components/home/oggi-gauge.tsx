@@ -1,7 +1,7 @@
 import { useIsFocused } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
-import Animated, { Easing, useAnimatedProps, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, useAnimatedProps, useReducedMotion, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import Svg, { Circle, Line, Path } from 'react-native-svg';
 
 import { ThemedText } from '@/components/themed-text';
@@ -10,6 +10,7 @@ import { BALANCE_SCALE, balancePosition, type BalanceReading } from '@/domain/ca
 import { useTheme } from '@/hooks/use-theme';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 // ─── Geometry ──────────────────────────────────────────────────────────────
 // Drawn in a fixed 260-wide coordinate space and scaled to the card, so the
@@ -26,46 +27,42 @@ const BOTTOM_GAP_DEG = 84;
 const MAIN_HALF_SPAN = 180 - BOTTOM_GAP_DEG / 2; // ±138°
 const MIN_SWEEP_DEG = 10;
 
-/** Semi-ring: the balance against the goal, hugging the top of the main ring. */
+/** Semi-ring: the balance against the goal, around the main ring and spanning exactly the same angles (it starts and ends where the main ring does). */
 const SEMI_STROKE = 6;
 const RING_GAP = 9;
 const SEMI_R = MAIN_R + MAIN_STROKE / 2 + RING_GAP + SEMI_STROKE / 2;
-const SEMI_HALF_SPAN = 90;
+const SEMI_HALF_SPAN = MAIN_HALF_SPAN;
 
-/** The balance marker: a triangle outside the semi-ring, its tip on the track pointing at the ring's centre. */
-const MARKER_TIP_R = SEMI_R + SEMI_STROKE / 2 + 1.5;
-const MARKER_TRI_H = 8;
-const MARKER_TRI_HALF_W = 4.6;
+/** The balance marker: a bead on the track plus a triangle outside it, its tip on the bead pointing at the ring's centre. */
+const BEAD_R = 6;
+const MARKER_TIP_R = SEMI_R + BEAD_R + 2;
+const MARKER_TRI_H = 11;
+const MARKER_TRI_HALF_W = 6.5;
 /** Where the "Equilibrio" label hangs: just past the triangle's base, at the top. */
-const ZERO_LABEL_R = MARKER_TIP_R + MARKER_TRI_H + 7;
+const ZERO_LABEL_R = MARKER_TIP_R + MARKER_TRI_H + 6;
 /** Room above the semi-ring for that label. */
-const TOP_PAD = 34;
-/** The semi-ring's end labels sit level with its two ends, past the marker's path. */
-const END_LABEL_GAP = MARKER_TIP_R + MARKER_TRI_H + 5;
+const TOP_PAD = 42;
+/** The Deficit / Surplus labels sit just outside the semi-ring's two ends, past the marker's path. */
+const END_LABEL_R = MARKER_TIP_R + MARKER_TRI_H + 5;
 const END_LABEL_W = 52;
 /** The junction knob fills the ring's thickness, leaving a hair of the stroke around it. */
 const KNOB_R = MAIN_STROKE / 2 - 0.5;
-/** The ring is drawn as short segments whose colour follows the distance from the knob. */
-const RING_STEP_DEG = 4;
-const RING_OVERLAP_DEG = 0.6;
 /** Every visit to Home replays the fill like an odometer: fast at first, settling on the value. */
-const ODOMETER_MS = 1500;
+const ODOMETER_MS = 1100;
 const ODOMETER_BEZIER = Easing.bezier(0.16, 1, 0.3, 1);
 const odometerEase = ODOMETER_BEZIER.factory();
-/** The far end of an arc never fades past this share of its full colour, and a short arc fades as if it were this long. */
-const FADE_FLOOR = 0.4;
-const FADE_MIN_SPAN_DEG = 90;
-/** How far toward the card surface the faded colour sits. */
-const FADE_TOWARD_SURFACE = 0.6;
+/** One beat of the marker's halo. */
+const HALO_MS = 1300;
 /** The semi-ring track, by distance from the goal (as a share of the half range, past the goal's core): green on target, soft green while acceptable, soft red beyond it, red when far off. */
-const GOAL_ZONE_STEP_DEG = 1.5;
+const GOAL_ZONE_STEP_DEG = 2;
 const GOAL_ZONE_MIN_CORE_DEG = 3;
 const GOAL_ZONE_MAX_CORE_DEG = 6;
 const ZONE_SOFT_GREEN_AT = 0.22;
 const ZONE_SOFT_RED_AT = 0.5;
 const ZONE_RED_AT = 0.8;
 const CY = TOP_PAD + SEMI_R + SEMI_STROKE / 2;
-const BASE_H = CY + MAIN_R * Math.cos(((180 - MAIN_HALF_SPAN) * Math.PI) / 180) + MAIN_STROKE / 2 + 4;
+const END_COS = -Math.cos((SEMI_HALF_SPAN * Math.PI) / 180);
+const BASE_H = CY + Math.max(MAIN_R * END_COS + MAIN_STROKE / 2 + 4, (SEMI_R + SEMI_STROKE / 2) * END_COS + 4, END_LABEL_R * END_COS + 12);
 
 /** Height over width of the drawn gauge, for sizing it to the room there is. */
 export const GAUGE_ASPECT = BASE_H / BASE_W;
@@ -137,22 +134,6 @@ function mixRgb(a: Rgb, b: Rgb, t: number): Rgb {
   return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 }
 
-/**
- * Colour of one piece of the main ring: the arc's own colour at full strength
- * next to the knob, fading toward the card surface the further it lies along
- * that arc. Recomputed from the shown junction, so the gradient follows the
- * curve and moves with the knob.
- */
-function ringColor(mid: number, junction: number, burned: Rgb, eaten: Rgb, fadedBurned: Rgb, fadedEaten: Rgb): string {
-  const isBurned = mid < junction;
-  const len = isBurned ? junction + MAIN_HALF_SPAN : MAIN_HALF_SPAN - junction;
-  const x = Math.min(1, Math.abs(mid - junction) / Math.max(len, FADE_MIN_SPAN_DEG));
-  const ease = x * x * (3 - 2 * x);
-  const keep = 1 - (1 - FADE_FLOOR) * ease;
-  const c = isBurned ? mixRgb(fadedBurned, burned, keep) : mixRgb(fadedEaten, eaten, keep);
-  return `rgb(${Math.round(c[0])},${Math.round(c[1])},${Math.round(c[2])})`;
-}
-
 /** The marker triangle at `deg` on the semi-ring, as one path (runs inside the animation worklet). */
 function markerPath(deg: number): string {
   'worklet';
@@ -191,10 +172,10 @@ export type OggiGaugeProps = {
  *    its share of the two. Where they meet (the round knob) is the day's
  *    balance: at the top when they are equal, right of it in a deficit, left
  *    in a surplus.
- * 2. The semi-ring above reads that same balance on a symmetric kcal range:
- *    equilibrium at the top, deficit to the right, surplus to the left. The
- *    triangle outside it is the balance; the green stretch of the track is
- *    the goal — full green where it is met, fading to grey away from it.
+ * 2. The semi-ring around it, over the same angles, reads that same balance on
+ *    a symmetric kcal range: equilibrium at the top, deficit to the right,
+ *    surplus to the left. The bead and triangle are the balance; the track
+ *    runs green on the goal, soft green while acceptable, then red.
  */
 export function OggiGauge({ burnedKcal, eatenKcal, burnedColor, eatenColor, reading, value, goalLabel, caption, toleranceKcal = BALANCE_SCALE.toleranceKcal, inactive = false }: OggiGaugeProps) {
   const theme = useTheme();
@@ -209,10 +190,11 @@ export function OggiGauge({ burnedKcal, eatenKcal, burnedColor, eatenColor, read
   const targetSemi = missing ? 0 : position * SEMI_HALF_SPAN;
   const goalDeg = balancePosition(reading.goalKcal, reading.halfRangeKcal).position * SEMI_HALF_SPAN;
   // Each time Home comes into view the rings refill from empty, like an
-  // odometer: `sweep` (0..1) paints the main ring clockwise from its left end,
-  // the knob appears as the sweep reaches it, and the triangle glides out from
-  // equilibrium. State is reset when Home loses focus so the next visit starts
-  // from zero. Under Reduce Motion everything is simply there.
+  // odometer: `sweep` (0..1) grows the burned arc from the ring's bottom-left
+  // end and the intake arc from its bottom-right end until they meet at the
+  // knob, while the marker glides out from equilibrium. State is reset when
+  // Home loses focus so the next visit starts from zero. Under Reduce Motion
+  // everything is simply there.
   const reduceMotion = useReducedMotion();
   const focused = useIsFocused();
   const [sweep, setSweep] = useState(0);
@@ -234,8 +216,9 @@ export function OggiGauge({ burnedKcal, eatenKcal, burnedColor, eatenColor, read
     return () => cancelAnimationFrame(frame);
   }, [focused, reduceMotion]);
   const junction = targetJunction;
-  // How far (in degrees from the ring's left end) the sweep has got.
-  const front = -MAIN_HALF_SPAN + sweep * MAIN_HALF_SPAN * 2;
+  // Where each arc's leading edge has got to on its way to the junction.
+  const burnedTo = -MAIN_HALF_SPAN + sweep * (junction + MAIN_HALF_SPAN);
+  const eatenFrom = MAIN_HALF_SPAN - sweep * (MAIN_HALF_SPAN - junction);
 
   const semi = useSharedValue(0);
   useEffect(() => {
@@ -248,21 +231,23 @@ export function OggiGauge({ burnedKcal, eatenKcal, burnedColor, eatenColor, read
 
   const marker = useAnimatedProps(() => ({ d: markerPath(semi.value) }));
 
-  const ringColors = useMemo(() => {
-    const surface = rgbOf(theme.backgroundElevated, rgbOf(theme.background));
-    const burned = rgbOf(burnedColor);
-    const eaten = rgbOf(eatenColor);
-    if (!surface || !burned || !eaten) return null;
-    return { burned, eaten, fadedBurned: mixRgb(burned, surface, FADE_TOWARD_SURFACE), fadedEaten: mixRgb(eaten, surface, FADE_TOWARD_SURFACE) };
-  }, [theme.background, theme.backgroundElevated, burnedColor, eatenColor]);
-  const ringSegments = useMemo(() => {
-    const count = Math.ceil((MAIN_HALF_SPAN * 2) / RING_STEP_DEG);
-    return Array.from({ length: count }, (_, i) => {
-      const from = -MAIN_HALF_SPAN + i * RING_STEP_DEG;
-      const to = Math.min(MAIN_HALF_SPAN, from + RING_STEP_DEG + RING_OVERLAP_DEG);
-      return { from, to, d: arc(MAIN_R, from, to) };
-    });
-  }, []);
+  // A halo breathing around the marker's bead keeps it in view.
+  const halo = useSharedValue(0);
+  useEffect(() => {
+    if (!focused || reduceMotion) {
+      halo.value = 0;
+      return;
+    }
+    halo.value = withRepeat(withTiming(1, { duration: HALO_MS, easing: Easing.out(Easing.quad) }), -1, false);
+  }, [focused, reduceMotion, halo]);
+  const bead = useAnimatedProps(() => ({ cx: px(SEMI_R, semi.value), cy: py(SEMI_R, semi.value) }));
+  const haloProps = useAnimatedProps(() => ({
+    cx: px(SEMI_R, semi.value),
+    cy: py(SEMI_R, semi.value),
+    r: BEAD_R + halo.value * 9,
+    opacity: 0.45 * (1 - halo.value),
+  }));
+
   // The semi-ring's track, in short pieces: green on the goal, soft green while acceptable, soft red beyond it, red when far off.
   const goalZone = useMemo(() => {
     const surface = rgbOf(theme.backgroundElevated, rgbOf(theme.background));
@@ -310,24 +295,17 @@ export function OggiGauge({ burnedKcal, eatenKcal, burnedColor, eatenColor, read
             strokeLinecap="round"
           />
 
-          {/* Main ring: burned from the left end, intake from the right, meeting at the junction. */}
-          {empty || !ringColors ? (
-            <Path d={arc(MAIN_R, -MAIN_HALF_SPAN, MAIN_HALF_SPAN)} stroke={theme.backgroundElement} strokeWidth={MAIN_STROKE} strokeLinecap="round" fill="none" />
-          ) : (
-            ringSegments.map((seg, i) => (
-              <Path
-                key={i}
-                d={seg.d}
-                stroke={(seg.from + seg.to) / 2 <= front ? ringColor((seg.from + seg.to) / 2, junction, ringColors.burned, ringColors.eaten, ringColors.fadedBurned, ringColors.fadedEaten) : theme.backgroundElement}
-                strokeWidth={MAIN_STROKE}
-                strokeLinecap={i === 0 || i === ringSegments.length - 1 ? 'round' : 'butt'}
-                fill="none"
-              />
-            ))
+          {/* Main ring: its track, then burned growing from the bottom-left end and intake from the bottom-right end, in solid colour, until they meet at the junction. */}
+          <Path d={arc(MAIN_R, -MAIN_HALF_SPAN, MAIN_HALF_SPAN)} stroke={theme.backgroundElement} strokeWidth={MAIN_STROKE} strokeLinecap="round" fill="none" />
+          {empty ? null : (
+            <>
+              {burnedTo > -MAIN_HALF_SPAN + 0.05 ? <Path d={arc(MAIN_R, -MAIN_HALF_SPAN, burnedTo)} stroke={burnedColor} strokeWidth={MAIN_STROKE} strokeLinecap="round" fill="none" /> : null}
+              {eatenFrom < MAIN_HALF_SPAN - 0.05 ? <Path d={arc(MAIN_R, eatenFrom, MAIN_HALF_SPAN)} stroke={eatenColor} strokeWidth={MAIN_STROKE} strokeLinecap="round" fill="none" /> : null}
+            </>
           )}
 
           {/* The junction knob, filling the ring's thickness, with a soft shadow under it. */}
-          {empty || front < junction ? null : (
+          {empty || sweep < 0.97 ? null : (
             <>
               <Circle cx={px(MAIN_R, junction)} cy={py(MAIN_R, junction) + 1.6} r={KNOB_R + 2.2} fill={Palette.neutral[950]} opacity={0.07} />
               <Circle cx={px(MAIN_R, junction)} cy={py(MAIN_R, junction) + 1.4} r={KNOB_R + 1.2} fill={Palette.neutral[950]} opacity={0.12} />
@@ -336,8 +314,10 @@ export function OggiGauge({ burnedKcal, eatenKcal, burnedColor, eatenColor, read
               <Path d={arrowsPath(px(MAIN_R, junction), py(MAIN_R, junction), junction)} stroke={Palette.neutral[800]} strokeWidth={1.3} strokeLinecap="round" strokeLinejoin="round" fill="none" />
             </>
           )}
-          {/* The balance on the semi-ring: the triangle. */}
-          {missing ? null : <AnimatedPath animatedProps={marker} fill={theme.text} stroke={theme.text} strokeWidth={1.2} strokeLinejoin="round" />}
+          {/* The balance on the semi-ring: a bead on the track, a pulsing halo and the triangle pointing at it, always shown (at equilibrium when there is no reading). */}
+          <AnimatedCircle animatedProps={haloProps} fill={theme.text} />
+          <AnimatedCircle animatedProps={bead} r={BEAD_R} fill={theme.text} stroke={theme.backgroundElevated} strokeWidth={2.5} />
+          <AnimatedPath animatedProps={marker} fill={theme.text} stroke={theme.backgroundElevated} strokeWidth={1.8} strokeLinejoin="round" />
         </Svg>
 
         {/* The scale's three labels: equilibrium at the top, the two ends under the semi-ring's ends. */}
@@ -346,8 +326,8 @@ export function OggiGauge({ burnedKcal, eatenKcal, burnedColor, eatenColor, read
           style={[styles.zeroText, label(11), { top: (py(ZERO_LABEL_R, 0) - 14) * k, left: 0, right: 0 }]}>
           Equilibrio
         </ThemedText>
-        <EndLabel name="Deficit" side="right" x={(CX + END_LABEL_GAP) * k} y={CY * k} size={label(11)} />
-        <EndLabel name="Surplus" side="left" x={(CX - END_LABEL_GAP) * k} y={CY * k} size={label(11)} />
+        <EndLabel name="Deficit" side="right" x={px(END_LABEL_R, SEMI_HALF_SPAN) * k} y={py(END_LABEL_R, SEMI_HALF_SPAN) * k} size={label(11)} />
+        <EndLabel name="Surplus" side="left" x={px(END_LABEL_R, -SEMI_HALF_SPAN) * k} y={py(END_LABEL_R, -SEMI_HALF_SPAN) * k} size={label(11)} />
 
         {/* The number: the balance itself, inside the main ring. */}
         <View pointerEvents="none" style={[styles.centre, { top: (CY - 38) * k, height: 76 * k }]}>
