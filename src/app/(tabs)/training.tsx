@@ -369,7 +369,7 @@ const styles = StyleSheet.create({
   registerButton: {
     marginTop: 0,
     height: 54,
-    borderRadius: 16,
+    borderRadius: 27,
     paddingHorizontal: 12,
     flexDirection: 'row',
     alignItems: 'center',
