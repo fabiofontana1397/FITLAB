@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useMemo, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 
 import { PressableScale } from '@/components/motion/pressable-scale';
 import { ScreenScroll } from '@/components/screen-scroll';
@@ -12,6 +12,7 @@ import { TabHeader } from '@/components/tab-header';
 import { LogActivityModal } from '@/components/training/log-activity-modal';
 import { LoggedActivitiesCard } from '@/components/training/logged-activities-card';
 import { MissedWorkoutsCard, type MissedWorkout } from '@/components/training/missed-workouts-card';
+import { SwapSlide } from '@/components/training/swap-slide';
 import { TrainingWeekCard } from '@/components/training/training-week-card';
 import { levelLabel, WorkoutSummaryCard } from '@/components/training/workout-summary-card';
 import { WorkoutSessionModal } from '@/components/training/workout-session-modal';
@@ -27,6 +28,7 @@ import type { TrainingDayPlan } from '@/lib/planning/types';
 import { useActivityLogStore } from '@/store/activity-log-store';
 import { usePlanStore } from '@/store/plan-store';
 import { isExerciseCompleted, useTrainingProgressStore } from '@/store/training-progress-store';
+import { planIndexFor, useTrainingSwapStore } from '@/store/training-swap-store';
 import { useUserStore } from '@/store/user-store';
 
 /** Short label for the user's goal, shown next to the session level. */
@@ -50,6 +52,11 @@ export default function TrainingScreen() {
   const [isLogActivityVisible, setLogActivityVisible] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [sessionDate, setSessionDate] = useState<string | null>(null);
+  const swaps = useTrainingSwapStore((s) => s.swaps);
+  const swapDays = useTrainingSwapStore((s) => s.swapDays);
+  // Where each day's section sits, so an exchange can slide the two sessions across; `nonce` re-runs the motion.
+  const [sectionY, setSectionY] = useState<Record<string, number>>({});
+  const [slide, setSlide] = useState<{ nonce: number; dates: [string, string] | null }>({ nonce: 0, dates: null });
 
   const today = daysAgoISO(0);
   const [selectedDate, setSelectedDate] = useState(today);
@@ -62,10 +69,10 @@ export default function TrainingScreen() {
   const monthIndex = trainingPlan ? currentMonthIndex(trainingPlan) : 1;
   const currentMonth = trainingPlan?.months.find((m) => m.monthIndex === monthIndex);
   const weeklySplit = currentMonth?.weeklySplit ?? [];
-  const dayPlanOf = (date: string): TrainingDayPlan | undefined => weeklySplit[isoMondayIndex(date)];
+  const dayPlanOf = (date: string): TrainingDayPlan | undefined => weeklySplit[planIndexFor(date, swaps)];
 
   const isDayComplete = (date: string): boolean => {
-    const day = weeklySplit[isoMondayIndex(date)];
+    const day = dayPlanOf(date);
     if (day?.type !== 'workout') return false;
     const exercises = day.exercises ?? [];
     if (exercises.length === 0) return false;
@@ -78,7 +85,7 @@ export default function TrainingScreen() {
   // still in the future (can't have trained yet).
   const toggleDayComplete = (date: string) => {
     if (date > today) return;
-    const day = weeklySplit[isoMondayIndex(date)];
+    const day = dayPlanOf(date);
     if (day?.type !== 'workout') return;
     const exercises = day.exercises ?? [];
     if (exercises.length === 0) return;
@@ -129,6 +136,19 @@ export default function TrainingScreen() {
     scrollRef.current?.scrollTo({ y: 0, animated: true });
   };
 
+  // Brings a day's session to today and today's to that day.
+  const swapWithToday = (date: string) => {
+    swapDays(date, today);
+    setSlide((s) => ({ nonce: s.nonce + 1, dates: [date, today] }));
+  };
+  const slideFrom = (date: string): number => {
+    if (!slide.dates || !slide.dates.includes(date)) return 0;
+    const other = slide.dates[0] === date ? slide.dates[1] : slide.dates[0];
+    const mine = sectionY[date];
+    const theirs = sectionY[other];
+    return mine === undefined || theirs === undefined ? 0 : theirs - mine;
+  };
+
   const headingOf = (date: string) =>
     date === today
       ? 'Allenamento di oggi'
@@ -145,6 +165,7 @@ export default function TrainingScreen() {
       <ScreenScroll
         ref={scrollRef}
         testID="training-list"
+        contentContainerStyle={styles.list}
         header={<TabHeader title="Allenamento" onCalendarPress={() => setCalendarOpen(true)} />}>
         <TrainingWeekCard
           weekDates={viewedWeekDates}
@@ -182,7 +203,14 @@ export default function TrainingScreen() {
           const statusLabel = done ? 'Completato' : date < today ? 'Non completato' : 'In programma';
           const statusColor = done ? theme.brandGreen : date < today ? theme.textTertiary : theme.accent;
           return (
-            <View key={date} testID={`training-day-${date}`} style={styles.daySection}>
+            <View
+              key={date}
+              testID={`training-day-${date}`}
+              style={styles.daySection}
+              onLayout={(e: LayoutChangeEvent) => {
+                const y = e.nativeEvent.layout.y;
+                setSectionY((m) => (m[date] === y ? m : { ...m, [date]: y }));
+              }}>
               <View style={styles.dayHeadingRow}>
                 <ThemedText style={emphasized ? styles.sectionTitle : [styles.sectionTitleQuiet, { color: theme.text }]} accessibilityRole="header">
                   {headingOf(date)}
@@ -195,6 +223,7 @@ export default function TrainingScreen() {
               </View>
 
               {/* What was logged that day sits in the day's own section: before the planned session while that is still to do, after it once it is done. */}
+              <SwapSlide nonce={slide.dates?.includes(date) ? slide.nonce : 0} from={slideFrom(date)}>
               <View style={styles.dayBody}>
               {done ? null : <LoggedActivitiesCard date={date} inline />}
               {!trainingPlan ? (
@@ -213,7 +242,9 @@ export default function TrainingScreen() {
                   minutes={plannedSessionMinutes(day, ctx)}
                   kcal={plannedSessionKcal(day, ctx)}
                   onOpen={() => router.push({ pathname: '/workout-detail', params: { date } })}
-                  onStart={() => setSessionDate(date)}
+                  // Only today's session can be started; the days ahead can be brought forward instead.
+                  onStart={date === today ? () => setSessionDate(date) : undefined}
+                  onSwap={date > today && !done ? () => swapWithToday(date) : undefined}
                 />
               ) : day?.type === 'cardio' ? (
                 <PressableScale
@@ -244,6 +275,7 @@ export default function TrainingScreen() {
               )}
               {done ? <LoggedActivitiesCard date={date} inline /> : null}
               </View>
+              </SwapSlide>
             </View>
           );
         })}
@@ -283,15 +315,19 @@ export default function TrainingScreen() {
 }
 
 const styles = StyleSheet.create({
+  // Tighter than the app's section gap: the week, the button and the days read as one list.
+  list: {
+    gap: 12,
+  },
   daySection: {
-    marginBottom: 6,
+    marginBottom: 0,
   },
   dayBody: {
     gap: 12,
   },
   dayHeadingRow: {
-    marginTop: 6,
-    marginBottom: 10,
+    marginTop: 0,
+    marginBottom: 8,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -331,7 +367,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   registerButton: {
-    marginTop: 12,
+    marginTop: 0,
     height: 54,
     borderRadius: 16,
     paddingHorizontal: 12,

@@ -19,6 +19,7 @@ import { useOnboardingStore } from '@/store/onboarding-store';
 import { usePlanStore } from '@/store/plan-store';
 import { useTrainingStore } from '@/store/training-store';
 import { useTrainingProgressStore } from '@/store/training-progress-store';
+import { useTrainingSwapStore } from '@/store/training-swap-store';
 import { useUserStore } from '@/store/user-store';
 
 SplashScreen.preventAutoHideAsync();
@@ -61,6 +62,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
       useNutritionStore.getState().clearLocal();
       useTrainingStore.getState().clearLocal();
       useTrainingProgressStore.getState().clearLocal();
+      useTrainingSwapStore.getState().clearLocal();
       usePlanStore.getState().clearLocal();
       useOnboardingStore.getState().clearLocal();
       useMonthlyCheckinStore.getState().clearLocal();

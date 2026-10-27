@@ -1,4 +1,5 @@
 import { useLocalSearchParams } from 'expo-router';
+import { planIndexFor, useTrainingSwapStore } from '@/store/training-swap-store';
 import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -8,7 +9,7 @@ import { SheetScreen } from '@/components/ui/sheet-screen';
 import { PlanExerciseRow } from '@/components/training/plan-exercise-row';
 import { difficultyLabel, WorkoutBadge } from '@/components/training/workout-summary-card';
 import { useTheme } from '@/hooks/use-theme';
-import { daysAgoISO, isoMondayIndex } from '@/lib/mock/dates';
+import { daysAgoISO } from '@/lib/mock/dates';
 import { sessionKcal, sessionMinutes } from '@/domain/energy';
 import { useUserContext } from '@/hooks/use-user-context';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
@@ -36,7 +37,8 @@ export default function WorkoutDetailScreen() {
   const toggleCompleted = useTrainingProgressStore((s) => s.toggleCompleted);
 
   const month = trainingPlan?.months.find((m) => m.monthIndex === currentMonthIndex(trainingPlan));
-  const day = month?.weeklySplit[isoMondayIndex(date)];
+  const swaps = useTrainingSwapStore((s) => s.swaps);
+  const day = month?.weeklySplit[planIndexFor(date, swaps)];
   const exercises = day?.type === 'workout' ? (day.exercises ?? []) : [];
 
   const ctx = useUserContext();
