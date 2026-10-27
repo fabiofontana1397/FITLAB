@@ -16,7 +16,7 @@ const AnimatedPath = Animated.createAnimatedComponent(Path);
 // two rings stay concentric and in proportion on every iPhone width.
 // Angles are degrees clockwise from 12 o'clock — so on both rings the right
 // side is a deficit, the left a surplus, and the top is equilibrium.
-const BASE_W = 300;
+const BASE_W = 330;
 const CX = BASE_W / 2;
 
 /** Main ring: intake vs burned, open at the bottom like the original gauge. */
@@ -40,9 +40,9 @@ const MARKER_TRI_HALF_W = 4.6;
 const ZERO_LABEL_R = MARKER_TIP_R + MARKER_TRI_H + 7;
 /** Room above the semi-ring for that label. */
 const TOP_PAD = 34;
-/** The semi-ring's end labels sit under its two ends, nudged outward so they clear the main ring. */
-const END_LABEL_DX = 20;
-const END_LABEL_DY = 16;
+/** The semi-ring's end labels sit level with its two ends, past the marker's path. */
+const END_LABEL_GAP = MARKER_TIP_R + MARKER_TRI_H + 5;
+const END_LABEL_W = 52;
 /** The junction knob fills the ring's thickness, leaving a hair of the stroke around it. */
 const KNOB_R = MAIN_STROKE / 2 - 0.5;
 /** The ring is drawn as short segments whose colour follows the distance from the knob. */
@@ -50,19 +50,20 @@ const RING_STEP_DEG = 4;
 const RING_OVERLAP_DEG = 0.6;
 /** Every visit to Home replays the fill like an odometer: fast at first, settling on the value. */
 const ODOMETER_MS = 1500;
-const ODOMETER_EASING = Easing.bezier(0.16, 1, 0.3, 1);
+const ODOMETER_BEZIER = Easing.bezier(0.16, 1, 0.3, 1);
+const odometerEase = ODOMETER_BEZIER.factory();
 /** The far end of an arc never fades past this share of its full colour, and a short arc fades as if it were this long. */
 const FADE_FLOOR = 0.4;
 const FADE_MIN_SPAN_DEG = 90;
 /** How far toward the card surface the faded colour sits. */
 const FADE_TOWARD_SURFACE = 0.6;
-/** The semi-ring track: green around the goal, turning amber then red the further the balance lies from it. */
+/** The semi-ring track, by distance from the goal (as a share of the half range, past the goal's core): green on target, soft green while acceptable, soft red beyond it, red when far off. */
 const GOAL_ZONE_STEP_DEG = 1.5;
 const GOAL_ZONE_MIN_CORE_DEG = 3;
 const GOAL_ZONE_MAX_CORE_DEG = 6;
-/** Degrees past the core at which the track has become fully red, and the share of that distance where it is amber. */
-const GOAL_ZONE_RED_DEG = 110;
-const GOAL_ZONE_AMBER_AT = 0.4;
+const ZONE_SOFT_GREEN_AT = 0.22;
+const ZONE_SOFT_RED_AT = 0.5;
+const ZONE_RED_AT = 0.8;
 const CY = TOP_PAD + SEMI_R + SEMI_STROKE / 2;
 const BASE_H = CY + MAIN_R * Math.cos(((180 - MAIN_HALF_SPAN) * Math.PI) / 180) + MAIN_STROKE / 2 + 4;
 
@@ -227,7 +228,7 @@ export function OggiGauge({ burnedKcal, eatenKcal, burnedColor, eatenColor, read
     const start = performance.now();
     let frame = requestAnimationFrame(function step(now) {
       const t = Math.min(1, (now - start) / ODOMETER_MS);
-      setSweep(ODOMETER_EASING(t));
+      setSweep(odometerEase(t));
       if (t < 1) frame = requestAnimationFrame(step);
     });
     return () => cancelAnimationFrame(frame);
@@ -242,7 +243,7 @@ export function OggiGauge({ burnedKcal, eatenKcal, burnedColor, eatenColor, read
       semi.value = 0;
       return;
     }
-    semi.value = reduceMotion ? targetSemi : withTiming(targetSemi, { duration: ODOMETER_MS, easing: ODOMETER_EASING });
+    semi.value = reduceMotion ? targetSemi : withTiming(targetSemi, { duration: ODOMETER_MS, easing: ODOMETER_BEZIER });
   }, [focused, reduceMotion, targetSemi, semi]);
 
   const marker = useAnimatedProps(() => ({ d: markerPath(semi.value) }));
@@ -262,28 +263,31 @@ export function OggiGauge({ burnedKcal, eatenKcal, burnedColor, eatenColor, read
       return { from, to, d: arc(MAIN_R, from, to) };
     });
   }, []);
-  // The semi-ring's track, in short pieces: green around the goal, then amber, then red the further away.
+  // The semi-ring's track, in short pieces: green on the goal, soft green while acceptable, soft red beyond it, red when far off.
   const goalZone = useMemo(() => {
     const surface = rgbOf(theme.backgroundElevated, rgbOf(theme.background));
     const track = rgbOf(theme.backgroundElement, surface);
     const green = rgbOf(theme.balanceGoalScale[2]);
-    const amber = rgbOf(theme.warning);
+    const softGreen = green && surface ? mixRgb(green, surface, 0.45) : null;
     const red = rgbOf(theme.danger);
+    const softRed = red && surface ? mixRgb(red, surface, 0.4) : null;
     const count = Math.ceil((SEMI_HALF_SPAN * 2) / GOAL_ZONE_STEP_DEG);
     const core = Math.min(GOAL_ZONE_MAX_CORE_DEG, Math.max(GOAL_ZONE_MIN_CORE_DEG, ((toleranceKcal / reading.halfRangeKcal) * SEMI_HALF_SPAN) * 0.5));
+    const smooth = (t: number) => t * t * (3 - 2 * t);
     return Array.from({ length: count }, (_, i) => {
       const from = -SEMI_HALF_SPAN + i * GOAL_ZONE_STEP_DEG;
       const to = Math.min(SEMI_HALF_SPAN, from + GOAL_ZONE_STEP_DEG + 0.3);
-      const x = Math.min(1, Math.max(0, (Math.abs((from + to) / 2 - goalDeg) - core) / GOAL_ZONE_RED_DEG));
+      const f = Math.max(0, Math.abs((from + to) / 2 - goalDeg) - core) / SEMI_HALF_SPAN;
       let c: Rgb | null;
-      if (inactive || !green || !amber || !red) c = track;
-      else {
-        const e = x * x * (3 - 2 * x);
-        c = e < GOAL_ZONE_AMBER_AT ? mixRgb(green, amber, e / GOAL_ZONE_AMBER_AT) : mixRgb(amber, red, (e - GOAL_ZONE_AMBER_AT) / (1 - GOAL_ZONE_AMBER_AT));
-      }
+      if (inactive || !green || !softGreen || !red || !softRed) c = track;
+      else if (f <= 0) c = green;
+      else if (f < ZONE_SOFT_GREEN_AT) c = mixRgb(green, softGreen, smooth(f / ZONE_SOFT_GREEN_AT));
+      else if (f < ZONE_SOFT_RED_AT) c = mixRgb(softGreen, softRed, smooth((f - ZONE_SOFT_GREEN_AT) / (ZONE_SOFT_RED_AT - ZONE_SOFT_GREEN_AT)));
+      else if (f < ZONE_RED_AT) c = mixRgb(softRed, red, smooth((f - ZONE_SOFT_RED_AT) / (ZONE_RED_AT - ZONE_SOFT_RED_AT)));
+      else c = red;
       return { d: arc(SEMI_R, from, to), color: c ? `rgb(${Math.round(c[0])},${Math.round(c[1])},${Math.round(c[2])})` : theme.backgroundElement };
     });
-  }, [theme.background, theme.backgroundElevated, theme.backgroundElement, theme.balanceGoalScale, theme.warning, theme.danger, goalDeg, toleranceKcal, reading.halfRangeKcal, inactive]);
+  }, [theme.background, theme.backgroundElevated, theme.backgroundElement, theme.balanceGoalScale, theme.danger, goalDeg, toleranceKcal, reading.halfRangeKcal, inactive]);
 
   const onLayout = (e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width);
   const label = (fontSize: number) => ({ fontSize: Math.max(11, fontSize * k), lineHeight: Math.max(14, (fontSize + 3) * k) });
@@ -340,10 +344,10 @@ export function OggiGauge({ burnedKcal, eatenKcal, burnedColor, eatenColor, read
         <ThemedText
           themeColor="textSecondary"
           style={[styles.zeroText, label(11), { top: (py(ZERO_LABEL_R, 0) - 14) * k, left: 0, right: 0 }]}>
-          Equilibrio · 0 kcal
+          Equilibrio
         </ThemedText>
-        <EndLabel name="Deficit" x={(CX + SEMI_R + END_LABEL_DX) * k} y={(CY + END_LABEL_DY) * k} size={label(11)} />
-        <EndLabel name="Surplus" x={(CX - SEMI_R - END_LABEL_DX) * k} y={(CY + END_LABEL_DY) * k} size={label(11)} />
+        <EndLabel name="Deficit" side="right" x={(CX + END_LABEL_GAP) * k} y={CY * k} size={label(11)} />
+        <EndLabel name="Surplus" side="left" x={(CX - END_LABEL_GAP) * k} y={CY * k} size={label(11)} />
 
         {/* The number: the balance itself, inside the main ring. */}
         <View pointerEvents="none" style={[styles.centre, { top: (CY - 38) * k, height: 76 * k }]}>
@@ -356,11 +360,12 @@ export function OggiGauge({ burnedKcal, eatenKcal, burnedColor, eatenColor, read
   );
 }
 
-/** One end of the semi-ring's scale: its name, centred on x. */
-function EndLabel({ name, x, y, size }: { name: string; x: number; y: number; size: { fontSize: number; lineHeight: number } }) {
+/** One end of the semi-ring's scale: its name beside the ring's end, its inner edge at x. */
+function EndLabel({ name, side, x, y, size }: { name: string; side: 'left' | 'right'; x: number; y: number; size: { fontSize: number; lineHeight: number } }) {
+  const w = END_LABEL_W * (size.fontSize / 11);
   return (
-    <View pointerEvents="none" style={[styles.end, { top: y, width: 80, left: x - 40 }]}>
-      <ThemedText themeColor="textSecondary" style={[styles.endName, size]}>
+    <View pointerEvents="none" style={[styles.end, { top: y - size.lineHeight / 2, width: w, left: side === 'right' ? x : x - w }]}>
+      <ThemedText themeColor="textSecondary" style={[styles.endName, size, { textAlign: side === 'right' ? 'left' : 'right' }]} numberOfLines={1}>
         {name}
       </ThemedText>
     </View>
@@ -380,7 +385,6 @@ const styles = StyleSheet.create({
   },
   end: {
     position: 'absolute',
-    alignItems: 'center',
   },
   endName: {
     fontWeight: '700',
