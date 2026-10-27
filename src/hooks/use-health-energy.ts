@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo } from 'react';
+import { planIndexFor, useTrainingSwapStore } from '@/store/training-swap-store';
 import { AppState } from 'react-native';
 
 import type { MeasuredDay } from '@/domain/energy';
 import { calibrateEnergy, type CalibrationResult } from '@/domain/health-calibration';
 import { useUserContext } from '@/hooks/use-user-context';
-import { daysAgoISO, isoMondayIndex } from '@/lib/mock/dates';
+import { daysAgoISO } from '@/lib/mock/dates';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
 import { useHealthStore } from '@/store/health-store';
 import { usePlanStore } from '@/store/plan-store';
@@ -30,6 +31,7 @@ export function useHealthEnergy(): HealthEnergy {
   const days = useHealthStore((s) => s.days);
   const trainingPlan = usePlanStore((s) => s.trainingPlan);
   const completed = useTrainingProgressStore((s) => s.completed);
+  const swaps = useTrainingSwapStore((s) => s.swaps);
   const ctx = useUserContext();
   const today = daysAgoISO(0);
 
@@ -37,13 +39,13 @@ export function useHealthEnergy(): HealthEnergy {
     if (!provider) return null;
     const month = trainingPlan?.months.find((m) => m.monthIndex === currentMonthIndex(trainingPlan));
     const plannedFor = (date: string) => {
-      const session = month?.weeklySplit[isoMondayIndex(date)];
+      const session = month?.weeklySplit[planIndexFor(date, swaps)];
       const exercises = session?.type === 'workout' ? (session.exercises ?? []) : [];
       const done = exercises.filter((ex) => isExerciseCompleted(completed, ex.id, date)).length;
       return { session, completion: exercises.length > 0 ? done / exercises.length : 0 };
     };
     return calibrateEnergy(Object.values(days), ctx, plannedFor, today);
-  }, [provider, days, trainingPlan, completed, ctx, today]);
+  }, [provider, days, trainingPlan, completed, ctx, today, swaps]);
 
   const measuredFor = useCallback(
     (date: string): MeasuredDay | null => {

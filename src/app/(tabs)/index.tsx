@@ -1,4 +1,5 @@
 import { LinearGradient } from 'expo-linear-gradient';
+import { planIndexFor, useTrainingSwapStore } from '@/store/training-swap-store';
 import { router, type Href } from 'expo-router';
 import { useState } from 'react';
 import { Platform, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
@@ -101,8 +102,9 @@ export default function HomeScreen() {
   // Training tab uses, so Home and Training agree on what's planned.
   const trainingMonth = trainingPlan?.months.find((m) => m.monthIndex === currentMonthIndex(trainingPlan));
   const weeklySplit = trainingMonth?.weeklySplit ?? [];
+  const swaps = useTrainingSwapStore((s) => s.swaps);
   const exercisesOn = (date: string) => {
-    const planDay = weeklySplit[isoMondayIndex(date)];
+    const planDay = weeklySplit[planIndexFor(date, swaps)];
     return planDay?.type === 'workout' ? (planDay.exercises ?? []) : [];
   };
   // The "Oggi" card follows the day picked with the calendar icon (today by
@@ -122,7 +124,7 @@ export default function HomeScreen() {
 
   // The shown day's estimated expenditure from the unified energy model: resting + everyday activity
   // + the planned session scaled by how much was done + manually logged activities.
-  const energy = dayEnergy(ctx, weeklySplit[isoMondayIndex(viewDate)] ?? null, viewExerciseCompletionFraction, sumActivityKcalForDate(activityLogEntries, viewDate), {
+  const energy = dayEnergy(ctx, weeklySplit[planIndexFor(viewDate, swaps)] ?? null, viewExerciseCompletionFraction, sumActivityKcalForDate(activityLogEntries, viewDate), {
     calibration: health.calibration,
     measured: health.measuredFor(viewDate),
   });

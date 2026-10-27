@@ -1,61 +1,84 @@
-import { useState } from 'react';
-import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Circle, Defs, LinearGradient as SvgGradient, Path, Stop } from 'react-native-svg';
+import { useState } from "react";
+import { Pressable, StyleSheet, View, useWindowDimensions } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import Svg, {
+  Circle,
+  Defs,
+  LinearGradient as SvgGradient,
+  Path,
+  Stop,
+} from "react-native-svg";
 
-import { ThemedText } from '@/components/themed-text';
-import { CheckinInfoPopup } from '@/components/training/checkin-info-popup';
-import { FlatCard } from '@/components/ui/flat-card';
-import { Icon, type IconName } from '@/components/ui/icon';
-import { useTheme } from '@/hooks/use-theme';
-import type { Goal } from '@/lib/mock/types';
-import { currentMonthIndex, currentMonthProgress, monthEndInfo } from '@/lib/planning/plan-progress';
-import type { DietPlan, TrainingPlan } from '@/lib/planning/types';
+import { ThemedText } from "@/components/themed-text";
+import { CheckinInfoPopup } from "@/components/training/checkin-info-popup";
+import { FlatCard } from "@/components/ui/flat-card";
+import { Icon, type IconName } from "@/components/ui/icon";
+import { useTheme } from "@/hooks/use-theme";
+import type { Goal } from "@/lib/mock/types";
+import { currentMonthIndex, monthEndInfo } from "@/lib/planning/plan-progress";
+import type { DietPlan, TrainingPlan } from "@/lib/planning/types";
 
 const GOAL_NAME: Record<Goal, string> = {
-  loseFat: 'Definizione',
-  gainMuscle: 'Ipertrofia',
-  maintainImprove: 'Mantenimento',
-  gainStrength: 'Forza',
-  improveEndurance: 'Resistenza',
-  generalHealth: 'Benessere',
+  loseFat: "Definizione",
+  gainMuscle: "Ipertrofia",
+  maintainImprove: "Mantenimento",
+  gainStrength: "Forza",
+  improveEndurance: "Resistenza",
+  generalHealth: "Benessere",
 };
 
 /** What the diet does for each goal, as the diet card's headline. */
 const DIET_STRATEGY: Record<Goal, string> = {
-  loseFat: 'Deficit calorico',
-  gainMuscle: 'Surplus controllato',
-  gainStrength: 'Leggero surplus',
-  maintainImprove: 'Mantenimento',
-  improveEndurance: 'Energia per la resistenza',
-  generalHealth: 'Equilibrio mediterraneo',
+  loseFat: "Deficit calorico",
+  gainMuscle: "Surplus controllato",
+  gainStrength: "Leggero surplus",
+  maintainImprove: "Mantenimento",
+  improveEndurance: "Energia per la resistenza",
+  generalHealth: "Equilibrio mediterraneo",
 };
 
 type Stat = { icon: IconName; value: string; label: string };
 
-/** Where the plan is: month X of N and day Y of the whole plan. */
+/** Where the plan is: which month of it we are in. */
 function planProgress(plan: { generatedAt: string; durationMonths: number }) {
-  const monthIndex = currentMonthIndex(plan);
-  const totalDays = plan.durationMonths * 30;
-  const day = Math.min((monthIndex - 1) * 30 + currentMonthProgress(plan).dayInMonth, totalDays);
-  return { monthIndex, totalDays, day };
+  return { monthIndex: currentMonthIndex(plan) };
 }
 
 /** The training plan screen's header card: where the Training tab sells the
  * journey ("Il tuo percorso"), this is the program's spec sheet — goal,
  * weekly structure, progress through the whole plan and key numbers.
  * Tapping it opens the full program description. */
-export function PlanSummaryCard({ plan, goal, onPress }: { plan: TrainingPlan; goal: Goal; onPress: () => void }) {
-  const { monthIndex, totalDays, day } = planProgress(plan);
-  const month = plan.months.find((m) => m.monthIndex === monthIndex) ?? plan.months[0];
-  const workouts = month.weeklySplit.filter((d) => d.type === 'workout');
-  const runs = month.weeklySplit.filter((d) => d.type === 'cardio').length;
+export function PlanSummaryCard({
+  plan,
+  goal,
+  onPress,
+}: {
+  plan: TrainingPlan;
+  goal: Goal;
+  onPress: () => void;
+}) {
+  const { monthIndex } = planProgress(plan);
+  const month =
+    plan.months.find((m) => m.monthIndex === monthIndex) ?? plan.months[0];
+  const workouts = month.weeklySplit.filter((d) => d.type === "workout");
+  const runs = month.weeklySplit.filter((d) => d.type === "cardio").length;
   // "Upper A" / "Upper B" are the same split: show each pattern once.
-  const splits = [...new Set(workouts.map((d) => d.title.replace(/ [AB]$/, '')))];
-  const avgExercises = workouts.length > 0 ? Math.round(workouts.reduce((sum, d) => sum + (d.exercises?.length ?? 0), 0) / workouts.length) : 0;
-  const structure = [splits.length > 0 ? splits.join(' · ') : null, runs > 0 ? `${runs} ${runs === 1 ? 'corsa' : 'corse'}` : null]
+  const splits = [
+    ...new Set(workouts.map((d) => d.title.replace(/ [AB]$/, ""))),
+  ];
+  const avgExercises =
+    workouts.length > 0
+      ? Math.round(
+          workouts.reduce((sum, d) => sum + (d.exercises?.length ?? 0), 0) /
+            workouts.length,
+        )
+      : 0;
+  const structure = [
+    splits.length > 0 ? splits.join(" · ") : null,
+    runs > 0 ? `${runs} ${runs === 1 ? "corsa" : "corse"}` : null,
+  ]
     .filter(Boolean)
-    .join(' + ');
+    .join(" + ");
 
   return (
     <PlanSpecCard
@@ -65,12 +88,22 @@ export function PlanSummaryCard({ plan, goal, onPress }: { plan: TrainingPlan; g
       plan={plan}
       monthIndex={monthIndex}
       durationMonths={plan.durationMonths}
-      day={day}
-      totalDays={totalDays}
       stats={[
-        { icon: 'calendar', value: `${plan.durationMonths} mesi`, label: 'Durata' },
-        { icon: 'barbell', value: `${workouts.length + runs}/sett.`, label: 'Sedute' },
-        { icon: 'categoryAll', value: avgExercises > 0 ? `~${avgExercises}` : '—', label: 'Esercizi' },
+        {
+          icon: "calendar",
+          value: `${plan.durationMonths} mesi`,
+          label: "Durata",
+        },
+        {
+          icon: "barbell",
+          value: `${workouts.length + runs}/sett.`,
+          label: "Sedute",
+        },
+        {
+          icon: "categoryAll",
+          value: avgExercises > 0 ? `~${avgExercises}` : "—",
+          label: "Esercizi",
+        },
       ]}
       onPress={onPress}
       accessibilityLabel="Dettagli del programma"
@@ -80,27 +113,42 @@ export function PlanSummaryCard({ plan, goal, onPress }: { plan: TrainingPlan; g
 
 /** The diet plan screen's counterpart: strategy for the goal, daily calories
  * and meals, progress through the plan and the month's macro targets. */
-export function DietPlanSummaryCard({ plan, goal, onPress }: { plan: DietPlan; goal: Goal; onPress: () => void }) {
-  const { monthIndex, totalDays, day } = planProgress(plan);
-  const month = plan.months.find((m) => m.monthIndex === monthIndex) ?? plan.months[0];
+export function DietPlanSummaryCard({
+  plan,
+  goal,
+  onPress,
+}: {
+  plan: DietPlan;
+  goal: Goal;
+  onPress: () => void;
+}) {
+  const { monthIndex } = planProgress(plan);
+  const month =
+    plan.months.find((m) => m.monthIndex === monthIndex) ?? plan.months[0];
   const meals = month.weeklySplit[0]?.meals.length ?? 0;
-  const kcal = Math.round(month.calorieTarget).toLocaleString('it-IT');
+  const kcal = Math.round(month.calorieTarget).toLocaleString("it-IT");
   const { protein, carbs, fats } = month.macroTargetsG;
 
   return (
     <PlanSpecCard
       tag="IL TUO PIANO ALIMENTARE"
       title={DIET_STRATEGY[goal]}
-      subtitle={`~${kcal} kcal al giorno${meals > 0 ? ` · ${meals} pasti` : ''}`}
+      subtitle={`~${kcal} kcal al giorno${meals > 0 ? ` · ${meals} pasti` : ""}`}
       plan={plan}
       monthIndex={monthIndex}
       durationMonths={plan.durationMonths}
-      day={day}
-      totalDays={totalDays}
       stats={[
-        { icon: 'protein', value: `${Math.round(protein)} g`, label: 'Proteine' },
-        { icon: 'carbs', value: `${Math.round(carbs)} g`, label: 'Carboidrati' },
-        { icon: 'fats', value: `${Math.round(fats)} g`, label: 'Grassi' },
+        {
+          icon: "protein",
+          value: `${Math.round(protein)} g`,
+          label: "Proteine",
+        },
+        {
+          icon: "carbs",
+          value: `${Math.round(carbs)} g`,
+          label: "Carboidrati",
+        },
+        { icon: "fats", value: `${Math.round(fats)} g`, label: "Grassi" },
       ]}
       onPress={onPress}
       accessibilityLabel="Dettagli del piano alimentare"
@@ -115,8 +163,6 @@ function PlanSpecCard({
   plan,
   monthIndex,
   durationMonths,
-  day,
-  totalDays,
   stats,
   onPress,
   accessibilityLabel,
@@ -127,8 +173,6 @@ function PlanSpecCard({
   plan: { generatedAt: string; durationMonths: number };
   monthIndex: number;
   durationMonths: number;
-  day: number;
-  totalDays: number;
   stats: Stat[];
   onPress: () => void;
   accessibilityLabel: string;
@@ -138,16 +182,31 @@ function PlanSpecCard({
 
   // The check-in stays locked for the whole running month and opens with the next one; until then it only explains itself.
   const { end, daysLeft } = monthEndInfo(plan, monthIndex);
-  const endDate = end.toLocaleDateString('it-IT', { day: 'numeric', month: 'long' });
+  const endDate = end.toLocaleDateString("it-IT", {
+    day: "numeric",
+    month: "long",
+  });
 
   const narrow = useWindowDimensions().width < 360;
   const ringFraction = Math.min(1, monthIndex / durationMonths);
 
   return (
     <FlatCard radius={28} style={styles.card}>
-      <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={accessibilityLabel} style={styles.body}>
+      <Pressable
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel}
+        style={styles.body}
+      >
         {/* A faint orange swoosh behind the title, the card's one flourish. */}
-        <Svg pointerEvents="none" width="100%" height={150} viewBox="0 0 360 150" preserveAspectRatio="none" style={styles.swoosh}>
+        <Svg
+          pointerEvents="none"
+          width="100%"
+          height={150}
+          viewBox="0 0 360 150"
+          preserveAspectRatio="none"
+          style={styles.swoosh}
+        >
           <Defs>
             <SvgGradient id="swoosh" x1="0" y1="0" x2="1" y2="0">
               <Stop offset="0" stopColor={theme.accent} stopOpacity={0} />
@@ -155,56 +214,100 @@ function PlanSpecCard({
               <Stop offset="1" stopColor={theme.accent} stopOpacity={0.02} />
             </SvgGradient>
           </Defs>
-          <Path d="M110 120 C 170 70, 230 10, 300 24 C 330 30, 350 50, 360 70 C 320 50, 260 40, 200 80 C 170 100, 140 125, 110 120 Z" fill="url(#swoosh)" />
+          <Path
+            d="M110 120 C 170 70, 230 10, 300 24 C 330 30, 350 50, 360 70 C 320 50, 260 40, 200 80 C 170 100, 140 125, 110 120 Z"
+            fill="url(#swoosh)"
+          />
         </Svg>
 
         {/* Top line: the card's name on the left, "Dettagli" on the right. */}
         <View style={styles.topRow}>
-          <ThemedText type="label" themeColor="textSecondary" numberOfLines={1} style={styles.tag}>
+          <ThemedText
+            type="label"
+            themeColor="textSecondary"
+            numberOfLines={1}
+            style={styles.tag}
+          >
             {tag}
           </ThemedText>
           <View style={styles.details}>
-            <ThemedText style={[styles.detailsText, { color: theme.accent }]}>Dettagli</ThemedText>
+            <ThemedText style={[styles.detailsText, { color: theme.accent }]}>
+              Dettagli
+            </ThemedText>
             <Icon name="chevronRight" size={13} color={theme.accent} />
           </View>
         </View>
 
-        {/* Then the slash with the goal on the left, the month ring on the right. */}
+        {/* Then the slash with the goal, close under the tag. */}
         <View style={styles.heroRow}>
           <View style={styles.heroTitle}>
-            <LinearGradient colors={['#FFA11E', '#FF5A00']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} style={styles.slash} />
+            <LinearGradient
+              colors={["#FFA11E", "#FF5A00"]}
+              start={{ x: 0.5, y: 0 }}
+              end={{ x: 0.5, y: 1 }}
+              style={styles.slash}
+            />
             <View style={styles.heroText}>
-              <ThemedText style={[styles.title, narrow && styles.titleNarrow]} numberOfLines={1} adjustsFontSizeToFit>
+              <ThemedText
+                style={[styles.title, narrow && styles.titleNarrow]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+              >
                 {title}
               </ThemedText>
               {subtitle ? (
-                <ThemedText type="small" themeColor="textSecondary" numberOfLines={2}>
+                <ThemedText
+                  type="small"
+                  themeColor="textSecondary"
+                  numberOfLines={2}
+                >
                   {subtitle}
                 </ThemedText>
               ) : null}
             </View>
           </View>
-          <View style={styles.ringCol}>
-            <MonthRing fraction={ringFraction} month={monthIndex} total={durationMonths} size={narrow ? 70 : 82} />
-            <ThemedText type="caption" themeColor="textSecondary" numberOfLines={1} style={styles.dayText}>
-              Giorno {day} di {totalDays}
-            </ThemedText>
-          </View>
         </View>
 
-        {/* The plan's three figures, side by side across the whole width. */}
-        <View style={[styles.statsPanel, { backgroundColor: theme.backgroundElevated }]}>
-          {stats.map((st, i) => (
-            <View key={st.label} style={[styles.stat, i > 0 && { borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: theme.borderStrong }]}>
-              <Icon name={st.icon} size={20} color={theme.accent} />
-              <ThemedText style={styles.statValue} numberOfLines={1}>
-                {st.value}
-              </ThemedText>
-              <ThemedText style={styles.statLabel} themeColor="textSecondary" numberOfLines={1}>
-                {st.label}
-              </ThemedText>
-            </View>
-          ))}
+        {/* The plan's three figures, with the month ring to their right. */}
+        <View style={styles.statsRow}>
+          <View
+            style={[
+              styles.statsPanel,
+              { backgroundColor: theme.backgroundElevated },
+            ]}
+          >
+            {stats.map((st, i) => (
+              <View
+                key={st.label}
+                style={[
+                  styles.stat,
+                  i > 0 && {
+                    borderLeftWidth: StyleSheet.hairlineWidth,
+                    borderLeftColor: theme.borderStrong,
+                  },
+                ]}
+              >
+                <Icon name={st.icon} size={17} color={theme.accent} />
+                <ThemedText style={styles.statValue} numberOfLines={1}>
+                  {st.value}
+                </ThemedText>
+                <ThemedText
+                  style={styles.statLabel}
+                  themeColor="textSecondary"
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                >
+                  {st.label}
+                </ThemedText>
+              </View>
+            ))}
+          </View>
+          <MonthRing
+            fraction={ringFraction}
+            month={monthIndex}
+            total={durationMonths}
+            size={narrow ? 64 : 72}
+          />
         </View>
       </Pressable>
 
@@ -213,24 +316,53 @@ function PlanSpecCard({
         accessibilityRole="button"
         accessibilityLabel={`Check-in del Mese ${monthIndex} bloccato fino alla fine del mese`}
         accessibilityState={{ disabled: true }}
-        style={[styles.checkin, { backgroundColor: theme.backgroundElement }]}>
+        style={[styles.checkin, { backgroundColor: theme.backgroundElement }]}
+      >
         <Icon name="lock" size={18} color={theme.textTertiary} />
-        <ThemedText style={[styles.checkinText, { color: theme.textSecondary }]}>Check-in · Mese {monthIndex}</ThemedText>
+        <ThemedText
+          style={[styles.checkinText, { color: theme.textSecondary }]}
+        >
+          Check-in · Mese {monthIndex}
+        </ThemedText>
       </Pressable>
 
-      <CheckinInfoPopup visible={infoOpen} onClose={() => setInfoOpen(false)} monthIndex={monthIndex} daysLeft={daysLeft} endDate={endDate} />
+      <CheckinInfoPopup
+        visible={infoOpen}
+        onClose={() => setInfoOpen(false)}
+        monthIndex={monthIndex}
+        daysLeft={daysLeft}
+        endDate={endDate}
+      />
     </FlatCard>
   );
 }
 
 /** "Mese 1/8" inside a ring whose orange arc shows how many of the plan's months are reached. */
-function MonthRing({ fraction, month, total, size = 82 }: { fraction: number; month: number; total: number; size?: number }) {
+function MonthRing({
+  fraction,
+  month,
+  total,
+  size = 72,
+}: {
+  fraction: number;
+  month: number;
+  total: number;
+  size?: number;
+}) {
   const theme = useTheme();
-  const stroke = 8;
+  const stroke = 7;
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
   return (
-    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }} accessibilityLabel={`Mese ${month} di ${total}`}>
+    <View
+      style={{
+        width: size,
+        height: size,
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+      accessibilityLabel={`Mese ${month} di ${total}`}
+    >
       <Svg width={size} height={size} style={StyleSheet.absoluteFill}>
         <Defs>
           <SvgGradient id="ring" x1="0" y1="0" x2="1" y2="1">
@@ -238,7 +370,14 @@ function MonthRing({ fraction, month, total, size = 82 }: { fraction: number; mo
             <Stop offset="1" stopColor="#FF5A00" />
           </SvgGradient>
         </Defs>
-        <Circle cx={size / 2} cy={size / 2} r={r} stroke={theme.backgroundElement} strokeWidth={stroke} fill="none" />
+        <Circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          stroke={theme.backgroundElement}
+          strokeWidth={stroke}
+          fill="none"
+        />
         <Circle
           cx={size / 2}
           cy={size / 2}
@@ -262,33 +401,76 @@ function MonthRing({ fraction, month, total, size = 82 }: { fraction: number; mo
 }
 
 const styles = StyleSheet.create({
-  card: { padding: 16, gap: 14 },
-  body: { gap: 14 },
-  swoosh: { position: 'absolute', left: 0, right: 0, top: 20 },
-  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  card: { padding: 14, gap: 10 },
+  body: { gap: 8 },
+  swoosh: { position: "absolute", left: 0, right: 0, top: 20 },
+  topRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+  },
   tag: { flexShrink: 1 },
-  heroRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  heroTitle: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'stretch', gap: 10 },
+  heroRow: { flexDirection: "row", alignItems: "center" },
+  heroTitle: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: "row",
+    alignItems: "stretch",
+    gap: 10,
+  },
   heroText: { flex: 1, minWidth: 0 },
   // The orange slash beside the title: a slanted rounded bar.
-  slash: { width: 6, alignSelf: 'stretch', borderRadius: 3, transform: [{ skewX: '-12deg' }] },
-  details: { flexDirection: 'row', alignItems: 'center', gap: 2 },
-  detailsText: { fontSize: 15, lineHeight: 20, fontWeight: '600' },
-  title: { fontSize: 28, lineHeight: 34, fontWeight: '700', letterSpacing: -0.6 },
-  titleNarrow: { fontSize: 20, lineHeight: 26 },
-  statsPanel: {
-    flexDirection: 'row',
-    borderRadius: 22,
-    paddingVertical: 14,
-    boxShadow: '0px 4px 16px rgba(20,20,25,0.08)',
+  slash: {
+    width: 6,
+    alignSelf: "stretch",
+    borderRadius: 3,
+    transform: [{ skewX: "-12deg" }],
   },
-  stat: { flex: 1, minWidth: 0, alignItems: 'center', gap: 3, paddingHorizontal: 6 },
-  ringCol: { alignItems: 'center', gap: 4 },
-  dayText: { fontSize: 12 },
-  ringMonth: { fontSize: 12, lineHeight: 15, fontWeight: '600' },
-  ringValue: { fontSize: 21, lineHeight: 25, fontWeight: '700', letterSpacing: -0.5 },
-  statValue: { fontSize: 16, lineHeight: 21, fontWeight: '700' },
-  statLabel: { fontSize: 12, lineHeight: 16, fontWeight: '500' },
-  checkin: { minHeight: 48, borderRadius: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 16 },
-  checkinText: { fontSize: 16, lineHeight: 21, fontWeight: '600' },
+  details: { flexDirection: "row", alignItems: "center", gap: 2 },
+  detailsText: { fontSize: 15, lineHeight: 20, fontWeight: "600" },
+  title: {
+    fontSize: 26,
+    lineHeight: 30,
+    fontWeight: "700",
+    letterSpacing: -0.6,
+  },
+  titleNarrow: { fontSize: 20, lineHeight: 26 },
+  statsRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  statsPanel: {
+    flexDirection: "row",
+    flex: 1,
+    minWidth: 0,
+    alignSelf: "stretch",
+    alignItems: "center",
+    borderRadius: 20,
+    paddingVertical: 8,
+    boxShadow: "0px 4px 16px rgba(20,20,25,0.08)",
+  },
+  stat: {
+    flex: 1,
+    minWidth: 0,
+    alignItems: "center",
+    gap: 1,
+    paddingHorizontal: 4,
+  },
+  ringMonth: { fontSize: 11, lineHeight: 13, fontWeight: "600" },
+  ringValue: {
+    fontSize: 18,
+    lineHeight: 22,
+    fontWeight: "700",
+    letterSpacing: -0.5,
+  },
+  statValue: { fontSize: 15, lineHeight: 19, fontWeight: "700" },
+  statLabel: { fontSize: 11, lineHeight: 14, fontWeight: "500" },
+  checkin: {
+    minHeight: 48,
+    borderRadius: 24,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingHorizontal: 16,
+  },
+  checkinText: { fontSize: 16, lineHeight: 21, fontWeight: "600" },
 });

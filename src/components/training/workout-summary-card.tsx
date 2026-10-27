@@ -46,24 +46,34 @@ export type WorkoutSummaryCardProps = {
   kcal: number;
   /** Opens the session detail (the text and the chevron). */
   onOpen: () => void;
-  /** Starts the session (the play button). */
-  onStart: () => void;
+  /** Starts the session (the play button): only today's session has one. */
+  onStart?: () => void;
+  /** Moves this session to today and today's here (the switch button on the days ahead). */
+  onSwap?: () => void;
 };
 
 /** A day's session: the play button that starts it, its name, "Forza - Livello base"
  * and its duration + estimated kcal. The whole box opens the session's sheet,
  * except the play button, which starts it. */
-export function WorkoutSummaryCard({ title, subtitle, minutes, kcal, onOpen, onStart }: WorkoutSummaryCardProps) {
+export function WorkoutSummaryCard({ title, subtitle, minutes, kcal, onOpen, onStart, onSwap }: WorkoutSummaryCardProps) {
   const theme = useTheme();
   return (
     <FlatCard radius={20} style={styles.card}>
       <Pressable onPress={onOpen} accessibilityRole="button" accessibilityLabel={`Dettagli: ${title}`} style={StyleSheet.absoluteFill} />
       <View style={styles.row} pointerEvents="box-none">
-        <PressableScale onPress={onStart} haptic="press" accessibilityRole="button" accessibilityLabel={`Inizia allenamento: ${title}`}>
-          <View style={[styles.play, { width: PLAY_SIZE, height: PLAY_SIZE, borderRadius: PLAY_SIZE / 2, borderColor: theme.accent }]}>
-            <Icon name="play" size={24} color={theme.accent} />
-          </View>
-        </PressableScale>
+        {onStart ? (
+          <PressableScale onPress={onStart} haptic="press" accessibilityRole="button" accessibilityLabel={`Inizia allenamento: ${title}`}>
+            <View style={[styles.play, { width: PLAY_SIZE, height: PLAY_SIZE, borderRadius: PLAY_SIZE / 2, borderColor: theme.accent }]}>
+              <Icon name="play" size={24} color={theme.accent} />
+            </View>
+          </PressableScale>
+        ) : onSwap ? (
+          <PressableScale onPress={onSwap} haptic="press" accessibilityRole="button" accessibilityLabel={`Anticipa a oggi: ${title}`}>
+            <View style={[styles.play, styles.swap, { width: PLAY_SIZE, height: PLAY_SIZE, borderRadius: PLAY_SIZE / 2, backgroundColor: theme.accentSoft }]}>
+              <Icon name="swap" size={26} color={theme.accent} />
+            </View>
+          </PressableScale>
+        ) : null}
 
         <View style={styles.open} pointerEvents="none">
           <View style={styles.textCol}>
@@ -111,6 +121,8 @@ const styles = StyleSheet.create({
     // The triangle's weight sits to its left: nudge it so it reads as centred.
     paddingLeft: 3,
   },
+  // The switch button is a soft orange disc, no ring, and centred as is.
+  swap: { borderWidth: 0, paddingLeft: 0 },
   open: {
     flex: 1,
     minWidth: 0,

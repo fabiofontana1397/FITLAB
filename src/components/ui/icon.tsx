@@ -119,6 +119,7 @@ const ICONS = {
   chevronUp: { set: 'ion', name: 'chevron-up' },
   download: { set: 'ion', name: 'download-outline' },
   refresh: { set: 'ion', name: 'refresh-outline' },
+  swap: { set: 'ion', name: 'swap-vertical' },
   lock: { set: 'ion', name: 'lock-closed-outline' },
   trophy: { set: 'ion', name: 'trophy' },
   bulb: { set: 'ion', name: 'bulb' },
