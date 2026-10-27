@@ -31,7 +31,7 @@ export default function WelcomeScreen() {
       <View style={styles.hero}>
         <WelcomeHero />
         <FadeInView delay={500} style={styles.copy}>
-          <ThemedText type="display" style={styles.centered}>
+          <ThemedText type="display" style={[styles.centered, styles.title]}>
             Inizia oggi a raggiungere i tuoi obiettivi
           </ThemedText>
           <ThemedText type="default" themeColor="textSecondary" style={styles.centered}>
@@ -68,6 +68,7 @@ const styles = StyleSheet.create({
   hero: { alignItems: 'center', gap: Spacing.three },
   copy: { gap: Spacing.two, alignItems: 'center' },
   centered: { textAlign: 'center' },
+  title: { fontSize: 27, lineHeight: 33, letterSpacing: -0.6 },
   features: { flexDirection: 'row', alignSelf: 'stretch', marginTop: Spacing.two },
   feature: { flex: 1, alignItems: 'center', gap: 6, paddingHorizontal: 4 },
   featureLabel: { fontSize: 13, lineHeight: 17, fontWeight: '700', textAlign: 'center' },
