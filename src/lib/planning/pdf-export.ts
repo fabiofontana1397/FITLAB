@@ -13,13 +13,14 @@ function escapeHtml(value: string): string {
 }
 
 /** "Petto di pollo (150g)" — or "Uova (2 uova)" for count-based foods, see
- * food-quantity.ts — plus, when the plan offers same-role swaps,
- * " — in alternativa: Tonno (150g), Uova (2 uova)" appended after it. */
-function formatItem(item: PlanMealItem): string {
-  const base = `${item.name} (${item.quantityLabel})`;
-  if (!item.substitutes?.length) return base;
-  const subs = item.substitutes.map((s) => `${s.name} (${s.quantityLabel})`).join(', ');
-  return `${base} — in alternativa: ${subs}`;
+ * food-quantity.ts — as a bullet with the food name in bold; when the plan
+ * offers same-role swaps, a nested bullet "in alternativa: Tonno (150g), …"
+ * follows it, indented. */
+function formatItemHtml(item: PlanMealItem): string {
+  const base = `<strong>${escapeHtml(item.name)}</strong> (${escapeHtml(item.quantityLabel)})`;
+  if (!item.substitutes?.length) return `<li>${base}</li>`;
+  const subs = item.substitutes.map((s) => `${escapeHtml(s.name)} (${escapeHtml(s.quantityLabel)})`).join(', ');
+  return `<li>${base}<ul><li class="alt">in alternativa: ${subs}</li></ul></li>`;
 }
 
 /**
@@ -49,14 +50,23 @@ const PLAN_PDF_STYLE = `
   body { font-family: -apple-system, Helvetica, Arial, sans-serif; color: #16171b; padding: 28px; }
   ${BRAND_STYLE}
   h1 { font-size: 22px; margin: 0 0 2px; }
-  .meta { font-size: 11px; color: #666; margin-bottom: 4px; }
-  .goal { font-size: 12px; color: #333; margin-bottom: 18px; }
   h2 { font-size: 15px; margin: 0 0 4px; }
   .phase-note { font-size: 12px; color: #333; margin: 0 0 16px; }
   table { width: 100%; border-collapse: collapse; font-size: 11px; }
   th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; vertical-align: top; }
   th { background: #f5f5f5; }
   td.day { font-weight: 700; background: #fff8f5; }
+  .info { margin: 0 0 4px; font-size: 12px; }
+  .info strong, .macros strong { color: #16171b; }
+  .macros-title { font-size: 12px; font-weight: 700; margin: 8px 0 2px; }
+  ul { margin: 0; padding-left: 14px; font-size: 11px; }
+  ul.macros { font-size: 12px; margin-bottom: 16px; }
+  ul ul { margin-top: 2px; padding-left: 14px; }
+  li { margin: 0 0 2px; }
+  li::marker { color: #FF7A00; }
+  li.alt { font-style: italic; color: #666; list-style-type: '– '; }
+  td.time { font-weight: 700; }
+  td.total { font-weight: 700; white-space: nowrap; }
   .footer { margin-top: 20px; font-size: 10px; color: #999; }
 `;
 
@@ -82,9 +92,9 @@ export async function exportDietPlanPdf(input: DietPlanPdfInput) {
         .map(
           (meal) => `
         <tr>
-          <td>${escapeHtml(meal.time)} · ${escapeHtml(meal.label)}</td>
-          <td>${meal.isFreeMeal ? 'Pasto libero — scegli tu, senza eccessi' : meal.items.map((i) => escapeHtml(formatItem(i))).join('<br/>')}</td>
-          <td>${meal.totalKcal} kcal</td>
+          <td class="time">${escapeHtml(meal.time)}<br/>${escapeHtml(meal.label)}</td>
+          <td>${meal.isFreeMeal ? '<em>Pasto libero — scegli tu, senza eccessi</em>' : `<ul>${meal.items.map(formatItemHtml).join('')}</ul>`}</td>
+          <td class="total">${meal.totalKcal} kcal</td>
         </tr>`
         )
         .join('');
@@ -103,11 +113,17 @@ export async function exportDietPlanPdf(input: DietPlanPdfInput) {
 <body>
   ${BRAND_HTML}
   <h1>${escapeHtml(title)}</h1>
-  <div class="meta">Durata piano totale: ${input.totalMonths} mesi</div>
-  <div class="goal">${escapeHtml(input.goalNote)}</div>
+  <p class="info"><strong>Obiettivo:</strong> ${escapeHtml(input.goalNote)}</p>
+  <p class="info"><strong>Durata piano:</strong> ${input.totalMonths} mesi</p>
   <h2>${escapeHtml(input.monthTitle)}</h2>
   <p class="phase-note">${escapeHtml(input.monthFocus)}</p>
-  <p class="phase-note"><strong>${input.calorieTarget} kcal/giorno</strong> · Proteine ${input.macroTargetsG.protein}g · Carboidrati ${input.macroTargetsG.carbs}g · Grassi ${input.macroTargetsG.fats}g</p>
+  <div class="macros-title">Target giornalieri</div>
+  <ul class="macros">
+    <li><strong>Calorie:</strong> ${input.calorieTarget} kcal/giorno</li>
+    <li><strong>Proteine:</strong> ${input.macroTargetsG.protein} g</li>
+    <li><strong>Carboidrati:</strong> ${input.macroTargetsG.carbs} g</li>
+    <li><strong>Grassi:</strong> ${input.macroTargetsG.fats} g</li>
+  </ul>
   <table>
     <thead><tr><th>Pasto</th><th>Alimenti</th><th>Totale</th></tr></thead>
     <tbody>${rows}</tbody>
@@ -162,7 +178,7 @@ export async function exportTrainingPlanPdf(input: TrainingPlanPdfInput) {
       lastDay = row.weekday;
       return `${dayHeading}
         <tr>
-          <td>${escapeHtml(row.name)}</td>
+          <td><strong>${escapeHtml(row.name)}</strong></td>
           <td>${row.sets ?? '—'}</td>
           <td>${row.reps ? escapeHtml(row.reps) : '—'}</td>
           <td>${row.rest ? escapeHtml(row.rest) : '—'}</td>
@@ -183,8 +199,8 @@ export async function exportTrainingPlanPdf(input: TrainingPlanPdfInput) {
 <body>
   ${BRAND_HTML}
   <h1>${escapeHtml(title)}</h1>
-  <div class="meta">Durata piano totale: ${input.totalMonths} mesi</div>
-  <div class="goal">${escapeHtml(input.goalNote)}</div>
+  <p class="info"><strong>Obiettivo:</strong> ${escapeHtml(input.goalNote)}</p>
+  <p class="info"><strong>Durata piano:</strong> ${input.totalMonths} mesi</p>
   <h2>${escapeHtml(input.monthTitle)}</h2>
   <p class="phase-note">${escapeHtml(input.monthFocus)}</p>
   <table>
