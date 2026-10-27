@@ -45,7 +45,7 @@ export function QuestionnaireSheet({ visible, onClose, groups, answers, mode, on
   return (
     <Modal visible={visible} animationType={modalAnimation('slide')} presentationStyle="pageSheet" onRequestClose={onClose}>
       {/* iOS's own page sheet already swipes down; elsewhere this does it. */}
-      <SwipeDismiss onDismiss={Platform.OS === 'ios' ? undefined : onClose} style={[styles.root, { backgroundColor: theme.background, paddingTop: Platform.OS === 'android' ? insets.top : 0 }]}>
+      <SwipeDismiss onDismiss={Platform.OS === 'ios' ? undefined : onClose} style={[styles.root, { backgroundColor: theme.surfacePopup, paddingTop: Platform.OS === 'android' ? insets.top : 0 }]}>
         <View style={[styles.header, { borderBottomColor: theme.border }]}>
           <View style={{ flex: 1 }}>
             <ThemedText type="subtitle">Il tuo questionario</ThemedText>
