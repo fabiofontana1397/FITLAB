@@ -39,15 +39,120 @@ function drawLetterhead(doc: jsPDF, pageWidth: number): number {
   return y + 26;
 }
 
+type RunStyle = 'normal' | 'bold' | 'italic';
+type Run = { text: string; style: RunStyle };
+type RichLine = { x: number; runs: Run[] };
+
+/** Flows styled runs into lines no wider than `width`, as bullet paragraphs:
+ * the first line of each paragraph starts at `indent`, wrapped lines at
+ * `indent + hang` so the text lines up under the first word, not the bullet. */
+function layoutRich(
+  doc: jsPDF,
+  paragraphs: { indent: number; hang: number; runs: Run[] }[],
+  width: number
+): RichLine[] {
+  const lines: RichLine[] = [];
+  for (const para of paragraphs) {
+    let line: RichLine = { x: para.indent, runs: [] };
+    let used = para.indent;
+    for (const run of para.runs) {
+      doc.setFont('helvetica', run.style);
+      for (let word of run.text.match(/\s*\S+\s*/g) ?? []) {
+        if (used + doc.getTextWidth(word.trim()) > width && line.runs.length > 0) {
+          lines.push(line);
+          line = { x: para.indent + para.hang, runs: [] };
+          used = para.indent + para.hang;
+          word = word.trimStart();
+        }
+        line.runs.push({ text: word, style: run.style });
+        used += doc.getTextWidth(word);
+      }
+    }
+    lines.push(line);
+  }
+  return lines;
+}
+
 /** "Petto di pollo (150g)" — or "Uova (2 uova)" for count-based foods, see
- * food-quantity.ts — plus, when the plan offers same-role swaps, a second
- * line "in alternativa: Tonno (150g), Uova (2 uova)" — autoTable renders
- * \n as separate lines within a cell. */
-function formatItem(item: PlanMealItem): string {
-  const base = `${item.name} (${item.quantityLabel})`;
-  if (!item.substitutes?.length) return base;
-  const subs = item.substitutes.map((s) => `${s.name} (${s.quantityLabel})`).join(', ');
-  return `${base}\nin alternativa: ${subs}`;
+ * food-quantity.ts. Each item is a bullet with the food name in bold; when the
+ * plan offers same-role swaps, an indented "– in alternativa: …" line in italics
+ * follows it. */
+function mealParagraphs(items: PlanMealItem[]) {
+  return items.flatMap((item) => {
+    const paras: { indent: number; hang: number; runs: Run[] }[] = [
+      {
+        indent: 0,
+        hang: 8,
+        runs: [
+          { text: '• ', style: 'normal' as const },
+          { text: item.name, style: 'bold' as const },
+          { text: ` (${item.quantityLabel})`, style: 'normal' as const },
+        ],
+      },
+    ];
+    if (item.substitutes?.length) {
+      const subs = item.substitutes.map((sub) => `${sub.name} (${sub.quantityLabel})`).join(', ');
+      paras.push({
+        indent: 10,
+        hang: 8,
+        runs: [{ text: `– in alternativa: ${subs}`, style: 'italic' as const }],
+      });
+    }
+    return paras;
+  });
+}
+
+const BODY_FONT_SIZE = 9;
+const CELL_PADDING = 6;
+const DIET_ITEMS_COL_WIDTH = 390;
+
+/** "Label: value" with the label in bold; a long value wraps under itself. */
+function drawInfoLine(doc: jsPDF, label: string, value: string, x: number, y: number, maxWidth: number): number {
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...INK);
+  doc.text(`${label}:`, x, y);
+  const labelWidth = doc.getTextWidth(`${label}: `);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...BODY);
+  const lines: string[] = doc.splitTextToSize(value, maxWidth - labelWidth);
+  doc.text(lines, x + labelWidth, y);
+  return y + lines.length * 12 + 2;
+}
+
+/** A bullet list of "Label: value" lines, label in bold, indented under a heading. */
+function drawBulletList(doc: jsPDF, items: { label: string; value: string }[], x: number, y: number): number {
+  doc.setFontSize(10);
+  for (const item of items) {
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...ORANGE);
+    doc.text('•', x, y);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...INK);
+    doc.text(`${item.label}:`, x + 10, y);
+    const labelWidth = doc.getTextWidth(`${item.label}: `);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...BODY);
+    doc.text(item.value, x + 10 + labelWidth, y);
+    y += 13;
+  }
+  return y;
+}
+
+/** Month heading in bold, then its focus text. */
+function drawMonthBlock(doc: jsPDF, pageWidth: number, title: string, focus: string, y: number): number {
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.setTextColor(...INK);
+  doc.text(title, MARGIN, y);
+  y += 16;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.setTextColor(...BODY);
+  const focusLines = doc.splitTextToSize(focus, pageWidth - MARGIN * 2);
+  doc.text(focusLines, MARGIN, y);
+  return y + focusLines.length * 12 + 8;
 }
 
 function drawFooter(doc: jsPDF, pageWidth: number, pageHeight: number) {
@@ -85,53 +190,84 @@ export async function exportDietPlanPdf(input: DietPlanPdfInput) {
   doc.setFontSize(18);
   doc.setTextColor(...INK);
   doc.text(`Piano alimentare di ${input.userName}`, MARGIN, y);
-  y += 18;
+  y += 20;
 
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
-  doc.setTextColor(...MUTED);
-  doc.text(`Durata piano totale: ${input.totalMonths} mesi`, MARGIN, y);
-  y += 14;
-  doc.setTextColor(...BODY);
-  doc.text(input.goalNote, MARGIN, y);
-  y += 22;
+  const contentWidth = pageWidth - MARGIN * 2;
+  y = drawInfoLine(doc, 'Obiettivo', input.goalNote, MARGIN, y, contentWidth);
+  y = drawInfoLine(doc, 'Durata piano', `${input.totalMonths} mesi`, MARGIN, y, contentWidth);
+  y += 10;
+
+  y = drawMonthBlock(doc, pageWidth, input.monthTitle, input.monthFocus, y);
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(13);
-  doc.setTextColor(...INK);
-  doc.text(input.monthTitle, MARGIN, y);
-  y += 16;
-
-  doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
-  doc.setTextColor(...BODY);
-  const focusLines = doc.splitTextToSize(input.monthFocus, pageWidth - MARGIN * 2);
-  doc.text(focusLines, MARGIN, y);
-  y += focusLines.length * 12 + 6;
-
-  doc.text(
-    `${input.calorieTarget} kcal/giorno · Proteine ${input.macroTargetsG.protein}g · Carboidrati ${input.macroTargetsG.carbs}g · Grassi ${input.macroTargetsG.fats}g`,
-    MARGIN,
+  doc.setTextColor(...INK);
+  doc.text('Target giornalieri', MARGIN, y);
+  y += 14;
+  y = drawBulletList(
+    doc,
+    [
+      { label: 'Calorie', value: `${input.calorieTarget} kcal/giorno` },
+      { label: 'Proteine', value: `${input.macroTargetsG.protein} g` },
+      { label: 'Carboidrati', value: `${input.macroTargetsG.carbs} g` },
+      { label: 'Grassi', value: `${input.macroTargetsG.fats} g` },
+    ],
+    MARGIN + 10,
     y
   );
-  y += 16;
+  y += 8;
+
+  // The foods column is drawn by hand (bold names, bullets, indented
+  // alternatives, which autoTable can't style per word). The cell text is
+  // only blank lines so autoTable reserves the right row height.
+  doc.setFontSize(BODY_FONT_SIZE);
+  const itemsInner = DIET_ITEMS_COL_WIDTH - CELL_PADDING * 2;
+  const mealLines = new Map<string, RichLine[]>();
+  const body = input.weeklySplit.flatMap((day) => [
+    [{ content: day.weekday, colSpan: 3, styles: { fontStyle: 'bold' as const, fillColor: [255, 248, 245] as [number, number, number], textColor: INK } }],
+    ...day.meals.map((meal) => {
+      const key = `${day.weekday}|${meal.time}|${meal.label}`;
+      const paragraphs = meal.isFreeMeal
+        ? [{ indent: 0, hang: 0, runs: [{ text: 'Pasto libero — scegli tu, senza eccessi', style: 'italic' as const }] }]
+        : mealParagraphs(meal.items);
+      const lines = layoutRich(doc, paragraphs, itemsInner);
+      mealLines.set(key, lines);
+      return [
+        { content: `${meal.time}\n${meal.label}`, styles: { fontStyle: 'bold' as const, textColor: INK }, key },
+        { content: lines.map(() => ' ').join('\n'), key },
+        { content: `${meal.totalKcal} kcal`, styles: { fontStyle: 'bold' as const, textColor: INK } },
+      ];
+    }),
+  ]);
 
   autoTable(doc, {
     startY: y,
     margin: { left: MARGIN, right: MARGIN },
     head: [['Pasto', 'Alimenti', 'Totale']],
-    body: input.weeklySplit.flatMap((day) => [
-      [{ content: day.weekday, colSpan: 3, styles: { fontStyle: 'bold', fillColor: [255, 248, 245], textColor: INK } }],
-      ...day.meals.map((meal) => [
-        `${meal.time}\n${meal.label}`,
-        meal.isFreeMeal ? 'Pasto libero — scegli tu, senza eccessi' : meal.items.map((i) => formatItem(i)).join('\n'),
-        `${meal.totalKcal} kcal`,
-      ]),
-    ]),
-    styles: { fontSize: 9, cellPadding: 6, textColor: BODY, valign: 'top' },
+    body,
+    rowPageBreak: 'avoid',
+    styles: { fontSize: BODY_FONT_SIZE, cellPadding: CELL_PADDING, textColor: BODY, valign: 'top' },
     headStyles: { fillColor: ORANGE, textColor: 255 },
     alternateRowStyles: { fillColor: [247, 247, 248] },
-    columnStyles: { 0: { cellWidth: 70 }, 2: { cellWidth: 55 } },
+    columnStyles: { 0: { cellWidth: 70 }, 1: { cellWidth: DIET_ITEMS_COL_WIDTH }, 2: { cellWidth: 55 } },
+    didDrawCell: (data) => {
+      const key = (data.cell.raw as { key?: string } | null)?.key;
+      if (data.section !== 'body' || data.column.index !== 1 || !key) return;
+      const lines = mealLines.get(key);
+      if (!lines) return;
+      const lineHeight = BODY_FONT_SIZE * doc.getLineHeightFactor();
+      doc.setFontSize(BODY_FONT_SIZE);
+      lines.forEach((line, i) => {
+        let x = data.cell.x + CELL_PADDING + line.x;
+        const lineY = data.cell.y + CELL_PADDING + i * lineHeight;
+        for (const run of line.runs) {
+          doc.setFont('helvetica', run.style);
+          doc.setTextColor(...(run.style === 'italic' ? MUTED : run.style === 'bold' ? INK : BODY));
+          doc.text(run.text.trimEnd(), x, lineY, { baseline: 'top' });
+          x += doc.getTextWidth(run.text);
+        }
+      });
+    },
   });
 
   const pageCount = doc.getNumberOfPages();
@@ -184,47 +320,47 @@ export async function exportTrainingPlanPdf(input: TrainingPlanPdfInput) {
   doc.setFontSize(18);
   doc.setTextColor(...INK);
   doc.text(`Piano di allenamento di ${input.userName}`, MARGIN, y);
-  y += 18;
+  y += 20;
 
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
-  doc.setTextColor(...MUTED);
-  doc.text(`Durata piano totale: ${input.totalMonths} mesi`, MARGIN, y);
-  y += 14;
-  doc.setTextColor(...BODY);
-  doc.text(input.goalNote, MARGIN, y);
-  y += 22;
+  const contentWidth = pageWidth - MARGIN * 2;
+  y = drawInfoLine(doc, 'Obiettivo', input.goalNote, MARGIN, y, contentWidth);
+  y = drawInfoLine(doc, 'Durata piano', `${input.totalMonths} mesi`, MARGIN, y, contentWidth);
+  y += 10;
 
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(13);
-  doc.setTextColor(...INK);
-  doc.text(input.monthTitle, MARGIN, y);
-  y += 16;
+  y = drawMonthBlock(doc, pageWidth, input.monthTitle, input.monthFocus, y);
 
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
-  doc.setTextColor(...BODY);
-  const focusLines = doc.splitTextToSize(input.monthFocus, pageWidth - MARGIN * 2);
-  doc.text(focusLines, MARGIN, y);
-  y += focusLines.length * 12 + 12;
+  // One heading row per training day, with that day's exercises under it.
+  let lastDay = '';
+  const body = input.rows.flatMap((row) => {
+    const dayKey = `${row.weekday}|${row.dayTitle}`;
+    const heading =
+      dayKey !== lastDay
+        ? [[{ content: `${row.weekday} · ${row.dayTitle}`, colSpan: 6, styles: { fontStyle: 'bold' as const, fillColor: [255, 248, 245] as [number, number, number], textColor: INK } }]]
+        : [];
+    lastDay = dayKey;
+    return [
+      ...heading,
+      [
+        { content: `• ${row.name}`, styles: { fontStyle: 'bold' as const, textColor: INK } },
+        row.sets != null ? String(row.sets) : '—',
+        row.reps ?? '—',
+        row.rest ?? '—',
+        row.tempo ? describeTempo(row.tempo) : '—',
+        row.carico ?? '—',
+      ],
+    ];
+  });
 
   autoTable(doc, {
     startY: y,
     margin: { left: MARGIN, right: MARGIN },
-    head: [['Giorno', 'Esercizio', 'Serie', 'Rip.', 'Recupero', 'Descrizione', 'Carico']],
-    body: input.rows.map((row) => [
-      `${row.weekday} · ${row.dayTitle}`,
-      row.name,
-      row.sets != null ? String(row.sets) : '—',
-      row.reps ?? '—',
-      row.rest ?? '—',
-      row.tempo ? describeTempo(row.tempo) : '—',
-      row.carico ?? '—',
-    ]),
+    head: [['Esercizio', 'Serie', 'Rip.', 'Recupero', 'Descrizione', 'Carico']],
+    body,
+    rowPageBreak: 'avoid',
     styles: { fontSize: 8, cellPadding: 6, textColor: BODY },
     headStyles: { fillColor: ORANGE, textColor: 255 },
     alternateRowStyles: { fillColor: [247, 247, 248] },
-    columnStyles: { 1: { cellWidth: 90 }, 5: { cellWidth: 130 } },
+    columnStyles: { 0: { cellWidth: 130, cellPadding: { top: 6, bottom: 6, left: 14, right: 6 } }, 4: { cellWidth: 140 } },
   });
 
   const pageCount = doc.getNumberOfPages();
