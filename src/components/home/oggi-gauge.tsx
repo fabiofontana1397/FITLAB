@@ -50,7 +50,8 @@ const RING_STEP_DEG = 4;
 const RING_OVERLAP_DEG = 0.6;
 /** Every visit to Home replays the fill like an odometer: fast at first, settling on the value. */
 const ODOMETER_MS = 1500;
-const ODOMETER_EASING = Easing.bezier(0.16, 1, 0.3, 1);
+const ODOMETER_BEZIER = Easing.bezier(0.16, 1, 0.3, 1);
+const odometerEase = ODOMETER_BEZIER.factory();
 /** The far end of an arc never fades past this share of its full colour, and a short arc fades as if it were this long. */
 const FADE_FLOOR = 0.4;
 const FADE_MIN_SPAN_DEG = 90;
@@ -227,7 +228,7 @@ export function OggiGauge({ burnedKcal, eatenKcal, burnedColor, eatenColor, read
     const start = performance.now();
     let frame = requestAnimationFrame(function step(now) {
       const t = Math.min(1, (now - start) / ODOMETER_MS);
-      setSweep(ODOMETER_EASING(t));
+      setSweep(odometerEase(t));
       if (t < 1) frame = requestAnimationFrame(step);
     });
     return () => cancelAnimationFrame(frame);
@@ -242,7 +243,7 @@ export function OggiGauge({ burnedKcal, eatenKcal, burnedColor, eatenColor, read
       semi.value = 0;
       return;
     }
-    semi.value = reduceMotion ? targetSemi : withTiming(targetSemi, { duration: ODOMETER_MS, easing: ODOMETER_EASING });
+    semi.value = reduceMotion ? targetSemi : withTiming(targetSemi, { duration: ODOMETER_MS, easing: ODOMETER_BEZIER });
   }, [focused, reduceMotion, targetSemi, semi]);
 
   const marker = useAnimatedProps(() => ({ d: markerPath(semi.value) }));
