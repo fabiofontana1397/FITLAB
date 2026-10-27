@@ -1,18 +1,22 @@
 # Food photos (meal tracker)
 
-469 pictures, 360 × 360 WebP on a white background, one per food, from two
-supplied sets: the first "Alimenti" archive (187 pictures; 600 × 600 JPEG in
-seven folders — verdura, frutta, carne e pesce, frutta secca e semi,
-latticini e uova, cereali, pasta e pane, legumi) and the second one,
-"Alimenti_3" (282 pictures in eight folders — proteine, carboidrati, grassi,
-verdura, frutta, latticini, legumi, altro), both converted. The second set's JPEGs are soft and blocky at 600 px, so
-each was kept at full size, cleaned of compression noise, lightly sharpened
-and its off-white backdrop made pure white, so it sits on a white tile with
-no visible square.
-The second set covers the foods of the FitLab set (`fl…`) and the older
-ones the first set had left without. Where a name was already taken the
-new picture carries a `-2` (a different preparation, e.g. dry rice), and
-where the same name appears in two folders, the folder (`-carboidrati`…).
+Pictures, one per food (some foods share one), on a pure white background, from three
+supplied sets, the newest on top:
+
+- **Alimenti_3 (the third archive, 220 pictures used)**: sharp 600 px
+  pictures named after the foods themselves, saved at 512 × 512 WebP. They
+  show 298 foods, every one with a picture of that exact name or, for a
+  preparation the set has no picture of (raw / cooked of the same cut), the
+  closest one. Where a name was already taken the file carries a `-3`.
+- **The second set (Alimenti_2)**: soft, blocky 600 px JPEGs, cleaned and kept
+  at 600 × 600; where no picture of the third set exists they still show their
+  food. A name taken twice carries a `-2`, or the folder (`-carboidrati`…).
+- **The first set ("Alimenti")**: 360 × 360 WebP from 600 × 600 JPEGs in
+  seven folders (verdura, frutta, carne e pesce, frutta secca e semi,
+  latticini e uova, cereali, pasta e pane, legumi).
+
+A picture no food shows any more is deleted (git keeps it), so every file
+here is used.
 
 Which food shows which picture is decided in
 `src/lib/nutrition/food-photos.ts`. A food is matched to a picture when its
