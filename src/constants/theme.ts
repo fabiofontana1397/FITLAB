@@ -189,16 +189,16 @@ export const Colors = {
   },
   dark: {
     background: PageBackground.dark,
-    // Reference style: pure black page, graphite cards a step above it, wells a step above the cards.
-    backgroundElevated: '#141519',
-    backgroundElement: '#1D1E23',
-    backgroundSelected: '#26272D',
-    surfaceGlass: 'rgba(28,29,34,0.55)',
-    surfaceGlassStrong: 'rgba(28,29,34,0.78)',
-    border: 'rgba(255,255,255,0.07)',
-    borderStrong: 'rgba(255,255,255,0.16)',
-    cardEdge: 'rgba(255,255,255,0.04)',
-    iconButton: '#1D1E23',
+    // Pure black page, dark-grey cards clearly lifted off it (with a faint rim), wells a step above the cards.
+    backgroundElevated: '#222328',
+    backgroundElement: '#2D2E34',
+    backgroundSelected: '#383940',
+    surfaceGlass: 'rgba(38,39,44,0.6)',
+    surfaceGlassStrong: 'rgba(38,39,44,0.82)',
+    border: 'rgba(255,255,255,0.10)',
+    borderStrong: 'rgba(255,255,255,0.20)',
+    cardEdge: 'rgba(255,255,255,0.09)',
+    iconButton: '#2D2E34',
     // Text colours sampled from the dark reference: white titles and values,
     // soft grey for secondary lines, a dimmer grey for hints.
     text: '#FFFFFF',
