@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FITLAB · Telemetria</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="frame.css">
+<style>
+/* 06 Telemetria — data terminal. Cool near-black; every selection is the same 1px amber line; signs, not colour, on numbers. Every figure in Geist Mono (one deliberate decision). */
+.d06 { --ground:#0c0d0f; --s1:#121417; --line:#23262b; --ink:#e9ebee; --grey:#8c929b; --faint:#5d636c; --hue:#f2b33d;
+  background:var(--ground); color:var(--ink); font:400 14px/1.45 Geist, -apple-system, system-ui, sans-serif; }
+.d06 .m { font-family:"Geist Mono", ui-monospace, monospace; font-variant-numeric:tabular-nums; letter-spacing:-.01em; }
+.d06 .hd { display:flex; align-items:center; gap:10px; padding:10px 16px 12px; border-bottom:1px solid var(--line); }
+.d06 .hd h1 { margin:0; font-size:17px; font-weight:600; }
+.d06 .hd span { color:var(--grey); font-size:13px; }
+.d06 .hd .live { margin-left:auto; display:flex; align-items:center; gap:6px; color:var(--ink); font-size:13px; }
+.d06 .hd .live i { width:7px; height:7px; border-radius:50%; background:var(--hue); }
+.d06 .grid { display:grid; grid-template-columns:1fr 1fr; border-bottom:1px solid var(--line); }
+.d06 .grid > div { padding:12px 16px; }
+.d06 .grid > div:nth-child(odd) { border-right:1px solid var(--line); }
+.d06 .grid > div:nth-child(n+3) { border-top:1px solid var(--line); }
+.d06 .k { color:var(--grey); font-size:12.5px; }
+.d06 .v { font-size:26px; font-weight:500; margin-top:2px; }
+.d06 .v small { font-size:13px; color:var(--grey); margin-left:3px; }
+.d06 .d { font-size:12.5px; color:var(--grey); }
+.d06 .sel { box-shadow:inset 0 2px 0 var(--hue); }
+.d06 .sec { padding:14px 16px 6px; display:flex; justify-content:space-between; align-items:baseline; }
+.d06 .sec h2 { margin:0; font-size:14px; font-weight:600; }
+.d06 .sec span { color:var(--grey); font-size:12.5px; }
+.d06 .chart { padding:0 16px 12px; border-bottom:1px solid var(--line); }
+.d06 .log { padding:0 16px; }
+.d06 .log > div { display:grid; grid-template-columns:48px 1fr auto; gap:10px; padding:9px 0; border-top:1px solid var(--line); font-size:13.5px; }
+.d06 .log > div:first-child { border-top:0; }
+.d06 .log .t { color:var(--grey); }
+.d06 .btn { display:flex; align-items:center; justify-content:center; height:46px; margin:12px 16px; border-radius:6px; background:var(--ink); color:#0c0d0f; font-weight:600; }
+.d06 table { width:100%; border-collapse:collapse; }
+.d06 th { color:var(--grey); font-weight:400; font-size:12px; text-align:right; padding:8px 6px; border-bottom:1px solid var(--line); }
+.d06 th:first-child, .d06 td:first-child { text-align:left; padding-left:16px; }
+.d06 th:last-child, .d06 td:last-child { padding-right:16px; }
+.d06 td { padding:9px 6px; text-align:right; border-bottom:1px solid var(--line); font-size:13.5px; white-space:nowrap; }
+.d06 td.ex { white-space:normal; }
+.d06 td.cur { box-shadow:inset 0 0 0 1px var(--hue); color:var(--hue); }
+.d06 td.na { color:var(--faint); }
+.d06 tr.grp td { color:var(--grey); font-size:12px; padding-top:12px; }
+.d06 .tab { position:absolute; left:0; right:0; bottom:0; height:84px; background:var(--ground); border-top:1px solid var(--line); display:flex; z-index:10; }
+.d06 .tab a { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; color:var(--faint); font-size:11px; padding-top:9px; }
+.d06 .tab a.on { color:var(--ink); box-shadow:inset 0 1px 0 var(--hue); }
+</style>
+</head>
+<body class="lab">
+<header class="lab-head">
+  <a href="index.html">← Tutte le direzioni</a>
+  <h1>06 · Telemetria</h1>
+  <p class="idea">L’allenamento letto come telemetria: ogni serie è un campione con carico, ripetizioni e RIR, letto come in una console di monitoraggio.</p>
+  <p>Stile <em>data terminal</em> (Taste Skill): quasi-nero freddo, linee da 1 px, una sola linea ambra su ciò che è selezionato. Ogni cifra in Geist Mono, come scelta unica e coerente. Per l’intermedio che vuole i dati grezzi: e1RM, volume, ritmo di calo.</p>
+</header>
+<main id="phones"></main>
+<script src="data.js"></script>
+<script>
+const F = FITLAB, { n, signed, kg, icon } = F;
+const s = F.session;
+const tabbar = (on) => `<nav class="tab" aria-label="Sezioni">${F.TABS.map(t => `<a class="${t.key===on?'on':''}" href="#">${icon(t.icon,22,1.5)}${t.label}</a>`).join('')}</nav>`;
+const mark = `<svg width="20" height="20" viewBox="0 0 632 632" aria-hidden="true"><g transform="translate(0 82)"><path fill="#e9ebee" d="${F.markPath}"/></g></svg>`;
+const hd = (t, sub) => `<div class="hd">${mark}<h1>${t}</h1><span>${sub}</span><span class="live"><i></i>Upper B</span></div>`;
+const e1rm = (kgv, reps) => kgv * (1 + reps / 30); // Epley
+
+F.mount({
+  screenClass: 'd06',
+  tabbar,
+  home: () => {
+    const W = 358, H = 120, zero = 14, sc = (H - zero - 8) / 500;
+    const bw = 30, gap = (W - 7 * bw) / 6;
+    return `
+    ${hd('Oggi', 'ven 31 ott · 18:20')}
+    <div class="grid">
+      <div class="sel"><div class="k">Bilancio previsto</div><div class="v m">${signed(F.balanceProjected)}<small>kcal</small></div><div class="d m">obiettivo ${signed(F.plan.dailyDeficit)} · Δ ${signed(F.balanceProjected - F.plan.dailyDeficit)}</div></div>
+      <div><div class="k">Settimana</div><div class="v m">${signed(F.weekSoFar)}</div><div class="d m">su ${signed(F.weekTarget)} · ${Math.round(F.weekSoFar / F.weekTarget * 100)}%</div></div>
+      <div><div class="k">Serie</div><div class="v m">${s.setsDone}<small>/ ${s.setsTotal}</small></div><div class="d m">${s.elapsedMin} min · ~${s.estMin}</div></div>
+      <div><div class="k">Volume</div><div class="v m">${n(s.volumeKg)}<small>kg</small></div><div class="d m">ultima Upper B 4.610</div></div>
+    </div>
+    <div class="sec"><h2>Bilancio giornaliero</h2><span class="m">kcal · obiettivo −400</span></div>
+    <div class="chart"><svg width="100%" viewBox="0 0 ${W} ${H}" role="img" aria-label="Bilancio dei giorni della settimana">
+      <line x1="0" x2="${W}" y1="${zero}" y2="${zero}" stroke="#23262b"/>
+      <line x1="0" x2="${W}" y1="${zero + 400*sc}" y2="${zero + 400*sc}" stroke="#5d636c" stroke-dasharray="3 3"/>
+      ${F.week.map((d,i) => d.balance===null ? `<rect x="${i*(bw+gap)}" y="${zero}" width="${bw}" height="2" fill="#23262b"/>` : `<rect x="${i*(bw+gap)}" y="${zero}" width="${bw}" height="${Math.abs(d.balance)*sc}" fill="${d.today?'#f2b33d':'#3a3f47'}"/>`).join('')}
+      ${F.week.map((d,i) => `<text x="${i*(bw+gap)+bw/2}" y="10" font-size="10" text-anchor="middle" fill="#8c929b" font-family="Geist Mono">${d.d}</text>`).join('')}
+    </svg></div>
+    <div class="sec"><h2>Registro</h2><span>oggi</span></div>
+    <div class="log m">
+      <div><span class="t">18:14</span><span>Military press · 8 × 45</span><span>RIR 2</span></div>
+      <div><span class="t">18:05</span><span>Rematore · 7 × 70</span><span>RIR 1</span></div>
+      <div><span class="t">17:45</span><span>Upper B iniziata</span><span></span></div>
+      <div><span class="t">17:00</span><span>Spuntino</span><span>+${F.meals[2].kcal}</span></div>
+    </div>
+    <a class="btn" href="#">Registra serie</a>`;
+  },
+
+  training: () => `
+    ${hd('Upper B', 'sessione 3 · sett. 3/8')}
+    <table class="m">
+      <tr><th>Esercizio</th><th>kg</th><th>S1</th><th>S2</th><th>S3</th><th>S4</th><th>e1RM</th></tr>
+      ${s.exercises.map(e => { const best = e.done.length ? Math.max(...e.done.map(r => e1rm(e.kg, r))) : null;
+        return `<tr><td class="ex" style="font-family:Geist">${e.name}</td><td>${e.kg}</td>${[0,1,2,3].map(i => i>=e.sets ? '<td class="na">·</td>' : (e.current && i===e.done.length) ? '<td class="cur">8?</td>' : `<td class="${e.done[i]===undefined?'na':''}">${e.done[i] ?? '—'}</td>`).join('')}<td>${best ? kg(best,1) : '<span style="color:var(--faint)">—</span>'}</td></tr>`; }).join('')}
+    </table>
+    <div class="grid" style="margin-top:0">
+      <div class="sel"><div class="k">Recupero</div><div class="v m">${F.mmss(s.rest.left)}</div><div class="d m">di ${F.mmss(s.rest.total)}</div></div>
+      <div><div class="k">Panca e1RM</div><div class="v m">${kg(e1rm(80,8),1)}<small>kg</small></div><div class="d m">+${kg(e1rm(80,8)-e1rm(77.5,8),1)} sulla v3</div></div>
+    </div>
+    <a class="btn" href="#">Registra S2 · military press</a>`,
+
+  nutrition: () => `
+    ${hd('Nutrizione', 'ven 31 ott')}
+    <div class="grid">
+      <div class="sel"><div class="k">Mangiate</div><div class="v m">${n(F.eaten.kcal)}<small>kcal</small></div><div class="d m">target ${n(F.intakeTarget)}</div></div>
+      <div><div class="k">Con la cena</div><div class="v m">${n(F.planned.kcal)}</div><div class="d m">Δ ${signed(F.planned.kcal - F.intakeTarget)} sul target</div></div>
+    </div>
+    <table class="m">
+      <tr><th>Macro</th><th>target</th><th>ora</th><th>+cena</th><th>Δ</th></tr>
+      ${F.macros.map(m => `<tr><td style="font-family:Geist">${m.label}</td><td>${m.target}</td><td>${m.eaten}</td><td>${m.planned}</td><td>${signed(m.planned - m.target)}</td></tr>`).join('')}
+    </table>
+    <div class="sec"><h2>Pasti</h2><span class="m">kcal · P/C/G g</span></div>
+    <div class="log m">${F.meals.map(m => `<div style="${m.logged?'':'color:var(--grey)'}"><span class="t">${m.time}</span><span style="font-family:Geist">${m.slot}${m.logged?'':' · prevista'}</span><span>${m.kcal} · ${m.p}/${m.c}/${m.f}</span></div>`).join('')}</div>`,
+
+  progress: () => {
+    const p = F.progress, W = 358, H = 150, lp = F.linePath(p.weights, W, H, 8, 77.5, 82), L = p.weights.length - 1;
+    // Least-squares fit over the last 4 weeks, drawn as the trend.
+    const xs = [8,9,10,11], ys = xs.map(i => p.weights[i]);
+    const mx = xs.reduce((a,b)=>a+b)/4, my = ys.reduce((a,b)=>a+b)/4;
+    const slope = xs.reduce((a,x,i)=>a+(x-mx)*(ys[i]-my),0) / xs.reduce((a,x)=>a+(x-mx)**2,0);
+    const yAt = (i) => my + slope * (i - mx);
+    return `
+    ${hd('Progressi', '12 settimane')}
+    <div class="grid">
+      <div class="sel"><div class="k">Peso medio 7 gg</div><div class="v m">${kg(p.weights[L])}<small>kg</small></div><div class="d m">${F.skg(-p.lost)} dal 18 ago</div></div>
+      <div><div class="k">Ritmo (regressione 4 sett.)</div><div class="v m">${F.skg(slope,2)}<small>kg/sett</small></div><div class="d m">arrivo a 76,0 ~${Math.ceil((p.weights[L]-76)/-slope)} sett.</div></div>
+    </div>
+    <div class="chart" style="padding-top:12px"><svg width="100%" viewBox="0 0 ${W} ${H}" role="img" aria-label="Peso e tendenza">
+      ${[78,80,82].map(v => `<line x1="0" x2="${W}" y1="${lp.y(v)}" y2="${lp.y(v)}" stroke="#1a1d21"/><text x="${W}" y="${lp.y(v)-4}" text-anchor="end" font-size="10" fill="#5d636c" font-family="Geist Mono">${v}</text>`).join('')}
+      <path d="${lp.d}" fill="none" stroke="#8c929b" stroke-width="1.5"/>
+      <line x1="${lp.x(8)}" y1="${lp.y(yAt(8))}" x2="${lp.x(L)}" y2="${lp.y(yAt(L))}" stroke="#f2b33d" stroke-width="1.5"/>
+      <circle cx="${lp.x(L)}" cy="${lp.y(p.weights[L])}" r="3" fill="#f2b33d"/>
+    </svg></div>
+    <table class="m">
+      <tr><th>Misura</th><th>inizio</th><th>ora</th><th>Δ</th></tr>
+      <tr><td style="font-family:Geist">Vita</td><td>${p.waist.start}</td><td>${p.waist.now}</td><td>${signed(p.waist.now-p.waist.start)} cm</td></tr>
+      <tr><td style="font-family:Geist">Massa grassa</td><td>${kg(p.bodyFat.start)}</td><td>${kg(p.bodyFat.now)}</td><td>${F.skg(p.bodyFat.now-p.bodyFat.start)} %</td></tr>
+    </table>
+    <div class="sec"><h2>Piano</h2><span class="m">v${F.plan.version}</span></div>
+    <div class="log m">${F.plan.versions.slice().reverse().slice(0,3).map(v => `<div><span class="t">v${v.v}</span><span style="font-family:Geist">${v.change}</span><span>${signed(v.target)}</span></div>`).join('')}</div>`;
+  },
+});
+</script>
+</body>
+</html>

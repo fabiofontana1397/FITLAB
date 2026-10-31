@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FITLAB · Scheda</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400;62..125,500;62..125,600;62..125,800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="frame.css">
+<style>
+/* 09 Scheda — the printed gym workout sheet. Paper, black ink, one red pen. Rules are earned: this is a form. Square corners. */
+.d09 { --paper:#f7f6f2; --ink:#111; --grey:#5d5b55; --faint:#9c998f; --rule:#1111; --rule2:#11111126; --pen:#d4241a;
+  background:var(--paper); color:var(--ink); font:400 15px/1.4 Archivo, -apple-system, system-ui, sans-serif; font-stretch:100%; font-variant-numeric:tabular-nums; }
+.d09 .nar { font-stretch:75%; }
+.d09 .wide { font-stretch:125%; }
+.d09 .mast { margin:8px 16px 0; border-top:3px solid var(--ink); border-bottom:1px solid var(--ink); padding:10px 0 8px; display:flex; justify-content:space-between; align-items:flex-end; }
+.d09 .mast h1 { margin:0; font-size:30px; font-weight:800; font-stretch:125%; letter-spacing:-.02em; line-height:1; }
+.d09 .mast .r { text-align:right; font-size:13px; color:var(--grey); line-height:1.3; }
+.d09 .fields { margin:0 16px; display:grid; grid-template-columns:1fr 1fr; border-bottom:1px solid var(--ink); }
+.d09 .fields div { padding:7px 0; font-size:13px; color:var(--grey); }
+.d09 .fields div + div { padding-left:10px; border-left:1px solid var(--rule2); }
+.d09 .fields b { display:block; color:var(--ink); font-size:15px; font-weight:600; }
+.d09 h2 { margin:18px 16px 6px; font-size:13px; font-weight:600; font-stretch:125%; display:flex; justify-content:space-between; }
+.d09 h2 span { color:var(--grey); font-weight:400; font-stretch:100%; }
+.d09 table { width:calc(100% - 32px); margin:0 16px; border-collapse:collapse; }
+.d09 th { font-size:12px; font-weight:500; color:var(--grey); text-align:left; padding:4px 4px 4px 0; border-bottom:1px solid var(--ink); font-stretch:75%; }
+.d09 td { padding:7px 4px 7px 0; border-bottom:1px solid var(--rule2); vertical-align:middle; }
+.d09 td.n, .d09 th.n { text-align:right; }
+.d09 .box { display:inline-grid; place-items:center; width:30px; height:30px; border:1px solid var(--ink); margin-right:3px; font-weight:600; position:relative; font-family:"Archivo"; }
+.d09 .box.pen { color:var(--pen); }
+.d09 .box.now { border:2px solid var(--pen); }
+.d09 .box.off { border-color:var(--rule2); }
+.d09 .wk { display:grid; grid-template-columns:repeat(7,1fr); margin:0 16px; border:1px solid var(--ink); }
+.d09 .wk div { min-height:74px; padding:6px; border-left:1px solid var(--rule2); font-size:12px; position:relative; }
+.d09 .wk div:first-child { border-left:0; }
+.d09 .wk b { display:block; font-size:16px; }
+.d09 .wk .s { color:var(--grey); font-stretch:75%; font-size:12px; }
+.d09 .wk .tick { position:absolute; right:4px; bottom:4px; color:var(--pen); }
+.d09 .wk .today { background:#fff; outline:2px solid var(--pen); outline-offset:-2px; }
+.d09 .line { display:flex; align-items:baseline; gap:8px; margin:0 16px; padding:8px 0; border-bottom:1px solid var(--rule2); }
+.d09 .line .dots { flex:1; border-bottom:1px dotted var(--faint); transform:translateY(-4px); }
+.d09 .line .pen { color:var(--pen); font-weight:600; }
+.d09 .btn { display:flex; align-items:center; justify-content:center; height:52px; margin:14px 16px 0; background:var(--ink); color:var(--paper); font-weight:600; font-stretch:125%; font-size:15px; }
+.d09 .note { margin:10px 16px 0; padding-left:10px; border-left:2px solid var(--pen); color:var(--grey); font-size:13.5px; }
+.d09 .graph { margin:0 16px; border:1px solid var(--ink); background:#fff; }
+.d09 .tab { position:absolute; left:0; right:0; bottom:0; height:84px; background:var(--paper); border-top:2px solid var(--ink); display:flex; z-index:10; }
+.d09 .tab a { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; color:var(--faint); font-size:11px; font-weight:600; padding-top:9px; }
+.d09 .tab a.on { color:var(--ink); box-shadow:inset 0 3px 0 var(--pen); }
+</style>
+</head>
+<body class="lab">
+<header class="lab-head">
+  <a href="index.html">← Tutte le direzioni</a>
+  <h1>09 · Scheda</h1>
+  <p class="idea">La scheda cartacea che ogni palestra italiana consegna diventa l’app: una griglia di caselle da riempire serie per serie, con la penna rossa per ciò che hai fatto.</p>
+  <p>Direzione nata dall’inventario della Taste Skill: un oggetto stampato del mondo FITLAB. Carta, inchiostro nero, una penna rossa, angoli vivi. Archivo nelle larghezze stretta, normale e larga. Qui le linee sono giustificate perché è un modulo.</p>
+</header>
+<main id="phones"></main>
+<script src="data.js"></script>
+<script>
+const F = FITLAB, { n, signed, kg, icon } = F;
+const s = F.session;
+const tabbar = (on) => `<nav class="tab" aria-label="Sezioni">${F.TABS.map(t => `<a class="${t.key===on?'on':''}" href="#">${icon(t.icon,24,1.6)}${t.label}</a>`).join('')}</nav>`;
+const mast = (t, r) => `<div class="mast"><h1>${t}</h1><div class="r">${r}</div></div>`;
+const tick = `<svg width="18" height="14" viewBox="0 0 18 14" aria-hidden="true"><path d="M1.5 7.5c2 1 3.3 2.6 4.6 4.8C8.4 7.6 11.8 3.5 16.5 1" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>`;
+
+F.mount({
+  screenClass: 'd09',
+  tabbar,
+  home: () => `
+    ${mast('FITLAB', 'Scheda n. 3 · Upper / Lower<br>Settimana 3 di 8')}
+    <div class="fields"><div>Atleta<b>Fabio</b></div><div>Obiettivo<b>Ricomposizione</b></div></div>
+    <h2>Settimana<span>${F.sessionsDone} di ${F.plan.sessionsPerWeek} sedute</span></h2>
+    <div class="wk">${F.week.map(d => `<div class="${d.today?'today':''}"><b>${d.date}</b>${d.day}<div class="s">${d.session ?? '—'}</div>${d.done?`<span class="tick">${tick}</span>`:''}</div>`).join('')}</div>
+    <h2>Energia di oggi<span>kcal</span></h2>
+    <div class="line"><span>Bruciate</span><span class="dots"></span><span>${n(F.burned.total)}</span></div>
+    <div class="line"><span>Mangiate</span><span class="dots"></span><span class="pen">${n(F.eaten.kcal)}</span></div>
+    <div class="line"><span>Cena prevista</span><span class="dots"></span><span style="color:var(--grey)">${n(F.meals[3].kcal)}</span></div>
+    <div class="line" style="border-bottom:1px solid var(--ink)"><b>Saldo previsto</b><span class="dots"></span><b>${signed(F.balanceProjected)}</b></div>
+    <p class="note">Obiettivo ${signed(F.plan.dailyDeficit)}: ti mancano ${n(F.balanceProjected - F.plan.dailyDeficit)} kcal. Settimana a ${signed(F.weekSoFar)} su ${signed(F.weekTarget)}.</p>
+    <a class="btn" href="#">Apri la seduta di oggi</a>`,
+
+  training: () => `
+    ${mast('Upper B', 'Ven 31 ott · 17:45<br>Petto, schiena, spalle')}
+    <h2>Esercizi<span>ripetizioni fatte</span></h2>
+    <table>
+      <tr><th>Esercizio</th><th class="n">Kg</th><th style="padding-left:8px">Serie</th></tr>
+      ${s.exercises.map(e => `<tr><td><span style="font-weight:600">${e.name}</span><br><span class="nar" style="color:var(--grey);font-size:13px">${e.sets} × ${e.reps} · RIR ${e.rir}</span></td><td class="n" style="font-weight:600">${kg(e.kg, e.kg%1?1:0)}</td><td style="padding-left:8px;white-space:nowrap">${Array.from({length:4},(_,i)=> i>=e.sets ? `<span class="box off"></span>` : `<span class="box ${e.done[i]!==undefined?'pen':''} ${e.current&&i===e.done.length?'now':''}">${e.done[i] ?? ''}</span>`).join('')}</td></tr>`).join('')}
+    </table>
+    <p class="note">Panca: 80 kg (+2,5). La scorsa volta hai chiuso ogni serie con 3 ripetizioni di riserva.</p>
+    <a class="btn" href="#">Scrivi 8 nella casella · ${F.mmss(s.rest.left)}</a>`,
+
+  nutrition: () => `
+    ${mast('Diario', 'Ven 31 ott<br>Target ' + n(F.intakeTarget) + ' kcal')}
+    <h2>Pasti<span>grammi · kcal</span></h2>
+    <table>
+      <tr><th>Ora</th><th>Pasto</th><th class="n">P</th><th class="n">C</th><th class="n">G</th><th class="n">kcal</th></tr>
+      ${F.meals.map(m => `<tr style="${m.logged?'':'color:var(--faint)'}"><td class="nar">${m.time}</td><td><b style="font-weight:600">${m.slot}</b><br><span class="nar" style="font-size:13px;color:var(--grey)">${m.name}</span></td><td class="n">${m.p}</td><td class="n">${m.c}</td><td class="n">${m.f}</td><td class="n" style="${m.logged?'color:var(--pen);font-weight:600':''}">${m.kcal}</td></tr>`).join('')}
+      <tr style="border-top:1px solid var(--ink)"><td></td><td><b>Totale previsto</b></td><td class="n">${F.planned.p}</td><td class="n">${F.planned.c}</td><td class="n">${F.planned.f}</td><td class="n"><b>${n(F.planned.kcal)}</b></td></tr>
+      <tr><td></td><td style="color:var(--grey)">Target</td>${F.macros.map(m=>`<td class="n" style="color:var(--grey)">${m.target}</td>`).join('')}<td class="n" style="color:var(--grey)">${n(F.intakeTarget)}</td></tr>
+    </table>
+    <p class="note">Con la cena prevista superi il target di ${n(F.planned.kcal - F.intakeTarget)} kcal: 20 g di cereali in meno.</p>
+    <a class="btn" href="#">Segna la cena</a>`,
+
+  progress: () => {
+    const p = F.progress, W = 356, H = 160, lp = F.linePath(p.weights, W, H, 10, 76, 82), L = p.weights.length - 1;
+    return `
+    ${mast('Misure', '18 ago – 31 ott<br>12 settimane')}
+    <h2>Peso medio<span>kg</span></h2>
+    <div class="graph"><svg width="100%" viewBox="0 0 ${W} ${H}" role="img" aria-label="Peso da 81,5 a 78,4 kg" style="display:block">
+      ${Array.from({length:Math.floor(W/20)},(_,i)=>`<line x1="${(i+1)*20}" x2="${(i+1)*20}" y1="0" y2="${H}" stroke="#1111"/>`).join('')}${Array.from({length:Math.floor(H/20)},(_,i)=>`<line x1="0" x2="${W}" y1="${(i+1)*20}" y2="${(i+1)*20}" stroke="#1111"/>`).join('')}
+      <line x1="0" x2="${W}" y1="${lp.y(76)}" y2="${lp.y(76)}" stroke="#111" stroke-dasharray="6 4"/>
+      <text x="6" y="${lp.y(76)-6}" font-size="11" font-family="Archivo">obiettivo 76,0</text>
+      <path d="${lp.d}" fill="none" stroke="#d4241a" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+      ${p.weights.map((w,i)=>`<circle cx="${lp.x(i)}" cy="${lp.y(w)}" r="2.6" fill="#d4241a"/>`).join('')}
+    </svg></div>
+    <h2>Registro<span>${F.skg(-p.lost)} kg in totale</span></h2>
+    <table>
+      <tr><th>Data</th><th class="n">Peso</th><th class="n">Vita</th><th class="n">Grasso</th></tr>
+      <tr><td>31 ott</td><td class="n" style="color:var(--pen);font-weight:600">${kg(p.weights[L])}</td><td class="n">${p.waist.now}</td><td class="n">${kg(p.bodyFat.now)} %</td></tr>
+      <tr><td>18 ago</td><td class="n">${kg(p.weights[0])}</td><td class="n">${p.waist.start}</td><td class="n">${kg(p.bodyFat.start)} %</td></tr>
+    </table>
+    <a class="btn" href="#">Nuova misurazione</a>`;
+  },
+});
+</script>
+</body>
+</html>

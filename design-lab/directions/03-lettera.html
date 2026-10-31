@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FITLAB · Lettera del coach</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="frame.css">
+<style>
+/* 03 Lettera — editorial greeting. Serif has one job (the coach's voice); figures at regular weight; deep green on data. */
+.d03 { --page:#fff; --surface:#f3f4f0; --ink:#1c1c1a; --grey:#6b6b66; --faint:#a5a59e; --hue:#17695f; --hue-soft:#dcebe6;
+  background:var(--page); color:var(--ink); font:400 16px/1.5 "Instrument Sans", -apple-system, system-ui, sans-serif; font-variant-numeric:tabular-nums; }
+.d03 .serif { font-family:Fraunces, Georgia, serif; font-optical-sizing:auto; }
+.d03 header.h { padding:16px 20px 0; display:flex; justify-content:space-between; align-items:center; color:var(--grey); font-size:15px; }
+.d03 .av { width:36px; height:36px; border-radius:50%; background:var(--hue-soft); color:var(--hue); display:grid; place-items:center; font-weight:600; }
+.d03 h1 { font:400 38px/1.05 Fraunces, Georgia, serif; letter-spacing:-.02em; margin:18px 20px 12px; }
+.d03 .letter { margin:0 20px 22px; font:400 20px/1.5 Fraunces, Georgia, serif; letter-spacing:-.005em; }
+.d03 .letter a { color:var(--hue); text-decoration:underline; text-decoration-thickness:1px; text-underline-offset:4px; text-decoration-color:color-mix(in srgb, var(--hue) 45%, transparent); }
+.d03 .sign { display:flex; align-items:center; gap:10px; margin:-8px 20px 22px; color:var(--grey); font-size:14px; }
+.d03 .panel { background:var(--surface); border-radius:22px; margin:0 12px 10px; padding:18px; }
+.d03 .ph { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:12px; }
+.d03 .ph h2 { margin:0; font-size:16px; font-weight:600; }
+.d03 .ph span { color:var(--grey); font-size:14px; }
+.d03 .pill { display:flex; align-items:center; justify-content:center; gap:8px; height:52px; border-radius:999px; background:var(--ink); color:#fff; font-weight:600; font-size:16px; margin:4px 12px 12px; }
+.d03 .pill.alt { background:var(--hue-soft); color:var(--hue); }
+.d03 .bars { display:grid; grid-template-columns:repeat(7,1fr); gap:8px; align-items:end; height:96px; }
+.d03 .bars div { display:flex; flex-direction:column; justify-content:flex-end; align-items:center; gap:6px; height:100%; color:var(--grey); font-size:12px; }
+.d03 .bars i { width:100%; border-radius:6px; background:#d9dbd4; }
+.d03 .bars .t i { background:var(--hue); }
+.d03 .bars .e i { background:transparent; border:1px dashed #c9cbc3; height:8px; }
+.d03 .row { display:flex; justify-content:space-between; gap:12px; padding:10px 0; }
+.d03 .row + .row { border-top:1px solid #e3e4de; }
+.d03 .row small { display:block; color:var(--grey); font-size:14px; }
+.d03 .row .v { text-align:right; white-space:nowrap; }
+.d03 .meal { margin:0 12px 14px; }
+.d03 .meal img { width:100%; height:180px; object-fit:cover; border-radius:22px; display:block; }
+.d03 .meal img.off { filter:grayscale(.6) opacity(.7); }
+.d03 .meal .cap { display:flex; justify-content:space-between; padding:10px 6px 0; }
+.d03 .meal .cap small { color:var(--grey); display:block; font-size:14px; }
+.d03 .tl { margin:0 20px 16px; }
+.d03 .tl > div { position:relative; padding:0 0 18px 20px; }
+.d03 .tl > div::before { content:""; position:absolute; left:4px; top:8px; width:7px; height:7px; border-radius:50%; background:#c9cbc3; }
+.d03 .tl > div.now::before { background:var(--hue); }
+.d03 .tl p { margin:2px 0 0; font:400 17px/1.45 Fraunces, Georgia, serif; }
+.d03 .tl span { color:var(--grey); font-size:14px; }
+.d03 .tab { position:absolute; left:0; right:0; bottom:0; height:84px; background:#fff; border-top:1px solid #ecece8; display:flex; padding:8px 8px 0; z-index:10; }
+.d03 .tab a { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; color:var(--faint); font-size:11px; font-weight:500; }
+.d03 .tab a.on { color:var(--ink); }
+</style>
+</head>
+<body class="lab">
+<header class="lab-head">
+  <a href="index.html">← Tutte le direzioni</a>
+  <h1>03 · Lettera del coach</h1>
+  <p class="idea">Il coach adattivo scrive la giornata come una breve lettera: ogni cifra nel testo è un link alla prova che la sostiene.</p>
+  <p>Stile <em>editorial greeting</em> (Taste Skill). Fraunces ha un solo compito, la voce del coach; il resto è Instrument Sans. Verde scuro solo sui dati. Rende visibile il “perché” del piano adattivo.</p>
+</header>
+<main id="phones"></main>
+<script src="data.js"></script>
+<script>
+const F = FITLAB, { n, signed, kg, icon } = F;
+const s = F.session, left = s.setsTotal - s.setsDone;
+const tabbar = (on) => `<nav class="tab" aria-label="Sezioni">${F.TABS.map(t => `<a class="${t.key===on?'on':''}" href="#">${icon(t.icon,24,1.6)}${t.label}</a>`).join('')}</nav>`;
+const head = (r) => `<header class="h"><span>${r}</span><span class="av" aria-label="Profilo">F</span></header>`;
+const sign = `<div class="sign">${icon('message',16,1.8)} Il tuo coach FITLAB · piano v${F.plan.version}</div>`;
+const maxAbs = 500;
+
+F.mount({
+  screenClass: 'd03',
+  tabbar,
+  home: () => `
+    ${head('Venerdì 31 ottobre')}
+    <h1>Buonasera, Fabio.</h1>
+    <p class="letter">Sei a metà di Upper B: mancano <a href="#">${left} serie</a>. Con la cena prevista chiudi a <a href="#">${signed(F.balanceProjected)} kcal</a>, ${n(F.balanceProjected - F.plan.dailyDeficit)} sopra l’obiettivo: togli 20 g di cereali e ci sei. In settimana sei a <a href="#">${signed(F.weekSoFar)}</a> su ${signed(F.weekTarget)}.</p>
+    ${sign}
+    <a class="pill" href="#">Torna alla sessione ${icon('chev',18,2)}</a>
+    <section class="panel">
+      <div class="ph"><h2>Bilancio della settimana</h2><span>kcal al giorno</span></div>
+      <div class="bars">${F.week.map(d => `<div class="${d.today?'t':''} ${d.balance===null?'e':''}"><i style="height:${d.balance===null?8:Math.abs(d.balance)/maxAbs*70}px"></i>${d.d}</div>`).join('')}</div>
+    </section>
+    <section class="panel">
+      <div class="row"><div>Bruciate<small>stima a fine giornata</small></div><div class="v">${n(F.burned.total)} kcal</div></div>
+      <div class="row"><div>Mangiate<small>3 pasti su 4</small></div><div class="v">${n(F.eaten.kcal)} kcal</div></div>
+    </section>`,
+
+  training: () => `
+    ${head('Upper B · 35 min')}
+    <h1>La panca è salita.</h1>
+    <p class="letter">La scorsa volta hai chiuso tutte le serie con <a href="#">3 ripetizioni di riserva</a>, quindi oggi 80 kg. Ora military press: serie 2 di 3, otto ripetizioni a 45 kg.</p>
+    ${sign}
+    <a class="pill" href="#">Registra la serie</a>
+    <section class="panel" style="padding-block:6px">
+      ${s.exercises.map(e => `<div class="row"><div>${e.name}<small>${e.sets} × ${e.reps} · ${e.kg} kg</small></div><div class="v" style="color:${e.current?'var(--hue)':e.done.length===e.sets?'var(--ink)':'var(--faint)'}">${e.done.length} di ${e.sets}</div></div>`).join('')}
+    </section>`,
+
+  nutrition: () => `
+    ${head('Venerdì 31 ottobre')}
+    <h1>Cosa hai mangiato.</h1>
+    <p class="letter">${n(F.eaten.kcal)} kcal finora, ${n(F.eaten.p)} g di proteine su ${F.macros[0].target}. La cena prevista ti porta a <a href="#">${n(F.planned.kcal)}</a>, ${n(F.planned.kcal - F.intakeTarget)} oltre il target di ${n(F.intakeTarget)}.</p>
+    ${sign}
+    ${F.meals.map(m => `<figure class="meal"><img class="${m.logged?'':'off'}" src="${m.src}" alt="${m.name}"><figcaption class="cap"><div>${m.slot}<small>${m.name}</small></div><div style="text-align:right">${n(m.kcal)} kcal<small>${m.logged?m.time:'prevista'}</small></div></figcaption></figure>`).join('')}`,
+
+  progress: () => {
+    const p = F.progress, W = 330, H = 130, lp = F.linePath(p.weights, W, H, 8, 76, 82), L = p.weights.length - 1;
+    return `
+    ${head('12 settimane')}
+    <h1>${F.skg(-p.lost)} kg, con calma.</h1>
+    <p class="letter">Perdi ${F.skg(p.rate,2).replace('−','')} kg a settimana: è il ritmo giusto per tenere la forza. Mancano ${kg(p.toGo)} kg a ${kg(F.user.targetWeightKg)}.</p>
+    <section class="panel">
+      <svg width="100%" viewBox="0 0 ${W} ${H}" role="img" aria-label="Peso da 81,5 a 78,4 kg"><path d="${lp.d}" fill="none" stroke="#17695f" stroke-width="2.5"/><circle cx="${lp.x(L)}" cy="${lp.y(p.weights[L])}" r="4.5" fill="#17695f"/><line x1="0" x2="${W}" y1="${lp.y(76)}" y2="${lp.y(76)}" stroke="#c9cbc3" stroke-dasharray="3 4"/></svg>
+      <div class="row" style="padding-bottom:0"><small>18 ago · ${kg(p.weights[0])} kg</small><small>oggi · ${kg(p.weights[L])} kg</small></div>
+    </section>
+    <h2 class="serif" style="font-weight:400;font-size:24px;margin:22px 20px 12px">Come è cambiato il piano</h2>
+    <div class="tl">${F.plan.versions.slice().reverse().map((v,i) => `<div class="${i===0?'now':''}"><span>${v.date} · v${v.v}</span><p>${v.change}.</p></div>`).join('')}</div>`;
+  },
+});
+</script>
+</body>
+</html>

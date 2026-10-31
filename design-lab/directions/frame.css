@@ -1,0 +1,42 @@
+/* FITLAB Design Directions — presentation frame only (not part of any direction). */
+:root { --lab-bg: #e9e9ec; --lab-ink: #141416; --lab-muted: #5c5d66; --lab-line: #d6d6db; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --lab-bg: #121214; --lab-ink: #f2f2f4; --lab-muted: #a0a1aa; --lab-line: #2a2a30; } }
+:root[data-theme="dark"] { --lab-bg: #121214; --lab-ink: #f2f2f4; --lab-muted: #a0a1aa; --lab-line: #2a2a30; }
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body.lab { background: var(--lab-bg); color: var(--lab-ink); font: 15px/1.5 -apple-system, "SF Pro Text", Inter, system-ui, sans-serif; }
+.lab-head { max-width: 1760px; margin: 0 auto; padding: 28px 24px 8px; display: grid; gap: 6px; }
+.lab-head a { color: var(--lab-muted); font-size: 13px; text-decoration: none; }
+.lab-head a:hover { color: var(--lab-ink); }
+.lab-head h1 { margin: 0; font-size: 26px; letter-spacing: -0.02em; }
+.lab-head p { margin: 0; max-width: 72ch; color: var(--lab-muted); }
+.lab-head .idea { color: var(--lab-ink); }
+.lab-nav { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.lab-nav a { padding: 6px 10px; border: 1px solid var(--lab-line); border-radius: 999px; }
+#phones { max-width: 1760px; margin: 0 auto; padding: 16px 24px 64px; display: flex; flex-wrap: wrap; gap: 28px; justify-content: center; }
+.lab-phone { margin: 0; display: grid; gap: 10px; justify-items: center; }
+.lab-phone figcaption { font-size: 13px; color: var(--lab-muted); font-weight: 600; }
+.lab-device { width: 390px; height: 844px; border-radius: 54px; padding: 0; background: #000; box-shadow: 0 0 0 10px #0b0b0c, 0 0 0 11px #2b2b2e, 0 30px 60px rgba(0,0,0,.28); overflow: hidden; flex: none; }
+@media (max-width: 440px) { .lab-device { transform: scale(.86); transform-origin: top center; margin-bottom: -118px; } #phones { padding-inline: 0; } }
+
+/* Every direction's screen shares this skeleton; directions style the rest. */
+.screen { position: relative; width: 390px; height: 844px; overflow: hidden; }
+.screen .status { position: absolute; z-index: 20; top: 0; left: 0; right: 0; height: 54px; padding: 18px 30px 0 44px; display: flex; justify-content: space-between; font: 600 16px/1 -apple-system, "SF Pro Text", Inter, system-ui, sans-serif; letter-spacing: -0.01em; pointer-events: none; }
+.screen .status::after { content: ""; position: absolute; top: 11px; left: 50%; width: 124px; height: 36px; margin-left: -62px; background: #000; border-radius: 20px; }
+.screen .status-r { display: flex; gap: 6px; align-items: center; }
+.screen .scroll { position: absolute; inset: 0; overflow-y: auto; padding: 54px 0 110px; scrollbar-width: none; }
+.screen .scroll::-webkit-scrollbar { display: none; }
+.screen .home-ind { position: absolute; z-index: 21; bottom: 8px; left: 50%; width: 139px; height: 5px; margin-left: -70px; border-radius: 3px; background: currentColor; opacity: .9; pointer-events: none; }
+.ic { display: block; flex: none; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* Gallery */
+.gal { max-width: 1760px; margin: 0 auto; padding: 8px 24px 64px; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr)); gap: 32px 24px; }
+.gal a { color: inherit; text-decoration: none; display: grid; gap: 10px; }
+.gal img { width: 100%; height: auto; border-radius: 14px; background: #ccc; display: block; }
+.gal h2 { margin: 0; font-size: 17px; letter-spacing: -0.01em; }
+.gal p { margin: 0; color: var(--lab-muted); font-size: 14px; }
+.gal a:hover h2 { text-decoration: underline; text-underline-offset: 3px; }
+.gal a:focus-visible { outline: 2px solid var(--lab-ink); outline-offset: 6px; border-radius: 14px; }
+.screen a { color: inherit; text-decoration: none; }

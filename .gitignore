@@ -50,3 +50,6 @@ supabase/.temp
 
 # generated Excel exports
 scripts/agent-tests/reports/*.xlsx
+
+# Working files of the taste-skill design scripts
+.taste-skill/

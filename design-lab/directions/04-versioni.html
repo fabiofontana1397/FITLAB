@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FITLAB · Versioni del piano</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="frame.css">
+<style>
+/* 04 Versioni — framed sheet. One green-grey frame, a white sheet inset, no shadow; blue on the current version's data. Mono only for version ids. */
+.d04 { --frame:#eaeee9; --sheet:#fff; --edge:#e1e5e0; --ink:#15181a; --grey:#5f6669; --faint:#9aa1a3; --hue:#1f63c9; --hue-soft:#e3edfb; --pos:#0f6b3a; --neg:#a3271c;
+  background:var(--frame); color:var(--ink); font:400 15px/1.45 "IBM Plex Sans", -apple-system, system-ui, sans-serif; font-variant-numeric:tabular-nums; }
+.d04 .mono { font-family:"IBM Plex Mono", ui-monospace, monospace; font-size:.92em; }
+.d04 .bar { display:flex; align-items:center; gap:10px; padding:10px 16px 12px; }
+.d04 .bar svg.mk { width:26px; height:26px; color:var(--ink); }
+.d04 .bar .t { line-height:1.2; }
+.d04 .bar .t b { display:block; font-weight:600; }
+.d04 .bar .t span { color:var(--grey); font-size:13px; }
+.d04 .bar .v { margin-left:auto; background:var(--sheet); border:1px solid var(--edge); border-radius:8px; padding:5px 9px; font-size:13px; }
+.d04 .sheet { background:var(--sheet); border:1px solid var(--edge); border-radius:16px; margin:0 8px; min-height:640px; padding:0 0 16px; }
+.d04 .tabs { display:flex; gap:20px; padding:0 16px; border-bottom:1px solid var(--edge); }
+.d04 .tabs span { padding:12px 0 10px; color:var(--grey); font-weight:500; border-bottom:2px solid transparent; margin-bottom:-1px; }
+.d04 .tabs span.on { color:var(--ink); border-color:var(--ink); }
+.d04 h1 { font-size:22px; font-weight:600; letter-spacing:-.015em; margin:16px 16px 4px; }
+.d04 .lead { margin:0 16px 14px; color:var(--grey); }
+.d04 .lead b { color:var(--ink); font-weight:500; }
+.d04 table { width:calc(100% - 32px); margin:0 16px 16px; border-collapse:collapse; }
+.d04 th { text-align:right; color:var(--grey); font-weight:400; font-size:13px; padding:0 0 6px; }
+.d04 th:first-child { text-align:left; }
+.d04 td { padding:9px 0; border-top:1px solid var(--edge); text-align:right; white-space:nowrap; }
+.d04 td:first-child { text-align:left; white-space:normal; }
+.d04 td small { display:block; color:var(--grey); font-size:12.5px; }
+.d04 .cur { color:var(--hue); font-weight:500; }
+.d04 .chg { display:inline-block; font-size:12.5px; padding:1px 7px; border-radius:6px; background:#f0f2f1; color:#353b3d; }
+.d04 .chg.up { background:#e3f4ea; color:var(--pos); } .d04 .chg.dn { background:#fbe9e7; color:var(--neg); }
+.d04 .note { margin:0 16px 16px; padding:12px 14px; border-radius:10px; background:var(--hue-soft); color:#173a6b; font-size:14px; }
+.d04 .note b { font-weight:600; }
+.d04 .act { display:flex; gap:8px; margin:0 16px 16px; }
+.d04 .btn { flex:1; height:46px; display:flex; align-items:center; justify-content:center; gap:6px; border-radius:10px; background:var(--ink); color:#fff; font-weight:500; }
+.d04 .btn.s { background:#eceeec; color:var(--ink); flex:0 0 auto; padding:0 14px; }
+.d04 h2 { font-size:15px; font-weight:600; margin:18px 16px 8px; }
+.d04 .ver { margin:0 16px; }
+.d04 .ver > div { display:grid; grid-template-columns:34px 1fr auto; gap:10px; padding:10px 0; border-top:1px solid var(--edge); }
+.d04 .ver small { color:var(--grey); display:block; }
+.d04 .ver .on { color:var(--hue); }
+.d04 .tabb { position:absolute; left:0; right:0; bottom:0; height:84px; background:var(--frame); display:flex; padding:8px 8px 0; z-index:10; }
+.d04 .tabb a { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; color:var(--faint); font-size:11px; font-weight:500; }
+.d04 .tabb a.on { color:var(--ink); }
+</style>
+</head>
+<body class="lab">
+<header class="lab-head">
+  <a href="index.html">← Tutte le direzioni</a>
+  <h1>04 · Versioni del piano</h1>
+  <p class="idea">Il piano è un documento versionato: ogni schermata mostra la versione in vigore, cosa è cambiato e perché, come un changelog.</p>
+  <p>Stile <em>framed sheet</em> (Taste Skill): una cornice verde-grigia e un foglio bianco senza ombre. Blu solo sui dati della versione corrente; IBM Plex Mono solo per gli identificativi di versione. Mette al centro il vantaggio distintivo di FITLAB: il piano adattivo.</p>
+</header>
+<main id="phones"></main>
+<script src="data.js"></script>
+<script>
+const F = FITLAB, { n, signed, kg, icon } = F;
+const s = F.session, V = F.plan.versions, cur = V[V.length-1], prev = V[V.length-2];
+const mark = `<svg class="mk" viewBox="0 0 632 632" aria-hidden="true"><g transform="translate(0 82)"><path fill="currentColor" d="${F.markPath}"/></g></svg>`;
+const bar = (sub) => `<div class="bar">${mark}<div class="t"><b>FITLAB</b><span>${sub}</span></div><span class="v mono">piano v${F.plan.version}</span></div>`;
+const tabs = (a, b, on=0) => `<div class="tabs"><span class="${on===0?'on':''}">${a}</span><span class="${on===1?'on':''}">${b}</span></div>`;
+const tabbar = (on) => `<nav class="tabb" aria-label="Sezioni">${F.TABS.map(t => `<a class="${t.key===on?'on':''}" href="#">${icon(t.icon,24,1.6)}${t.label}</a>`).join('')}</nav>`;
+const chg = (v, unit='', good='down') => v === 0 ? `<span class="chg">invariato</span>` : `<span class="chg ${(v<0)===(good==='down')?'up':'dn'}">${signed(v)}${unit}</span>`;
+
+F.mount({
+  screenClass: 'd04',
+  tabbar,
+  home: () => `
+    ${bar('Upper / Lower · settimana 3 di 8')}
+    <div class="sheet">
+      ${tabs('Oggi', 'Settimana')}
+      <h1>Previsto e reale</h1>
+      <p class="lead">Il piano v4 prevede <b>${signed(F.plan.dailyDeficit)} kcal</b>; con la cena prevista chiudi a <b>${signed(F.balanceProjected)}</b>.</p>
+      <table>
+        <tr><th></th><th>Piano v4</th><th>Oggi</th></tr>
+        <tr><td>Bruciate<small>basale + passi + allenamento</small></td><td>${n(F.burned.total)}</td><td>${n(F.burned.total)}</td></tr>
+        <tr><td>Mangiate<small>con la cena prevista</small></td><td>${n(F.intakeTarget)}</td><td>${n(F.planned.kcal)}</td></tr>
+        <tr><td>Bilancio</td><td>${signed(F.plan.dailyDeficit)}</td><td class="cur">${signed(F.balanceProjected)}</td></tr>
+      </table>
+      <div class="note"><b>Perché v4.</b> Tra il 6 e il 13 ott il peso medio è rimasto fermo a 79,6 kg: il dispendio reale era 120 kcal sotto la stima, quindi il target è sceso.</div>
+      <div class="act"><a class="btn" href="#">Riprendi Upper B · ${s.setsDone}/${s.setsTotal}</a><a class="btn s" href="#" aria-label="Chiedi al coach">${icon('message',18,1.8)}</a></div>
+      <h2>Settimana 3 di 8</h2>
+      <table><tr><td>Bilancio finora<small>lun–ven, venerdì previsto</small></td><td>${signed(F.weekSoFar)}</td></tr><tr><td>Obiettivo della settimana<small>${signed(F.plan.dailyDeficit)} × 7 giorni</small></td><td>${signed(F.weekTarget)}</td></tr><tr><td>Sessioni</td><td>${F.sessionsDone} di ${F.plan.sessionsPerWeek}</td></tr></table>
+    </div>`,
+
+  training: () => `
+    ${bar('Upper B · in corso da 35 min')}
+    <div class="sheet">
+      ${tabs('Sessione', 'Blocco')}
+      <h1>Carichi in v4</h1>
+      <p class="lead">Progressione da RIR: dove la scorsa serie aveva ≥3 ripetizioni di riserva, il carico sale.</p>
+      <table>
+        <tr><th>Esercizio</th><th>v3</th><th>v4</th><th>Serie</th></tr>
+        ${s.exercises.map((e,i) => { const was = i===0 ? 77.5 : e.kg; return `<tr><td>${e.name}<small>${e.sets} × ${e.reps}</small></td><td style="color:var(--grey)">${kg(was, was%1?1:0)}</td><td class="${e.current?'cur':''}">${kg(e.kg, e.kg%1?1:0)}</td><td>${e.done.length}/${e.sets}</td></tr>`; }).join('')}
+      </table>
+      <div class="act"><a class="btn" href="#">Registra serie 2 di military press</a></div>
+    </div>`,
+
+  nutrition: () => `
+    ${bar('Target di oggi · piano v4')}
+    <div class="sheet">
+      ${tabs('Oggi', 'Storico target')}
+      <h1>Target e pasti</h1>
+      <p class="lead">Il target segue il dispendio: ${n(F.burned.total)} bruciate ${signed(F.plan.dailyDeficit)} = <b>${n(F.intakeTarget)} kcal</b>.</p>
+      <table>
+        <tr><th></th><th>Target</th><th>Finora</th><th>Con cena</th></tr>
+        <tr><td>Kcal</td><td>${n(F.intakeTarget)}</td><td>${n(F.eaten.kcal)}</td><td class="cur">${n(F.planned.kcal)}</td></tr>
+        ${F.macros.map(m => `<tr><td>${m.label}</td><td>${m.target} g</td><td>${m.eaten} g</td><td>${m.planned} g</td></tr>`).join('')}
+      </table>
+      <h2>Pasti</h2>
+      <table>${F.meals.map(m => `<tr><td>${m.slot}<small>${m.name}</small></td><td style="${m.logged?'':'color:var(--faint)'}">${n(m.kcal)}</td></tr>`).join('')}</table>
+    </div>`,
+
+  progress: () => {
+    const p = F.progress, W = 340, H = 150, lp = F.linePath(p.weights, W, H, 10, 77.5, 82), L = p.weights.length - 1;
+    const at = { 2: 3, 3: 8, 4: 9 };
+    return `
+    ${bar('12 settimane · 4 versioni')}
+    <div class="sheet">
+      ${tabs('Peso', 'Misure')}
+      <h1>${kg(p.weights[L])} kg</h1>
+      <p class="lead">${F.skg(-p.lost)} kg dal 18 ago. Ogni linea verticale è una nuova versione del piano.</p>
+      <svg width="100%" viewBox="0 0 ${W} ${H+16}" style="display:block;padding:0 6px" role="img" aria-label="Peso con le versioni del piano">
+        ${Object.entries(at).map(([v,i]) => `<line x1="${lp.x(i)}" x2="${lp.x(i)}" y1="4" y2="${H}" stroke="${+v===4?'#1f63c9':'#cfd5d1'}" stroke-dasharray="${+v===4?'':'3 3'}"/><text x="${lp.x(i)+3}" y="12" font-size="11" font-family="IBM Plex Mono" fill="${+v===4?'#1f63c9':'#5f6669'}">v${v}</text>`).join('')}
+        <path d="${lp.d}" fill="none" stroke="#15181a" stroke-width="2"/>
+        <circle cx="${lp.x(L)}" cy="${lp.y(p.weights[L])}" r="4" fill="#1f63c9"/>
+        <text x="0" y="${H+14}" font-size="11" fill="#5f6669">18 ago</text><text x="${W}" y="${H+14}" font-size="11" fill="#5f6669" text-anchor="end">31 ott</text>
+      </svg>
+      <h2>Versioni</h2>
+      <div class="ver">${V.slice().reverse().map(v => `<div><span class="mono ${v.v===4?'on':''}">v${v.v}</span><div>${v.change}<small>${v.date}</small></div><span>${signed(v.target)}</span></div>`).join('')}</div>
+    </div>`;
+  },
+});
+</script>
+</body>
+</html>

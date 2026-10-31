@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FITLAB · Scala arancio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="frame.css">
+<style>
+/* 07 Scala arancio — accent ladder from FITLAB's own orange. Full hue only on small marks; its tints carry every area. */
+.d07 { --ground:#faf8f6; --surface:#fff; --ink:#17120f; --grey:#6f6660; --faint:#a89e97; --edge:#efe9e4;
+  --hue:#E8590C; --t50:#fff3ea; --t100:#ffe3cf; --t200:#ffcaa6; --hue-ink:#7a2e05;
+  background:var(--ground); color:var(--ink); font:400 15px/1.45 "Spline Sans", -apple-system, system-ui, sans-serif; font-variant-numeric:tabular-nums; }
+.d07 .lt { padding:8px 16px 2px; }
+.d07 .lt h1 { margin:0; font-size:34px; font-weight:700; letter-spacing:-.03em; }
+.d07 .lt p { margin:2px 0 14px; color:var(--grey); }
+.d07 .card { background:var(--surface); border:1px solid var(--edge); border-radius:16px; margin:0 16px 12px; padding:16px; }
+.d07 .card.tint { background:var(--t50); border-color:var(--t100); color:var(--hue-ink); }
+.d07 .row { display:flex; justify-content:space-between; align-items:baseline; gap:12px; }
+.d07 .lbl { color:var(--grey); font-size:14px; }
+.d07 .tint .lbl { color:var(--hue-ink); opacity:.8; }
+.d07 .fig { font-size:30px; font-weight:600; letter-spacing:-.02em; }
+.d07 .fig small { font-size:15px; color:var(--grey); font-weight:500; margin-left:3px; }
+.d07 .bullet { position:relative; height:12px; border-radius:6px; background:var(--t100); margin:14px 0 8px; }
+.d07 .bullet i { position:absolute; left:0; top:0; bottom:0; border-radius:6px; background:var(--hue); }
+.d07 .bullet b { position:absolute; top:-5px; bottom:-5px; width:2px; background:var(--ink); }
+.d07 .seg8 { display:grid; grid-template-columns:repeat(8,1fr); gap:4px; margin:12px 0 6px; }
+.d07 .seg8 i { height:8px; border-radius:4px; background:var(--t100); }
+.d07 .seg8 i.d { background:var(--t200); }
+.d07 .seg8 i.c { background:var(--hue); }
+.d07 .btn { display:flex; align-items:center; justify-content:center; gap:6px; height:50px; border-radius:12px; background:var(--hue); color:#fff; font-weight:600; font-size:16px; margin-top:14px; }
+.d07 .bars { display:grid; grid-template-columns:repeat(7,1fr); gap:8px; align-items:end; height:84px; margin-top:12px; }
+.d07 .bars div { display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:4px; height:100%; font-size:12px; color:var(--grey); }
+.d07 .bars i { width:100%; border-radius:5px; background:var(--t100); }
+.d07 .bars .t i { background:var(--hue); }
+.d07 .ex { padding:12px 0; }
+.d07 .ex + .ex { border-top:1px solid var(--edge); }
+.d07 .ex .tr { display:grid; gap:3px; margin-top:8px; }
+.d07 .ex .tr i { height:6px; border-radius:3px; background:var(--t100); }
+.d07 .ex .tr i.d { background:var(--t200); }
+.d07 .ex .tr i.c { background:var(--hue); }
+.d07 .tag { display:inline-block; font-size:12px; font-weight:600; padding:2px 8px; border-radius:999px; background:var(--t50); color:var(--hue-ink); }
+.d07 .meal { display:flex; gap:12px; align-items:center; padding:10px 0; }
+.d07 .meal + .meal { border-top:1px solid var(--edge); }
+.d07 .meal img { width:52px; height:52px; border-radius:12px; object-fit:cover; display:block; }
+.d07 .meal img.off { opacity:.5; }
+.d07 .meal small { display:block; color:var(--grey); font-size:13px; }
+.d07 .meal .k { margin-left:auto; font-weight:600; }
+.d07 .tab { position:absolute; left:0; right:0; bottom:0; height:84px; background:rgba(255,255,255,.96); border-top:1px solid var(--edge); display:flex; padding:8px 8px 0; z-index:10; }
+.d07 .tab a { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; color:var(--faint); font-size:11px; font-weight:500; }
+.d07 .tab a.on { color:var(--ink); }
+.d07 .tab a.on .ic { color:var(--hue); }
+</style>
+</head>
+<body class="lab">
+<header class="lab-head">
+  <a href="index.html">← Tutte le direzioni</a>
+  <h1>07 · Scala arancio</h1>
+  <p class="idea">L’arancione di FITLAB diventa una scala: pieno solo su ciò che si tocca e sul dato di oggi, le sue tinte chiare portano l’avanzamento del piano.</p>
+  <p>Stile <em>accent ladder</em> (Taste Skill), costruito sul colore del brand attuale. È l’evoluzione meno rischiosa: stesso carattere di oggi, molto meno arancione sparso e una gerarchia più chiara.</p>
+</header>
+<main id="phones"></main>
+<script src="data.js"></script>
+<script>
+const F = FITLAB, { n, signed, kg, icon } = F;
+const s = F.session;
+const tabbar = (on) => `<nav class="tab" aria-label="Sezioni">${F.TABS.map(t => `<a class="${t.key===on?'on':''}" href="#">${icon(t.icon,24,1.6)}${t.label}</a>`).join('')}</nav>`;
+const pct = (a,b) => Math.max(0, Math.min(100, a/b*100));
+
+F.mount({
+  screenClass: 'd07',
+  tabbar,
+  home: () => `
+    <div class="lt"><h1>Oggi</h1><p>Venerdì 31 ottobre · Upper B in corso</p></div>
+    <section class="card">
+      <div class="row"><span class="lbl">Bilancio previsto</span><span class="tag">obiettivo ${signed(F.plan.dailyDeficit)}</span></div>
+      <div class="fig">${signed(F.balanceProjected)}<small>kcal</small></div>
+      <div class="bullet" aria-hidden="true"><i style="width:${pct(F.planned.kcal, F.burned.total)}%"></i><b style="left:${pct(F.intakeTarget, F.burned.total)}%"></b></div>
+      <div class="row lbl"><span>Mangiate con la cena ${n(F.planned.kcal)} · target ${n(F.intakeTarget)}</span><span>${n(F.burned.total)}</span></div>
+    </section>
+    <section class="card">
+      <div class="row"><span class="lbl">Upper B</span><span class="lbl">${s.elapsedMin} min</span></div>
+      <div class="fig">${s.setsDone}<small>di ${s.setsTotal} serie</small></div>
+      <a class="btn" href="#">Riprendi sessione</a>
+    </section>
+    <section class="card tint">
+      <div class="row"><span style="font-weight:600">Ricomposizione · Upper / Lower</span><span class="lbl">sett. ${F.plan.week} di ${F.plan.weeks}</span></div>
+      <div class="seg8">${Array.from({length:8},(_,i)=>`<i class="${i<F.plan.week-1?'d':i===F.plan.week-1?'c':''}"></i>`).join('')}</div>
+      <div class="lbl">Piano v${F.plan.version} · aggiornato il 20 ott</div>
+    </section>
+    <section class="card">
+      <div class="row"><span class="lbl">Deficit della settimana</span><span class="lbl">${signed(F.weekSoFar)} / ${signed(F.weekTarget)}</span></div>
+      <div class="bars">${F.week.map(d=>`<div class="${d.today?'t':''}"><i style="height:${d.balance===null?4:Math.abs(d.balance)/500*64}px"></i>${d.d}</div>`).join('')}</div>
+    </section>`,
+
+  training: () => `
+    <div class="lt"><h1>Training</h1><p>Upper B · petto, schiena, spalle</p></div>
+    <section class="card tint">
+      <div class="row"><span style="font-weight:600">Military press · serie 2 di 3</span><span class="fig" style="font-size:24px;color:var(--hue)">${F.mmss(s.rest.left)}</span></div>
+      <div class="lbl">8 × 45 kg · RIR 2 · recupero</div>
+      <a class="btn" href="#">Registra serie</a>
+    </section>
+    <section class="card" style="padding-block:4px">
+      ${s.exercises.map(e=>`<div class="ex"><div class="row"><span style="font-weight:${e.current?600:500}">${e.name}</span><span class="lbl">${e.kg} kg · ${e.done.length}/${e.sets}</span></div><div class="tr" style="grid-template-columns:repeat(${e.sets},1fr)">${Array.from({length:e.sets},(_,i)=>`<i class="${i<e.done.length?'d':(e.current&&i===e.done.length)?'c':''}"></i>`).join('')}</div>${e.note?`<div class="lbl" style="margin-top:6px">${e.note}</div>`:''}</div>`).join('')}
+    </section>`,
+
+  nutrition: () => `
+    <div class="lt"><h1>Nutrizione</h1><p>${n(F.intakeTarget - F.eaten.kcal)} kcal rimaste oggi</p></div>
+    <section class="card">
+      <div class="row"><span class="lbl">Mangiate</span><span class="lbl">target ${n(F.intakeTarget)}</span></div>
+      <div class="fig">${n(F.eaten.kcal)}<small>kcal</small></div>
+      <div class="bullet"><i style="width:${pct(F.eaten.kcal,F.intakeTarget)}%"></i></div>
+      ${F.macros.map(m=>`<div class="row" style="margin-top:12px"><span>${m.label}</span><span class="lbl">${m.eaten} / ${m.target} g</span></div><div class="bullet" style="height:8px;margin:6px 0 0;background:var(--t50)"><i style="width:${pct(m.eaten,m.target)}%;background:var(--t200)"></i></div>`).join('')}
+    </section>
+    <section class="card" style="padding-block:4px">
+      ${F.meals.map(m=>`<div class="meal"><img class="${m.logged?'':'off'}" src="${m.src}" alt=""><div>${m.slot}<small>${m.name}</small></div><span class="k" style="${m.logged?'':'color:var(--faint)'}">${n(m.kcal)}</span></div>`).join('')}
+    </section>`,
+
+  progress: () => {
+    const p = F.progress, W = 326, H = 130, lp = F.linePath(p.weights, W, H, 8, 76, 82), L = p.weights.length - 1;
+    return `
+    <div class="lt"><h1>Progressi</h1><p>12 settimane · obiettivo ${kg(F.user.targetWeightKg)} kg</p></div>
+    <section class="card">
+      <div class="row"><span class="lbl">Peso medio</span><span class="tag">${F.skg(-p.lost)} kg</span></div>
+      <div class="fig">${kg(p.weights[L])}<small>kg</small></div>
+      <svg width="100%" viewBox="0 0 ${W} ${H}" style="margin-top:10px" role="img" aria-label="Peso da 81,5 a 78,4 kg">
+        <path d="${lp.d} L${lp.x(L)} ${H} L${lp.x(0)} ${H} Z" fill="#fff3ea"/>
+        <path d="${lp.d}" fill="none" stroke="#E8590C" stroke-width="2.5"/>
+        <line x1="0" x2="${W}" y1="${lp.y(76)}" y2="${lp.y(76)}" stroke="#a89e97" stroke-dasharray="3 4"/>
+      </svg>
+    </section>
+    <section class="card tint">
+      <div class="row"><span style="font-weight:600">Verso ${kg(F.user.targetWeightKg)} kg</span><span class="lbl">${kg(p.toGo)} kg mancanti</span></div>
+      <div class="bullet" style="background:var(--t100)"><i style="width:${pct(p.lost, p.lost+p.toGo)}%"></i></div>
+      <div class="lbl">Ritmo ${F.skg(p.rate,2)} kg/sett nelle ultime 4 settimane</div>
+    </section>
+    <section class="card">
+      <div class="row" style="padding:4px 0"><span>Vita</span><span>${p.waist.now} cm <span class="lbl">${signed(p.waist.now-p.waist.start)}</span></span></div>
+      <div class="row" style="padding:10px 0 4px;border-top:1px solid var(--edge);margin-top:8px"><span>Massa grassa</span><span>${kg(p.bodyFat.now)} % <span class="lbl">${F.skg(p.bodyFat.now-p.bodyFat.start)}</span></span></div>
+    </section>`;
+  },
+});
+</script>
+</body>
+</html>

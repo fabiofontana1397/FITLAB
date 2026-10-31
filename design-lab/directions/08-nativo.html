@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FITLAB · Nativo iOS</title>
+<link rel="stylesheet" href="frame.css">
+<style>
+/* 08 Nativo — Apple HIG: system type (Inter Tight stands in for SF off Apple devices), inset grouped lists, one tint, system tab bar material. */
+.d08 { --bg:#f2f2f7; --cell:#fff; --label:#000; --sec:#3c3c4399; --ter:#3c3c434d; --sep:#c6c6c8; --tint:#FF7A00; --green:#34c759;
+  background:var(--bg); color:var(--label); font:400 17px/1.3 -apple-system, "SF Pro Text", "Inter", system-ui, sans-serif; letter-spacing:-.41px; font-variant-numeric:tabular-nums; }
+.d08 .nav { height:44px; display:flex; align-items:center; justify-content:flex-end; gap:18px; padding:0 18px; color:var(--tint); }
+.d08 .large { font-size:34px; font-weight:700; letter-spacing:.37px; padding:0 16px 8px; line-height:41px; }
+.d08 .sub { color:var(--sec); font-size:15px; padding:0 16px 12px; margin-top:-4px; letter-spacing:-.24px; }
+.d08 .hdr { font-size:20px; font-weight:600; letter-spacing:.38px; padding:18px 20px 7px; display:flex; justify-content:space-between; align-items:baseline; }
+.d08 .hdr a { font-size:17px; font-weight:400; color:var(--tint); letter-spacing:-.41px; }
+.d08 .group { background:var(--cell); border-radius:10px; margin:0 16px; overflow:hidden; }
+.d08 .cell { display:flex; align-items:center; gap:12px; min-height:44px; padding:11px 16px; position:relative; }
+.d08 .cell + .cell::before { content:""; position:absolute; top:0; right:0; left:16px; height:.5px; background:var(--sep); }
+.d08 .cell.ind + .cell::before, .d08 .cell.ind2::before { left:60px; }
+.d08 .cell .t { flex:1; min-width:0; }
+.d08 .cell .t small { display:block; color:var(--sec); font-size:15px; letter-spacing:-.24px; margin-top:1px; }
+.d08 .cell .v { color:var(--sec); white-space:nowrap; }
+.d08 .cell .v.tint { color:var(--tint); font-weight:600; }
+.d08 .chev { color:#c4c4c7; }
+.d08 .foot { color:var(--sec); font-size:13px; letter-spacing:-.08px; padding:7px 32px 0; line-height:1.35; }
+.d08 .btncell { color:var(--tint); justify-content:center; font-weight:400; }
+.d08 .prog { height:4px; border-radius:2px; background:#e5e5ea; margin-top:8px; overflow:hidden; }
+.d08 .prog i { display:block; height:100%; background:var(--tint); }
+.d08 .seg { display:flex; background:#7676801f; border-radius:9px; padding:2px; margin:0 16px 4px; }
+.d08 .seg span { flex:1; text-align:center; font-size:13px; font-weight:500; padding:6px 0; border-radius:7px; letter-spacing:-.08px; }
+.d08 .seg span.on { background:#fff; box-shadow:0 3px 8px rgba(0,0,0,.12), 0 3px 1px rgba(0,0,0,.04); font-weight:600; }
+.d08 .ico { width:30px; height:30px; border-radius:7px; display:grid; place-items:center; color:#fff; flex:none; }
+.d08 .thumb { width:44px; height:44px; border-radius:8px; object-fit:cover; display:block; flex:none; }
+.d08 .thumb.off { opacity:.5; }
+.d08 .check { width:22px; height:22px; border-radius:50%; display:grid; place-items:center; flex:none; border:1.5px solid #c4c4c7; }
+.d08 .check.on { background:var(--tint); border-color:var(--tint); color:#fff; }
+.d08 .three { display:grid; grid-template-columns:repeat(3,1fr); padding:12px 0; }
+.d08 .three div { padding:0 16px; }
+.d08 .three div + div { border-left:.5px solid var(--sep); }
+.d08 .three small { display:block; color:var(--sec); font-size:13px; }
+.d08 .three b { font-size:22px; font-weight:600; letter-spacing:.35px; }
+.d08 .three span { color:var(--sec); font-size:13px; }
+.d08 .tab { position:absolute; left:0; right:0; bottom:0; height:83px; background:rgba(249,249,249,.94); backdrop-filter:blur(20px) saturate(1.8); -webkit-backdrop-filter:blur(20px) saturate(1.8); border-top:.5px solid #0000004d; display:flex; padding:7px 0 0; z-index:10; }
+.d08 .tab a { flex:1; display:flex; flex-direction:column; align-items:center; gap:2px; color:#999; font-size:10px; font-weight:500; letter-spacing:.1px; }
+.d08 .tab a.on { color:var(--tint); }
+</style>
+</head>
+<body class="lab">
+<header class="lab-head">
+  <a href="index.html">← Tutte le direzioni</a>
+  <h1>08 · Nativo iOS</h1>
+  <p class="idea">FITLAB come se l’avesse fatta Apple: liste raggruppate, font di sistema, una sola tinta arancione. Il piano ispira fiducia perché sembra parte del telefono.</p>
+  <p>Linee guida Apple (Impeccable, riferimento iOS): titoli grandi, liste raggruppate con riquadri, controllo segmentato, barra in basso con materiale di sistema, target da 44 pt, una tinta per tutto ciò che è interattivo. Il codice React Native più vicino ai componenti nativi.</p>
+</header>
+<main id="phones"></main>
+<script src="data.js"></script>
+<script>
+const F = FITLAB, { n, signed, kg, icon } = F;
+const s = F.session;
+const tabbar = (on) => `<nav class="tab" aria-label="Sezioni">${F.TABS.map(t => `<a class="${t.key===on?'on':''}" href="#">${icon(t.icon,26,1.7)}${t.label}</a>`).join('')}</nav>`;
+const chev = `<span class="chev">${icon('chev',16,2.4)}</span>`;
+const ico = (name, bg) => `<span class="ico" style="background:${bg}">${icon(name,18,2)}</span>`;
+const nav = `<div class="nav">${icon('cal',22,1.8)}${icon('user',22,1.8)}</div>`;
+
+F.mount({
+  screenClass: 'd08',
+  tabbar,
+  home: () => `
+    ${nav}
+    <div class="large">Oggi</div><div class="sub">Venerdì 31 ottobre</div>
+    <div class="group">
+      <div class="cell ind">${ico('flame','#ff9500')}<div class="t">Bruciate<small>Stima a fine giornata</small></div><span class="v">${n(F.burned.total)} kcal</span></div>
+      <div class="cell ind2">${ico('utensils','#34c759')}<div class="t">Mangiate<small>3 pasti · cena prevista ${n(F.meals[3].kcal)}</small></div><span class="v">${n(F.eaten.kcal)} kcal</span></div>
+      <div class="cell ind2">${ico('target','#8e8e93')}<div class="t">Bilancio previsto<small>Obiettivo ${signed(F.plan.dailyDeficit)} kcal</small></div><span class="v tint">${signed(F.balanceProjected)}</span></div>
+    </div>
+    <div class="foot">Con la cena prevista chiudi ${n(F.balanceProjected - F.plan.dailyDeficit)} kcal sopra l’obiettivo del piano.</div>
+    <div class="hdr">Allenamento<a href="#">Piano</a></div>
+    <div class="group">
+      <div class="cell"><div class="t">Upper B<small>${s.setsDone} di ${s.setsTotal} serie · ${s.elapsedMin} min</small><div class="prog"><i style="width:${s.setsDone/s.setsTotal*100}%"></i></div></div>${chev}</div>
+      <a class="cell btncell" href="#">Riprendi sessione</a>
+    </div>
+    <div class="hdr">Settimana 3 di 8</div>
+    <div class="group">
+      ${F.week.slice(0,5).map(d => `<div class="cell"><div class="t">${d.day} ${d.date}<small>${d.session ? d.session : 'Riposo'}</small></div><span class="v">${signed(d.balance)}</span>${d.done ? `<span class="check on">${icon('check',13,3)}</span>` : `<span class="check"></span>`}</div>`).join('')}
+    </div>`,
+
+  training: () => `
+    ${nav}
+    <div class="large">Training</div>
+    <div class="seg"><span class="on">Sessione</span><span>Piano</span><span>Storico</span></div>
+    <div class="hdr">Upper B<a href="#">Fine</a></div>
+    <div class="group">
+      ${s.exercises.map(e => `<div class="cell"><span class="check ${e.done.length===e.sets?'on':''}">${e.done.length===e.sets?icon('check',13,3):''}</span><div class="t" style="${e.current?'font-weight:600':''}">${e.name}<small>${e.sets} × ${e.reps} · ${kg(e.kg, e.kg%1?1:0)} kg${e.current?' · serie 2 di 3':''}</small></div><span class="v ${e.current?'tint':''}">${e.done.length}/${e.sets}</span>${chev}</div>`).join('')}
+    </div>
+    <div class="foot">Panca piana: +2,5 kg rispetto alla scorsa volta, perché avevi chiuso tutte le serie con 3 ripetizioni di riserva.</div>
+    <div class="hdr" style="padding-top:22px">Recupero</div>
+    <div class="group">
+      <div class="cell"><div class="t">Military press · serie 2<small>8 × 45 kg</small></div><span class="v tint" style="font-size:22px">${F.mmss(s.rest.left)}</span></div>
+      <a class="cell btncell" href="#">Registra serie</a>
+    </div>`,
+
+  nutrition: () => `
+    ${nav}
+    <div class="large">Nutrizione</div>
+    <div class="seg"><span class="on">Oggi</span><span>Settimana</span></div>
+    <div class="group" style="margin-top:12px">
+      <div class="cell"><div class="t">Mangiate<small>Target ${n(F.intakeTarget)} kcal</small><div class="prog"><i style="width:${F.eaten.kcal/F.intakeTarget*100}%"></i></div></div><span class="v">${n(F.eaten.kcal)} kcal</span></div>
+      <div class="three">${F.macros.map(m => `<div><small>${m.label} (g)</small><b>${m.eaten}</b><span> / ${m.target}</span></div>`).join('')}</div>
+    </div>
+    <div class="hdr">Pasti<a href="#">Aggiungi</a></div>
+    <div class="group">
+      ${F.meals.map(m => `<div class="cell"><img class="thumb ${m.logged?'':'off'}" src="${m.src}" alt=""><div class="t">${m.slot}<small>${m.name}</small></div><span class="v">${n(m.kcal)}</span>${chev}</div>`).join('')}
+    </div>
+    <div class="foot">La cena prevista supera il target di ${n(F.planned.kcal - F.intakeTarget)} kcal.</div>`,
+
+  progress: () => {
+    const p = F.progress, W = 326, H = 120, lp = F.linePath(p.weights, W, H, 6, 76, 82), L = p.weights.length - 1;
+    return `
+    ${nav}
+    <div class="large">Progressi</div>
+    <div class="seg"><span>S</span><span>M</span><span class="on">3M</span><span>6M</span></div>
+    <div class="group" style="margin-top:12px">
+      <div class="cell" style="display:block;padding-bottom:14px">
+        <div style="color:var(--sec);font-size:15px">Media settimanale</div>
+        <div style="font-size:28px;font-weight:600;letter-spacing:.36px">${kg(p.weights[L])} <span style="font-size:17px;color:var(--sec);font-weight:400">kg</span></div>
+        <div style="color:var(--sec);font-size:15px">18 ago – 31 ott</div>
+        <svg width="100%" viewBox="0 0 ${W} ${H}" style="margin-top:10px" role="img" aria-label="Peso da 81,5 a 78,4 kg">
+          ${[0,1,2].map(i=>`<line x1="0" x2="${W}" y1="${6+i*(H-12)/2}" y2="${6+i*(H-12)/2}" stroke="#e5e5ea"/>`).join('')}
+          <path d="${lp.d}" fill="none" stroke="#FF7A00" stroke-width="2.5" stroke-linejoin="round"/>
+          <circle cx="${lp.x(L)}" cy="${lp.y(p.weights[L])}" r="4" fill="#FF7A00" stroke="#fff" stroke-width="2"/>
+        </svg>
+      </div>
+    </div>
+    <div class="hdr">Misure</div>
+    <div class="group">
+      <div class="cell">${ico('scale','#FF7A00')}<div class="t">Peso</div><span class="v">${kg(p.weights[L])} kg</span>${chev}</div>
+      <div class="cell ind2">${ico('ruler','#30b0c7')}<div class="t">Circonferenza vita</div><span class="v">${p.waist.now} cm</span>${chev}</div>
+      <div class="cell ind2">${ico('target','#8e8e93')}<div class="t">Massa grassa</div><span class="v">${kg(p.bodyFat.now)} %</span>${chev}</div>
+      <div class="cell ind2">${ico('camera','#0a84ff')}<div class="t">Foto</div><span class="v">3</span>${chev}</div>
+    </div>`;
+  },
+});
+</script>
+</body>
+</html>

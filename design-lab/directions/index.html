@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FITLAB Directions</title>
+<link rel="stylesheet" href="frame.css">
+</head>
+<body class="lab">
+<header class="lab-head">
+  <a href="../index.html">← Design Lab (palette e skin)</a>
+  <h1>FITLAB · 10 direzioni di design</h1>
+  <p>Dieci mondi visivi per le quattro schermate del menu: Home, Training, Nutrizione, Progressi. Tutte usano gli stessi dati di esempio (venerdì 31 ottobre, 18:20, a metà di Upper B), così si confrontano sul design e non sui numeri. Ogni direzione parte da qualcosa che appartiene a FITLAB: il bilancio energetico, il piano adattivo e le sue versioni, la scheda della palestra, il mesociclo.</p>
+</header>
+<main class="gal" id="gal"></main>
+<script>
+const D = [
+  ['01-registro', 'Registro', 'La giornata come estratto conto: ogni kcal è una riga, il bilancio è il saldo. Solo nero, un tono sul dato.'],
+  ['02-pavimento', 'Pavimento', 'La prossima serie a un braccio di distanza. Nero vero, cifre enormi, pulsanti da 64 pt, verde lime solo sui dati.'],
+  ['03-lettera', 'Lettera del coach', 'Il coach scrive la giornata in tre righe; ogni cifra è la prova di una decisione del piano.'],
+  ['04-versioni', 'Versioni del piano', 'Il piano adattivo come documento versionato: previsto contro reale, e il perché di ogni cambio.'],
+  ['05-due-piatti', 'Due piatti', 'Uscite ed entrate affiancate come i piatti di una bilancia, in riquadri pastello dello stesso formato.'],
+  ['06-telemetria', 'Telemetria', 'Ogni serie è un campione: carico, ripetizioni, RIR, e1RM. Una console scura per chi vuole i dati grezzi.'],
+  ['07-scala-arancio', 'Scala arancio', 'L’arancione attuale usato con disciplina: pieno solo sulle azioni, le tinte chiare sull’avanzamento.'],
+  ['08-nativo', 'Nativo iOS', 'Come se l’avesse fatta Apple: liste raggruppate, font di sistema, una tinta. La fiducia viene dal sembrare parte del telefono.'],
+  ['09-scheda', 'Scheda', 'La scheda cartacea della palestra diventa l’app: caselle da riempire con la penna rossa.'],
+  ['10-mesociclo', 'Mesociclo', 'Le 8 settimane come una mappa del carico: gli scarichi sono valli, tu sei un punto.'],
+];
+document.getElementById('gal').innerHTML = D.map(([f, t, d], i) =>
+  `<a href="${f}.html"><img src="shots/${f}.webp" alt="Home e Training della direzione ${t}" loading="lazy" width="808" height="781"><h2>${String(i+1).padStart(2,'0')} · ${t}</h2><p>${d}</p></a>`).join('');
+</script>
+</body>
+</html>

@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FITLAB · Registro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="frame.css">
+<style>
+/* 01 Registro — achromatic ledger. Ink only; the one hue (#C2410C) marks today's balance and the live set. */
+.d01 { --ground:#f3f3f1; --surface:#fff; --ink:#141414; --grey:#6b6b6b; --faint:#a3a3a3; --rule:#e7e7e4; --hue:#C2410C; --pill:#e8e8e6;
+  background:var(--ground); color:var(--ink); font:400 15px/1.45 Geist, -apple-system, system-ui, sans-serif; font-variant-numeric:tabular-nums; }
+.d01 .pad { padding:0 16px; }
+.d01 .title { padding:14px 16px 4px; display:flex; justify-content:space-between; align-items:flex-end; }
+.d01 h1 { margin:0; font-size:30px; font-weight:600; letter-spacing:-.025em; }
+.d01 .date { color:var(--grey); font-size:15px; }
+.d01 .finding { margin:6px 16px 16px; font-size:15px; color:var(--ink); }
+.d01 .finding b { color:var(--hue); font-weight:600; }
+.d01 .panel { background:var(--surface); border:1px solid var(--rule); border-radius:8px; margin:0 16px 12px; }
+.d01 .ph { display:flex; justify-content:space-between; align-items:baseline; padding:12px 14px 6px; }
+.d01 .ph h2 { margin:0; font-size:15px; font-weight:600; }
+.d01 .ph span { color:var(--grey); font-size:13px; }
+.d01 table { width:100%; border-collapse:collapse; }
+.d01 td { padding:8px 14px; border-top:1px solid var(--rule); font-size:15px; }
+.d01 td.v { text-align:right; white-space:nowrap; }
+.d01 td .sub { display:block; color:var(--grey); font-size:13px; }
+.d01 tr.muted td { color:var(--faint); }
+.d01 tr.total td { font-weight:600; border-top:1px solid var(--ink); }
+.d01 tr.total td.v { color:var(--hue); }
+.d01 tr.goal td { color:var(--grey); border-top:0; padding-top:0; font-size:13px; }
+.d01 .btn { display:flex; justify-content:center; align-items:center; gap:8px; height:50px; border-radius:8px; background:var(--ink); color:#fff; font-weight:600; font-size:16px; margin:4px 16px 12px; }
+.d01 .btn2 { background:var(--pill); color:var(--ink); }
+.d01 .unit { color:var(--grey); font-size:.86em; margin-left:2px; }
+.d01 .dot { display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--hue); margin-right:6px; vertical-align:middle; }
+.d01 .reps { letter-spacing:.06em; }
+.d01 tr.live td { background:#fbf6f3; }
+.d01 .chart { padding:4px 14px 12px; }
+.d01 .tab { position:absolute; left:0; right:0; bottom:0; height:84px; background:var(--surface); border-top:1px solid var(--rule); display:flex; padding:6px 8px 0; z-index:10; }
+.d01 .tab a { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; color:var(--faint); font-size:11px; font-weight:500; text-decoration:none; padding-top:4px; }
+.d01 .tab a.on { color:var(--ink); }
+.d01 .seg { display:flex; gap:18px; padding:0 16px 10px; font-size:15px; color:var(--grey); }
+.d01 .seg b { color:var(--ink); font-weight:600; }
+.d01 .thumb { width:36px; height:36px; border-radius:6px; object-fit:cover; display:block; }
+.d01 .meal { display:flex; gap:10px; align-items:center; }
+</style>
+</head>
+<body class="lab">
+<header class="lab-head">
+  <a href="index.html">← Tutte le direzioni</a>
+  <h1>01 · Registro</h1>
+  <p class="idea">La giornata di energia diventa un estratto conto: ogni kcal entrata o uscita è una riga, il bilancio è il saldo.</p>
+  <p>Stile <em>achromatic ledger</em> (Taste Skill): nessun colore sulla struttura, cifre in nero, un solo tono sul dato principale. Per chi ragiona in numeri e vuole vedere da dove arriva il saldo.</p>
+</header>
+<main id="phones"></main>
+<script src="data.js"></script>
+<script>
+const F = FITLAB, { n, signed, kg, icon } = F;
+const tabbar = (on) => `<nav class="tab" aria-label="Sezioni">${F.TABS.map(t => `<a class="${t.key===on?'on':''}" href="#">${icon(t.icon,24,1.6)}${t.label}</a>`).join('')}</nav>`;
+const delta = F.balanceProjected - F.plan.dailyDeficit;
+const dinner = F.meals.find(m => !m.logged);
+
+F.mount({
+  screenClass: 'd01',
+  tabbar,
+  home: () => `
+    <div class="title"><h1>Oggi</h1><span class="date">Ven 31 ottobre</span></div>
+    <p class="finding">Con la cena prevista chiudi a <b>${signed(F.balanceProjected)} kcal</b>, ${n(delta)} sopra l’obiettivo di ${signed(F.plan.dailyDeficit)}.</p>
+    <section class="panel">
+      <div class="ph"><h2>Registro di oggi</h2><span>kcal</span></div>
+      <table>
+        <tr><td>Metabolismo basale</td><td class="v">${signed(-F.burned.bmr)}</td></tr>
+        <tr><td>Passi<span class="sub">9.420 passi</span></td><td class="v">${signed(-F.burned.steps)}</td></tr>
+        <tr><td>Upper B<span class="sub">in corso · stima a fine sessione</span></td><td class="v">${signed(-F.burned.training)}</td></tr>
+        ${F.meals.map(m => `<tr class="${m.logged?'':'muted'}"><td>${m.slot}<span class="sub">${m.logged ? m.time : 'prevista ' + m.time}</span></td><td class="v">${signed(m.kcal)}</td></tr>`).join('')}
+        <tr class="total"><td>Saldo previsto</td><td class="v">${signed(F.balanceProjected)}</td></tr>
+        <tr class="goal"><td>Obiettivo del piano v${F.plan.version}</td><td class="v">${signed(F.plan.dailyDeficit)}</td></tr>
+      </table>
+    </section>
+    <a class="btn" href="#">Riprendi Upper B ${icon('chev',18,2)}</a>
+    <section class="panel">
+      <div class="ph"><h2>Settimana 3 di 8</h2><span>${F.sessionsDone} di ${F.plan.sessionsPerWeek} sessioni</span></div>
+      <table>
+        ${F.week.filter(d => d.balance !== null).map(d => `<tr class="${d.projected?'':''}"><td>${d.day} ${d.date}<span class="sub">${d.session ? d.session + (d.done ? ' · fatto' : ' · in corso') : 'Riposo'}</span></td><td class="v">${d.today ? '<span class="dot"></span>' : ''}${signed(d.balance)}</td></tr>`).join('')}
+        <tr class="total"><td>Saldo settimana</td><td class="v" style="color:var(--ink)">${signed(F.weekSoFar)}</td></tr>
+        <tr class="goal"><td>Obiettivo · restano 2 giorni</td><td class="v">${signed(F.weekTarget)}</td></tr>
+      </table>
+    </section>`,
+
+  training: () => {
+    const s = F.session;
+    return `
+    <div class="title"><h1>Upper B</h1><span class="date">${s.elapsedMin} di ~${s.estMin} min</span></div>
+    <p class="finding">Serie ${s.setsDone} di ${s.setsTotal}. Recupero: <b>${F.mmss(s.rest.left)}</b> prima della serie 2 di military press.</p>
+    <a class="btn" href="#">Registra serie 2 · 8 × 45 kg</a>
+    <section class="panel">
+      <div class="ph"><h2>Esercizi</h2><span>ripetizioni per serie</span></div>
+      <table>
+        ${s.exercises.map(e => `<tr class="${e.current?'live':''}"><td>${e.current?'<span class="dot"></span>':''}${e.name}<span class="sub">${e.sets} × ${e.reps} · ${kg(e.kg, e.kg % 1 ? 1 : 0)} kg · RIR ${e.rir}</span></td><td class="v reps">${e.done.length ? e.done.join(' ') : '<span style="color:var(--faint)">—</span>'}</td></tr>`).join('')}
+        <tr class="total"><td>Volume finora</td><td class="v" style="color:var(--ink)">${n(s.volumeKg)}<span class="unit">kg</span></td></tr>
+      </table>
+    </section>
+    <section class="panel">
+      <div class="ph"><h2>Progressione</h2><span>piano v${F.plan.version}</span></div>
+      <table><tr><td>Panca piana<span class="sub">${s.exercises[0].note}</span></td><td class="v">77,5 → 80</td></tr></table>
+    </section>`;
+  },
+
+  nutrition: () => {
+    const rows = F.macros.map(m => `<tr><td>${m.label}<span class="sub">obiettivo ${n(m.target)} g</span></td><td class="v">${n(m.eaten)}<span class="unit">g</span><span class="sub">${signed(m.planned - m.target)} g con la cena</span></td></tr>`).join('');
+    return `
+    <div class="title"><h1>Nutrizione</h1><span class="date">Ven 31 ottobre</span></div>
+    <p class="finding">${n(F.eaten.kcal)} di ${n(F.intakeTarget)} kcal. La cena prevista (${n(dinner.kcal)}) supera il target di <b>${n(F.planned.kcal - F.intakeTarget)} kcal</b>: togli 20 g di cereali.</p>
+    <section class="panel">
+      <div class="ph"><h2>Pasti</h2><span>kcal</span></div>
+      <table>
+        ${F.meals.map(m => `<tr class="${m.logged?'':'muted'}"><td><div class="meal"><img class="thumb" src="${m.src}" alt=""><div>${m.slot}<span class="sub">${m.name}</span></div></div></td><td class="v">${n(m.kcal)}</td></tr>`).join('')}
+        <tr class="total"><td>Totale con la cena</td><td class="v" style="color:var(--ink)">${n(F.planned.kcal)}</td></tr>
+        <tr class="goal"><td>Target di oggi (bruciate ${signed(F.plan.dailyDeficit)})</td><td class="v">${n(F.intakeTarget)}</td></tr>
+      </table>
+    </section>
+    <section class="panel">
+      <div class="ph"><h2>Macronutrienti</h2><span>finora</span></div>
+      <table>${rows}</table>
+    </section>
+    <a class="btn btn2" href="#">${icon('plus',18,2)} Registra la cena</a>`;
+  },
+
+  progress: () => {
+    const p = F.progress, W = 330, H = 140;
+    const lp = F.linePath(p.weights, W, H, 8, 76, 82);
+    const last = p.weights.length - 1;
+    return `
+    <div class="title"><h1>Progressi</h1><span class="date">12 settimane</span></div>
+    <p class="finding">${kg(p.weights[last])} kg, ${kg(p.lost)} in meno dal 18 ago. Ritmo ${F.skg(p.rate,2)} kg/sett nelle ultime 4.</p>
+    <section class="panel">
+      <div class="ph"><h2>Peso medio settimanale</h2><span>kg</span></div>
+      <div class="chart"><svg width="100%" viewBox="0 0 ${W} ${H}" role="img" aria-label="Peso da 81,5 a 78,4 kg">
+        <line x1="0" x2="${W}" y1="${lp.y(76)}" y2="${lp.y(76)}" stroke="#a3a3a3" stroke-dasharray="3 4"/>
+        <text x="${W}" y="${lp.y(76)-6}" text-anchor="end" font-size="11" fill="#6b6b6b">obiettivo 76,0</text>
+        <path d="${lp.d}" fill="none" stroke="#141414" stroke-width="2"/>
+        <circle cx="${lp.x(last)}" cy="${lp.y(p.weights[last])}" r="4.5" fill="#C2410C"/>
+        <text x="4" y="${lp.y(p.weights[0])+18}" font-size="11" fill="#6b6b6b">81,5</text>
+      </svg></div>
+    </section>
+    <section class="panel">
+      <div class="ph"><h2>Registrazioni</h2><span>Δ sulla precedente</span></div>
+      <table>${p.log.map((r,i) => `<tr><td>${r.date}</td><td class="v">${kg(r.kg)} kg<span class="sub">${p.log[i+1] ? F.skg(r.kg - p.log[i+1].kg) + ' kg' : '—'}</span></td></tr>`).join('')}</table>
+    </section>
+    <section class="panel">
+      <div class="ph"><h2>Versioni del piano</h2><span>4</span></div>
+      <table>${F.plan.versions.slice().reverse().map(v => `<tr><td>v${v.v} · ${v.date}<span class="sub">${v.change}</span></td><td class="v">${signed(v.target)}</td></tr>`).join('')}</table>
+    </section>`;
+  },
+});
+</script>
+</body>
+</html>

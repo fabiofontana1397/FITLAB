@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FITLAB · Pavimento</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="frame.css">
+<style>
+/* 02 Pavimento — true black, elevation by lightness, lime only on data. Primary control = inverted white. */
+.d02 { --ground:#000; --s1:#141414; --s2:#262626; --ink:#fff; --grey:#a1a1a1; --faint:#6b6b6b; --hue:#C8F31D;
+  background:var(--ground); color:var(--ink); font:400 16px/1.4 Barlow, -apple-system, system-ui, sans-serif; font-variant-numeric:tabular-nums; }
+.d02 .cond { font-family:"Barlow Condensed", Barlow, sans-serif; letter-spacing:-.01em; }
+.d02 .top { padding:12px 20px 14px; display:flex; justify-content:space-between; align-items:center; }
+.d02 .top h1 { margin:0; font:700 34px/1 "Barlow Condensed", sans-serif; text-transform:uppercase; letter-spacing:.005em; }
+.d02 .top span { color:var(--grey); font-size:15px; }
+.d02 .card { background:var(--s1); border-radius:22px; margin:0 12px 10px; padding:18px; }
+.d02 .lbl { color:var(--grey); font-size:15px; }
+.d02 .big { font:600 76px/.9 "Barlow Condensed", sans-serif; letter-spacing:-.02em; }
+.d02 .big small { font-size:30px; color:var(--grey); margin-left:4px; font-weight:500; }
+.d02 .mid { font:600 40px/1 "Barlow Condensed", sans-serif; }
+.d02 .row { display:flex; justify-content:space-between; align-items:baseline; }
+.d02 .btn { display:flex; align-items:center; justify-content:center; gap:8px; height:64px; border-radius:999px; background:var(--ink); color:#000; font:700 22px/1 "Barlow Condensed", sans-serif; text-transform:uppercase; letter-spacing:.02em; margin-top:16px; }
+.d02 .btn.ghost { background:var(--s2); color:var(--ink); }
+.d02 .timer { color:var(--hue); }
+.d02 .bar { height:14px; border-radius:7px; background:var(--s2); position:relative; overflow:hidden; margin:12px 0 8px; }
+.d02 .bar i { position:absolute; inset:0 auto 0 0; background:var(--hue); border-radius:7px; }
+.d02 .bar b { position:absolute; top:-3px; bottom:-3px; width:3px; background:var(--ink); border-radius:2px; }
+.d02 .wk { display:grid; grid-template-columns:repeat(7,1fr); gap:6px; margin-top:12px; }
+.d02 .wk div { aspect-ratio:1; border-radius:12px; background:var(--s2); display:grid; place-items:center; font:600 18px "Barlow Condensed"; color:var(--grey); }
+.d02 .wk div.done { background:var(--hue); color:#000; }
+.d02 .wk div.today { box-shadow:inset 0 0 0 2px var(--hue); color:var(--ink); }
+.d02 .set-dots { display:flex; gap:8px; margin:10px 0 2px; }
+.d02 .set-dots i { flex:1; height:8px; border-radius:4px; background:var(--s2); }
+.d02 .set-dots i.d { background:var(--hue); }
+.d02 .set-dots i.c { background:var(--ink); }
+.d02 .stepper { display:grid; grid-template-columns:64px 1fr 64px; align-items:center; background:var(--s2); border-radius:20px; padding:8px; }
+.d02 .stepper button { all:unset; width:64px; height:64px; border-radius:16px; background:var(--s1); display:grid; place-items:center; color:var(--ink); }
+.d02 .stepper .v { text-align:center; }
+.d02 .stepper .v div { font:600 54px/1 "Barlow Condensed"; }
+.d02 .stepper .v span { color:var(--grey); font-size:14px; }
+.d02 .rir { display:flex; gap:8px; margin-top:10px; }
+.d02 .rir span { flex:1; height:52px; border-radius:14px; background:var(--s2); display:grid; place-items:center; font:600 24px "Barlow Condensed"; color:var(--grey); }
+.d02 .rir span.on { background:var(--ink); color:#000; }
+.d02 .list > div { display:flex; align-items:center; gap:14px; padding:14px 0; }
+.d02 .list > div + div { border-top:1px solid #222; }
+.d02 .list b { font-weight:600; display:block; }
+.d02 .list small { color:var(--grey); font-size:14px; }
+.d02 .list .r { margin-left:auto; text-align:right; font:600 24px "Barlow Condensed"; }
+.d02 .ph { width:60px; height:60px; border-radius:16px; object-fit:cover; display:block; }
+.d02 .ph.off { opacity:.45; }
+.d02 .tab { position:absolute; left:0; right:0; bottom:0; height:86px; background:#000; border-top:1px solid #1c1c1c; display:flex; padding:8px 8px 0; z-index:10; }
+.d02 .tab a { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; color:#7a7a7a; font-size:11px; font-weight:600; letter-spacing:.02em; }
+.d02 .tab a.on { color:var(--ink); }
+</style>
+</head>
+<body class="lab">
+<header class="lab-head">
+  <a href="index.html">← Tutte le direzioni</a>
+  <h1>02 · Pavimento</h1>
+  <p class="idea">Il pavimento della palestra, a un braccio di distanza: la prossima serie diventa lo schermo.</p>
+  <p>Stile <em>true black flat</em> (Taste Skill) con Barlow Condensed (ui-ux-pro-max, categoria fitness). Nero vero per la luce della sala, cifre da 54–76 pt, pulsanti da 64 pt, verde lime solo sui dati.</p>
+</header>
+<main id="phones"></main>
+<script src="data.js"></script>
+<script>
+const F = FITLAB, { n, signed, kg, icon } = F;
+const s = F.session, cur = s.exercises.find(e => e.current);
+const tabbar = (on) => `<nav class="tab" aria-label="Sezioni">${F.TABS.map(t => `<a class="${t.key===on?'on':''}" href="#">${icon(t.icon,26,1.8)}${t.label}</a>`).join('')}</nav>`;
+const pct = (a, b) => Math.max(0, Math.min(100, a / b * 100));
+
+F.mount({
+  screenClass: 'd02',
+  tabbar,
+  home: () => `
+    <div class="top"><h1>Oggi</h1><span>Ven 31 · sett. 3/8</span></div>
+    <section class="card">
+      <div class="row"><span class="lbl">Prossima serie · Upper B</span><span class="lbl">${s.setsDone}/${s.setsTotal}</span></div>
+      <div class="cond" style="font-size:30px;font-weight:600;margin-top:6px">${cur.name}</div>
+      <div class="big">${cur.done.length+1}<small>/ ${cur.sets}</small> &nbsp;8<small>× ${cur.kg} kg</small></div>
+      <div class="row" style="margin-top:12px"><span class="lbl">Recupero</span><span class="mid timer">${F.mmss(s.rest.left)}</span></div>
+      <a class="btn" href="#">Apri la sessione</a>
+    </section>
+    <section class="card">
+      <div class="row"><span class="lbl">Bilancio previsto</span><span class="lbl">obiettivo ${signed(F.plan.dailyDeficit)}</span></div>
+      <div class="big">${signed(F.balanceProjected)}<small>kcal</small></div>
+      <div class="bar" aria-hidden="true"><i style="width:${pct(F.eaten.kcal, F.burned.total)}%"></i><b style="left:${pct(F.intakeTarget, F.burned.total)}%"></b></div>
+      <div class="row"><span class="lbl">Mangiate ${n(F.eaten.kcal)} · target ${n(F.intakeTarget)}</span><span class="lbl">bruciate ${n(F.burned.total)}</span></div>
+    </section>
+    <section class="card">
+      <div class="row"><span class="lbl">Settimana</span><span class="lbl">${F.sessionsDone} di ${F.plan.sessionsPerWeek} sessioni</span></div>
+      <div class="wk">${F.week.map(d => `<div class="${d.done?'done':''} ${d.today?'today':''}">${d.d}</div>`).join('')}</div>
+    </section>`,
+
+  training: () => `
+    <div class="top"><h1>${cur.name}</h1><span>${s.elapsedMin} min</span></div>
+    <section class="card">
+      <div class="row"><span class="lbl">Serie ${cur.done.length+1} di ${cur.sets}</span><span class="mid timer">${F.mmss(s.rest.left)}</span></div>
+      <div class="set-dots">${Array.from({length:cur.sets},(_,i)=>`<i class="${i<cur.done.length?'d':i===cur.done.length?'c':''}"></i>`).join('')}</div>
+      <div class="lbl" style="margin-top:6px">Serie 1: ${cur.done[0]} × ${cur.kg} kg · RIR 2</div>
+    </section>
+    <section class="card">
+      <div class="stepper"><button aria-label="Meno 2,5 kg"><span class="cond" style="font-size:34px">−</span></button><div class="v"><div>${cur.kg}</div><span>kg</span></div><button aria-label="Più 2,5 kg"><span class="cond" style="font-size:34px">+</span></button></div>
+      <div class="stepper" style="margin-top:8px"><button aria-label="Una ripetizione in meno"><span class="cond" style="font-size:34px">−</span></button><div class="v"><div>8</div><span>ripetizioni</span></div><button aria-label="Una ripetizione in più"><span class="cond" style="font-size:34px">+</span></button></div>
+      <div class="lbl" style="margin-top:14px">Ripetizioni di riserva</div>
+      <div class="rir">${[0,1,2,3,4].map(r=>`<span class="${r===2?'on':''}">${r}</span>`).join('')}</div>
+      <a class="btn" href="#">Serie fatta</a>
+    </section>
+    <section class="card" style="padding-block:8px">
+      <div class="list">${s.exercises.filter(e=>!e.current && e.done.length===0).slice(0,2).map(e=>`<div><div><b>${e.name}</b><small>${e.sets} × ${e.reps} · ${e.kg} kg</small></div><span class="r" style="color:var(--grey)">poi</span></div>`).join('')}</div>
+    </section>`,
+
+  nutrition: () => `
+    <div class="top"><h1>Nutrizione</h1><span>Ven 31</span></div>
+    <section class="card">
+      <div class="row"><span class="lbl">Mangiate</span><span class="lbl">target ${n(F.intakeTarget)}</span></div>
+      <div class="big">${n(F.eaten.kcal)}<small>kcal</small></div>
+      <div class="bar" aria-hidden="true"><i style="width:${pct(F.eaten.kcal, F.intakeTarget)}%"></i></div>
+      <div class="lbl">Restano ${n(F.intakeTarget - F.eaten.kcal)} kcal: la cena prevista ne ha ${n(F.meals[3].kcal)}.</div>
+    </section>
+    <section class="card">
+      ${F.macros.map(m=>`<div class="row" style="margin-top:4px"><span>${m.label}</span><span class="cond" style="font-size:24px;font-weight:600">${m.eaten}<span style="color:var(--grey);font-size:18px"> / ${m.target} g</span></span></div><div class="bar" style="height:10px;margin:6px 0 10px"><i style="width:${pct(m.eaten,m.target)}%"></i></div>`).join('')}
+    </section>
+    <section class="card" style="padding-block:4px">
+      <div class="list">${F.meals.map(m=>`<div><img class="ph ${m.logged?'':'off'}" src="${m.src}" alt=""><div><b>${m.slot}</b><small>${m.logged ? m.time : 'prevista'}</small></div><span class="r" style="${m.logged?'':'color:var(--grey)'}">${n(m.kcal)}</span></div>`).join('')}</div>
+    </section>`,
+
+  progress: () => {
+    const p = F.progress, W = 330, H = 170, lp = F.linePath(p.weights, W, H, 10, 75.5, 82), L = p.weights.length - 1;
+    return `
+    <div class="top"><h1>Progressi</h1><span>12 settimane</span></div>
+    <section class="card">
+      <span class="lbl">Peso medio</span>
+      <div class="big">${kg(p.weights[L])}<small>kg</small></div>
+      <div class="lbl">${F.skg(-p.lost)} kg dal 18 ago · mancano ${kg(p.toGo)} kg a 76,0</div>
+      <svg width="100%" viewBox="0 0 ${W} ${H}" style="margin-top:14px" role="img" aria-label="Peso da 81,5 a 78,4 kg">
+        <line x1="0" x2="${W}" y1="${lp.y(76)}" y2="${lp.y(76)}" stroke="#444" stroke-dasharray="4 5"/>
+        <path d="${lp.d}" fill="none" stroke="#C8F31D" stroke-width="3" stroke-linejoin="round"/>
+        <circle cx="${lp.x(L)}" cy="${lp.y(p.weights[L])}" r="6" fill="#C8F31D"/>
+      </svg>
+    </section>
+    <section class="card">
+      <div class="row"><div><span class="lbl">Vita</span><div class="mid">${p.waist.now}<small style="font-size:18px;color:var(--grey)"> cm</small></div></div><div><span class="lbl">Massa grassa</span><div class="mid">${kg(p.bodyFat.now)}<small style="font-size:18px;color:var(--grey)"> %</small></div></div><div><span class="lbl">Ritmo</span><div class="mid">${F.skg(p.rate,1)}<small style="font-size:18px;color:var(--grey)"> /sett</small></div></div></div>
+    </section>
+    <a class="btn ghost" href="#" style="margin:4px 12px 0">${icon('camera',22,2)} Foto di oggi</a>`;
+  },
+});
+</script>
+</body>
+</html>
