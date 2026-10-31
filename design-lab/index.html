@@ -1,0 +1,705 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FITLAB Design Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Spline+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Manrope:wght@400;500;700;800&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Barlow+Condensed:wght@500;600;700;800&family=JetBrains+Mono:wght@500;700&family=Archivo+Black&display=swap" rel="stylesheet">
+<!--
+  FITLAB Design Lab — playground isolato per provare palette, raggi, font e
+  stile delle card sulle 4 schermate del menu in basso. NON fa parte dell'app:
+  nessun import da src/, nessun build. Apri il file nel browser.
+  Il preset "Attuale" rispecchia i valori di src/constants/theme.ts.
+-->
+<style>
+:root{
+  --ui-bg:#F3F3F5; --ui-panel:#FFFFFF; --ui-text:#111114; --ui-muted:#6E6F78; --ui-border:#E2E2E6; --ui-accent:#111114;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){ --ui-bg:#0B0B0D; --ui-panel:#16171B; --ui-text:#F2F2F4; --ui-muted:#9A9BA3; --ui-border:#2A2B31; --ui-accent:#F2F2F4; }
+}
+:root[data-theme="dark"]{ --ui-bg:#0B0B0D; --ui-panel:#16171B; --ui-text:#F2F2F4; --ui-muted:#9A9BA3; --ui-border:#2A2B31; --ui-accent:#F2F2F4; }
+
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--ui-bg);color:var(--ui-text);font:14px/1.4 Inter,system-ui,sans-serif;}
+.app{display:grid;grid-template-columns:300px 1fr;min-height:100vh}
+@media (max-width:860px){.app{grid-template-columns:1fr}}
+
+/* ── Pannello controlli ─────────────────────────────── */
+.panel{background:var(--ui-panel);border-right:1px solid var(--ui-border);padding:20px 18px 40px;position:sticky;top:0;height:100vh;overflow:auto}
+@media (max-width:860px){.panel{position:static;height:auto;border-right:0;border-bottom:1px solid var(--ui-border);padding:16px}}
+.panel h1{font-size:18px;margin:0 0 2px;letter-spacing:-.01em}
+.panel .sub{color:var(--ui-muted);font-size:12px;margin:0 0 18px}
+.group{margin:0 0 18px}
+.group > label, .glabel{display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--ui-muted);margin:0 0 8px}
+.seg{display:flex;background:var(--ui-bg);border:1px solid var(--ui-border);border-radius:10px;padding:3px;gap:2px}
+.seg button{flex:1;border:0;background:transparent;color:var(--ui-text);padding:7px 6px;border-radius:7px;font:inherit;font-size:12px;cursor:pointer}
+.seg button.on{background:var(--ui-panel);box-shadow:0 1px 3px rgba(0,0,0,.12);font-weight:600}
+.presets{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.preset{border:1px solid var(--ui-border);background:var(--ui-panel);color:var(--ui-text);border-radius:10px;padding:8px;text-align:left;cursor:pointer;font:inherit;font-size:12px}
+.preset.on{outline:2px solid var(--ui-accent);outline-offset:-1px}
+.preset .sw{display:flex;gap:3px;margin-bottom:6px}
+.preset .sw i{width:14px;height:14px;border-radius:4px;display:block;border:1px solid rgba(128,128,128,.25)}
+.colors{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.cfield{display:flex;align-items:center;gap:7px;font-size:12px;border:1px solid var(--ui-border);border-radius:9px;padding:4px 6px}
+.cfield input[type=color]{width:26px;height:22px;border:0;padding:0;background:none;cursor:pointer;flex:none}
+.cfield span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+select,.btn{width:100%;font:inherit;font-size:13px;padding:8px 10px;border-radius:9px;border:1px solid var(--ui-border);background:var(--ui-panel);color:var(--ui-text)}
+.btn{cursor:pointer;font-weight:600;margin-top:6px}
+.btn.primary{background:var(--ui-accent);color:var(--ui-panel);border-color:var(--ui-accent)}
+input[type=range]{width:100%}
+.row{display:flex;justify-content:space-between;font-size:12px;color:var(--ui-muted)}
+.hint{font-size:11px;color:var(--ui-muted);margin-top:6px}
+.contrast{font-size:11px;margin-top:8px;display:grid;gap:3px}
+.contrast b{font-weight:600}
+.ok{color:#1FA85B}.bad{color:#D6402C}
+
+/* ── Stage ──────────────────────────────────────────── */
+.stage{padding:24px 24px 60px;min-width:0}
+@media (max-width:860px){.stage{padding:16px}}
+.stage-head{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:18px}
+.stage-head h2{margin:0;font-size:16px}
+.stage-head .seg{width:auto}
+.phones{display:flex;flex-wrap:wrap;gap:28px;justify-content:center}
+.pwrap{display:flex;flex-direction:column;align-items:center;gap:8px}
+.pcap{font-size:12px;color:var(--ui-muted);font-weight:600}
+dialog{border:1px solid var(--ui-border);border-radius:14px;background:var(--ui-panel);color:var(--ui-text);max-width:min(640px,92vw);width:100%;padding:18px}
+dialog pre{background:var(--ui-bg);border-radius:10px;padding:12px;overflow:auto;font-size:12px;max-height:60vh}
+dialog::backdrop{background:rgba(0,0,0,.4)}
+
+/* ── Telefono (tutti i colori arrivano da variabili --t-*) ─ */
+.phone{width:320px;max-width:100%;height:660px;border-radius:46px;padding:10px;background:#0a0a0a;box-shadow:0 20px 50px rgba(0,0,0,.25),inset 0 0 0 2px #2a2a2a;flex:none}
+.screen{position:relative;height:100%;border-radius:37px;overflow:hidden;background:var(--t-bg);color:var(--t-text);font-family:var(--t-font)}
+.scroll{height:100%;overflow-y:auto;padding:46px 16px 96px;scrollbar-width:none}
+.scroll::-webkit-scrollbar{display:none}
+.island{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:96px;height:28px;background:#000;border-radius:20px;z-index:5}
+.status{position:absolute;top:14px;left:26px;right:26px;display:flex;justify-content:space-between;font-size:12px;font-weight:600;z-index:4;color:var(--t-text)}
+
+.hdr{display:flex;align-items:center;justify-content:space-between;margin:6px 0 14px}
+.hdr h3{margin:0;font-size:24px;font-weight:700;letter-spacing:-.02em;font-family:var(--t-hfont)}
+.hdr .s{font-size:13px;color:var(--t-text2)}
+.ib{width:36px;height:36px;border-radius:50%;background:var(--t-iconbtn);display:grid;place-items:center;color:var(--t-text)}
+.ibs{display:flex;gap:8px}
+
+.card{background:var(--t-card);border-radius:var(--t-r);padding:16px;margin-bottom:12px;box-shadow:var(--t-cardshadow);border:var(--t-cardborder);backdrop-filter:var(--t-blur);-webkit-backdrop-filter:var(--t-blur)}
+.ct{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.ct b{font-size:15px;font-weight:600}
+.link{color:var(--t-accenttext);font-size:13px;font-weight:600;display:flex;align-items:center;gap:2px}
+.muted{color:var(--t-text2)}.faint{color:var(--t-text3)}
+.sec{display:flex;justify-content:space-between;align-items:baseline;margin:20px 2px 10px}
+.sec b{font-size:18px;font-weight:700;letter-spacing:-.01em;font-family:var(--t-hfont)}
+
+.week{display:flex;justify-content:space-between;margin-bottom:14px}
+.day{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11px;color:var(--t-text3);width:36px}
+.day .n{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-size:14px;font-weight:600;color:var(--t-text);background:var(--t-element)}
+.day.on .n{background:var(--t-accent);color:var(--t-onaccent)}
+.day .dot{width:5px;height:5px;border-radius:50%;background:var(--t-success)}
+.day .dot.off{background:transparent}
+
+.gauge{display:flex;justify-content:center;margin:2px 0 6px;position:relative}
+.gauge .mid{position:absolute;top:62px;text-align:center;width:100%}
+.gauge .mid b{font-size:28px;font-weight:700;letter-spacing:-.02em;display:block;font-family:var(--t-nfont)}
+.gauge .mid span{font-size:11px;color:var(--t-text2)}
+.three{display:flex;border-top:1px solid var(--t-border);padding-top:12px;margin-top:4px}
+.three>div{flex:1;text-align:center;display:flex;flex-direction:column;align-items:center;gap:2px}
+.three>div+div{border-left:1px solid var(--t-border)}
+.three small{font-size:11px;color:var(--t-text3)}
+.three b{font-size:13px;font-weight:600}
+
+.tiles{display:flex;gap:12px;margin-bottom:12px}
+.tile{flex:1;border-radius:var(--t-r);padding:14px;color:#fff;display:flex;flex-direction:column;gap:18px;font-weight:600;font-size:14px;line-height:1.2;min-height:104px}
+.tile .ic{width:34px;height:34px;border-radius:12px;background:#fff;display:grid;place-items:center}
+.tile.a{background:linear-gradient(145deg,var(--t-g1),var(--t-g3));color:var(--t-onaccent)}
+.tile.g{background:linear-gradient(145deg,#34C77B,#1FA85B)}
+
+.hero{border-radius:var(--t-r);padding:16px;background:linear-gradient(150deg,var(--t-g1),var(--t-g2) 55%,var(--t-g3));color:var(--t-onaccent);margin-bottom:12px;box-shadow:0 10px 24px var(--t-glow)}
+.hero small{opacity:.8;font-size:12px}
+.hero h4{margin:2px 0 12px;font-size:18px;letter-spacing:-.01em;font-family:var(--t-hfont)}
+.hero .chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font-size:11px;font-weight:600;padding:5px 9px;border-radius:999px;background:var(--t-onfill)}
+.hero .bar{height:6px;border-radius:9px;background:var(--t-onfill);margin-top:14px;overflow:hidden}
+.hero .bar i{display:block;height:100%;width:62%;background:var(--t-onaccent);border-radius:9px}
+.hero .btn2{margin-top:14px;background:var(--t-onaccent);color:var(--t-g3);text-align:center;border-radius:999px;padding:10px;font-weight:700;font-size:14px}
+
+.big{font-size:26px;font-weight:700;letter-spacing:-.02em;font-family:var(--t-nfont)}
+.pill{font-size:11px;font-weight:700;padding:4px 9px;border-radius:999px;background:var(--t-successsoft);color:var(--t-success)}
+.track{height:8px;border-radius:9px;background:var(--t-accentsoft);margin:10px 0 14px;overflow:hidden}
+.track i{display:block;height:100%;background:var(--t-accent);border-radius:9px}
+.bars{display:flex;align-items:flex-end;gap:8px;height:80px}
+.bars i{flex:1;background:var(--t-accent);border-radius:6px 6px 3px 3px;opacity:.95}
+.bars i.f{background:var(--t-element)}
+.blabels{display:flex;gap:8px;margin-top:6px}
+.blabels span{flex:1;text-align:center;font-size:10px;color:var(--t-text3)}
+.stats{display:flex}
+.stats>div{flex:1;display:flex;flex-direction:column;gap:2px}
+.stats b{font-size:20px;font-weight:700;font-family:var(--t-nfont)}
+.stats small{font-size:11px;color:var(--t-text3)}
+
+.ex{display:flex;align-items:center;gap:12px;padding:10px 0}
+.ex+.ex{border-top:1px solid var(--t-border)}
+.ex .th{width:42px;height:42px;border-radius:12px;background:var(--t-element);display:grid;place-items:center;color:var(--t-accenttext);flex:none}
+.ex .tx{flex:1;min-width:0}
+.ex .tx b{display:block;font-size:14px;font-weight:600}
+.ex .tx span{font-size:12px;color:var(--t-text2)}
+.chk{width:24px;height:24px;border-radius:50%;border:2px solid var(--t-borderstrong);flex:none}
+.chk.on{background:var(--t-success);border-color:var(--t-success)}
+.cta{display:block;text-align:center;padding:13px;border-radius:999px;font-weight:700;font-size:15px;background:var(--t-accent);color:var(--t-onaccent);margin:4px 0 12px;box-shadow:0 8px 18px var(--t-glow)}
+.cta.ghost{background:var(--t-element);color:var(--t-text);box-shadow:none}
+
+.macro{margin:10px 0}
+.macro .row2{display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px}
+.macro .row2 b{font-weight:600}
+.mtrack{height:8px;border-radius:9px;background:var(--t-element);overflow:hidden}
+.mtrack i{display:block;height:100%;border-radius:9px}
+.meal{display:flex;align-items:center;gap:12px;padding:10px 0}
+.meal+.meal{border-top:1px solid var(--t-border)}
+.meal .em{width:40px;height:40px;border-radius:12px;background:var(--t-accentsoft);display:grid;place-items:center;font-size:19px;flex:none}
+.plus{width:30px;height:30px;border-radius:50%;background:var(--t-accent);color:var(--t-onaccent);display:grid;place-items:center;flex:none;font-size:18px;font-weight:600}
+.plus.done{background:var(--t-successsoft);color:var(--t-success)}
+
+.photos{display:flex;gap:8px}
+.photos div{flex:1;aspect-ratio:3/4;border-radius:12px;background:linear-gradient(160deg,var(--t-element),var(--t-selected))}
+.photos div.add{display:grid;place-items:center;border:1.5px dashed var(--t-borderstrong);background:transparent;color:var(--t-text2);font-size:11px;text-align:center}
+
+/* Tab bar flottante: la tab attiva si allarga con l'etichetta */
+.tabbar{position:absolute;left:14px;right:14px;bottom:18px;height:60px;border-radius:999px;display:flex;align-items:center;justify-content:space-around;padding:0 8px;background:var(--t-tabbg);backdrop-filter:blur(18px) saturate(1.6);-webkit-backdrop-filter:blur(18px) saturate(1.6);box-shadow:var(--t-tabshadow);border:1px solid var(--t-border);z-index:6}
+.tab{display:flex;align-items:center;gap:6px;height:44px;padding:0 12px;border-radius:999px;color:var(--t-text2);font-size:13px;font-weight:600;cursor:pointer}
+.tab span{display:none}
+.tab.on{background:var(--t-accentsoft);color:var(--t-accenttext)}
+.tab.on span{display:inline}
+/* ── Skin: cambiano la forma, non solo i colori ─────── */
+/* Brutal: bordi spessi, ombre piene sfalsate, maiuscolo */
+.screen[data-skin=brutal] .card,.screen[data-skin=brutal] .hero,.screen[data-skin=brutal] .tile{border:2px solid var(--t-text);box-shadow:4px 4px 0 var(--t-text)}
+.screen[data-skin=brutal] .hero{background:var(--t-accent)}
+.screen[data-skin=brutal] .tile.g{background:var(--t-success);color:#000}
+.screen[data-skin=brutal] .hdr h3,.screen[data-skin=brutal] .sec b,.screen[data-skin=brutal] .hero h4{text-transform:uppercase;letter-spacing:0}
+.screen[data-skin=brutal] .tabbar{border-radius:0;border:2px solid var(--t-text);box-shadow:4px 4px 0 var(--t-text);background:var(--t-card);backdrop-filter:none}
+.screen[data-skin=brutal] .tab{border-radius:0}.screen[data-skin=brutal] .tab.on{background:var(--t-accent);color:var(--t-onaccent)}
+.screen[data-skin=brutal] .ib,.screen[data-skin=brutal] .day .n,.screen[data-skin=brutal] .pill,.screen[data-skin=brutal] .chip,.screen[data-skin=brutal] .cta,.screen[data-skin=brutal] .plus,.screen[data-skin=brutal] .chk{border-radius:0}
+.screen[data-skin=brutal] .ib{border:2px solid var(--t-text);background:var(--t-card)}
+.screen[data-skin=brutal] .cta{border:2px solid var(--t-text);box-shadow:4px 4px 0 var(--t-text)}
+.screen[data-skin=brutal] .hero .btn2{border-radius:0;border:2px solid #000;background:#fff;color:#000}
+.screen[data-skin=brutal] .bars i,.screen[data-skin=brutal] .track,.screen[data-skin=brutal] .track i,.screen[data-skin=brutal] .mtrack,.screen[data-skin=brutal] .mtrack i{border-radius:0}
+/* Soft: titoli serif, niente bordi, superfici calde e grandi */
+.screen[data-skin=soft] .hdr h3{font-size:30px;font-weight:600;letter-spacing:-.02em}
+.screen[data-skin=soft] .hero h4{font-size:22px;font-weight:600}
+.screen[data-skin=soft] .sec b{font-weight:600;font-size:20px}
+.screen[data-skin=soft] .hero{box-shadow:none}
+.screen[data-skin=soft] .cta{box-shadow:none}
+.screen[data-skin=soft] .tabbar{border:0}
+.screen[data-skin=soft] .ex .th,.screen[data-skin=soft] .meal .em{border-radius:50%}
+/* HUD: condensato, maiuscolo, numeri mono, griglia di sfondo, accento come linea */
+.screen[data-skin=hud]{background-image:linear-gradient(var(--t-border) 1px,transparent 1px),linear-gradient(90deg,var(--t-border) 1px,transparent 1px);background-size:24px 24px}
+.screen[data-skin=hud] .hdr h3{text-transform:uppercase;font-size:32px;font-weight:800;letter-spacing:.01em;line-height:1}
+.screen[data-skin=hud] .sec b,.screen[data-skin=hud] .ct b,.screen[data-skin=hud] .hero h4{text-transform:uppercase;letter-spacing:.04em}
+.screen[data-skin=hud] .card{border-left:3px solid var(--t-accent)}
+.screen[data-skin=hud] .three small,.screen[data-skin=hud] .stats small,.screen[data-skin=hud] .hero small,.screen[data-skin=hud] .day{text-transform:uppercase;letter-spacing:.1em;font-family:var(--t-nfont);font-size:10px}
+.screen[data-skin=hud] .hero{background:var(--t-card);color:var(--t-text);border:1px solid var(--t-accent);box-shadow:0 0 24px var(--t-glow)}
+.screen[data-skin=hud] .hero .chip{background:var(--t-accentsoft);color:var(--t-accenttext)}
+.screen[data-skin=hud] .hero .bar{background:var(--t-element)}.screen[data-skin=hud] .hero .bar i{background:var(--t-accent)}
+.screen[data-skin=hud] .hero .btn2{background:var(--t-accent);color:var(--t-onaccent);border-radius:4px;text-transform:uppercase;letter-spacing:.08em}
+.screen[data-skin=hud] .tile.a{background:var(--t-accent)}
+.screen[data-skin=hud] .tile.g{background:var(--t-element);color:var(--t-text);border:1px solid var(--t-success)}
+.screen[data-skin=hud] .cta{text-transform:uppercase;letter-spacing:.08em;border-radius:4px}
+.screen[data-skin=hud] .tabbar{border-radius:8px}.screen[data-skin=hud] .tab{border-radius:4px;text-transform:uppercase;font-size:11px;letter-spacing:.06em}
+/* Swiss: niente card, solo filetti; titoli enormi; un solo accento */
+.screen[data-skin=swiss] .card{background:transparent;box-shadow:none;border:0;border-top:1px solid var(--t-text);border-radius:0;padding:14px 0}
+.screen[data-skin=swiss] .hdr h3{font-size:36px;font-weight:800;letter-spacing:-.04em;line-height:1}
+.screen[data-skin=swiss] .sec{border-top:3px solid var(--t-text);padding-top:8px;margin-top:22px}
+.screen[data-skin=swiss] .sec b{font-size:13px;text-transform:uppercase;letter-spacing:.08em}
+.screen[data-skin=swiss] .big,.screen[data-skin=swiss] .stats b{font-weight:800;letter-spacing:-.03em}
+.screen[data-skin=swiss] .hero{border-radius:0;box-shadow:none;background:var(--t-accent)}
+.screen[data-skin=swiss] .tile{border-radius:0}.screen[data-skin=swiss] .tile.g{background:var(--t-text);color:var(--t-bg)}
+.screen[data-skin=swiss] .ib{background:transparent;border:1px solid var(--t-text)}
+.screen[data-skin=swiss] .tabbar{left:0;right:0;bottom:0;border-radius:0;height:76px;padding-bottom:14px;border:0;border-top:1px solid var(--t-text);box-shadow:none;background:var(--t-bg)}
+.screen[data-skin=swiss] .tab{flex-direction:column;gap:2px;height:auto;padding:6px;font-size:10px;background:transparent!important}
+.screen[data-skin=swiss] .tab span{display:inline}.screen[data-skin=swiss] .tab.on{color:var(--t-accent)}
+/* Aurora: vetro su gradiente, numeri grandi e leggeri */
+.screen[data-skin=aurora] .big,.screen[data-skin=aurora] .gauge .mid b{font-weight:500;font-size:32px;letter-spacing:-.03em}
+.screen[data-skin=aurora] .stats b{font-weight:500}
+.screen[data-skin=aurora] .hdr h3{font-weight:600;letter-spacing:-.03em}
+.screen[data-skin=aurora] .tile{backdrop-filter:blur(10px)}
+
+.home-ind{position:absolute;bottom:6px;left:50%;transform:translateX(-50%);width:110px;height:4px;border-radius:4px;background:var(--t-text);opacity:.85;z-index:7}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="panel">
+    <h1>FITLAB Design Lab</h1>
+    <p class="sub">Playground separato dall'app. Il preset "Attuale" usa gli stessi valori di <code>theme.ts</code>.</p>
+
+    <div class="group">
+      <span class="glabel">Direzione di design</span>
+      <div class="presets" id="directions"></div>
+      <div class="hint">Una direzione imposta tutto insieme: palette, forme, font e stile. Poi puoi rifinire i singoli controlli qui sotto.</div>
+    </div>
+
+    <div class="group">
+      <span class="glabel">Schema</span>
+      <div class="seg" id="scheme">
+        <button data-v="light">Chiaro</button><button data-v="dark" class="on">Scuro</button><button data-v="both">Entrambi</button>
+      </div>
+    </div>
+
+    <div class="group">
+      <span class="glabel">Palette</span>
+      <div class="presets" id="presets"></div>
+    </div>
+
+    <div class="group">
+      <span class="glabel">Colori (<span id="editScheme">scuro</span>)</span>
+      <div class="colors" id="colors"></div>
+      <div class="hint">Modificare un colore crea il preset "Personalizzato".</div>
+      <div class="contrast" id="contrast"></div>
+    </div>
+
+    <div class="group">
+      <span class="glabel">Stile card</span>
+      <div class="seg" id="cardStyle">
+        <button data-v="flat" class="on">Piatte</button><button data-v="outline">Bordo</button><button data-v="glass">Vetro</button>
+      </div>
+    </div>
+
+    <div class="group">
+      <label for="skin">Forma / skin</label>
+      <select id="skin">
+        <option value="none">Attuale (pulito)</option>
+        <option value="brutal">Brutal — bordi spessi, ombre piene</option>
+        <option value="soft">Soft — serif, morbido, caldo</option>
+        <option value="hud">Sport HUD — condensato, dati, griglia</option>
+        <option value="swiss">Swiss — niente card, solo filetti</option>
+        <option value="aurora">Aurora — vetro su gradiente</option>
+      </select>
+    </div>
+
+    <div class="group">
+      <label for="radius">Raggio angoli</label>
+      <input type="range" id="radius" min="6" max="36" value="24">
+      <div class="row"><span>squadrato</span><span id="radiusVal">24 px</span><span>morbido</span></div>
+    </div>
+
+    <div class="group">
+      <label for="hfont">Font titoli</label>
+      <select id="hfont"></select>
+      <label for="font" style="margin-top:10px">Font testo</label>
+      <select id="font">
+        <option value="'Spline Sans', Inter, system-ui, sans-serif">Spline Sans (attuale web)</option>
+        <option value="-apple-system, 'SF Pro Text', system-ui, sans-serif">SF / sistema (attuale iOS)</option>
+        <option value="Inter, system-ui, sans-serif">Inter</option>
+        <option value="'Space Grotesk', system-ui, sans-serif">Space Grotesk</option>
+        <option value="'DM Sans', system-ui, sans-serif">DM Sans</option>
+        <option value="Manrope, system-ui, sans-serif">Manrope</option>
+        <option value="Fraunces, Georgia, serif">Fraunces (serif)</option>
+        <option value="'Barlow Condensed', system-ui, sans-serif">Barlow Condensed</option>
+        <option value="'Archivo Black', system-ui, sans-serif">Archivo Black</option>
+        <option value="'JetBrains Mono', ui-monospace, monospace">JetBrains Mono</option>
+      </select>
+      <label for="nfont" style="margin-top:10px">Font numeri</label>
+      <select id="nfont"></select>
+    </div>
+
+    <div class="group">
+      <button class="btn primary" id="export">Esporta token per theme.ts</button>
+      <button class="btn" id="reset">Ripristina tutto</button>
+    </div>
+  </aside>
+
+  <main class="stage">
+    <div class="stage-head">
+      <h2 id="stageTitle">Schermate</h2>
+      <div class="seg" id="view">
+        <button data-v="screens" class="on">4 schermate</button><button data-v="compare">Confronta direzioni</button>
+      </div>
+    </div>
+    <div class="phones" id="phones"></div>
+  </main>
+</div>
+
+<dialog id="dlg">
+  <b>Token da incollare in src/constants/theme.ts</b>
+  <p class="hint">Sostituisci i valori corrispondenti in <code>Colors.light</code>, <code>Colors.dark</code> e <code>Brand</code>.</p>
+  <pre id="code"></pre>
+  <button class="btn primary" id="copy">Copia</button>
+  <button class="btn" onclick="dlg.close()">Chiudi</button>
+</dialog>
+
+<script>
+/* ── Colori: helper ─────────────────────────────────── */
+const hx = h => { h=h.replace('#',''); if(h.length===3) h=[...h].map(c=>c+c).join(''); return [0,2,4].map(i=>parseInt(h.slice(i,i+2),16)); };
+const toHex = rgb => '#'+rgb.map(v=>Math.round(Math.max(0,Math.min(255,v))).toString(16).padStart(2,'0')).join('').toUpperCase();
+const mix = (a,b,t) => { const A=hx(a),B=hx(b); return toHex(A.map((v,i)=>v+(B[i]-v)*t)); };
+const rgba = (h,a) => { const [r,g,b]=hx(h); return `rgba(${r},${g},${b},${a})`; };
+const lum = h => { const c=hx(h).map(v=>{v/=255;return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4)}); return 0.2126*c[0]+0.7152*c[1]+0.0722*c[2]; };
+const ratio = (a,b) => { const [x,y]=[lum(a),lum(b)].sort((p,q)=>q-p); return (x+0.05)/(y+0.05); };
+
+/* ── Preset ─────────────────────────────────────────── */
+// Ogni preset: neutri + accento per schema. accentText = colore dell'accento
+// usato come testo (link, tab attiva); grad = rampa Brand.accentGradient.
+const NEUTRAL_LIGHT = { bg:'#F7F7F7', card:'#FFFFFF', element:'#F1F1F3', selected:'#EAEAEC', iconbtn:'#F4F4F4', text:'#0B0B0D', text2:'#89898A', text3:'#ABABAD' };
+const NEUTRAL_DARK  = { bg:'#000000', card:'#222328', element:'#2D2E34', selected:'#383940', iconbtn:'#2D2E34', text:'#FFFFFF', text2:'#A6A7AD', text3:'#76777D' };
+
+const PRESETS = {
+  attuale: { name:'Attuale', grad:['#FF8F2A','#FF6A13','#F25A00'],
+    light:{...NEUTRAL_LIGHT, accent:'#FF7A00', accentText:'#FF7A00', onAccent:'#FFFFFF', success:'#00A651', warning:'#D9A600', danger:'#D6402C'},
+    dark: {...NEUTRAL_DARK,  accent:'#FF7A00', accentText:'#FF7A00', onAccent:'#FFFFFF', success:'#39FF14', warning:'#FFE600', danger:'#FF6B57'} },
+  ember: { name:'Ember', grad:['#FF7A45','#FF4D1A','#E0360B'],
+    light:{ bg:'#F6F4F2', card:'#FFFFFF', element:'#EFECE8', selected:'#E7E3DE', iconbtn:'#EFECE8', text:'#141110', text2:'#857C76', text3:'#AFA7A1', accent:'#F2481A', accentText:'#D93D12', onAccent:'#FFFFFF', success:'#16A34A', warning:'#CA8A04', danger:'#DC2626'},
+    dark: { bg:'#0C0A09', card:'#1C1917', element:'#292524', selected:'#353029', iconbtn:'#292524', text:'#FAFAF9', text2:'#A8A29E', text3:'#78716C', accent:'#FF5A26', accentText:'#FF6A3A', onAccent:'#FFFFFF', success:'#4ADE80', warning:'#FACC15', danger:'#F87171'} },
+  volt: { name:'Volt', grad:['#D9FF4D','#B8F400','#93D100'],
+    light:{ ...NEUTRAL_LIGHT, accent:'#B8F400', accentText:'#4D7C0F', onAccent:'#0B0B0D', success:'#15803D', warning:'#CA8A04', danger:'#DC2626'},
+    dark: { bg:'#050505', card:'#17181A', element:'#232427', selected:'#2E2F33', iconbtn:'#232427', text:'#FFFFFF', text2:'#A1A1AA', text3:'#71717A', accent:'#C6FF1A', accentText:'#C6FF1A', onAccent:'#0B0B0D', success:'#4ADE80', warning:'#FDE047', danger:'#FB7185'} },
+  electric: { name:'Electric', grad:['#5B8CFF','#2F6BFF','#1F4FE0'],
+    light:{ bg:'#F4F6FA', card:'#FFFFFF', element:'#EDF0F6', selected:'#E3E8F1', iconbtn:'#EDF0F6', text:'#0A0F1C', text2:'#7A8395', text3:'#A5ACBA', accent:'#2F6BFF', accentText:'#2459E0', onAccent:'#FFFFFF', success:'#12B76A', warning:'#DC9A06', danger:'#E5484D'},
+    dark: { bg:'#05070D', card:'#141821', element:'#1E2430', selected:'#283040', iconbtn:'#1E2430', text:'#F5F7FB', text2:'#98A2B3', text3:'#667085', accent:'#4D82FF', accentText:'#6B98FF', onAccent:'#FFFFFF', success:'#32D583', warning:'#FDB022', danger:'#F97066'} },
+  sunset: { name:'Sunset', grad:['#FF8A5B','#FF3D7F','#C2178E'],
+    light:{ ...NEUTRAL_LIGHT, accent:'#F2336F', accentText:'#D61F5B', onAccent:'#FFFFFF', success:'#0E9F6E', warning:'#D97706', danger:'#DC2626'},
+    dark: { ...NEUTRAL_DARK, card:'#1E1B22', element:'#2A2630', selected:'#36313D', iconbtn:'#2A2630', accent:'#FF4D8A', accentText:'#FF6B9E', onAccent:'#FFFFFF', success:'#34D399', warning:'#FBBF24', danger:'#FB7185'} },
+  mono: { name:'Mono', grad:['#3A3B42','#1C1D22','#0E0E11'],
+    light:{ ...NEUTRAL_LIGHT, accent:'#0B0B0D', accentText:'#0B0B0D', onAccent:'#FFFFFF', success:'#00A651', warning:'#D9A600', danger:'#D6402C'},
+    dark: { ...NEUTRAL_DARK, accent:'#FFFFFF', accentText:'#FFFFFF', onAccent:'#0B0B0D', success:'#3DF56B', warning:'#FFE600', danger:'#FF6B57'} },
+  brutal: { name:'Brutal', grad:['#FF3B00','#FF3B00','#FF3B00'],
+    light:{ bg:'#F2F0E9', card:'#FFFFFF', element:'#E8E5DC', selected:'#DCD8CC', iconbtn:'#FFFFFF', text:'#000000', text2:'#3D3D3D', text3:'#6B6B6B', accent:'#FF3B00', accentText:'#D42F00', onAccent:'#000000', success:'#00C853', warning:'#FFD600', danger:'#D50000'},
+    dark: { bg:'#000000', card:'#111111', element:'#1F1F1F', selected:'#2A2A2A', iconbtn:'#111111', text:'#FFFFFF', text2:'#C8C8C8', text3:'#8A8A8A', accent:'#FF4D12', accentText:'#FF6A3A', onAccent:'#000000', success:'#00E676', warning:'#FFEA00', danger:'#FF5252'} },
+  soft: { name:'Soft', grad:['#F0A07A','#E07A4F','#C9643B'],
+    light:{ bg:'#F5F1EA', card:'#FFFDF9', element:'#EEE8DE', selected:'#E5DDD0', iconbtn:'#EEE8DE', text:'#2B2620', text2:'#857A6D', text3:'#ADA394', accent:'#D9693D', accentText:'#B85530', onAccent:'#FFFFFF', success:'#5E8F6A', warning:'#C98A1E', danger:'#C0503A'},
+    dark: { bg:'#1A1714', card:'#24201C', element:'#2F2A25', selected:'#3A342E', iconbtn:'#2F2A25', text:'#F5EFE6', text2:'#B3A899', text3:'#837A6E', accent:'#EE8A5E', accentText:'#F29A72', onAccent:'#1A1714', success:'#8CC49A', warning:'#E8B456', danger:'#E8826C'} },
+  hud: { name:'Sport HUD', grad:['#D9FF4D','#C6FF1A','#9ED600'],
+    light:{ bg:'#EEF0EC', card:'#FFFFFF', element:'#E2E5DF', selected:'#D6DAD2', iconbtn:'#FFFFFF', text:'#0A0C08', text2:'#5E6459', text3:'#8B9186', accent:'#9ED600', accentText:'#4A6B00', onAccent:'#0A0C08', success:'#00A86B', warning:'#E0A100', danger:'#E5383B'},
+    dark: { bg:'#07080A', card:'#0F1114', element:'#1A1D22', selected:'#252930', iconbtn:'#0F1114', text:'#E9F0E4', text2:'#8C958A', text3:'#5C645A', accent:'#C6FF1A', accentText:'#C6FF1A', onAccent:'#07080A', success:'#2BFFA3', warning:'#FFD60A', danger:'#FF4D5E'} },
+  aurora: { name:'Aurora', grad:['#8B7BFF','#6A5CFF','#3BC9DB'],
+    light:{ bg:'#EEF0F8', card:'#FFFFFF', element:'#E6E8F3', selected:'#DCDFEE', iconbtn:'#FFFFFF', text:'#0E1028', text2:'#6B6F8C', text3:'#9A9DB4', accent:'#6A5CFF', accentText:'#5847F0', onAccent:'#FFFFFF', success:'#12B5A0', warning:'#E3A008', danger:'#E5484D'},
+    dark: { bg:'#07071A', card:'#14152E', element:'#1F2140', selected:'#2A2C52', iconbtn:'#1F2140', text:'#F2F3FF', text2:'#A3A6C9', text3:'#6F7299', accent:'#8B7BFF', accentText:'#A396FF', onAccent:'#FFFFFF', success:'#4FE3C1', warning:'#FFC857', danger:'#FF6B81'} },
+  swiss: { name:'Swiss', grad:['#E30613','#E30613','#B8050F'],
+    light:{ bg:'#FFFFFF', card:'#FFFFFF', element:'#F0F0F0', selected:'#E4E4E4', iconbtn:'#FFFFFF', text:'#000000', text2:'#555555', text3:'#8C8C8C', accent:'#E30613', accentText:'#E30613', onAccent:'#FFFFFF', success:'#00875A', warning:'#C77700', danger:'#E30613'},
+    dark: { bg:'#0A0A0A', card:'#0A0A0A', element:'#1C1C1C', selected:'#2A2A2A', iconbtn:'#0A0A0A', text:'#FFFFFF', text2:'#B0B0B0', text3:'#777777', accent:'#FF2D2D', accentText:'#FF4A4A', onAccent:'#FFFFFF', success:'#22C55E', warning:'#F59E0B', danger:'#FF2D2D'} },
+};
+const F = {
+  spline:"'Spline Sans', Inter, system-ui, sans-serif", inter:'Inter, system-ui, sans-serif', grotesk:"'Space Grotesk', system-ui, sans-serif",
+  dm:"'DM Sans', system-ui, sans-serif", manrope:'Manrope, system-ui, sans-serif', fraunces:'Fraunces, Georgia, serif',
+  barlow:"'Barlow Condensed', system-ui, sans-serif", archivo:"'Archivo Black', system-ui, sans-serif", mono:"'JetBrains Mono', ui-monospace, monospace",
+};
+// Una direzione = palette + forma + font + raggio + stile card.
+const DIRECTIONS = {
+  attuale: { name:'Attuale',   desc:'Com\'è oggi',                 preset:'attuale', skin:'none',   cardStyle:'flat',    radius:24, font:F.spline,  hfont:F.spline,   nfont:F.spline },
+  brutal:  { name:'Brutal',    desc:'Grafico, crudo, deciso',      preset:'brutal',  skin:'brutal', cardStyle:'flat',    radius:0,  font:F.grotesk, hfont:F.archivo,  nfont:F.grotesk },
+  soft:    { name:'Soft',      desc:'Caldo, wellness, editoriale', preset:'soft',    skin:'soft',   cardStyle:'flat',    radius:32, font:F.dm,      hfont:F.fraunces, nfont:F.fraunces },
+  hud:     { name:'Sport HUD', desc:'Dati, performance, notte',    preset:'hud',     skin:'hud',    cardStyle:'outline', radius:6,  font:F.inter,   hfont:F.barlow,   nfont:F.mono },
+  swiss:   { name:'Swiss',     desc:'Minimal, tipografico',        preset:'swiss',   skin:'swiss',  cardStyle:'flat',    radius:0,  font:F.inter,   hfont:F.inter,    nfont:F.inter },
+  aurora:  { name:'Aurora',    desc:'Vetro, gradienti, premium',   preset:'aurora',  skin:'aurora', cardStyle:'glass',   radius:28, font:F.manrope, hfont:F.manrope,  nfont:F.manrope },
+};
+const EDITABLE = [['accent','Accento'],['accentText','Accento testo'],['onAccent','Su accento'],['success','Successo'],['warning','Avviso'],['danger','Errore'],['bg','Sfondo'],['card','Card'],['element','Elemento'],['text','Testo'],['text2','Testo 2°'],['text3','Testo 3°']];
+
+/* ── Stato (salvato in localStorage solo per comodità) ─ */
+const DEFAULT = { scheme:'dark', direction:'attuale', preset:'attuale', view:'screens', skin:'none', cardStyle:'flat', radius:24, font:F.spline, hfont:F.spline, nfont:F.spline, custom:null };
+let S = structuredClone(DEFAULT);
+try { const saved = JSON.parse(localStorage.getItem('fitlab-lab')||'null'); if(saved) S = {...S, ...saved}; } catch(e){}
+const save = () => { try { localStorage.setItem('fitlab-lab', JSON.stringify(S)); } catch(e){} };
+
+const presetData = key => key==='custom' ? S.custom : PRESETS[key];
+
+/* ── Token → variabili CSS ──────────────────────────── */
+function vars(p, scheme, o=S){
+  const t = p[scheme], dark = scheme==='dark';
+  const g = p.grad;
+  const style = o.cardStyle;
+  const card = style==='glass' ? (dark ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.62)') : style==='outline' ? t.bg : t.card;
+  const border = dark ? 'rgba(255,255,255,0.10)' : 'rgba(14,14,17,0.07)';
+  const v = {
+    bg: style==='glass' ? (dark ? `radial-gradient(120% 60% at 0% 0%, ${rgba(t.accent,0.22)}, transparent 60%), radial-gradient(90% 50% at 100% 40%, ${rgba(g[2],0.18)}, transparent 60%), ${t.bg}` : `radial-gradient(120% 60% at 0% 0%, ${rgba(t.accent,0.18)}, transparent 60%), radial-gradient(90% 50% at 100% 40%, ${rgba(g[2],0.12)}, transparent 60%), ${mix(t.bg,'#E8E8EC',0.5)}`) : t.bg,
+    card, element:t.element, selected:t.selected, iconbtn:t.iconbtn,
+    text:t.text, text2:t.text2, text3:t.text3,
+    accent:t.accent, accenttext:t.accentText, onaccent:t.onAccent,
+    accentsoft: dark ? rgba(t.accent,0.16) : mix(t.accent,'#FFFFFF',0.88),
+    success:t.success, successsoft: dark ? rgba(t.success,0.14) : mix(t.success,'#FFFFFF',0.88),
+    warning:t.warning, danger:t.danger,
+    border, borderstrong: dark ? 'rgba(255,255,255,0.20)' : 'rgba(14,14,17,0.14)',
+    g1:g[0], g2:g[1], g3:g[2], glow: rgba(g[1], dark?0.35:0.28),
+    onfill: t.onAccent==='#FFFFFF' ? 'rgba(255,255,255,0.22)' : 'rgba(0,0,0,0.12)',
+    r: o.radius+'px', font:o.font, hfont:o.hfont, nfont:o.nfont,
+    cardshadow: style==='flat' ? (dark?'none':'0 1px 2px rgba(20,20,25,0.03)') : style==='glass' ? (dark?'inset 0 1px 1px rgba(255,255,255,0.18), 0 8px 22px rgba(0,0,0,0.38)':'inset 0 1px 1px rgba(255,255,255,0.95), 0 6px 18px rgba(20,20,25,0.10)') : 'none',
+    cardborder: style==='outline' ? `1px solid ${dark?'rgba(255,255,255,0.16)':'rgba(14,14,17,0.12)'}` : style==='glass' ? `1px solid ${dark?'rgba(255,255,255,0.12)':'rgba(255,255,255,0.8)'}` : (dark?'1px solid rgba(255,255,255,0.06)':'0'),
+    blur: style==='glass' ? 'blur(20px) saturate(1.5)' : 'none',
+    tabbg: dark ? 'rgba(38,39,44,0.72)' : 'rgba(255,255,255,0.78)',
+    tabshadow: dark ? '0 8px 22px rgba(0,0,0,0.5)' : '0 6px 18px rgba(20,20,25,0.12)',
+  };
+  return Object.entries(v).map(([k,val])=>`--t-${k}:${val}`).join(';');
+}
+
+/* ── Icone (stile lucide, stroke = currentColor) ────── */
+const I = (d,s=20) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+const ic = {
+  home: '<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/>',
+  dumbbell: '<path d="M6.5 6.5v11M17.5 6.5v11M3 9v6M21 9v6M6.5 12h11"/>',
+  apple: '<path d="M12 7c-2-2-6-1.5-6.5 2.5S7 19 9.5 19.5c1 .2 1.7-.5 2.5-.5s1.5.7 2.5.5C17 19 19 13.5 18.5 9.5S14 5 12 7z"/><path d="M12 7c0-2 1-3.5 3-4"/>',
+  chart: '<path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/>',
+  bell: '<path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/>',
+  cal: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+  flame: '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.4-.5-2-1-3-1.1-2.1-.2-4 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.2.4-2.3 1-3.2.3 1.5 1.3 2.7 2.5 2.7z"/>',
+  target: '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
+  fork: '<path d="M3 2v7c0 1.1.9 2 2 2h2a2 2 0 0 0 2-2V2M6 2v20M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7"/>',
+  chev: '<path d="m9 18 6-6-6-6"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  scale: '<path d="M12 3v18M5 7h14M5 7l-3 7a4 4 0 0 0 6 0zM19 7l-3 7a4 4 0 0 0 6 0z"/>',
+};
+
+/* ── Pezzi comuni ───────────────────────────────────── */
+const chrome = (active, body) => `
+  <div class="island"></div>
+  <div class="status"><span>9:41</span><span>●●● 100%</span></div>
+  <div class="scroll">${body}</div>
+  <div class="tabbar">
+    ${[['home','Home',ic.home],['training','Training',ic.dumbbell],['nutrition','Nutrizione',ic.apple],['progress','Progressi',ic.chart]]
+      .map(([k,l,d])=>`<div class="tab ${k===active?'on':''}">${I(d,20)}<span>${l}</span></div>`).join('')}
+  </div>
+  <div class="home-ind"></div>`;
+
+const header = (title, sub) => `<div class="hdr"><div><h3>${title}</h3>${sub?`<div class="s">${sub}</div>`:''}</div><div class="ibs"><div class="ib">${I(ic.cal,18)}</div><div class="ib">${I(ic.bell,18)}</div></div></div>`;
+
+const weekStrip = (dots=[1,1,0,1,1,0,0]) => `<div class="week">${['L','M','M','G','V','S','D'].map((d,i)=>`<div class="day ${i===4?'on':''}"><span>${d}</span><div class="n">${27+i>31?27+i-31:27+i}</div><div class="dot ${dots[i]?'':'off'}"></div></div>`).join('')}</div>`;
+
+// Arco aperto in basso, come oggi-gauge.tsx (semplificato).
+function arc(r, from, to){
+  const p = a => { const rad=(a-90)*Math.PI/180; return [130+r*Math.cos(rad), 120+r*Math.sin(rad)]; };
+  const [x1,y1]=p(from),[x2,y2]=p(to); const large = (to-from)>180?1:0;
+  return `M${x1.toFixed(1)} ${y1.toFixed(1)} A${r} ${r} 0 ${large} 1 ${x2.toFixed(1)} ${y2.toFixed(1)}`;
+}
+const gauge = () => `<div class="gauge"><svg width="240" height="196" viewBox="10 0 240 196">
+  <path d="${arc(84,-138,138)}" stroke="var(--t-successsoft)" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <path d="${arc(84,-30,40)}" stroke="var(--t-success)" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <circle cx="${130+84*Math.sin(-18*Math.PI/180)}" cy="${120-84*Math.cos(-18*Math.PI/180)}" r="6" fill="var(--t-text)"/>
+  <path d="${arc(64,-138,138)}" stroke="var(--t-element)" stroke-width="16" fill="none" stroke-linecap="round"/>
+  <path d="${arc(64,-138,-10)}" stroke="var(--t-success)" stroke-width="16" fill="none" stroke-linecap="round"/>
+  <path d="${arc(64,-10,96)}" stroke="var(--t-accent)" stroke-width="16" fill="none" stroke-linecap="round"/>
+  </svg><div class="mid"><b>−320</b><span>kcal di bilancio</span></div></div>`;
+
+/* ── Le 4 schermate del menu ────────────────────────── */
+const screens = {
+  home: () => chrome('home', `
+    ${header('Ciao Fabio','Venerdì 31 ottobre')}
+    ${weekStrip()}
+    <div class="card">
+      <div class="ct"><b>Oggi</b><span class="link">Dettagli ${I(ic.chev,13)}</span></div>
+      ${gauge()}
+      <div class="three">
+        <div><span style="color:var(--t-accent)">${I(ic.flame,20)}</span><small>Bruciate</small><b>2.480 kcal</b></div>
+        <div><span class="muted">${I(ic.target,20)}</span><small>Obiettivo</small><b>−400 kcal</b></div>
+        <div><span style="color:#22B35E">${I(ic.fork,20)}</span><small>Assunte</small><b>2.160 kcal</b></div>
+      </div>
+    </div>
+    <div class="tiles">
+      <div class="tile a"><div class="ic" style="color:var(--t-g2)">${I(ic.fork,18)}</div>Registra<br>pasto</div>
+      <div class="tile g"><div class="ic" style="color:#1FA85B">${I(ic.dumbbell,18)}</div>Registra<br>allenamento</div>
+    </div>
+    <div class="hero">
+      <small>Piano di allenamento · Settimana 3 di 8</small>
+      <h4>Ipertrofia — Upper / Lower</h4>
+      <div class="chips"><span class="chip">4 sessioni</span><span class="chip">Ricomposizione</span></div>
+      <div class="bar"><i></i></div>
+    </div>
+    <div class="sec"><b>Questa settimana</b><span class="link">Riepilogo ${I(ic.chev,13)}</span></div>
+    <div class="card">
+      <div class="ct"><b style="display:flex;gap:8px;align-items:center"><span style="color:var(--t-accent)">${I(ic.target,20)}</span>Deficit settimanale</b><span class="link">Dettagli ${I(ic.chev,13)}</span></div>
+      <div style="display:flex;justify-content:space-between;align-items:center"><div><span class="big">−1.640</span> <span class="faint" style="font-size:13px">/ −2.800 kcal</span></div><span class="pill">In linea</span></div>
+      <div class="track"><i style="width:58%"></i></div>
+      <div class="bars">${[55,72,30,80,48,0,0].map(h=>`<i class="${h?'':'f'}" style="height:${h||8}%"></i>`).join('')}</div>
+      <div class="blabels">${['L','M','M','G','V','S','D'].map(d=>`<span>${d}</span>`).join('')}</div>
+    </div>
+    <div class="card stats">
+      <div><small>Allenamenti</small><b>3<span class="faint" style="font-size:13px">/4</span></b></div>
+      <div><small>Passi medi</small><b>9.420</b></div>
+      <div><small>Proteine</small><b>92%</b></div>
+    </div>`),
+
+  training: () => chrome('training', `
+    ${header('Allenamento','Settimana 3 di 8')}
+    ${weekStrip([1,0,1,0,1,0,0])}
+    <div class="hero">
+      <small>Oggi · Sessione B</small>
+      <h4>Upper — Petto, schiena e spalle</h4>
+      <div class="chips"><span class="chip">6 esercizi</span><span class="chip">~55 min</span><span class="chip">RPE 8</span></div>
+      <div class="btn2">Inizia allenamento</div>
+    </div>
+    <div class="sec"><b>Esercizi</b><span class="link">Modifica</span></div>
+    <div class="card" style="padding:6px 16px">
+      ${[['Panca piana','4 × 6–8 · 80 kg',1],['Rematore con bilanciere','4 × 8 · 70 kg',1],['Military press','3 × 8 · 45 kg',0],['Lat machine','3 × 10 · 60 kg',0],['Alzate laterali','3 × 15 · 10 kg',0],['Face pull','3 × 15 · 25 kg',0]]
+        .map(([n,d,c])=>`<div class="ex"><div class="th">${I(ic.dumbbell,20)}</div><div class="tx"><b>${n}</b><span>${d}</span></div><div class="chk ${c?'on':''}"></div></div>`).join('')}
+    </div>
+    <div class="cta ghost">Registra allenamento</div>
+    <div class="sec"><b>Domani</b></div>
+    <div class="card"><div class="ct" style="margin:0"><div><b>Giorno di riposo</b><div class="muted" style="font-size:12px">Camminata leggera · 8.000 passi</div></div><span class="pill">Recupero</span></div></div>`),
+
+  nutrition: () => chrome('nutrition', `
+    ${header('Nutrizione','Venerdì 31 ottobre')}
+    ${weekStrip([1,1,1,1,0,0,0])}
+    <div class="card" style="display:flex;align-items:center;gap:16px">
+      <svg width="110" height="110" viewBox="0 0 110 110">
+        <circle cx="55" cy="55" r="46" stroke="var(--t-element)" stroke-width="12" fill="none"/>
+        <circle cx="55" cy="55" r="46" stroke="var(--t-accent)" stroke-width="12" fill="none" stroke-linecap="round" stroke-dasharray="${2*Math.PI*46*0.72} 999" transform="rotate(-90 55 55)"/>
+        <text x="55" y="53" text-anchor="middle" font-size="20" font-weight="700" fill="var(--t-text)">600</text>
+        <text x="55" y="70" text-anchor="middle" font-size="10" fill="var(--t-text2)">kcal rimaste</text>
+      </svg>
+      <div style="flex:1"><div class="muted" style="font-size:12px">Assunte oggi</div><div class="big">2.160</div><div class="faint" style="font-size:12px">su 2.760 kcal</div></div>
+    </div>
+    <div class="card">
+      <div class="ct"><b>Macronutrienti</b><span class="link">Piano ${I(ic.chev,13)}</span></div>
+      ${[['Proteine','148 / 160 g','var(--t-accent)',92],['Carboidrati','210 / 300 g','var(--t-success)',70],['Grassi','58 / 80 g','var(--t-warning)',72]]
+        .map(([n,v,c,w])=>`<div class="macro"><div class="row2"><b>${n}</b><span class="muted">${v}</span></div><div class="mtrack"><i style="width:${w}%;background:${c}"></i></div></div>`).join('')}
+    </div>
+    <div class="sec"><b>Pasti</b></div>
+    <div class="card" style="padding:6px 16px">
+      ${[['🥣','Colazione','Porridge, yogurt greco · 520 kcal',1],['🥗','Pranzo','Riso, pollo, verdure · 780 kcal',1],['🍎','Spuntino','Mela, mandorle · 260 kcal',1],['🍝','Cena','Suggerita: salmone e patate · 600 kcal',0]]
+        .map(([e,n,d,done])=>`<div class="meal"><div class="em">${e}</div><div class="tx" style="flex:1;min-width:0"><b style="display:block;font-size:14px;font-weight:600">${n}</b><span class="muted" style="font-size:12px">${d}</span></div><div class="plus ${done?'done':''}">${done?'✓':'+'}</div></div>`).join('')}
+    </div>`),
+
+  progress: () => chrome('progress', `
+    ${header('Progressi','Ultimi 3 mesi')}
+    <div class="card">
+      <div class="ct"><b>Andamento peso</b><span class="link">3M ${I(ic.chev,13)}</span></div>
+      <div style="display:flex;align-items:baseline;gap:8px"><span class="big">78,4 kg</span><span class="pill">−3,1 kg</span></div>
+      <svg width="100%" height="120" viewBox="0 0 260 120" preserveAspectRatio="none" style="margin-top:8px">
+        <defs><linearGradient id="wg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="var(--t-accent)" stop-opacity=".28"/><stop offset="1" stop-color="var(--t-accent)" stop-opacity="0"/></linearGradient></defs>
+        ${[30,60,90].map(y=>`<line x1="0" x2="260" y1="${y}" y2="${y}" stroke="var(--t-border)"/>`).join('')}
+        <path d="M0 22 L30 30 L60 28 L90 44 L120 50 L150 58 L180 66 L210 72 L240 84 L260 88 L260 120 L0 120Z" fill="url(#wg)"/>
+        <path d="M0 22 L30 30 L60 28 L90 44 L120 50 L150 58 L180 66 L210 72 L240 84 L260 88" fill="none" stroke="var(--t-accent)" stroke-width="2.5" stroke-linejoin="round"/>
+        <circle cx="260" cy="88" r="5" fill="var(--t-accent)" stroke="var(--t-card)" stroke-width="2"/>
+      </svg>
+      <div class="blabels"><span>Ago</span><span>Set</span><span>Ott</span></div>
+    </div>
+    <div class="card stats">
+      <div><small>Massa grassa</small><b>16,8%</b></div>
+      <div><small>Vita</small><b>84 cm</b></div>
+      <div><small>Streak</small><b style="color:var(--t-accenttext)">12 gg</b></div>
+    </div>
+    <div class="sec"><b>Registrazioni</b><span class="link">Aggiungi ${I(ic.plus,13)}</span></div>
+    <div class="card" style="padding:6px 16px">
+      ${[['31 ott','78,4 kg','−0,3'],['24 ott','78,7 kg','−0,6'],['17 ott','79,3 kg','−0,4']]
+        .map(([d,w,x])=>`<div class="ex"><div class="th">${I(ic.scale,20)}</div><div class="tx"><b>${w}</b><span>${d}</span></div><span style="color:var(--t-success);font-weight:600;font-size:13px">${x} kg</span></div>`).join('')}
+    </div>
+    <div class="sec"><b>Foto progressi</b></div>
+    <div class="photos"><div></div><div></div><div class="add">${I(ic.plus,18)}<br>Aggiungi foto</div></div>`),
+};
+const SCREEN_NAMES = { home:'Home', training:'Training', nutrition:'Nutrizione', progress:'Progressi' };
+
+/* ── Render ─────────────────────────────────────────── */
+const $ = id => document.getElementById(id);
+const phone = (presetKey, scheme, screen, caption, o=S) =>
+  `<div class="pwrap"><div class="phone"><div class="screen" data-skin="${o.skin}" style="${vars(presetData(presetKey), scheme, o)}">${screens[screen]()}</div></div><div class="pcap">${caption}</div></div>`;
+
+function render(){
+  // controlli
+  document.querySelectorAll('#scheme button').forEach(b=>b.classList.toggle('on', b.dataset.v===S.scheme));
+  document.querySelectorAll('#view button').forEach(b=>b.classList.toggle('on', b.dataset.v===S.view));
+  document.querySelectorAll('#cardStyle button').forEach(b=>b.classList.toggle('on', b.dataset.v===S.cardStyle));
+  $('radius').value = S.radius; $('radiusVal').textContent = S.radius+' px';
+  $('font').value = S.font; $('hfont').value = S.hfont; $('nfont').value = S.nfont; $('skin').value = S.skin;
+  $('directions').innerHTML = Object.entries(DIRECTIONS).map(([k,d])=>{ const t=PRESETS[d.preset][S.scheme==='light'?'light':'dark'];
+    return `<button class="preset ${k===S.direction?'on':''}" data-k="${k}"><div class="sw">${[t.accent,t.bg,t.card,t.text].map(c=>`<i style="background:${c}"></i>`).join('')}</div><b style="font-family:${d.hfont}">${d.name}</b><div style="font-size:11px;color:var(--ui-muted)">${d.desc}</div></button>`; }).join('');
+
+  const keys = [...Object.keys(PRESETS), ...(S.custom?['custom']:[])];
+  $('presets').innerHTML = keys.map(k=>{ const p=presetData(k); const t=p[S.scheme==='light'?'light':'dark'];
+    return `<button class="preset ${k===S.preset?'on':''}" data-k="${k}"><div class="sw">${[t.accent,p.grad[2],t.success,t.bg,t.card].map(c=>`<i style="background:${c}"></i>`).join('')}</div>${p.name}</button>`; }).join('');
+
+  const es = S.scheme==='light' ? 'light' : 'dark';
+  $('editScheme').textContent = es==='light' ? 'chiaro' : 'scuro';
+  const cur = presetData(S.preset)[es];
+  $('colors').innerHTML = EDITABLE.map(([k,l])=>`<label class="cfield"><input type="color" data-k="${k}" value="${cur[k]}"><span>${l}</span></label>`).join('')
+    + `<label class="cfield" style="grid-column:span 2"><input type="color" data-g="0" value="${presetData(S.preset).grad[0]}"><input type="color" data-g="1" value="${presetData(S.preset).grad[1]}"><input type="color" data-g="2" value="${presetData(S.preset).grad[2]}"><span>Gradiente brand</span></label>`;
+
+  const chk = (a,b,l,min=4.5) => { const r=ratio(a,b); return `<div>${l}: <b class="${r>=min?'ok':'bad'}">${r.toFixed(1)}:1</b> ${r>=min?'✓':'✗ sotto '+min}</div>`; };
+  $('contrast').innerHTML = chk(cur.accentText, cur.card, 'Accento su card') + chk(cur.onAccent, cur.accent, 'Testo su accento') + chk(cur.text2, cur.card, 'Testo 2° su card') + chk(cur.success, cur.card, 'Successo su card', 3);
+
+  // telefoni
+  const schemes = S.scheme==='both' ? ['light','dark'] : [S.scheme];
+  const lbl = s => s==='light' ? 'chiaro' : 'scuro';
+  let html = '';
+  if (S.view==='screens'){
+    $('stageTitle').textContent = `${S.direction ? DIRECTIONS[S.direction].name : 'Mix personalizzato'} — 4 schermate`;
+    for (const sc of Object.keys(screens)) for (const s of schemes)
+      html += phone(S.preset, s, sc, `${SCREEN_NAMES[sc]}${schemes.length>1?' · '+lbl(s):''}`);
+  } else {
+    $('stageTitle').textContent = 'Confronto direzioni — Home';
+    for (const [k,d] of Object.entries(DIRECTIONS)) for (const s of schemes)
+      html += phone(d.preset, s, 'home', `${d.name}${schemes.length>1?' · '+lbl(s):''}`, d);
+  }
+  $('phones').innerHTML = html;
+  save();
+}
+
+/* ── Eventi ─────────────────────────────────────────── */
+const segBind = (id, key) => $(id).addEventListener('click', e => { const b=e.target.closest('button'); if(b){ S[key]=b.dataset.v; render(); } });
+segBind('scheme','scheme'); segBind('view','view');
+$('cardStyle').addEventListener('click', e => { const b=e.target.closest('button'); if(b){ S.cardStyle=b.dataset.v; S.direction=null; render(); } });
+$('presets').addEventListener('click', e => { const b=e.target.closest('.preset'); if(b){ S.preset=b.dataset.k; S.direction=null; render(); } });
+$('directions').addEventListener('click', e => { const b=e.target.closest('.preset'); if(!b) return;
+  const d=DIRECTIONS[b.dataset.k]; Object.assign(S, { direction:b.dataset.k, preset:d.preset, skin:d.skin, cardStyle:d.cardStyle, radius:d.radius, font:d.font, hfont:d.hfont, nfont:d.nfont });
+  if (S.view==='compare') S.view='screens'; render(); });
+$('skin').addEventListener('change', e => { S.skin=e.target.value; S.direction=null; render(); });
+$('hfont').addEventListener('change', e => { S.hfont=e.target.value; S.direction=null; render(); });
+$('nfont').addEventListener('change', e => { S.nfont=e.target.value; S.direction=null; render(); });
+$('hfont').innerHTML = $('nfont').innerHTML = $('font').innerHTML;
+$('radius').addEventListener('input', e => { S.radius=+e.target.value; S.direction=null; render(); });
+$('font').addEventListener('change', e => { S.font=e.target.value; S.direction=null; render(); });
+
+function ensureCustom(){
+  S.direction=null;
+  if (S.preset!=='custom'){ S.custom = structuredClone(presetData(S.preset)); S.custom.name='Personalizzato'; S.preset='custom'; }
+}
+$('colors').addEventListener('input', e => {
+  const el=e.target; ensureCustom();
+  const es = S.scheme==='light' ? 'light' : 'dark';
+  if (el.dataset.k) S.custom[es][el.dataset.k]=el.value.toUpperCase();
+  if (el.dataset.g) S.custom.grad[+el.dataset.g]=el.value.toUpperCase();
+  render();
+});
+$('reset').addEventListener('click', () => { S = structuredClone(DEFAULT); render(); });
+
+$('export').addEventListener('click', () => {
+  const p = presetData(S.preset);
+  const block = (t, dark) => `    background: '${t.bg}',
+    backgroundElevated: '${t.card}',
+    backgroundElement: '${t.element}',
+    backgroundSelected: '${t.selected}',
+    iconButton: '${t.iconbtn}',
+    text: '${t.text}',
+    textSecondary: '${t.text2}',
+    textTertiary: '${t.text3}',
+    accent: '${t.accent}',
+    accentSoft: '${dark ? rgba(t.accent,0.16) : mix(t.accent,'#FFFFFF',0.88)}',
+    onAccent: '${t.onAccent}',
+    success: '${t.success}',
+    warning: '${t.warning}',
+    danger: '${t.danger}',`;
+  $('code').textContent =
+`// Direzione: ${S.direction?DIRECTIONS[S.direction].name:'mix'} · skin: ${S.skin} · palette: ${p.name} · card: ${S.cardStyle} · raggio card: ${S.radius}px
+// Nota: "accentText" (${p.light.accentText} / ${p.dark.accentText}) non esiste ancora
+// in theme.ts — serve solo se l'accento è troppo chiaro per essere usato come testo.
+
+export const Colors = {
+  light: {
+${block(p.light,false)}
+    // PageBackground.light = '${p.light.bg}'
+  },
+  dark: {
+${block(p.dark,true)}
+    // PageBackground.dark = '${p.dark.bg}'
+  },
+};
+
+export const Brand = {
+  accentGradient: ['${p.grad[0]}', '${p.grad[1]}', '${p.grad[2]}'] as const,
+  accentGradientSoft: ['${p.grad[0]}', '${p.grad[2]}'] as const,
+  accentGlow: '${p.grad[1]}',
+  accentShadow: '${rgba(p.grad[1],0.28)}',
+};`;
+  $('dlg').showModal();
+});
+$('copy').addEventListener('click', () => { navigator.clipboard?.writeText($('code').textContent); $('copy').textContent='Copiato ✓'; setTimeout(()=>$('copy').textContent='Copia',1500); });
+
+render();
+</script>
+</body>
+</html>
