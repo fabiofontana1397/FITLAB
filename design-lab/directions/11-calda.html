@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FITLAB · Calda</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="frame.css">
+<style>
+/* 11 Calda — after the user's delivery-app reference: warm orange header that carries the live thing,
+   a search pill riding its edge, tiles, horizontal status cards, a peach "this week" block,
+   a timeline of updates and a floating pill tab bar. */
+.d11 { --head:#F9AE6B; --head-ink:#141414; --page:#fff; --tile:#F3F3F5; --ink:#141414; --grey:#7b7b82; --faint:#b3b3b9;
+  --hue:#E8701F; --peach:#FDE8D9; --peach-2:#F9C9A3; --green:#1E9E5A; --green-soft:#E3F5EA; --live-soft:#FDE3D2;
+  background:var(--page); color:var(--ink); font:500 15px/1.4 "Plus Jakarta Sans", -apple-system, system-ui, sans-serif; font-variant-numeric:tabular-nums; }
+.d11 .scroll { padding-top:0; }
+.d11 .head { background:var(--head); color:var(--head-ink); border-radius:0 0 34px 34px; padding:62px 18px 54px; position:relative; }
+.d11 .head.compact { padding-bottom:46px; }
+.d11 .hello { display:flex; align-items:center; gap:12px; }
+.d11 .av { width:48px; height:48px; border-radius:50%; background:#fff; display:grid; place-items:center; font-weight:800; font-size:18px; color:var(--hue); box-shadow:0 0 0 3px rgba(255,255,255,.55); }
+.d11 .hello small { display:block; font-size:14px; font-weight:500; }
+.d11 .hello b { font-size:19px; font-weight:800; letter-spacing:-.01em; }
+.d11 .bell { margin-left:auto; width:46px; height:46px; border-radius:50%; background:#fff; display:grid; place-items:center; position:relative; }
+.d11 .bell::after { content:""; position:absolute; top:11px; right:13px; width:8px; height:8px; border-radius:50%; background:var(--hue); border:2px solid #fff; }
+.d11 .cur { display:flex; align-items:center; gap:8px; margin-top:22px; font-size:14.5px; }
+.d11 .live { display:inline-flex; align-items:center; gap:6px; background:#141414; color:#fff; font-size:12px; font-weight:600; padding:3px 9px 3px 8px; border-radius:999px; }
+.d11 .live i { width:6px; height:6px; border-radius:50%; background:#FF8A3D; }
+.d11 .big-row { display:flex; align-items:center; justify-content:space-between; }
+.d11 .big { font-size:38px; font-weight:800; letter-spacing:-.03em; line-height:1.15; }
+.d11 .go { width:58px; height:58px; border-radius:50%; background:#141414; color:#fff; display:grid; place-items:center; }
+.d11 .times { display:flex; justify-content:space-between; font-size:13.5px; margin:16px 0 10px; }
+.d11 .steps { display:flex; align-items:center; }
+.d11 .steps .n { width:26px; height:26px; border-radius:50%; background:#141414; color:#fff; display:grid; place-items:center; flex:none; }
+.d11 .steps .n.next { background:transparent; box-shadow:inset 0 0 0 2px rgba(20,20,20,.35); }
+.d11 .steps .n.next::after { content:""; width:8px; height:8px; border-radius:50%; background:rgba(20,20,20,.35); }
+.d11 .steps .now { height:34px; padding:0 12px; border-radius:999px; background:#fff; color:var(--hue); display:grid; place-items:center; flex:none; box-shadow:0 4px 10px rgba(140,60,0,.18); }
+.d11 .steps .dash { flex:1; height:0; border-top:3px dotted rgba(20,20,20,.55); margin:0 6px; }
+.d11 .steps .dash.f { border-color:rgba(20,20,20,.25); }
+.d11 .search { position:relative; margin:-30px 18px 0; height:60px; border-radius:30px; background:#fff; box-shadow:0 10px 26px rgba(30,20,10,.10), 0 1px 3px rgba(30,20,10,.06); display:flex; align-items:center; gap:12px; padding:0 22px; color:var(--grey); font-size:15.5px; z-index:2; }
+.d11 h2 { display:flex; justify-content:space-between; align-items:baseline; margin:26px 18px 12px; font-size:19px; font-weight:800; letter-spacing:-.015em; }
+.d11 h2 a { color:var(--hue); font-size:14.5px; font-weight:700; display:flex; align-items:center; gap:2px; }
+.d11 .tiles { display:flex; gap:10px; padding:0 18px; }
+.d11 .tiles a { flex:1; display:flex; flex-direction:column; align-items:center; gap:8px; font-size:13.5px; font-weight:600; }
+.d11 .tiles span { width:100%; aspect-ratio:1; border-radius:20px; background:var(--tile); display:grid; place-items:center; }
+.d11 .hs { display:flex; gap:12px; overflow:hidden; padding:0 18px; }
+.d11 .hcard { flex:0 0 214px; background:var(--tile); border-radius:22px; padding:16px; }
+.d11 .hcard .top { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
+.d11 .hcard b { display:block; font-size:15.5px; font-weight:800; }
+.d11 .hcard small { color:var(--grey); font-size:13.5px; }
+.d11 .pill { font-size:12.5px; font-weight:700; padding:5px 11px; border-radius:999px; background:var(--live-soft); color:#C0560F; }
+.d11 .pill.ok { background:var(--green-soft); color:var(--green); }
+.d11 .pill.dark { background:#fff; color:var(--ink); }
+.d11 .chip { width:40px; height:40px; border-radius:50%; background:#fff; display:grid; place-items:center; color:var(--hue); }
+.d11 .week { display:grid; grid-template-columns:1.25fr 1fr; gap:10px; padding:0 18px; }
+.d11 .peach { background:var(--peach); border-radius:24px; padding:16px; }
+.d11 .peach .lab { display:flex; gap:10px; align-items:center; }
+.d11 .peach .lab b { display:block; font-weight:700; }
+.d11 .peach .lab small { color:#8a6a55; font-size:12.5px; }
+.d11 .stat { font-size:34px; font-weight:800; letter-spacing:-.03em; margin:14px 0 4px; display:flex; align-items:center; justify-content:space-between; }
+.d11 .stat .trend { font-size:12.5px; font-weight:700; background:#fff; border-radius:999px; padding:4px 9px; letter-spacing:0; }
+.d11 .bars { display:grid; grid-template-columns:repeat(7,1fr); gap:6px; align-items:end; height:104px; margin-top:8px; }
+.d11 .bars div { display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:4px; height:100%; font-size:12px; color:#8a6a55; }
+.d11 .bars i { width:100%; max-width:16px; border-radius:6px; background:var(--peach-2); }
+.d11 .bars .t i { background:var(--hue); }
+.d11 .bars .t { color:var(--ink); font-weight:800; }
+.d11 .bars .v { font-size:11px; font-weight:800; color:var(--ink); }
+.d11 .side { display:grid; gap:10px; }
+.d11 .grey { background:var(--tile); border-radius:24px; padding:16px; }
+.d11 .grey .k { font-size:26px; font-weight:800; letter-spacing:-.02em; margin-top:12px; }
+.d11 .grey b { font-weight:700; display:block; }
+.d11 .grey small { color:var(--grey); font-size:12.5px; }
+.d11 .ring { width:42px; height:42px; }
+.d11 .tl { padding:0 18px; display:grid; gap:10px; }
+.d11 .tl > div { display:grid; grid-template-columns:60px 1fr; gap:10px; align-items:center; position:relative; }
+.d11 .tl > div::before { content:""; position:absolute; left:74px; top:-12px; bottom:-12px; width:2px; background:#ececef; z-index:0; }
+.d11 .tl > div:first-child::before { top:50%; } .d11 .tl > div:last-child::before { bottom:50%; }
+.d11 .tl .time { font-size:13.5px; color:var(--grey); text-align:right; padding-right:18px; position:relative; }
+.d11 .tl .time::after { content:""; position:absolute; right:-6px; top:50%; margin-top:-6px; width:12px; height:12px; border-radius:50%; background:#fff; box-shadow:inset 0 0 0 2px var(--ink); z-index:1; }
+.d11 .tl .on .time { color:var(--ink); font-weight:800; }
+.d11 .tl .on .time::after { background:var(--hue); box-shadow:0 0 0 4px var(--live-soft); }
+.d11 .tl .ok .time::after { box-shadow:inset 0 0 0 2px var(--green); }
+.d11 .tl .card { margin-left:14px; border:1.5px solid #ececef; border-radius:20px; padding:12px 14px; display:flex; gap:12px; align-items:center; background:#fff; }
+.d11 .tl .on .card { border-color:#F2B48A; }
+.d11 .tl .card b { display:block; font-weight:700; }
+.d11 .tl .card small { color:var(--grey); font-size:13px; }
+.d11 .tl .card .ico { width:42px; height:42px; border-radius:50%; background:var(--tile); display:grid; place-items:center; flex:none; color:var(--ink); }
+.d11 .tl .on .card .ico { background:var(--live-soft); color:var(--hue); }
+.d11 .tl .ok .card .ico { background:var(--green-soft); color:var(--green); }
+.d11 .tl .card .lp { margin-left:auto; align-self:flex-start; }
+.d11 .photos { display:flex; gap:12px; padding:0 18px; overflow:hidden; }
+.d11 .photos figure { margin:0; flex:0 0 150px; }
+.d11 .photos img { width:150px; height:150px; border-radius:22px; object-fit:cover; display:block; }
+.d11 .photos img.off { opacity:.55; }
+.d11 .photos figcaption { padding:8px 4px 0; font-weight:700; }
+.d11 .photos figcaption small { display:block; color:var(--grey); font-weight:500; font-size:13px; }
+.d11 .mac { display:flex; gap:8px; margin-top:12px; }
+.d11 .mac div { flex:1; background:#fff; border-radius:14px; padding:8px 10px; font-size:12px; color:#8a6a55; }
+.d11 .mac b { display:block; font-size:17px; color:var(--ink); font-weight:800; }
+.d11 .tab { position:absolute; left:50%; bottom:26px; transform:translateX(-50%); width:330px; height:70px; border-radius:999px; background:rgba(255,255,255,.82); backdrop-filter:blur(18px) saturate(1.6); -webkit-backdrop-filter:blur(18px) saturate(1.6); box-shadow:0 10px 30px rgba(20,20,20,.14), inset 0 0 0 1px rgba(255,255,255,.9); display:flex; padding:0 10px; z-index:10; }
+.d11 .tab a { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; color:#3a3a3f; font-size:12.5px; font-weight:600; }
+.d11 .tab a.on { color:var(--hue); }
+.d11 .home-ind { color:#141414; }
+.d11 .status { color:#141414; }
+.d11 .mini { position:absolute; left:0; right:0; top:0; z-index:9; background:var(--head); border-radius:0 0 26px 26px; padding:56px 14px 14px; display:flex; align-items:center; gap:10px; box-shadow:0 8px 20px rgba(120,60,10,.12); }
+.d11 .mini .av { width:42px; height:42px; font-size:16px; }
+.d11 .mini .search { margin:0; flex:1; height:50px; box-shadow:none; padding:0 16px; font-size:15px; }
+.d11 .mini .bell { width:42px; height:42px; margin:0; }
+</style>
+</head>
+<body class="lab">
+<header class="lab-head">
+  <a href="index.html">← Tutte le direzioni</a>
+  <h1>11 · Calda</h1>
+  <p class="idea">Ispirata al riferimento dell’app di spedizioni: la testata arancione porta la cosa viva (la sessione in corso, con gli esercizi come tappe), sotto i riquadri azione, i piani come spedizioni attive, la settimana in un blocco pesca e gli aggiornamenti in timeline.</p>
+  <p>Plus Jakarta Sans, testata #F9AE6B, card grigio chiaro e pesca, pillole di stato, barra in basso a pillola flottante. Qui il riferimento prevale sulle regole generali delle skill, come prevede Impeccable.</p>
+</header>
+<main id="phones"></main>
+<script src="data.js"></script>
+<script>
+const F = FITLAB, { n, signed, kg, icon } = F;
+const s = F.session;
+const tabbar = (on) => `<nav class="tab" aria-label="Sezioni">${F.TABS.map(t => `<a class="${t.key===on?'on':''}" href="#">${icon(t.icon,22,on===t.key?2.2:1.8)}${t.label}</a>`).join('')}</nav>`;
+const hello = `<div class="hello"><span class="av" aria-label="Profilo">F</span><div><small>Buonasera,</small><b>Fabio</b></div><a class="bell" href="#" aria-label="Notifiche, 2 nuove">${icon('bell',20,2)}</a></div>`;
+const search = (ph) => `<label class="search"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>${ph}</label>`;
+
+// Duotone tile icons (orange + ink), drawn for FITLAB's own actions.
+const duo = {
+  allenamento: `<svg width="44" height="44" viewBox="0 0 48 48" aria-hidden="true"><rect x="6" y="18" width="7" height="12" rx="2.5" fill="#141414"/><rect x="35" y="18" width="7" height="12" rx="2.5" fill="#141414"/><rect x="11" y="13" width="7" height="22" rx="3" fill="#E8701F"/><rect x="30" y="13" width="7" height="22" rx="3" fill="#E8701F"/><rect x="18" y="22" width="12" height="4" rx="2" fill="#141414"/></svg>`,
+  pasto: `<svg width="44" height="44" viewBox="0 0 48 48" aria-hidden="true"><ellipse cx="24" cy="27" rx="17" ry="10" fill="#F9C9A3"/><path d="M7 27a17 10 0 0 0 34 0Z" fill="#E8701F"/><circle cx="18" cy="22" r="4" fill="#1E9E5A"/><circle cx="27" cy="20" r="5" fill="#141414"/><circle cx="32" cy="24" r="3" fill="#1E9E5A"/></svg>`,
+  peso: `<svg width="44" height="44" viewBox="0 0 48 48" aria-hidden="true"><rect x="8" y="10" width="32" height="30" rx="9" fill="#141414"/><path d="M15 20a9 9 0 0 1 18 0Z" fill="#F9AE6B"/><path d="M24 20l4-5" stroke="#141414" stroke-width="2.5" stroke-linecap="round"/></svg>`,
+  acqua: `<svg width="44" height="44" viewBox="0 0 48 48" aria-hidden="true"><path d="M24 7c6 8 12 15 12 22a12 12 0 0 1-24 0c0-7 6-14 12-22Z" fill="#7cc3f2"/><path d="M18 30a6 6 0 0 0 6 6" stroke="#fff" stroke-width="3" stroke-linecap="round" fill="none"/></svg>`,
+  coach: `<svg width="44" height="44" viewBox="0 0 48 48" aria-hidden="true"><path d="M8 14a6 6 0 0 1 6-6h20a6 6 0 0 1 6 6v12a6 6 0 0 1-6 6H20l-8 7v-7.5A6 6 0 0 1 8 26Z" fill="#E8701F"/><circle cx="17" cy="20" r="2.5" fill="#141414"/><circle cx="24" cy="20" r="2.5" fill="#141414"/><circle cx="31" cy="20" r="2.5" fill="#141414"/></svg>`,
+};
+const tiles = `<div class="tiles">${[['allenamento','Seduta'],['pasto','Pasto'],['peso','Peso'],['acqua','Acqua'],['coach','Coach']].map(([k,l])=>`<a href="#"><span>${duo[k]}</span>${l}</a>`).join('')}</div>`;
+
+// Exercises as the delivery's stops: done = ink check, current = white pill, later = dotted.
+const stepper = () => s.exercises.map((e,i) => {
+  const node = e.done.length===e.sets ? `<span class="n">${icon('check',14,3)}</span>` : e.current ? `<span class="now">${icon('dumbbell',20,2)}</span>` : `<span class="n next"></span>`;
+  const dash = i < s.exercises.length-1 ? `<span class="dash ${e.done.length===e.sets?'':'f'}"></span>` : '';
+  return node + dash;
+}).join('');
+
+const ring = (p) => { const r=17, c=2*Math.PI*r; return `<svg class="ring" viewBox="0 0 42 42" aria-hidden="true"><circle cx="21" cy="21" r="${r}" fill="none" stroke="#fff" stroke-width="5"/><circle cx="21" cy="21" r="${r}" fill="none" stroke="#E8701F" stroke-width="5" stroke-linecap="round" stroke-dasharray="${c*p} ${c}" transform="rotate(-90 21 21)"/></svg>`; };
+const bars = (vals, todayIdx, label) => `<div class="bars">${vals.map((v,i)=>`<div class="${i===todayIdx?'t':''}">${i===todayIdx?`<span class="v">${label}</span>`:''}<i style="height:${v===null?4:Math.max(6, v)}px"></i>${F.week[i].d}</div>`).join('')}</div>`;
+
+F.mount({
+  screenClass: 'd11',
+  tabbar,
+  home: () => `
+    <section class="head">
+      ${hello}
+      <div class="cur">Sessione in corso <span class="live"><i></i>Live</span></div>
+      <div class="big-row"><span class="big">Upper B</span><a class="go" href="#" aria-label="Apri la sessione"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg></a></div>
+      <div class="times"><span>Iniziata 17:45</span><span>Fine stimata 18:40</span></div>
+      <div class="steps" aria-label="Esercizio 3 di 6">${stepper()}</div>
+    </section>
+    ${search('Cerca esercizio o alimento')}
+    <h2>Azioni rapide</h2>
+    ${tiles}
+    <h2>Piani attivi <a href="#">Vedi tutti ${icon('chev',14,2.4)}</a></h2>
+    <div class="hs">
+      <article class="hcard"><div class="top"><span class="chip">${icon('dumbbell',20,2)}</span><span class="pill">Sett. 3/8</span></div><b>Upper → Lower</b><small>Allenamento · piano v${F.plan.version}</small></article>
+      <article class="hcard"><div class="top"><span class="chip">${icon('utensils',20,2)}</span><span class="pill ok">In linea</span></div><b>Ricomposizione</b><small>Dieta · ${n(F.intakeTarget)} kcal oggi</small></article>
+      <article class="hcard"><div class="top"><span class="chip">${icon('cal',20,2)}</span><span class="pill dark">8 dic</span></div><b>Check-in</b><small>Mensile</small></article>
+    </div>
+    <h2>Questa settimana</h2>
+    <div class="week">
+      <section class="peach">
+        <div class="lab"><span class="chip" style="width:36px;height:36px">${icon('flame',18,2)}</span><div><b>Deficit</b><small>27 ott – 2 nov</small></div></div>
+        <div class="stat">${n(-F.weekSoFar)}<span class="trend">${Math.round(F.weekSoFar/F.weekTarget*100)}%</span></div>
+        <small style="color:#8a6a55">kcal su ${n(-F.weekTarget)}</small>
+        ${bars(F.week.map(d=>d.balance===null?null:Math.abs(d.balance)/500*78), 4, n(-F.balanceProjected))}
+      </section>
+      <div class="side">
+        <section class="grey">${ring(F.sessionsDone/F.plan.sessionsPerWeek)}<div class="k">${F.sessionsDone}/${F.plan.sessionsPerWeek}</div><b>Sedute</b><small>Upper B in corso</small></section>
+        <section class="grey"><span class="chip" style="background:#fff;color:var(--ink)">${icon('scale',20,2)}</span><div class="k">${kg(F.progress.weights.at(-1))} kg</div><small>${F.skg(-F.progress.lost)} kg dal 18 ago</small></section>
+      </div>
+    </div>
+    <h2>Aggiornamenti <a href="#">Tutti ${icon('chev',14,2.4)}</a></h2>
+    <div class="tl">
+      <div class="on"><span class="time">18:14</span><div class="card"><span class="ico">${icon('dumbbell',20,2)}</span><div><b>Military press</b><small>Serie 1 · 8 × 45 kg</small></div><span class="pill lp">● Live</span></div></div>
+      <div><span class="time">17:00</span><div class="card"><span class="ico">${icon('utensils',20,2)}</span><div><b>Spuntino registrato</b><small>+${F.meals[2].kcal} kcal · yogurt e granola</small></div></div></div>
+      <div class="ok"><span class="time">Ieri</span><div class="card"><span class="ico">${icon('check',20,2.4)}</span><div><b>Lower B completata</b><small>52 min · 18 serie</small></div></div></div>
+    </div>
+    <div style="height:30px"></div>`,
+
+  training: () => `
+    <section class="head compact">
+      ${hello}
+      <div class="cur">Esercizio 3 di 6 <span class="live"><i></i>Recupero ${F.mmss(s.rest.left)}</span></div>
+      <div class="big-row"><span class="big">Military press</span></div>
+      <div class="times"><span>Serie 2 di 3</span><span>8 × 45 kg · RIR 2</span></div>
+      <div class="steps">${stepper()}</div>
+    </section>
+    ${search('Cerca un esercizio')}
+    <h2>Upper B <a href="#">Modifica ${icon('chev',14,2.4)}</a></h2>
+    <div class="tl">
+      ${s.exercises.map(e => { const cls = e.current ? 'on' : e.done.length===e.sets ? 'ok' : ''; return `<div class="${cls}"><span class="time">${e.done.length}/${e.sets}</span><div class="card"><span class="ico">${icon(e.done.length===e.sets?'check':'dumbbell',20,2.2)}</span><div><b>${e.name}</b><small>${e.sets} × ${e.reps} · ${kg(e.kg, e.kg%1?1:0)} kg${e.done.length?' · '+e.done.join(' '):''}</small></div>${e.current?'<span class="pill lp">● Ora</span>':''}</div></div>`; }).join('')}
+    </div>
+    <h2>Questa settimana</h2>
+    <div class="hs">
+      ${F.week.filter(d=>d.session).map(d=>`<article class="hcard" style="flex-basis:160px"><div class="top"><span class="chip">${icon('dumbbell',18,2)}</span><span class="pill ${d.done?'ok':''}">${d.done?'Fatta':'In corso'}</span></div><b>${d.session}</b><small>${d.day} ${d.date}</small></article>`).join('')}
+    </div>
+    <div style="height:30px"></div>`,
+
+  nutrition: () => `
+    <section class="head compact">
+      ${hello}
+      <div class="cur">Oggi hai mangiato <span class="live"><i></i>3 pasti su 4</span></div>
+      <div class="big-row"><span class="big">${n(F.eaten.kcal)} kcal</span><span style="font-weight:700">di ${n(F.intakeTarget)}</span></div>
+      <div class="times"><span>Colazione 07:40</span><span>Cena 20:30</span></div>
+      <div class="steps">${F.meals.map((m,i)=> (m.logged?`<span class="n">${icon('check',14,3)}</span>`:`<span class="now">${icon('utensils',18,2)}</span>`) + (i<3?`<span class="dash ${F.meals[i+1].logged?'':'f'}"></span>`:'')).join('')}</div>
+    </section>
+    ${search('Cerca un alimento')}
+    <h2>Pasti di oggi <a href="#">Diario ${icon('chev',14,2.4)}</a></h2>
+    <div class="photos">${F.meals.map(m=>`<figure><img class="${m.logged?'':'off'}" src="${m.src}" alt="${m.name}"><figcaption>${m.slot}<small>${m.logged ? m.time + ' · ' + m.kcal + ' kcal' : 'Prevista · ' + m.kcal + ' kcal'}</small></figcaption></figure>`).join('')}</div>
+    <h2>Macronutrienti</h2>
+    <div style="padding:0 18px"><section class="peach">
+      <div class="lab"><span class="chip" style="width:36px;height:36px">${icon('target',18,2)}</span><div><b>Restano ${n(F.intakeTarget - F.eaten.kcal)} kcal</b><small>la cena prevista ne ha ${F.meals[3].kcal}</small></div></div>
+      <div class="mac">${F.macros.map(m=>`<div>${m.label}<b>${m.eaten} g</b>su ${m.target} g</div>`).join('')}</div>
+    </section></div>
+    <h2>Aggiornamenti</h2>
+    <div class="tl">
+      <div class="on"><span class="time">20:30</span><div class="card"><span class="ico">${icon('utensils',20,2)}</span><div><b>Cena prevista</b><small>${F.meals[3].kcal} kcal · ${n(F.planned.kcal - F.intakeTarget)} oltre il target</small></div><span class="pill lp">Da fare</span></div></div>
+      <div class="ok"><span class="time">17:00</span><div class="card"><span class="ico">${icon('check',20,2.4)}</span><div><b>Spuntino</b><small>${F.meals[2].p} g proteine</small></div></div></div>
+    </div>
+    <div style="height:30px"></div>`,
+
+  progress: () => {
+    const p = F.progress, last8 = p.weights.slice(-8), lo = 78, hi = 80;
+    return `
+    <section class="head compact">
+      ${hello}
+      <div class="cur">Peso medio <span class="live"><i></i>${F.skg(p.rate,2)} kg/sett</span></div>
+      <div class="big-row"><span class="big">${kg(p.weights.at(-1))} kg</span><span style="font-weight:700">→ ${kg(F.user.targetWeightKg)}</span></div>
+      <div class="times"><span>18 ago · ${kg(p.weights[0])}</span><span>mancano ${kg(p.toGo)} kg</span></div>
+      <div class="steps">${[81,80,79,78,77,76].map((v,i,a)=>{ const done = p.weights.at(-1) <= v; const now = !done && p.weights.at(-1) < v+1; return (done?`<span class="n">${icon('check',14,3)}</span>`: now?`<span class="now" style="font-weight:800">${v}</span>`:`<span class="n next"></span>`) + (i<a.length-1?`<span class="dash ${done?'':'f'}"></span>`:''); }).join('')}</div>
+    </section>
+    ${search('Cerca una misura')}
+    <h2>Ultime 8 settimane</h2>
+    <div class="week">
+      <section class="peach">
+        <div class="lab"><span class="chip" style="width:36px;height:36px">${icon('scale',18,2)}</span><div><b>Peso medio</b><small>13 set – 31 ott</small></div></div>
+        <div class="stat">${kg(p.weights.at(-1))}<span class="trend">${F.skg(p.weights.at(-1)-last8[0])}</span></div>
+        <div class="bars" style="grid-template-columns:repeat(8,1fr)">${last8.map((w,i)=>`<div class="${i===7?'t':''}"><i style="height:${18 + (w-lo)/(hi-lo)*60}px"></i>${p.weightLabels.slice(-8)[i].split(' ')[0]}</div>`).join('')}</div>
+      </section>
+      <div class="side">
+        <section class="grey"><span class="chip" style="background:#fff;color:var(--ink)">${icon('ruler',20,2)}</span><div class="k">${p.waist.now} cm</div><small>Vita · ${signed(p.waist.now-p.waist.start)} cm</small></section>
+        <section class="grey">${ring((p.bodyFat.start-p.bodyFat.now)/(p.bodyFat.start-15))}<div class="k">${kg(p.bodyFat.now)}%</div><small>Massa grassa</small></section>
+      </div>
+    </div>
+    <h2>Il piano si è adattato</h2>
+    <div class="tl">${F.plan.versions.slice().reverse().slice(0,3).map((v,i)=>`<div class="${i===0?'on':''}"><span class="time">${v.date}</span><div class="card"><span class="ico">${icon('refresh',20,2)}</span><div><b>Piano v${v.v}</b><small>${v.change}</small></div></div></div>`).join('')}</div>
+    <div style="height:30px"></div>`;
+  },
+});
+
+// Fifth phone: Home scrolled, with the compact header that replaces the big one (as in the reference's second frame).
+(() => {
+  const first = document.querySelector('.lab-phone');
+  const copy = first.cloneNode(true);
+  copy.querySelector('figcaption').textContent = 'Home · scorrimento';
+  const screen = copy.querySelector('.screen');
+  screen.insertAdjacentHTML('afterbegin', `<div class="mini"><span class="av" aria-label="Profilo">F</span>${search('Cerca esercizio o alimento')}<a class="bell" href="#" aria-label="Notifiche">${icon('bell',18,2)}</a></div>`);
+  first.after(copy);
+  const sc = screen.querySelector('.scroll');
+  const h = [...sc.querySelectorAll('h2')].find(x => x.textContent.startsWith('Questa settimana'));
+  sc.scrollTop = h.offsetTop - 128;
+})();
+</script>
+</body>
+</html>

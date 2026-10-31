@@ -9,8 +9,8 @@
 <body class="lab">
 <header class="lab-head">
   <a href="../index.html">← Design Lab (palette e skin)</a>
-  <h1>FITLAB · 10 direzioni di design</h1>
-  <p>Dieci mondi visivi per le quattro schermate del menu: Home, Training, Nutrizione, Progressi. Tutte usano gli stessi dati di esempio (venerdì 31 ottobre, 18:20, a metà di Upper B), così si confrontano sul design e non sui numeri. Ogni direzione parte da qualcosa che appartiene a FITLAB: il bilancio energetico, il piano adattivo e le sue versioni, la scheda della palestra, il mesociclo.</p>
+  <h1>FITLAB · 11 direzioni di design</h1>
+  <p>Undici mondi visivi per le quattro schermate del menu: Home, Training, Nutrizione, Progressi. Tutte usano gli stessi dati di esempio (venerdì 31 ottobre, 18:20, a metà di Upper B), così si confrontano sul design e non sui numeri. Ogni direzione parte da qualcosa che appartiene a FITLAB: il bilancio energetico, il piano adattivo e le sue versioni, la scheda della palestra, il mesociclo.</p>
 </header>
 <main class="gal" id="gal"></main>
 <script>
@@ -25,6 +25,7 @@ const D = [
   ['08-nativo', 'Nativo iOS', 'Come se l’avesse fatta Apple: liste raggruppate, font di sistema, una tinta. La fiducia viene dal sembrare parte del telefono.'],
   ['09-scheda', 'Scheda', 'La scheda cartacea della palestra diventa l’app: caselle da riempire con la penna rossa.'],
   ['10-mesociclo', 'Mesociclo', 'Le 8 settimane come una mappa del carico: gli scarichi sono valli, tu sei un punto.'],
+  ['11-calda', 'Calda', 'Dal riferimento dell’app di spedizioni: testata arancione con la sessione in corso a tappe, piani come spedizioni attive, settimana in pesca, aggiornamenti in timeline.'],
 ];
 document.getElementById('gal').innerHTML = D.map(([f, t, d], i) =>
   `<a href="${f}.html"><img src="shots/${f}.webp" alt="Home e Training della direzione ${t}" loading="lazy" width="808" height="781"><h2>${String(i+1).padStart(2,'0')} · ${t}</h2><p>${d}</p></a>`).join('');
