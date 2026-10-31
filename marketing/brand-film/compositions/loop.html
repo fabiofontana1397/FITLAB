@@ -10,7 +10,9 @@
     }
 
     .lp-row { position: absolute; left: 90px; width: 900px; }
-    .lp-head { display: flex; align-items: baseline; justify-content: space-between; }
+    .lp-head { display: flex; align-items: center; justify-content: space-between; }
+    .lp-left { display: flex; align-items: center; gap: 18px; }
+    .lp-ico { width: 42px; height: 42px; flex: 0 0 42px; }
     .lp-label {
       font-family: "JetBrains Mono", monospace; font-size: 28px; letter-spacing: .16em;
       color: #808690; text-transform: uppercase;
@@ -53,13 +55,13 @@
       </div>
 
       <div id="lp-r1" class="lp-row clip" data-start="0.15" data-duration="7.35" data-track-index="1">
-        <div class="lp-head"><div class="lp-label">Calorie assunte</div><div class="lp-val">2.200</div></div>
+        <div class="lp-head"><div class="lp-left"><svg class="lp-ico" viewBox="0 0 42 42" fill="none"><circle cx="21" cy="21" r="19" stroke="#808690" stroke-width="2"/><circle cx="21" cy="21" r="11" stroke="#f2f3f5" stroke-width="2"/><path d="M21 10a11 11 0 0 1 11 11H21z" fill="#f2f3f5"/></svg><div class="lp-label">Calorie assunte</div></div><div class="lp-val">2.200</div></div>
         <div class="lp-sub">meal_entries &#183; loggate oggi</div>
         <div class="lp-track"><div id="lp-f1" class="lp-fill"></div></div>
       </div>
 
       <div id="lp-r2" class="lp-row clip" data-start="0.6"  data-duration="6.9" data-track-index="2">
-        <div class="lp-head"><div class="lp-label">Dispendio stimato</div><div class="lp-val">2.750</div></div>
+        <div class="lp-head"><div class="lp-left"><svg class="lp-ico" viewBox="0 0 42 42" fill="none"><rect x="3" y="15" width="5" height="12" rx="1.5" fill="#808690"/><rect x="34" y="15" width="5" height="12" rx="1.5" fill="#808690"/><rect x="9" y="11" width="6" height="20" rx="2" fill="#f2f3f5"/><rect x="27" y="11" width="6" height="20" rx="2" fill="#f2f3f5"/><rect x="15" y="19" width="12" height="4" rx="2" fill="#d4ff4f"/></svg><div class="lp-label">Dispendio stimato</div></div><div class="lp-val">2.750</div></div>
         <div class="lp-sub">estimateEnergyExpenditureBreakdown()</div>
         <div class="lp-track">
           <div id="lp-s1" class="lp-seg"></div><div id="lp-s2" class="lp-seg"></div><div id="lp-s3" class="lp-seg"></div>
@@ -72,7 +74,7 @@
       </div>
 
       <div id="lp-r3" class="lp-row clip" data-start="1.05" data-duration="6.45" data-track-index="3">
-        <div class="lp-head"><div class="lp-label">Trend peso</div><div class="lp-val">7 gg</div></div>
+        <div class="lp-head"><div class="lp-left"><svg class="lp-ico" viewBox="0 0 42 42" fill="none"><rect x="4" y="8" width="34" height="26" rx="5" stroke="#808690" stroke-width="2"/><path d="M13 26a8 8 0 0 1 16 0" stroke="#f2f3f5" stroke-width="2" stroke-linecap="round"/><path d="M21 26l6-7" stroke="#d4ff4f" stroke-width="2.5" stroke-linecap="round"/></svg><div class="lp-label">Trend peso</div></div><div class="lp-val">7 gg</div></div>
         <div class="lp-sub">body_metrics &#183; media mobile</div>
         <svg id="lp-spark" width="900" height="110" viewBox="0 0 900 110" fill="none">
           <line x1="0" y1="109" x2="900" y2="109" stroke="rgba(255,255,255,.10)" stroke-width="1"/>

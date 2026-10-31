@@ -1,0 +1,111 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; font-family: Inter, sans-serif; color: #f2f3f5; background: #08090b; }
+    #mc-band { position: absolute; left: 0; top: 200px; width: 1080px; height: 1162px; }
+
+    #mc-eyebrow { position: absolute; left: 90px; top: 0; width: 900px; text-align: center; }
+    #mc-eyebrow .t {
+      font-family: "JetBrains Mono", monospace; font-size: 28px; font-weight: 700;
+      letter-spacing: .3em; color: #d4ff4f; text-transform: uppercase;
+    }
+
+    /* il piatto: disegnato, non fotografato — i tre spicchi sono i tre macro */
+    #mc-plate { position: absolute; left: 430px; top: 70px; width: 220px; height: 220px; }
+
+    #mc-head { position: absolute; left: 90px; top: 320px; width: 900px; text-align: center; }
+    #mc-head .t { font-family: Inter, sans-serif; font-weight: 700; font-size: 58px; line-height: 1.22; letter-spacing: -.01em; }
+    #mc-head .dim { color: #808690; }
+
+    .mc-r { position: absolute; left: 90px; width: 900px; }
+    .mc-top { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px; }
+    .mc-name { font-family: "JetBrains Mono", monospace; font-size: 28px; letter-spacing: .14em; color: #808690; text-transform: uppercase; }
+    .mc-val  { font-family: Oswald, sans-serif; font-weight: 600; font-size: 46px; color: #f2f3f5; }
+    .mc-track { position: relative; height: 22px; background: rgba(255,255,255,.07); }
+    .mc-band  { position: absolute; top: 0; height: 22px; transform-origin: left center; }
+
+    #mc-r1 { top: 500px; }  #mc-b1 { left: 28.6%; width: 42.9%; background: #d4ff4f; }
+    #mc-r2 { top: 650px; }  #mc-b2 { left: 50%;   width: 50%;   background: #f2f3f5; }
+    #mc-r3 { top: 800px; }  #mc-b3 { left: 0;     width: 100%;
+      background: repeating-linear-gradient(135deg, #808690 0 7px, rgba(128,134,144,.28) 7px 15px); }
+
+    #mc-note { position: absolute; left: 90px; top: 930px; width: 900px; text-align: center; }
+    #mc-note .t { font-family: "JetBrains Mono", monospace; font-size: 28px; color: #808690; letter-spacing: .06em; }
+
+    #mc-floor {
+      position: absolute; left: 0; top: 1330px; width: 1080px; height: 590px;
+      background: radial-gradient(60% 70% at 50% 0%, rgba(212,255,79,.07), rgba(8,9,11,0) 70%);
+    }
+  </style>
+
+  <div id="root" data-composition-id="macro" data-width="1080" data-height="1920">
+    <div id="mc-floor" data-layout-ignore></div>
+    <div id="mc-band">
+      <div id="mc-eyebrow" class="clip" data-start="0.03" data-duration="4.47" data-track-index="0">
+        <div class="t">Piano alimentare</div>
+      </div>
+
+      <div id="mc-plate" class="clip" data-start="0.12" data-duration="4.38" data-track-index="1" data-layout-ignore>
+        <svg viewBox="0 0 220 220" width="220" height="220" fill="none">
+          <circle cx="110" cy="110" r="104" stroke="rgba(255,255,255,.14)" stroke-width="2"/>
+          <!-- tre spicchi = proteine, grassi, carboidrati. r=58, circonferenza 364.4 -->
+          <circle id="mc-sec1" cx="110" cy="110" r="58" stroke="#d4ff4f" stroke-width="44"
+                  stroke-dasharray="109.3 255.1" transform="rotate(-90 110 110)"/>
+          <circle id="mc-sec2" cx="110" cy="110" r="58" stroke="#f2f3f5" stroke-width="44"
+                  stroke-dasharray="80.2 284.2" stroke-dashoffset="-109.3" transform="rotate(-90 110 110)"/>
+          <circle id="mc-sec3" cx="110" cy="110" r="58" stroke="#808690" stroke-width="44"
+                  stroke-dasharray="174.9 189.5" stroke-dashoffset="-189.5" transform="rotate(-90 110 110)"/>
+        </svg>
+      </div>
+
+      <div id="mc-head" class="clip" data-start="0.7" data-duration="3.8" data-track-index="2">
+        <div class="t"><span class="dim">I macro non sono un punto.</span><br />Sono un intervallo.</div>
+      </div>
+
+      <div id="mc-r1" class="mc-r clip" data-start="1.5" data-duration="3" data-track-index="3">
+        <div class="mc-top"><div class="mc-name">Proteine</div><div class="mc-val">1,6&#8211;2,2 g/kg</div></div>
+        <div class="mc-track"><div id="mc-b1" class="mc-band"></div></div>
+      </div>
+      <div id="mc-r2" class="mc-r clip" data-start="1.85" data-duration="2.65" data-track-index="4">
+        <div class="mc-top"><div class="mc-name">Grassi</div><div class="mc-val">&#8805; 20% kcal</div></div>
+        <div class="mc-track"><div id="mc-b2" class="mc-band"></div></div>
+      </div>
+      <div id="mc-r3" class="mc-r clip" data-start="2.2" data-duration="2.3" data-track-index="5">
+        <div class="mc-top"><div class="mc-name">Carboidrati</div><div class="mc-val">quota residua</div></div>
+        <div class="mc-track"><div id="mc-b3" class="mc-band"></div></div>
+      </div>
+
+      <div id="mc-note" class="clip" data-start="2.8" data-duration="1.7" data-track-index="6">
+        <div class="t">Pasto per pasto.</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const tl = gsap.timeline({ paused: true });
+
+    tl.fromTo("#mc-eyebrow .t", { opacity: 0, filter: "blur(6px)" },
+      { opacity: 1, filter: "blur(0px)", duration: 0.24, ease: "power3.out" }, 0.03);
+
+    /* il piatto si compone spicchio per spicchio, in senso orario */
+    tl.fromTo("#mc-sec1", { strokeDasharray: "0 364.4" }, { strokeDasharray: "109.3 255.1", duration: 0.42, ease: "power3.out" }, 0.12);
+    tl.fromTo("#mc-sec2", { strokeDasharray: "0 364.4" }, { strokeDasharray: "80.2 284.2", duration: 0.34, ease: "power3.out" }, 0.4);
+    tl.fromTo("#mc-sec3", { strokeDasharray: "0 364.4" }, { strokeDasharray: "174.9 189.5", duration: 0.5, ease: "power3.out" }, 0.62);
+
+    tl.fromTo("#mc-head .t", { opacity: 0, filter: "blur(9px)" },
+      { opacity: 1, filter: "blur(0px)", duration: 0.24, ease: "power4.out" }, 0.7);
+
+    /* ogni banda si apre dal suo estremo sinistro: e' un intervallo, non un valore */
+    [["#mc-r1", "#mc-b1", 1.5], ["#mc-r2", "#mc-b2", 1.85], ["#mc-r3", "#mc-b3", 2.2]].forEach(([r, b, t]) => {
+      tl.fromTo(r + " .mc-top", { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.3, ease: "expo.out" }, t);
+      tl.fromTo(r + " .mc-track", { opacity: 0 }, { opacity: 1, duration: 0.18 }, t);
+      tl.fromTo(b, { scaleX: 0 }, { scaleX: 1, duration: 0.46, ease: "power3.out" }, t + 0.14);
+    });
+
+    tl.fromTo("#mc-note .t", { opacity: 0 }, { opacity: 1, duration: 0.24, ease: "none" }, 2.8);
+
+    /* uscita: blur swap, il fondo non taglia */
+    tl.to("#mc-band", { opacity: 0, filter: "blur(10px)", duration: 0.26, ease: "power3.in" }, 4.24);
+
+    window.__timelines["macro"] = tl;
+  </script>
+</template>

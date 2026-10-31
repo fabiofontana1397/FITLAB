@@ -1,8 +1,8 @@
 # Review — "La formula sbagliata"
 
-Render: `renders/brand-film_2026-10-31_19-14-37.mp4` — H.264, 1080×1920, 30 fps,
-29,0 s, 1,5 MB, traccia AAC. `check` passa con **0 errori e 0 warning**.
-Motion blur attivo: 28 elementi in movimento, 0 frame falliti.
+Render: `renders/brand-film_2026-10-31_19-25-16.mp4` — H.264, 1080×1920, 30 fps,
+33,5 s, 1,8 MB, traccia AAC. `check` passa con **0 errori e 0 warning**.
+Motion blur attivo, 0 frame falliti.
 
 ## Beat sheet
 
@@ -16,6 +16,9 @@ Motion blur attivo: 28 elementi in movimento, 0 frame falliti.
 | 11,2 | loop | Tre righe dati, stagger 0,45 s. Nessun frame morto in apertura ✔ |
 | 15,5 | loop | Convergenza + "Ricalibra." ✔ |
 | 18,6 | seam 3 | Whip verticale 0,3 s con sfocatura ✔ |
+| 18,7 | macro | Piatto disegnato: tre spicchi in senso orario = i tre macro ✔ |
+| 20,1 | macro | "I macro non sono un punto. Sono un intervallo." ✔ |
+| 21,0 | macro | Tre bande di range da §4.1: 1,6–2,2 g/kg, ≥20% kcal, quota residua ✔ |
 | 19,4 | correction | Conteggio 2.750 → **2.610**, separatore migliaia corretto ✔ |
 | 21,1 | correction | `initial_estimate` → `current_target` ✔ |
 | 24,4 | seam 4 | Colour flood volt, poi le ali escono dal volt ✔ |
@@ -37,11 +40,12 @@ Motion blur attivo: 28 elementi in movimento, 0 frame falliti.
 
 ## Debolezze note
 
-1. **Nessuna fotografia.** Il film è tipografico e di dati. Le immagini di sport e
-   nutrizione chieste non ci sono perché `api.heygen.com` è bloccato dal proxy e
-   non esiste altra fonte reale in sessione. Inventarle avrebbe violato la regola
-   "mai un mockup". Punti d'innesto naturali: dietro l'hook (0–5 s) e sotto le tre
-   righe dati (11–18 s).
+1. **Illustrazioni disegnate, non fotografie.** Le immagini di sport e nutrizione
+   sono vettoriali e geometriche: il piatto a spicchi della scena macro e le tre
+   icone del ciclo (piatto, bilanciere, bilancia). Disegnate perché per questo
+   soggetto non esiste una fonte reale in sessione — `api.heygen.com` è bloccato
+   dal proxy — e la regola è "draw only what has none". Fotografie vere di atleti
+   o cibo restano fuori: quelle non si disegnano, si procurano.
 2. **Nessuna musica.** Solo 8 SFX bundled su lane separate. Un letto musicale
    cambierebbe parecchio la percezione di "premium": passa da HeyGen.
 3. **Nessuna CTA.** Non ho un dominio o un handle reale di FITLAB, quindi non l'ho
