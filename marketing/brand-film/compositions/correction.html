@@ -1,0 +1,117 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; font-family: Inter, sans-serif; color: #f2f3f5; background: #08090b; overflow: hidden; }
+    #cr-band { position: absolute; left: 0; top: 258px; width: 1080px; height: 1162px; }
+    .cr-row { position: absolute; left: 90px; width: 900px; text-align: center; }
+
+    #cr-eyebrow { top: 30px; }
+    #cr-eyebrow .t {
+      font-family: "JetBrains Mono", monospace; font-size: 30px; font-weight: 700;
+      letter-spacing: .28em; color: #808690; text-transform: uppercase;
+    }
+
+    #cr-old { top: 120px; }
+    #cr-old .t {
+      position: relative; display: inline-block;
+      font-family: Oswald, sans-serif; font-weight: 600; font-size: 104px; line-height: 1;
+      color: #6b7079; font-variant-numeric: tabular-nums;
+    }
+    #cr-strike {
+      position: absolute; left: -10px; top: 52%; width: calc(100% + 20px); height: 4px;
+      background: #808690; transform-origin: left center;
+    }
+
+    #cr-new { top: 250px; }
+    #cr-new .t {
+      font-family: Oswald, sans-serif; font-weight: 600; font-size: 300px; line-height: .9;
+      letter-spacing: -.02em; color: #d4ff4f; font-variant-numeric: tabular-nums;
+    }
+    #cr-unit { top: 570px; }
+    #cr-unit .t {
+      font-family: "JetBrains Mono", monospace; font-size: 30px; letter-spacing: .2em;
+      color: #808690; text-transform: uppercase;
+    }
+
+    #cr-field { top: 650px; }
+    #cr-field .t { font-family: "JetBrains Mono", monospace; font-size: 30px; letter-spacing: .1em; }
+    #cr-field .was { color: #808690; text-decoration: line-through; }
+    #cr-field .arrow { color: #808690; margin: 0 14px; }
+    #cr-field .now { color: #d4ff4f; font-weight: 700; }
+
+    #cr-claim { top: 800px; }
+    #cr-claim .t { font-family: Inter, sans-serif; font-weight: 700; font-size: 60px; line-height: 1.26; color: #f2f3f5; letter-spacing: -.01em; }
+
+    #cr-flood {
+      position: absolute; left: 0; bottom: 0; width: 1080px; height: 1920px;
+      background: #d4ff4f; transform-origin: bottom center;
+    }
+  </style>
+
+  <div id="root" data-composition-id="correction" data-width="1080" data-height="1920">
+    <div id="cr-band">
+      <div id="cr-eyebrow" class="cr-row clip" data-start="0.03" data-duration="5.2" data-track-index="0">
+        <div class="t">adaptation&#8209;evaluate</div>
+      </div>
+
+      <div id="cr-old" class="cr-row clip" data-start="0.1"  data-duration="5.1" data-track-index="1">
+        <div class="t">2.750<span id="cr-strike"></span></div>
+      </div>
+
+      <div id="cr-new" class="cr-row clip" data-start="0.5" data-duration="4.8" data-track-index="2">
+        <div class="t">2.750</div>
+      </div>
+      <div id="cr-unit" class="cr-row clip" data-start="1"   data-duration="4.3" data-track-index="3">
+        <div class="t">kcal / giorno</div>
+      </div>
+
+      <div id="cr-field" class="cr-row clip" data-start="2"   data-duration="3.3" data-track-index="4">
+        <div class="t"><span class="was">initial_estimate</span><span class="arrow">&#8594;</span><span class="now">current_target</span></div>
+      </div>
+
+      <div id="cr-claim" class="cr-row clip" data-start="3" data-duration="2.8" data-track-index="5">
+        <div class="t">Non una stima.<br />&#200; una <b style="font-weight:700;color:#d4ff4f">conseguenza</b>.</div>
+      </div>
+    </div>
+
+    <div id="cr-flood" class="clip" data-start="5.35" data-duration="0.45" data-track-index="1" data-layout-ignore></div>
+  </div>
+
+  <script>
+    const tl = gsap.timeline({ paused: true });
+
+    tl.fromTo("#cr-eyebrow .t", { opacity: 0 }, { opacity: 1, duration: 0.22, ease: "none" }, 0.03);
+
+    /* il vecchio target viene barrato: e' superato, non cancellato */
+    tl.fromTo("#cr-old .t", { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.3, ease: "power3.out" }, 0.1);
+    tl.fromTo("#cr-strike", { scaleX: 0 }, { scaleX: 1, duration: 0.3, ease: "power3.inOut" }, 0.5);
+
+    /* il numero nuovo entra e poi CONTA: ogni frame e' funzione del tempo di timeline */
+    tl.fromTo("#cr-new .t", { opacity: 0, scale: 1.1, filter: "blur(16px)" },
+      { opacity: 1, scale: 1, filter: "blur(0px)", duration: 0.42, ease: "expo.out" }, 0.5);
+
+    const counter = { v: 2750 };
+    tl.to(counter, {
+      v: 2610, duration: 1.05, ease: "power3.inOut",
+      onUpdate() {
+        const n = Math.round(counter.v);
+        /* formattazione esplicita: il locale it-IT non e' garantito nel browser di render */
+        const el = document.querySelector("#cr-new .t");
+        if (el) el.textContent = String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+      },
+    }, 0.85);
+
+    tl.fromTo("#cr-unit .t", { opacity: 0 }, { opacity: 1, duration: 0.22 }, 1);
+
+    tl.fromTo("#cr-field .was",   { opacity: 0 }, { opacity: 1, duration: 0.2 }, 2);
+    tl.fromTo("#cr-field .arrow", { opacity: 0 }, { opacity: 1, duration: 0.16 }, 2.16);
+    tl.fromTo("#cr-field .now",   { opacity: 0, x: -14 }, { opacity: 1, x: 0, duration: 0.26, ease: "power3.out" }, 2.28);
+
+    tl.fromTo("#cr-claim .t", { opacity: 0, filter: "blur(10px)" },
+      { opacity: 1, filter: "blur(0px)", duration: 0.26, ease: "power4.out" }, 3);
+
+    /* colour flood: il volt sale e prende il frame — da qui nascono le ali */
+    tl.fromTo("#cr-flood", { scaleY: 0 }, { scaleY: 1, duration: 0.42, ease: "power2.inOut" }, 5.35);
+
+    window.__timelines["correction"] = tl;
+  </script>
+</template>

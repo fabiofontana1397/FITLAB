@@ -1,0 +1,105 @@
+<template>
+  <style>
+    #root {
+      position: absolute; inset: 0;
+      font-family: Inter, sans-serif; color: #f2f3f5; background: #08090b;
+    }
+    #vd-band { position: absolute; left: 0; top: 208px; width: 1080px; height: 1162px; }
+    .vd-row { position: absolute; left: 90px; width: 900px; text-align: center; }
+
+    /* stessa posizione e stessa scala della scena hook: il numero non si muove al taglio */
+    #vd-number { top: 340px; }
+    #vd-number .t {
+      font-family: Oswald, sans-serif; font-weight: 600; font-size: 300px;
+      line-height: .9; letter-spacing: -.02em; color: #f2f3f5; font-variant-numeric: tabular-nums;
+    }
+    #vd-unit { top: 650px; }
+    #vd-unit .t {
+      font-family: "JetBrains Mono", monospace; font-size: 30px; letter-spacing: .2em;
+      color: #808690; text-transform: uppercase;
+    }
+
+    /* banda d'errore */
+    #vd-err { position: absolute; left: 190px; top: 740px; width: 700px; height: 80px; }
+    #vd-axis { position: absolute; left: 0; top: 30px; width: 700px; height: 1px; background: rgba(255,255,255,.14); }
+    #vd-span {
+      position: absolute; left: 0; top: 20px; width: 700px; height: 22px;
+      background: repeating-linear-gradient(90deg, rgba(212,255,79,.95) 0 4px, rgba(212,255,79,.12) 4px 10px);
+      transform-origin: center center;
+    }
+    #vd-mid { position: absolute; left: 348px; top: 6px; width: 4px; height: 50px; background: #f2f3f5; }
+    .vd-cap {
+      position: absolute; top: 54px; font-family: "JetBrains Mono", monospace;
+      font-size: 30px; color: #808690; font-variant-numeric: tabular-nums;
+    }
+    #vd-lo { left: 0; } #vd-hi { right: 0; }
+
+    #vd-line { top: 900px; }
+    #vd-line .t { font-family: Inter, sans-serif; font-weight: 500; font-size: 54px; line-height: 1.32; color: #f2f3f5; }
+    #vd-kicker { top: 1035px; }
+    #vd-kicker .t { font-family: Inter, sans-serif; font-weight: 700; font-size: 62px; color: #d4ff4f; letter-spacing: -.01em; }
+
+    #vd-floor {
+      position: absolute; left: 0; top: 1330px; width: 1080px; height: 590px;
+      background: radial-gradient(60% 70% at 50% 0%, rgba(212,255,79,.07), rgba(8,9,11,0) 70%);
+    }
+  </style>
+
+  <div id="root" data-composition-id="verdict" data-width="1080" data-height="1920">
+    <div id="vd-floor" data-layout-ignore></div>
+    <div id="vd-band">
+      <div id="vd-number" class="vd-row clip" data-start="0" data-duration="5.5" data-track-index="0">
+        <div class="t">2.750</div>
+      </div>
+      <div id="vd-unit" class="vd-row clip" data-start="0" data-duration="5.5" data-track-index="1">
+        <div class="t">kcal / giorno</div>
+      </div>
+
+      <div id="vd-err" class="clip" data-start="0.2" data-duration="5.3" data-track-index="2" data-layout-allow-overflow>
+        <div id="vd-axis"></div>
+        <div id="vd-span"></div>
+        <div id="vd-mid"></div>
+        <div id="vd-lo" class="vd-cap">2.480</div>
+        <div id="vd-hi" class="vd-cap">3.020</div>
+      </div>
+
+      <div id="vd-line" class="vd-row clip" data-start="1.5" data-duration="4" data-track-index="3">
+        <div class="t" data-var-text="doubtLine">Ogni equazione predittiva ha un errore individuale.</div>
+      </div>
+      <div id="vd-kicker" class="vd-row clip" data-start="3.5" data-duration="2" data-track-index="4">
+        <div class="t">Anche questa.</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const tl = gsap.timeline({ paused: true });
+
+    /* il numero perde certezza invece di sparire: va dal bianco al grigio */
+    tl.fromTo("#vd-number .t", { color: "#f2f3f5" }, { color: "#9aa0a8", duration: 0.9, ease: "power2.inOut" }, 0.2);
+
+    /* l'incertezza si apre dal centro verso i due estremi */
+    tl.fromTo("#vd-span", { scaleX: 0, opacity: 0 }, { scaleX: 1, opacity: 1, duration: 0.62, ease: "expo.out" }, 0.2);
+    tl.fromTo("#vd-axis", { scaleX: 0 }, { scaleX: 1, duration: 0.5, ease: "power3.out" }, 0.2);
+    tl.fromTo("#vd-mid",  { scaleY: 0 }, { scaleY: 1, duration: 0.28, ease: "power3.out" }, 0.3);
+    tl.fromTo("#vd-lo", { opacity: 0, x: 22 }, { opacity: 1, x: 0, duration: 0.3, ease: "power3.out" }, 0.55);
+    tl.fromTo("#vd-hi", { opacity: 0, x: -22 }, { opacity: 1, x: 0, duration: 0.3, ease: "power3.out" }, 0.55);
+
+    /* la riga entra parola per parola, non in blocco */
+    tl.fromTo("#vd-line .t", { opacity: 0, filter: "blur(9px)" },
+      { opacity: 1, filter: "blur(0px)", duration: 0.22, ease: "power4.out" }, 1.5);
+
+    tl.fromTo("#vd-kicker .t", { opacity: 0, yPercent: 30 },
+      { opacity: 1, yPercent: 0, duration: 0.34, ease: "back.out(1.4)" }, 3.5);
+
+    /* uscita: la banda d'errore diventa il mondo — si allarga oltre il frame */
+    tl.to("#vd-number .t", { opacity: 0, filter: "blur(10px)", duration: 0.24, ease: "power3.in" }, 4.95);
+    tl.to("#vd-unit .t",   { opacity: 0, duration: 0.2, ease: "power3.in" }, 4.95);
+    tl.to("#vd-line .t",   { opacity: 0, filter: "blur(7px)", duration: 0.2, ease: "power3.in" }, 4.9);
+    tl.to("#vd-kicker .t", { opacity: 0, yPercent: -14, duration: 0.2, ease: "power3.in" }, 4.95);
+    tl.to(["#vd-lo", "#vd-hi", "#vd-mid", "#vd-axis"], { opacity: 0, duration: 0.16, ease: "power2.in" }, 4.9);
+    tl.to("#vd-span", { scaleX: 9, opacity: 0, duration: 0.42, ease: "power3.in" }, 5.0);
+
+    window.__timelines["verdict"] = tl;
+  </script>
+</template>
