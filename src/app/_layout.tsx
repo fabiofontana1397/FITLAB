@@ -27,7 +27,7 @@ SplashScreen.preventAutoHideAsync();
 // Routes reachable without an account — every other route (including deep
 // links like /onboarding or /profile opened directly, bypassing "/") must
 // still go through the welcome/onboarding gate below.
-const PUBLIC_ROUTES = new Set(['/welcome', '/login', '/register', '/forgot-password', '/reset-password']);
+const PUBLIC_ROUTES = new Set(['/welcome', '/login', '/register', '/forgot-password', '/reset-password', '/logo-intro']);
 
 function AuthGate({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -148,6 +148,7 @@ export default function RootLayout() {
           <Stack.Screen name="register" />
           <Stack.Screen name="forgot-password" />
           <Stack.Screen name="reset-password" />
+          <Stack.Screen name="logo-intro" options={{ animation: 'fade' }} />
           <Stack.Screen name="onboarding" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
           <Stack.Screen name="onboarding-created" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
           <Stack.Screen name="onboarding-roadmap" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
