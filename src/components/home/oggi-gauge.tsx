@@ -146,7 +146,7 @@ export function OggiGauge({ burnedKcal, eatenKcal, burnedColor, eatenColor, valu
   const empty = total <= 0;
   const burnedShare = empty ? 0.5 : Math.min(1 - KNOB_MIN_SHARE, Math.max(KNOB_MIN_SHARE, burnedKcal / total));
 
-  // Each time Home comes into view the knob glides out from the middle to its
+  // Each time Home comes into view the knob runs out from the arc's start (zero) to its
   // place while the colours stretch with it; state is reset when Home loses
   // focus so the next visit starts over. Under Reduce Motion it is just there.
   const reduceMotion = useReducedMotion();
@@ -169,7 +169,7 @@ export function OggiGauge({ burnedKcal, eatenKcal, burnedColor, eatenColor, valu
     });
     return () => cancelAnimationFrame(frame);
   }, [focused, reduceMotion]);
-  const j = 0.5 + (burnedShare - 0.5) * sweep;
+  const j = KNOB_MIN_SHARE + (burnedShare - KNOB_MIN_SHARE) * sweep;
   const knobDeg = -ARC_HALF_SPAN + j * ARC_HALF_SPAN * 2;
 
   const burnedRgb = rgbOf(burnedColor);
