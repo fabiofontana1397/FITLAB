@@ -5,21 +5,19 @@ import { Easing, useReducedMotion } from 'react-native-reanimated';
 import Svg, { Circle, Path } from 'react-native-svg';
 
 import { ThemedText } from '@/components/themed-text';
-import { Icon } from '@/components/ui/icon';
 import { OnBrand, Palette } from '@/constants/theme';
 import { type BalanceReading } from '@/domain/calorie-balance';
 import { useTheme } from '@/hooks/use-theme';
-import { formatKcal } from '@/lib/format-kcal';
 
 // ─── Geometry ──────────────────────────────────────────────────────────────
 // Drawn in a fixed 340-wide coordinate space and scaled to the card, so the
 // arc, the knob and the texts stay in proportion on every iPhone width.
 // Angles are degrees clockwise from 12 o'clock: -90 is 9 o'clock (the left
 // end, burned), +90 is 3 o'clock (the right end, intake).
-const BASE_W = 340;
+const BASE_W = 250;
 const CX = BASE_W / 2;
 const ARC_HALF_SPAN = 90;
-const STROKE = 44;
+const STROKE = 22;
 const OUTER_R = BASE_W / 2 - 2;
 const R = OUTER_R - STROKE / 2;
 const INNER_R = R - STROKE / 2;
@@ -27,10 +25,10 @@ const INNER_R = R - STROKE / 2;
 const CY = OUTER_R + 2;
 const BASE_H = CY + STROKE / 2 + 2;
 /** The junction knob: a white ring around a coloured disc, with a chevron. */
-const KNOB_RING_R = 24;
-const KNOB_R = 19;
+const KNOB_RING_R = 15;
+const KNOB_R = 11.5;
 /** The knob never gets closer than this share of the arc to either end. */
-const KNOB_MIN_SHARE = 0.07;
+const KNOB_MIN_SHARE = 0.08;
 /** The gradient is drawn in short pieces (butt-ended, slightly overlapping). */
 const SEGMENTS = 60;
 const SEGMENT_DEG = (ARC_HALF_SPAN * 2) / SEGMENTS;
@@ -44,7 +42,7 @@ const CHAMPAGNE = '#F8DC95';
 /** Height over width of the drawn gauge, for sizing it to the room there is. */
 export const GAUGE_ASPECT = BASE_H / BASE_W;
 /** The widest the gauge is drawn (its scale stops growing there). */
-export const GAUGE_MAX_WIDTH = BASE_W * 1.15;
+export const GAUGE_MAX_WIDTH = BASE_W;
 
 function px(r: number, deg: number) {
   return CX + r * Math.sin((deg * Math.PI) / 180);
@@ -117,14 +115,14 @@ export type OggiGaugeProps = {
   /** Right half of the arc and the fork (intake). */
   eatenColor: string;
   /** The day's balance read against its goal (domain/calorie-balance.ts); the gauge itself only needs to know whether there is anything to read. */
-  reading: BalanceReading;
+  reading?: BalanceReading;
   /** The balance as displayed in the centre, already formatted. */
   value: string;
-  /** The daily goal under it, already formatted ("/-300 kcal"). */
-  goalLabel: string;
+  /** The daily goal, already formatted. Not drawn any more (the goal lives in the KPI row and the bar), kept for callers. */
+  goalLabel?: string;
   /** Grey word under the goal, shown only when there is no `badge`. */
   caption?: string;
-  /** The status pill at the bottom of the arc ("Obiettivo in range"). */
+  /** The status chip at the bottom of the arc ("In range"). */
   badge?: OggiGaugeBadge;
   /** Kept for callers that tune the tolerance (the guide's carousel); the arc no longer draws a goal zone. */
   toleranceKcal?: number;
@@ -139,10 +137,10 @@ export type OggiGaugeProps = {
  * right, the day's balance in the middle with its goal under it, and a status
  * pill at the bottom.
  */
-export function OggiGauge({ burnedKcal, eatenKcal, burnedColor, eatenColor, reading, value, goalLabel, caption, badge, inactive = false }: OggiGaugeProps) {
+export function OggiGauge({ burnedKcal, eatenKcal, burnedColor, eatenColor, value, caption, badge, inactive = false }: OggiGaugeProps) {
   const theme = useTheme();
   const [width, setWidth] = useState(BASE_W);
-  const k = Math.min(1.15, width / BASE_W);
+  const k = Math.min(1, width / BASE_W);
 
   const total = burnedKcal + eatenKcal;
   const empty = total <= 0;
@@ -210,31 +208,27 @@ export function OggiGauge({ burnedKcal, eatenKcal, burnedColor, eatenColor, read
               <Circle cx={knobX} cy={knobY + 1.5} r={KNOB_RING_R + 0.5} fill={Palette.neutral[950]} opacity={0.14} />
               <Circle cx={knobX} cy={knobY} r={KNOB_RING_R} fill={OnBrand.text} />
               <Circle cx={knobX} cy={knobY} r={KNOB_R} fill={eatenColor} />
-              <Path d={`M ${knobX - 3} ${knobY - 6.5} L ${knobX + 3.5} ${knobY} L ${knobX - 3} ${knobY + 6.5}`} stroke={OnBrand.text} strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+              <Path d={`M ${knobX - 2} ${knobY - 4.5} L ${knobX + 2.5} ${knobY} L ${knobX - 2} ${knobY + 4.5}`} stroke={OnBrand.text} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" fill="none" />
             </>
           )}
         </Svg>
 
-        {/* The two indicators inside the arc: burned on the left, intake on the right. */}
-        <Indicator side="left" icon="flameLine" color={dim ? theme.textTertiary : burnedColor} kcal={dim ? '—' : formatKcal(burnedKcal)} label="Bruciate" k={k} />
-        <Indicator side="right" icon="utensils" color={dim ? theme.textTertiary : eatenColor} kcal={dim ? '—' : formatKcal(eatenKcal)} label="Assunte" k={k} />
-
-        {/* The number: the day's balance, the most prominent thing in the card. */}
-        <View pointerEvents="none" style={[styles.centre, { top: (CY - 98) * k, height: 80 * k, paddingHorizontal: 84 * k }]}>
-          <ThemedText style={[styles.value, { fontSize: (value.length > 6 ? 31 : value.length > 5 ? 35 : 40) * k, lineHeight: 46 * k }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6} ellipsizeMode="clip">
+        {/* The day's balance: the one number the arc is about. */}
+        <View pointerEvents="none" style={[styles.centre, { top: (CY - 80) * k }]}>
+          <ThemedText style={[styles.value, { fontSize: (value.length > 6 ? 28 : 34) * k, lineHeight: 38 * k }]} numberOfLines={1}>
             {value}
           </ThemedText>
-          <ThemedText style={[styles.goal, { fontSize: 17 * k, lineHeight: 22 * k }]} themeColor="textSecondary" numberOfLines={1} ellipsizeMode="clip">
-            {goalLabel}
+          <ThemedText style={[styles.unit, { fontSize: 12 * k, lineHeight: 16 * k }]} themeColor="textSecondary">
+            kcal di bilancio
           </ThemedText>
         </View>
 
-        {/* The status pill, over the arc's flat end. */}
-        <View pointerEvents="none" style={[styles.badgeRow, { top: (CY - 1) * k, height: 24 * k }]}>
+        {/* The status chip, over the arc's flat end. */}
+        <View pointerEvents="none" style={[styles.badgeRow, { top: (CY - 22) * k, height: 24 * k }]}>
           {badge ? (
-            <View style={[styles.badge, { backgroundColor: tint(toneColor, 0.14), paddingHorizontal: 10 * k, height: 24 * k, borderRadius: 12 * k }]}>
-              <Icon name={badge.tone === 'good' ? 'target' : 'info'} size={Math.round(14 * k)} color={toneColor} />
-              <ThemedText style={[styles.badgeText, { color: toneColor, fontSize: 12 * k, lineHeight: 16 * k }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+            <View style={[styles.badge, { backgroundColor: tint(toneColor, 0.14), paddingHorizontal: 10 * k, height: 22 * k, borderRadius: 11 * k }]}>
+              <View style={[styles.dot, { backgroundColor: toneColor }]} />
+              <ThemedText style={[styles.badgeText, { color: toneColor, fontSize: 12 * k, lineHeight: 16 * k }]} numberOfLines={1}>
                 {badge.label}
               </ThemedText>
             </View>
@@ -253,24 +247,6 @@ function tint(color: string, alpha: number): string {
   return c ? `rgba(${c[0]},${c[1]},${c[2]},${alpha})` : color;
 }
 
-/** One of the two figures inside the arc: icon, number, unit and name, centred at a fixed offset from the middle. */
-function Indicator({ side, icon, color, kcal, label, k }: { side: 'left' | 'right'; icon: 'flameLine' | 'utensils'; color: string; kcal: string; label: string; k: number }) {
-  const w = 60 * k;
-  const centre = CX + (side === 'left' ? -87 : 87);
-  return (
-    <View pointerEvents="none" style={[styles.indicator, { left: (centre - 30) * k, width: w, top: (CY - 76) * k }]}>
-      <Icon name={icon} size={Math.round(22 * k)} color={color} />
-      <ThemedText style={[styles.indValue, { fontSize: 18 * k, lineHeight: 22 * k }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
-        {kcal}
-      </ThemedText>
-      <ThemedText style={[styles.indUnit, { fontSize: 12 * k, lineHeight: 14 * k }]}>kcal</ThemedText>
-      <ThemedText themeColor="textSecondary" style={[styles.indLabel, { fontSize: 12 * k, lineHeight: 15 * k }]} numberOfLines={1}>
-        {label}
-      </ThemedText>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   root: {
     alignSelf: 'stretch',
@@ -284,24 +260,9 @@ const styles = StyleSheet.create({
   },
   value: {
     fontWeight: '800',
-    letterSpacing: -1,
+    letterSpacing: -0.8,
   },
-  goal: {
-    fontWeight: '600',
-  },
-  indicator: {
-    position: 'absolute',
-    alignItems: 'center',
-  },
-  indValue: {
-    fontWeight: '800',
-    letterSpacing: -0.3,
-    marginTop: 1,
-  },
-  indUnit: {
-    fontWeight: '600',
-  },
-  indLabel: {
+  unit: {
     fontWeight: '500',
   },
   badgeRow: {
@@ -314,11 +275,14 @@ const styles = StyleSheet.create({
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    maxWidth: 150,
+    gap: 6,
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   badgeText: {
     fontWeight: '700',
-    flexShrink: 1,
   },
 });

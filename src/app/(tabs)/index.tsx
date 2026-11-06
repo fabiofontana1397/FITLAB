@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Platform, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 
 import { EnergyDetailsPopup } from '@/components/home/energy-details-popup';
-import { GoalBar, GoalStatusCard, goalBandCopy } from '@/components/home/goal-bar';
+import { GoalBar, goalBandCopy } from '@/components/home/goal-bar';
 import { OggiGauge } from '@/components/home/oggi-gauge';
 import { DayCalendarModal } from '@/components/ui/day-calendar-modal';
 import { AnimatedFill, GrowBar } from '@/components/motion/animated-fill';
@@ -221,7 +221,6 @@ export default function HomeScreen() {
     dayComplete: viewDate < today,
   });
   const bandCopy = goalBandCopy(band, { hasMeals: eatenKcal > 0, future: isFutureDay });
-  const goalText = `${formatSignedKcal(dailyGoalKcal)} kcal`;
   const balanceA11y = isFutureDay
     ? 'Giorno non ancora iniziato: nessun dato.'
     : balanceReading.status === 'missing'
@@ -260,13 +259,12 @@ export default function HomeScreen() {
           />
         </Pressable>
 
-        <GoalBar band={band} goalText={goalText} inactive={isFutureDay} accessibilityLabel={`Obiettivo ${goalText}. ${bandCopy.title}. ${bandCopy.message}`} />
-        <GoalStatusCard copy={bandCopy} />
+        <GoalBar band={band} copy={bandCopy} inactive={isFutureDay} accessibilityLabel={`${bandCopy.badge}. ${bandCopy.message}${bandCopy.cause ? ` ${bandCopy.cause}` : ''}`} />
 
-        <View style={styles.oggiRow}>
+        <View style={[styles.oggiRow, { borderTopColor: theme.border }]}>
           <Pressable onPress={() => setInfoTopic('burned')} style={styles.sideCol}>
             <View style={styles.sideIcon}>
-              <Icon name="flameLine" size={22} color={isFutureDay ? theme.textTertiary : theme.accent} />
+              <Icon name="flameLine" size={22} color={isFutureDay ? theme.textTertiary : theme.brandGreen} />
             </View>
             <ThemedText style={styles.sideLabel} themeColor="textTertiary">
               Bruciate
@@ -286,7 +284,7 @@ export default function HomeScreen() {
           <View style={[styles.sideDivider, { backgroundColor: theme.border }]} />
           <Pressable onPress={() => setInfoTopic('eaten')} style={styles.sideCol}>
             <View style={styles.sideIcon}>
-              <Icon name="utensils" size={22} color={isFutureDay ? theme.textTertiary : theme.brandGreen} />
+              <Icon name="utensils" size={22} color={isFutureDay ? theme.textTertiary : theme.accent} />
             </View>
             <ThemedText style={styles.sideLabel} themeColor="textTertiary">
               Assunte
@@ -643,12 +641,14 @@ const styles = StyleSheet.create({
   gaugeWrap: {
     alignSelf: 'stretch',
     alignItems: 'center',
-    marginTop: 10,
+    marginTop: 8,
   },
   oggiRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginTop: 14,
+    marginTop: 16,
+    paddingTop: 14,
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
   sideCol: {
     flex: 1,
