@@ -56,16 +56,26 @@ export type WorkoutSummaryCardProps = {
   onRecover?: () => void;
   /** A session was started and left with the X: "Riprendi" reopens it where it stopped. */
   resume?: { elapsedLabel: string; onResume: () => void };
+  /** Exercises done out of the session's, shown as a bar while the session is under way. */
+  progress?: { done: number; total: number };
 };
 
 /** A day's session: the play button that starts it, its name, "Forza - Livello base"
  * and its duration + estimated kcal. The whole box opens the session's sheet,
  * except the play button, which starts it. */
-export function WorkoutSummaryCard({ title, subtitle, minutes, kcal, onOpen, onStart, onSwap, status, onRecover, resume }: WorkoutSummaryCardProps) {
+export function WorkoutSummaryCard({ title, subtitle, minutes, kcal, onOpen, onStart, onSwap, status, onRecover, resume, progress }: WorkoutSummaryCardProps) {
   const theme = useTheme();
   const missed = status === 'missed';
+  const finished = status === 'done';
   return (
-    <FlatCard radius={20} style={[styles.card, missed && { borderWidth: 1.5, borderColor: theme.danger, backgroundColor: theme.danger + '14' }]}>
+    <FlatCard
+      radius={20}
+      style={[
+        styles.card,
+        missed && { borderWidth: 1.5, borderColor: theme.danger, backgroundColor: theme.danger + '14' },
+        finished && { borderWidth: 1.5, borderColor: theme.brandGreen, backgroundColor: theme.brandGreen + '12' },
+        resume && { borderWidth: 1.5, borderColor: theme.accent, backgroundColor: theme.accentSoft },
+      ]}>
       <Pressable onPress={onOpen} accessibilityRole="button" accessibilityLabel={`Dettagli: ${title}`} style={StyleSheet.absoluteFill} />
       <View style={styles.row} pointerEvents="box-none">
         {onStart ? (
@@ -106,6 +116,16 @@ export function WorkoutSummaryCard({ title, subtitle, minutes, kcal, onOpen, onS
                 <ThemedText style={styles.statText}>{kcal} kcal</ThemedText>
               </View>
             </View>
+            {progress && progress.total > 0 && (resume || progress.done > 0) && !finished ? (
+              <View style={styles.progressRow}>
+                <View style={[styles.progressTrack, { backgroundColor: theme.backgroundElement }]}>
+                  <View style={[styles.progressFill, { backgroundColor: theme.accent, width: `${Math.min(progress.done / progress.total, 1) * 100}%` }]} />
+                </View>
+                <ThemedText style={styles.statText} themeColor="textSecondary">
+                  {progress.done}/{progress.total} esercizi
+                </ThemedText>
+              </View>
+            ) : null}
           </View>
           <Icon name="chevronRight" size={18} color={theme.textTertiary} />
         </View>
@@ -205,6 +225,22 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 17,
     fontWeight: '700',
+  },
+  progressRow: {
+    marginTop: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  progressTrack: {
+    flex: 1,
+    height: 6,
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: 6,
+    borderRadius: 3,
   },
   statText: {
     fontSize: 12,
