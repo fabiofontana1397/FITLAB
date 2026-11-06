@@ -22,6 +22,7 @@ import { InfoPopover } from '@/components/ui/info-popover';
 import { FoodSearchModal } from '@/components/nutrition/food-search-modal';
 import { MealPickerModal } from '@/components/nutrition/meal-picker-modal';
 import { useEnsurePlan } from '@/hooks/use-ensure-plan';
+import { useElapsedHours } from '@/hooks/use-elapsed-hours';
 import { useHealthEnergy } from '@/hooks/use-health-energy';
 import { sumActivityKcalForDate, useWeeklyEnergy } from '@/hooks/use-weekly-energy';
 import { useTheme } from '@/hooks/use-theme';
@@ -118,6 +119,7 @@ export default function HomeScreen() {
   // (it can differ month to month) takes priority over the static profile.
   const dietMonth = dietPlan?.months.find((m) => m.monthIndex === currentMonthIndex(dietPlan));
   const health = useHealthEnergy();
+  const elapsedHours = useElapsedHours();
   // That day's own target (training days eat more than rest days), then the month's average, then the profile.
   const calorieTarget = dietMonth?.weeklySplit[isoMondayIndex(viewDate)]?.calorieTarget ?? dietMonth?.calorieTarget ?? currentUser.dailyCalorieTarget;
   const todaysTotals = sumMacros(nutritionEntries.filter((e) => e.date === viewDate));
@@ -127,6 +129,8 @@ export default function HomeScreen() {
   const energy = dayEnergy(ctx, weeklySplit[planIndexFor(viewDate, swaps)] ?? null, viewExerciseCompletionFraction, sumActivityKcalForDate(activityLogEntries, viewDate), {
     calibration: health.calibration,
     measured: health.measuredFor(viewDate),
+    // Today the resting + everyday kcal accrue hour by hour; past days are complete.
+    elapsedHours: viewDate === today ? elapsedHours : undefined,
   });
   const basalKcal = energy.resting + energy.everyday;
   const trainingBurnKcal = energy.exercise;

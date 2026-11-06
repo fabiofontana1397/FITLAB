@@ -5,6 +5,7 @@ import { currentWeekDates, daysAgoISO } from '@/lib/mock/dates';
 import type { BodyMetricSnapshot } from '@/lib/mock/types';
 import type { LoggedActivity } from '@/lib/api/activity-log';
 import { dayEnergy } from '@/domain/energy';
+import { useElapsedHours } from '@/hooks/use-elapsed-hours';
 import { useHealthEnergy } from '@/hooks/use-health-energy';
 import { useUserContext } from '@/hooks/use-user-context';
 import { WEEKDAY_LABELS } from '@/lib/planning/exercise-library';
@@ -72,6 +73,7 @@ export function useWeeklyEnergy(referenceDate?: string): {
   const bodyEntries = useBodyStore((s) => s.entries);
   const activityLogEntries = useActivityLogStore((s) => s.entries);
   const { calibration, measuredFor, stepsFor } = useHealthEnergy();
+  const elapsedHours = useElapsedHours();
 
   const dietMonth = dietPlan?.months.find((m) => m.monthIndex === currentMonthIndex(dietPlan));
   const calorieTarget = dietMonth?.calorieTarget ?? currentUser.dailyCalorieTarget;
@@ -125,7 +127,7 @@ export function useWeeklyEnergy(referenceDate?: string): {
 
       // A cardio day earns its calories through the activity the person logs (added below), not from the plan.
       // With a connected health app: personal resting kcal / workout factor, and the day's measured movement.
-      const estimatedExpenditureKcal = dayEnergy(ctx, dayPlan, completionFraction, 0, { calibration, measured: measuredFor(date) }).total;
+      const estimatedExpenditureKcal = dayEnergy(ctx, dayPlan, completionFraction, 0, { calibration, measured: measuredFor(date), elapsedHours: date === today ? elapsedHours : undefined }).total;
 
       return {
         date,
@@ -140,7 +142,7 @@ export function useWeeklyEnergy(referenceDate?: string): {
       };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [trainingPlan, weekDates, accountStartDate, completedExercises, nutritionEntries, activityLogEntries, calorieTarget, dietMonth, ctx, today, calibration, measuredFor, stepsFor]);
+  }, [trainingPlan, weekDates, accountStartDate, completedExercises, nutritionEntries, activityLogEntries, calorieTarget, dietMonth, ctx, today, calibration, measuredFor, stepsFor, elapsedHours]);
 
   // Folded in as a plain post-processing pass (not inside the useMemo
   // above) so this dependency never touches that hook's own compiler-

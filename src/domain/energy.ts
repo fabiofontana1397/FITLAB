@@ -118,21 +118,48 @@ export function stepsKcal(steps: number, weightKg: number): number {
   return Math.round(steps * 0.0005 * weightKg);
 }
 
-export type DayEnergyOptions = { calibration?: EnergyCalibration | null; measured?: MeasuredDay | null };
+/** Waking hours: everyday activity (NEAT) is spent between these, not while asleep. */
+const WAKE_HOUR = 7;
+const SLEEP_HOUR = 22;
+
+/**
+ * How much of the day's resting kcal (BMR) is already burned after `hours` whole
+ * hours: the body burns it all day and night, so it grows evenly over 24 h.
+ */
+export function restingShareAt(hours: number): number {
+  return Math.min(Math.max(hours / 24, 0), 1);
+}
+
+/** How much of the everyday activity (NEAT) is already spent: it accrues only while awake. */
+export function everydayShareAt(hours: number): number {
+  return Math.min(Math.max((hours - WAKE_HOUR) / (SLEEP_HOUR - WAKE_HOUR), 0), 1);
+}
+
+export type DayEnergyOptions = {
+  calibration?: EnergyCalibration | null;
+  measured?: MeasuredDay | null;
+  /**
+   * Whole hours elapsed today (0–24). When set, resting and everyday kcal are only
+   * the part burned SO FAR (they accrue through the day) instead of the full-day
+   * estimate. Leave it out for a finished day or for planning targets.
+   */
+  elapsedHours?: number;
+};
 
 /**
  * Expenditure of one day. `completion` scales the planned session (a half-
  * finished workout earns half of its exercise kcal); `extraKcal` adds
  * manually logged activities. With `measured` data, a finished day uses what
- * the health app recorded; today keeps the full-day estimate and only grows
- * once the movement measured so far already exceeds it.
+ * the health app recorded; today keeps the full-day estimate (or, with
+ * `elapsedHours`, the part burned so far) and only grows once the movement
+ * measured so far already exceeds it.
  */
 export function dayEnergy(
   ctx: Pick<UserContext, 'sex' | 'age' | 'heightCm' | 'weightKg' | 'lifestyle' | 'training'>,
   day: SessionLike | null | undefined,
   completion = 1,
   extraKcal = 0,
-  { calibration, measured }: DayEnergyOptions = {}
+  { calibration, measured, elapsedHours }: DayEnergyOptions = {}
 ): DayEnergy {
   const base = baselineKcal(ctx);
   const modelResting = calibration?.restingKcal ?? base.resting;
@@ -142,6 +169,9 @@ export function dayEnergy(
 
   let resting = modelResting;
   let everyday = modelEveryday;
+  // Today, still running: resting and everyday kcal accrue through the day instead of landing all at once.
+  const partial = elapsedHours != null && elapsedHours < 24;
+  const everydayNow = partial ? Math.round(modelEveryday * everydayShareAt(elapsedHours)) : modelEveryday;
   if (measured) {
     const measuredEveryday =
       measured.activeKcal != null && measured.activeKcal > 0
@@ -153,9 +183,15 @@ export function dayEnergy(
       if (measured.basalKcal != null && measured.basalKcal > 500) resting = Math.round(measured.basalKcal);
       if (measuredEveryday != null) everyday = measuredEveryday;
     } else if (measuredEveryday != null) {
-      everyday = Math.max(modelEveryday, measuredEveryday);
+      // Movement really measured so far is never scaled down; only the estimate is spread over the day.
+      everyday = Math.max(partial ? everydayNow : modelEveryday, measuredEveryday);
+    } else if (partial) {
+      everyday = everydayNow;
     }
+  } else if (partial) {
+    everyday = everydayNow;
   }
+  if (partial && !measured?.complete) resting = Math.round(resting * restingShareAt(elapsedHours));
   return { resting, everyday, exercise, total: resting + everyday + exercise };
 }
 
