@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { Platform, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 
 import { EnergyDetailsPopup } from '@/components/home/energy-details-popup';
+import { GoalBar, GoalStatusCard, goalBandCopy } from '@/components/home/goal-bar';
 import { OggiGauge } from '@/components/home/oggi-gauge';
 import { DayCalendarModal } from '@/components/ui/day-calendar-modal';
 import { AnimatedFill, GrowBar } from '@/components/motion/animated-fill';
@@ -27,7 +28,7 @@ import { useHealthEnergy } from '@/hooks/use-health-energy';
 import { sumActivityKcalForDate, useWeeklyEnergy } from '@/hooks/use-weekly-energy';
 import { useTheme } from '@/hooks/use-theme';
 import { currentWeekDates, dayOfMonth, daysAgoISO, isoMondayIndex } from '@/lib/mock/dates';
-import { balanceCaption as captionFor, balanceSideLabel, calorieBalance, readBalance } from '@/domain/calorie-balance';
+import { balanceCaption as captionFor, calorieBalance, goalBand, readBalance } from '@/domain/calorie-balance';
 import { dayEnergy } from '@/domain/energy';
 import { Brand, Layout, OnBrand, Radius } from '@/constants/theme';
 import { useUserContext } from '@/hooks/use-user-context';
@@ -211,6 +212,16 @@ export default function HomeScreen() {
   // The gauge's semi-ring reads today's balance against the same daily goal the "Obiettivo" column shows.
   const balanceReading = readBalance({ eatenKcal: isFutureDay ? 0 : eatenKcal, burnedKcal: isFutureDay ? 0 : burnedKcal, goalKcal: dailyGoalKcal });
   const balanceCaption = captionFor(balanceReading);
+  // The goal bar reads the same balance against the goal itself; the gap from the plan splits into intake (vs. the day's calorie target) and burned.
+  const band = goalBand({
+    reading: balanceReading,
+    eatenKcal: isFutureDay ? 0 : eatenKcal,
+    burnedKcal: isFutureDay ? 0 : burnedKcal,
+    plannedEatenKcal: calorieTarget,
+    dayComplete: viewDate < today,
+  });
+  const bandCopy = goalBandCopy(band, { hasMeals: eatenKcal > 0, future: isFutureDay });
+  const goalText = `${formatSignedKcal(dailyGoalKcal)} kcal`;
   const balanceA11y = isFutureDay
     ? 'Giorno non ancora iniziato: nessun dato.'
     : balanceReading.status === 'missing'
@@ -239,15 +250,18 @@ export default function HomeScreen() {
           <OggiGauge
             burnedKcal={isFutureDay ? 0 : burnedKcal}
             eatenKcal={isFutureDay ? 0 : eatenKcal}
-            burnedColor={theme.accent}
-            eatenColor={theme.brandGreen}
+            burnedColor={theme.brandGreen}
+            eatenColor={theme.accent}
             reading={balanceReading}
             inactive={isFutureDay}
             value={isFutureDay ? '—' : formatSignedKcal(balanceKcal)}
             goalLabel={isFutureDay ? '' : `/${formatSignedKcal(dailyGoalKcal)} kcal`}
-            caption={isFutureDay ? 'nessun dato' : balanceSideLabel(balanceReading)}
+            badge={{ label: bandCopy.badge, tone: bandCopy.tone }}
           />
         </Pressable>
+
+        <GoalBar band={band} goalText={goalText} inactive={isFutureDay} accessibilityLabel={`Obiettivo ${goalText}. ${bandCopy.title}. ${bandCopy.message}`} />
+        <GoalStatusCard copy={bandCopy} />
 
         <View style={styles.oggiRow}>
           <Pressable onPress={() => setInfoTopic('burned')} style={styles.sideCol}>

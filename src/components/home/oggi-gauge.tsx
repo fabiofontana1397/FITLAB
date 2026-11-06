@@ -1,68 +1,45 @@
 import { useIsFocused } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
-import Animated, { Easing, useAnimatedProps, useReducedMotion, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
-import Svg, { Circle, Line, Path } from 'react-native-svg';
+import { Easing, useReducedMotion } from 'react-native-reanimated';
+import Svg, { Circle, Path } from 'react-native-svg';
 
 import { ThemedText } from '@/components/themed-text';
+import { Icon } from '@/components/ui/icon';
 import { OnBrand, Palette } from '@/constants/theme';
-import { BALANCE_SCALE, balancePosition, type BalanceReading } from '@/domain/calorie-balance';
+import { type BalanceReading } from '@/domain/calorie-balance';
 import { useTheme } from '@/hooks/use-theme';
-
-const AnimatedPath = Animated.createAnimatedComponent(Path);
-const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+import { formatKcal } from '@/lib/format-kcal';
 
 // ─── Geometry ──────────────────────────────────────────────────────────────
-// Drawn in a fixed 260-wide coordinate space and scaled to the card, so the
-// two rings stay concentric and in proportion on every iPhone width.
-// Angles are degrees clockwise from 12 o'clock — so on both rings the right
-// side is a deficit, the left a surplus, and the top is equilibrium.
-const BASE_W = 330;
+// Drawn in a fixed 340-wide coordinate space and scaled to the card, so the
+// arc, the knob and the texts stay in proportion on every iPhone width.
+// Angles are degrees clockwise from 12 o'clock: -90 is 9 o'clock (the left
+// end, burned), +90 is 3 o'clock (the right end, intake).
+const BASE_W = 340;
 const CX = BASE_W / 2;
-
-/** Main ring: intake vs burned, open at the bottom like the original gauge. */
-const MAIN_R = 72;
-const MAIN_STROKE = 16;
-const BOTTOM_GAP_DEG = 84;
-const MAIN_HALF_SPAN = 180 - BOTTOM_GAP_DEG / 2; // ±138°
-const MIN_SWEEP_DEG = 10;
-
-/** Semi-ring: the balance against the goal, around the main ring and spanning exactly the same angles (it starts and ends where the main ring does). */
-const SEMI_STROKE = 6;
-const RING_GAP = 9;
-const SEMI_R = MAIN_R + MAIN_STROKE / 2 + RING_GAP + SEMI_STROKE / 2;
-const SEMI_HALF_SPAN = MAIN_HALF_SPAN;
-
-/** The balance marker: a bead on the track plus a triangle outside it, its tip on the bead pointing at the ring's centre. */
-const BEAD_R = 6;
-const MARKER_TIP_R = SEMI_R + BEAD_R + 2;
-const MARKER_TRI_H = 11;
-const MARKER_TRI_HALF_W = 6.5;
-/** Where the "Equilibrio" label hangs: just past the triangle's base, at the top. */
-const ZERO_LABEL_R = MARKER_TIP_R + MARKER_TRI_H + 6;
-/** Room above the semi-ring for that label. */
-const TOP_PAD = 42;
-/** The Deficit / Surplus labels sit just outside the semi-ring's two ends, past the marker's path. */
-const END_LABEL_R = MARKER_TIP_R + MARKER_TRI_H + 5;
-const END_LABEL_W = 52;
-/** The junction knob fills the ring's thickness, leaving a hair of the stroke around it. */
-const KNOB_R = MAIN_STROKE / 2 - 0.5;
+const ARC_HALF_SPAN = 90;
+const STROKE = 44;
+const OUTER_R = BASE_W / 2 - 2;
+const R = OUTER_R - STROKE / 2;
+const INNER_R = R - STROKE / 2;
+/** The arc's flat end, where its two round caps sit. */
+const CY = OUTER_R + 2;
+const BASE_H = CY + STROKE / 2 + 2;
+/** The junction knob: a white ring around a coloured disc, with a chevron. */
+const KNOB_RING_R = 24;
+const KNOB_R = 19;
+/** The knob never gets closer than this share of the arc to either end. */
+const KNOB_MIN_SHARE = 0.07;
+/** The gradient is drawn in short pieces (butt-ended, slightly overlapping). */
+const SEGMENTS = 60;
+const SEGMENT_DEG = (ARC_HALF_SPAN * 2) / SEGMENTS;
 /** Every visit to Home replays the fill like an odometer: fast at first, settling on the value. */
 const ODOMETER_MS = 1100;
 const ODOMETER_BEZIER = Easing.bezier(0.16, 1, 0.3, 1);
 const odometerEase = ODOMETER_BEZIER.factory();
-/** One beat of the marker's halo. */
-const HALO_MS = 1300;
-/** The semi-ring track, by distance from the goal (as a share of the half range, past the goal's core): green on target, soft green while acceptable, soft red beyond it, red when far off. */
-const GOAL_ZONE_STEP_DEG = 2;
-const GOAL_ZONE_MIN_CORE_DEG = 3;
-const GOAL_ZONE_MAX_CORE_DEG = 6;
-const ZONE_SOFT_GREEN_AT = 0.22;
-const ZONE_SOFT_RED_AT = 0.5;
-const ZONE_RED_AT = 0.8;
-const CY = TOP_PAD + SEMI_R + SEMI_STROKE / 2;
-const END_COS = -Math.cos((SEMI_HALF_SPAN * Math.PI) / 180);
-const BASE_H = CY + Math.max(MAIN_R * END_COS + MAIN_STROKE / 2 + 4, (SEMI_R + SEMI_STROKE / 2) * END_COS + 4, END_LABEL_R * END_COS + 12);
+/** Soft champagne where intake and burned meet (identical in both themes: it only ever sits between two saturated colours). */
+const CHAMPAGNE = '#F8DC95';
 
 /** Height over width of the drawn gauge, for sizing it to the room there is. */
 export const GAUGE_ASPECT = BASE_H / BASE_W;
@@ -70,131 +47,110 @@ export const GAUGE_ASPECT = BASE_H / BASE_W;
 export const GAUGE_MAX_WIDTH = BASE_W * 1.15;
 
 function px(r: number, deg: number) {
-  'worklet';
   return CX + r * Math.sin((deg * Math.PI) / 180);
 }
 function py(r: number, deg: number) {
-  'worklet';
   return CY - r * Math.cos((deg * Math.PI) / 180);
 }
-
-/** An arc between two angles, drawn clockwise whichever order they come in. */
 function arc(r: number, fromDeg: number, toDeg: number): string {
-  'worklet';
-  const a = Math.min(fromDeg, toDeg);
-  const b = Math.max(fromDeg, toDeg);
-  const large = b - a > 180 ? 1 : 0;
-  return `M ${px(r, a)} ${py(r, a)} A ${r} ${r} 0 ${large} 1 ${px(r, b)} ${py(r, b)}`;
+  const large = Math.abs(toDeg - fromDeg) > 180 ? 1 : 0;
+  return `M ${px(r, fromDeg)} ${py(r, fromDeg)} A ${r} ${r} 0 ${large} 1 ${px(r, toDeg)} ${py(r, toDeg)}`;
 }
 
-/** Where intake meets burned on the main ring: each arc is sized by its share of the two together. */
-function junctionDeg(burnedKcal: number, eatenKcal: number): number {
-  const total = burnedKcal + eatenKcal;
-  const span = MAIN_HALF_SPAN * 2;
-  const burnedSweep = total > 0 ? span * (burnedKcal / total) : span / 2;
-  return -MAIN_HALF_SPAN + Math.min(Math.max(burnedSweep, MIN_SWEEP_DEG), span - MIN_SWEEP_DEG);
-}
-
-/**
- * The knob's two arrows as one path, drawn around (cx, cy) and turned to lie
- * along the ring's tangent at `deg` (never upside down). Plain maths, so it
- * runs inside the animation worklet with the knob.
- */
-function arrowsPath(cx: number, cy: number, deg: number): string {
-  'worklet';
-  const turn = deg > 90 ? deg - 180 : deg < -90 ? deg + 180 : deg;
-  const a = (turn * Math.PI) / 180;
-  const cos = Math.cos(a);
-  const sin = Math.sin(a);
-  const sc = KNOB_R / 11;
-  const pt = (x: number, y: number) => `${(cx + (x * cos - y * sin) * sc).toFixed(2)} ${(cy + (x * sin + y * cos) * sc).toFixed(2)}`;
-  return [
-    `M ${pt(-4.6, -2.7)} L ${pt(4.6, -2.7)} M ${pt(2.4, -4.9)} L ${pt(4.6, -2.7)} L ${pt(2.4, -0.5)}`,
-    `M ${pt(4.6, 2.7)} L ${pt(-4.6, 2.7)} M ${pt(-2.4, 0.5)} L ${pt(-4.6, 2.7)} L ${pt(-2.4, 4.9)}`,
-  ].join(' ');
-}
+/** The arc's pieces, computed once: the geometry never changes, only the colours do. */
+const SEGMENT_PATHS = Array.from({ length: SEGMENTS }, (_, i) => {
+  const from = -ARC_HALF_SPAN + i * SEGMENT_DEG;
+  return { d: arc(R, from, Math.min(ARC_HALF_SPAN, from + SEGMENT_DEG + 0.6)), t: (i + 0.5) / SEGMENTS };
+});
 
 type Rgb = [number, number, number];
 
-/** `#rrggbb`, or `rgba()` laid over `under` (the card surface is translucent). */
-function rgbOf(color: string, under?: Rgb | null): Rgb | null {
+function rgbOf(color: string): Rgb | null {
   const hex = /^#([0-9a-f]{6})/i.exec(color);
   if (hex) {
     const n = parseInt(hex[1], 16);
     return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
   }
-  const rgba = /^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*([\d.]+))?\s*\)/.exec(color);
-  if (!rgba) return null;
-  const top: Rgb = [Number(rgba[1]), Number(rgba[2]), Number(rgba[3])];
-  const alpha = rgba[4] === undefined ? 1 : Number(rgba[4]);
-  return alpha >= 1 || !under ? top : mixRgb(under, top, alpha);
+  const rgba = /^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/.exec(color);
+  return rgba ? [Number(rgba[1]), Number(rgba[2]), Number(rgba[3])] : null;
 }
-
 function mixRgb(a: Rgb, b: Rgb, t: number): Rgb {
   return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 }
-
-/** The marker triangle at `deg` on the semi-ring, as one path (runs inside the animation worklet). */
-function markerPath(deg: number): string {
-  'worklet';
-  const rad = (deg * Math.PI) / 180;
-  const bx = px(MARKER_TIP_R + MARKER_TRI_H, deg);
-  const by = py(MARKER_TIP_R + MARKER_TRI_H, deg);
-  const dx = Math.cos(rad) * MARKER_TRI_HALF_W;
-  const dy = Math.sin(rad) * MARKER_TRI_HALF_W;
-  return `M ${px(MARKER_TIP_R, deg)} ${py(MARKER_TIP_R, deg)} L ${bx - dx} ${by - dy} L ${bx + dx} ${by + dy} Z`;
+function css(c: Rgb): string {
+  return `rgb(${Math.round(c[0])},${Math.round(c[1])},${Math.round(c[2])})`;
 }
+
+/**
+ * The arc's colour at `t` (0 = left end, 1 = right end) given where intake
+ * meets burned (`j`, 0..1): burned's colour from the left end, fading through
+ * a lighter tint into champagne at the junction, then warming into intake's
+ * colour at the right end. The colours therefore follow the data, not the
+ * decoration: more burned stretches the green, more intake stretches the orange.
+ */
+function colorAt(t: number, j: number, burned: Rgb, eaten: Rgb): Rgb {
+  const champagne = rgbOf(CHAMPAGNE) as Rgb;
+  const light = mixRgb(burned, champagne, 0.55);
+  const warm = mixRgb(champagne, eaten, 0.5);
+  const stops: [number, Rgb][] = [
+    [0, burned],
+    [j * 0.55, light],
+    [j, champagne],
+    [j + (1 - j) * 0.45, warm],
+    [1, eaten],
+  ];
+  for (let i = 1; i < stops.length; i++) {
+    const [p1, c1] = stops[i];
+    const [p0, c0] = stops[i - 1];
+    if (t <= p1) return mixRgb(c0, c1, p1 === p0 ? 1 : (t - p0) / (p1 - p0));
+  }
+  return eaten;
+}
+
+export type OggiGaugeBadge = { label: string; tone: 'good' | 'warn' | 'neutral' };
 
 export type OggiGaugeProps = {
   burnedKcal: number;
   eatenKcal: number;
+  /** Left half of the arc and the flame (burned). */
   burnedColor: string;
+  /** Right half of the arc and the fork (intake). */
   eatenColor: string;
-  /** The day's balance read against its goal (domain/calorie-balance.ts). */
+  /** The day's balance read against its goal (domain/calorie-balance.ts); the gauge itself only needs to know whether there is anything to read. */
   reading: BalanceReading;
   /** The balance as displayed in the centre, already formatted. */
   value: string;
   /** The daily goal under it, already formatted ("/-300 kcal"). */
   goalLabel: string;
-  /** What the balance is, in grey under the goal ("deficit", "surplus", "equilibrio"). */
-  caption: string;
-  /** Within this many kcal of the goal counts as "on it" (the full-green core of the goal zone). */
+  /** Grey word under the goal, shown only when there is no `badge`. */
+  caption?: string;
+  /** The status pill at the bottom of the arc ("Obiettivo in range"). */
+  badge?: OggiGaugeBadge;
+  /** Kept for callers that tune the tolerance (the guide's carousel); the arc no longer draws a goal zone. */
   toleranceKcal?: number;
-  /** A day with nothing to show (not yet started): the whole gauge stays plain grey, goal zone included. */
+  /** A day with nothing to show (not yet started): the whole gauge stays plain grey. */
   inactive?: boolean;
 };
 
 /**
- * "Calorie di oggi": two coordinated indicators read from one balance.
- *
- * 1. The main ring compares burned (orange, growing clockwise from the left
- *    end) with intake (green, from the right end), each arc proportional to
- *    its share of the two. Where they meet (the round knob) is the day's
- *    balance: at the top when they are equal, right of it in a deficit, left
- *    in a surplus.
- * 2. The semi-ring around it, over the same angles, reads that same balance on
- *    a symmetric kcal range: equilibrium at the top, deficit to the right,
- *    surplus to the left. The bead and triangle are the balance; the track
- *    runs green on the goal, soft green while acceptable, then red.
+ * "Calorie di oggi": a thick 180° arc comparing burned (left) with intake
+ * (right). Each side takes its share of the two together; where they meet
+ * sits the round knob. Inside the arc: burned on the left, intake on the
+ * right, the day's balance in the middle with its goal under it, and a status
+ * pill at the bottom.
  */
-export function OggiGauge({ burnedKcal, eatenKcal, burnedColor, eatenColor, reading, value, goalLabel, caption, toleranceKcal = BALANCE_SCALE.toleranceKcal, inactive = false }: OggiGaugeProps) {
+export function OggiGauge({ burnedKcal, eatenKcal, burnedColor, eatenColor, reading, value, goalLabel, caption, badge, inactive = false }: OggiGaugeProps) {
   const theme = useTheme();
   const [width, setWidth] = useState(BASE_W);
   const k = Math.min(1.15, width / BASE_W);
 
-  const empty = burnedKcal + eatenKcal <= 0;
-  const missing = reading.status === 'missing';
+  const total = burnedKcal + eatenKcal;
+  const empty = total <= 0;
+  const burnedShare = empty ? 0.5 : Math.min(1 - KNOB_MIN_SHARE, Math.max(KNOB_MIN_SHARE, burnedKcal / total));
 
-  const targetJunction = junctionDeg(burnedKcal, eatenKcal);
-  const { position } = balancePosition(reading.balanceKcal, reading.halfRangeKcal);
-  const targetSemi = missing ? 0 : position * SEMI_HALF_SPAN;
-  const goalDeg = balancePosition(reading.goalKcal, reading.halfRangeKcal).position * SEMI_HALF_SPAN;
-  // Each time Home comes into view the rings refill from empty, like an
-  // odometer: `sweep` (0..1) grows the burned arc from the ring's bottom-left
-  // end and the intake arc from its bottom-right end until they meet at the
-  // knob, while the marker glides out from equilibrium. State is reset when
-  // Home loses focus so the next visit starts from zero. Under Reduce Motion
-  // everything is simply there.
+  // Each time Home comes into view the knob glides out from the middle to its
+  // place while the colours stretch with it; state is reset when Home loses
+  // focus so the next visit starts over. Under Reduce Motion it is just there.
   const reduceMotion = useReducedMotion();
   const focused = useIsFocused();
   const [sweep, setSweep] = useState(0);
@@ -215,138 +171,101 @@ export function OggiGauge({ burnedKcal, eatenKcal, burnedColor, eatenColor, read
     });
     return () => cancelAnimationFrame(frame);
   }, [focused, reduceMotion]);
-  const junction = targetJunction;
-  // Where each arc's leading edge has got to on its way to the junction.
-  const burnedTo = -MAIN_HALF_SPAN + sweep * (junction + MAIN_HALF_SPAN);
-  const eatenFrom = MAIN_HALF_SPAN - sweep * (MAIN_HALF_SPAN - junction);
+  const j = 0.5 + (burnedShare - 0.5) * sweep;
+  const knobDeg = -ARC_HALF_SPAN + j * ARC_HALF_SPAN * 2;
 
-  const semi = useSharedValue(0);
-  useEffect(() => {
-    if (!focused) {
-      semi.value = 0;
-      return;
-    }
-    semi.value = reduceMotion ? targetSemi : withTiming(targetSemi, { duration: ODOMETER_MS, easing: ODOMETER_BEZIER });
-  }, [focused, reduceMotion, targetSemi, semi]);
-
-  const marker = useAnimatedProps(() => ({ d: markerPath(semi.value) }));
-
-  // A halo breathing around the marker's bead keeps it in view.
-  const halo = useSharedValue(0);
-  useEffect(() => {
-    if (!focused || reduceMotion) {
-      halo.value = 0;
-      return;
-    }
-    halo.value = withRepeat(withTiming(1, { duration: HALO_MS, easing: Easing.out(Easing.quad) }), -1, false);
-  }, [focused, reduceMotion, halo]);
-  const bead = useAnimatedProps(() => ({ cx: px(SEMI_R, semi.value), cy: py(SEMI_R, semi.value) }));
-  const haloProps = useAnimatedProps(() => ({
-    cx: px(SEMI_R, semi.value),
-    cy: py(SEMI_R, semi.value),
-    r: BEAD_R + halo.value * 9,
-    opacity: 0.45 * (1 - halo.value),
-  }));
-
-  // The semi-ring's track, in short pieces: green on the goal, soft green while acceptable, soft red beyond it, red when far off.
-  const goalZone = useMemo(() => {
-    const surface = rgbOf(theme.backgroundElevated, rgbOf(theme.background));
-    const track = rgbOf(theme.backgroundElement, surface);
-    const green = rgbOf(theme.balanceGoalScale[2]);
-    const softGreen = green && surface ? mixRgb(green, surface, 0.45) : null;
-    const red = rgbOf(theme.danger);
-    const softRed = red && surface ? mixRgb(red, surface, 0.4) : null;
-    const count = Math.ceil((SEMI_HALF_SPAN * 2) / GOAL_ZONE_STEP_DEG);
-    const core = Math.min(GOAL_ZONE_MAX_CORE_DEG, Math.max(GOAL_ZONE_MIN_CORE_DEG, ((toleranceKcal / reading.halfRangeKcal) * SEMI_HALF_SPAN) * 0.5));
-    const smooth = (t: number) => t * t * (3 - 2 * t);
-    return Array.from({ length: count }, (_, i) => {
-      const from = -SEMI_HALF_SPAN + i * GOAL_ZONE_STEP_DEG;
-      const to = Math.min(SEMI_HALF_SPAN, from + GOAL_ZONE_STEP_DEG + 0.3);
-      const f = Math.max(0, Math.abs((from + to) / 2 - goalDeg) - core) / SEMI_HALF_SPAN;
-      let c: Rgb | null;
-      if (inactive || !green || !softGreen || !red || !softRed) c = track;
-      else if (f <= 0) c = green;
-      else if (f < ZONE_SOFT_GREEN_AT) c = mixRgb(green, softGreen, smooth(f / ZONE_SOFT_GREEN_AT));
-      else if (f < ZONE_SOFT_RED_AT) c = mixRgb(softGreen, softRed, smooth((f - ZONE_SOFT_GREEN_AT) / (ZONE_SOFT_RED_AT - ZONE_SOFT_GREEN_AT)));
-      else if (f < ZONE_RED_AT) c = mixRgb(softRed, red, smooth((f - ZONE_SOFT_RED_AT) / (ZONE_RED_AT - ZONE_SOFT_RED_AT)));
-      else c = red;
-      return { d: arc(SEMI_R, from, to), color: c ? `rgb(${Math.round(c[0])},${Math.round(c[1])},${Math.round(c[2])})` : theme.backgroundElement };
-    });
-  }, [theme.background, theme.backgroundElevated, theme.backgroundElement, theme.balanceGoalScale, theme.danger, goalDeg, toleranceKcal, reading.halfRangeKcal, inactive]);
+  const burnedRgb = rgbOf(burnedColor);
+  const eatenRgb = rgbOf(eatenColor);
+  const segmentColors = useMemo(() => {
+    if (inactive || !burnedRgb || !eatenRgb) return null;
+    return SEGMENT_PATHS.map((s) => css(colorAt(s.t, j, burnedRgb, eatenRgb)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inactive, burnedColor, eatenColor, j]);
+  const capLeft = segmentColors ? segmentColors[0] : theme.backgroundElement;
+  const capRight = segmentColors ? segmentColors[SEGMENTS - 1] : theme.backgroundElement;
+  const dim = inactive;
 
   const onLayout = (e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width);
-  const label = (fontSize: number) => ({ fontSize: Math.max(11, fontSize * k), lineHeight: Math.max(14, (fontSize + 3) * k) });
+  const knobX = px(R, knobDeg);
+  const knobY = py(R, knobDeg);
+  const toneColor = badge?.tone === 'good' ? theme.balanceGoalScale[3] : badge?.tone === 'warn' ? theme.accent : theme.textSecondary;
 
   return (
     <View style={styles.root} onLayout={onLayout}>
-      <View style={{ width: BASE_W * k, height: BASE_H * k, marginBottom: 0 }}>
+      <View style={{ width: BASE_W * k, height: BASE_H * k }}>
         <Svg width={BASE_W * k} height={BASE_H * k} viewBox={`0 0 ${BASE_W} ${BASE_H}`} style={StyleSheet.absoluteFill}>
-          {/* Semi-ring: the track with its goal zone, and the equilibrium notch. */}
-          {goalZone.map((seg, i) => (
-            <Path key={i} d={seg.d} stroke={seg.color} strokeWidth={SEMI_STROKE} strokeLinecap={i === 0 || i === goalZone.length - 1 ? 'round' : 'butt'} fill="none" />
+          {/* Round caps at the two ends, then the gradient between them. */}
+          <Circle cx={px(R, -ARC_HALF_SPAN)} cy={py(R, -ARC_HALF_SPAN)} r={STROKE / 2} fill={capLeft} />
+          <Circle cx={px(R, ARC_HALF_SPAN)} cy={py(R, ARC_HALF_SPAN)} r={STROKE / 2} fill={capRight} />
+          {SEGMENT_PATHS.map((s, i) => (
+            <Path key={i} d={s.d} stroke={segmentColors ? segmentColors[i] : theme.backgroundElement} strokeWidth={STROKE} strokeLinecap="butt" fill="none" />
           ))}
-          <Line
-            x1={px(SEMI_R - SEMI_STROKE / 2 - 2, 0)}
-            y1={py(SEMI_R - SEMI_STROKE / 2 - 2, 0)}
-            x2={px(SEMI_R + SEMI_STROKE / 2 + 2, 0)}
-            y2={py(SEMI_R + SEMI_STROKE / 2 + 2, 0)}
-            stroke={theme.textTertiary}
-            strokeWidth={1.5}
-            strokeLinecap="round"
-          />
+          {/* A soft inner glow under the content, so the arc reads as lit from inside. */}
+          <Path d={arc(INNER_R - 1, -ARC_HALF_SPAN, ARC_HALF_SPAN)} stroke={OnBrand.text} strokeOpacity={0.35} strokeWidth={2} fill="none" />
 
-          {/* Main ring: its track, then burned growing from the bottom-left end and intake from the bottom-right end, in solid colour, until they meet at the junction. */}
-          <Path d={arc(MAIN_R, -MAIN_HALF_SPAN, MAIN_HALF_SPAN)} stroke={theme.backgroundElement} strokeWidth={MAIN_STROKE} strokeLinecap="round" fill="none" />
-          {empty ? null : (
+          {/* The junction knob: where burned and intake meet. */}
+          {empty || dim ? null : (
             <>
-              {burnedTo > -MAIN_HALF_SPAN + 0.05 ? <Path d={arc(MAIN_R, -MAIN_HALF_SPAN, burnedTo)} stroke={burnedColor} strokeWidth={MAIN_STROKE} strokeLinecap="round" fill="none" /> : null}
-              {eatenFrom < MAIN_HALF_SPAN - 0.05 ? <Path d={arc(MAIN_R, eatenFrom, MAIN_HALF_SPAN)} stroke={eatenColor} strokeWidth={MAIN_STROKE} strokeLinecap="round" fill="none" /> : null}
+              <Circle cx={knobX} cy={knobY + 2.5} r={KNOB_RING_R + 2} fill={Palette.neutral[950]} opacity={0.08} />
+              <Circle cx={knobX} cy={knobY + 1.5} r={KNOB_RING_R + 0.5} fill={Palette.neutral[950]} opacity={0.14} />
+              <Circle cx={knobX} cy={knobY} r={KNOB_RING_R} fill={OnBrand.text} />
+              <Circle cx={knobX} cy={knobY} r={KNOB_R} fill={eatenColor} />
+              <Path d={`M ${knobX - 3} ${knobY - 6.5} L ${knobX + 3.5} ${knobY} L ${knobX - 3} ${knobY + 6.5}`} stroke={OnBrand.text} strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" fill="none" />
             </>
           )}
-
-          {/* The junction knob, filling the ring's thickness, with a soft shadow under it. */}
-          {empty || sweep < 0.97 ? null : (
-            <>
-              <Circle cx={px(MAIN_R, junction)} cy={py(MAIN_R, junction) + 1.6} r={KNOB_R + 2.2} fill={Palette.neutral[950]} opacity={0.07} />
-              <Circle cx={px(MAIN_R, junction)} cy={py(MAIN_R, junction) + 1.4} r={KNOB_R + 1.2} fill={Palette.neutral[950]} opacity={0.12} />
-              <Circle cx={px(MAIN_R, junction)} cy={py(MAIN_R, junction) + 1} r={KNOB_R + 0.2} fill={Palette.neutral[950]} opacity={0.22} />
-              <Circle cx={px(MAIN_R, junction)} cy={py(MAIN_R, junction)} r={KNOB_R} fill={OnBrand.text} stroke={Palette.neutral[950]} strokeOpacity={0.12} strokeWidth={0.8} />
-              <Path d={arrowsPath(px(MAIN_R, junction), py(MAIN_R, junction), junction)} stroke={Palette.neutral[800]} strokeWidth={1.3} strokeLinecap="round" strokeLinejoin="round" fill="none" />
-            </>
-          )}
-          {/* The balance on the semi-ring: a bead on the track, a pulsing halo and the triangle pointing at it, always shown (at equilibrium when there is no reading). */}
-          <AnimatedCircle animatedProps={haloProps} fill={theme.text} />
-          <AnimatedCircle animatedProps={bead} r={BEAD_R} fill={theme.text} stroke={theme.backgroundElevated} strokeWidth={2.5} />
-          <AnimatedPath animatedProps={marker} fill={theme.text} stroke={theme.backgroundElevated} strokeWidth={1.8} strokeLinejoin="round" />
         </Svg>
 
-        {/* The scale's three labels: equilibrium at the top, the two ends under the semi-ring's ends. */}
-        <ThemedText
-          themeColor="textSecondary"
-          style={[styles.zeroText, label(11), { top: (py(ZERO_LABEL_R, 0) - 14) * k, left: 0, right: 0 }]}>
-          Equilibrio
-        </ThemedText>
-        <EndLabel name="Deficit" side="right" x={px(END_LABEL_R, SEMI_HALF_SPAN) * k} y={py(END_LABEL_R, SEMI_HALF_SPAN) * k} size={label(11)} />
-        <EndLabel name="Surplus" side="left" x={px(END_LABEL_R, -SEMI_HALF_SPAN) * k} y={py(END_LABEL_R, -SEMI_HALF_SPAN) * k} size={label(11)} />
+        {/* The two indicators inside the arc: burned on the left, intake on the right. */}
+        <Indicator side="left" icon="flameLine" color={dim ? theme.textTertiary : burnedColor} kcal={dim ? '—' : formatKcal(burnedKcal)} label="Bruciate" k={k} />
+        <Indicator side="right" icon="utensils" color={dim ? theme.textTertiary : eatenColor} kcal={dim ? '—' : formatKcal(eatenKcal)} label="Assunte" k={k} />
 
-        {/* The number: the balance itself, inside the main ring. */}
-        <View pointerEvents="none" style={[styles.centre, { top: (CY - 38) * k, height: 76 * k }]}>
-          <ThemedText style={[styles.value, { fontSize: 28 * k, lineHeight: 32 * k }]}>{value}</ThemedText>
-          <ThemedText style={[styles.unit, { fontSize: 12 * k, lineHeight: 16 * k }]}>{goalLabel}</ThemedText>
-          <ThemedText style={[styles.caption, { fontSize: 12 * k, lineHeight: 16 * k, color: theme.textTertiary }]}>{caption}</ThemedText>
+        {/* The number: the day's balance, the most prominent thing in the card. */}
+        <View pointerEvents="none" style={[styles.centre, { top: (CY - 98) * k, height: 80 * k, paddingHorizontal: 84 * k }]}>
+          <ThemedText style={[styles.value, { fontSize: (value.length > 6 ? 31 : value.length > 5 ? 35 : 40) * k, lineHeight: 46 * k }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6} ellipsizeMode="clip">
+            {value}
+          </ThemedText>
+          <ThemedText style={[styles.goal, { fontSize: 17 * k, lineHeight: 22 * k }]} themeColor="textSecondary" numberOfLines={1} ellipsizeMode="clip">
+            {goalLabel}
+          </ThemedText>
+        </View>
+
+        {/* The status pill, over the arc's flat end. */}
+        <View pointerEvents="none" style={[styles.badgeRow, { top: (CY - 1) * k, height: 24 * k }]}>
+          {badge ? (
+            <View style={[styles.badge, { backgroundColor: tint(toneColor, 0.14), paddingHorizontal: 10 * k, height: 24 * k, borderRadius: 12 * k }]}>
+              <Icon name={badge.tone === 'good' ? 'target' : 'info'} size={Math.round(14 * k)} color={toneColor} />
+              <ThemedText style={[styles.badgeText, { color: toneColor, fontSize: 12 * k, lineHeight: 16 * k }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+                {badge.label}
+              </ThemedText>
+            </View>
+          ) : caption ? (
+            <ThemedText style={{ color: theme.textTertiary, fontSize: 12 * k, lineHeight: 16 * k, fontWeight: '600' }}>{caption}</ThemedText>
+          ) : null}
         </View>
       </View>
     </View>
   );
 }
 
-/** One end of the semi-ring's scale: its name beside the ring's end, its inner edge at x. */
-function EndLabel({ name, side, x, y, size }: { name: string; side: 'left' | 'right'; x: number; y: number; size: { fontSize: number; lineHeight: number } }) {
-  const w = END_LABEL_W * (size.fontSize / 11);
+/** `rgba` of a `#rrggbb` / `rgb()` colour. */
+function tint(color: string, alpha: number): string {
+  const c = rgbOf(color);
+  return c ? `rgba(${c[0]},${c[1]},${c[2]},${alpha})` : color;
+}
+
+/** One of the two figures inside the arc: icon, number, unit and name, centred at a fixed offset from the middle. */
+function Indicator({ side, icon, color, kcal, label, k }: { side: 'left' | 'right'; icon: 'flameLine' | 'utensils'; color: string; kcal: string; label: string; k: number }) {
+  const w = 60 * k;
+  const centre = CX + (side === 'left' ? -87 : 87);
   return (
-    <View pointerEvents="none" style={[styles.end, { top: y - size.lineHeight / 2, width: w, left: side === 'right' ? x : x - w }]}>
-      <ThemedText themeColor="textSecondary" style={[styles.endName, size, { textAlign: side === 'right' ? 'left' : 'right' }]} numberOfLines={1}>
-        {name}
+    <View pointerEvents="none" style={[styles.indicator, { left: (centre - 30) * k, width: w, top: (CY - 76) * k }]}>
+      <Icon name={icon} size={Math.round(22 * k)} color={color} />
+      <ThemedText style={[styles.indValue, { fontSize: 18 * k, lineHeight: 22 * k }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+        {kcal}
+      </ThemedText>
+      <ThemedText style={[styles.indUnit, { fontSize: 12 * k, lineHeight: 14 * k }]}>kcal</ThemedText>
+      <ThemedText themeColor="textSecondary" style={[styles.indLabel, { fontSize: 12 * k, lineHeight: 15 * k }]} numberOfLines={1}>
+        {label}
       </ThemedText>
     </View>
   );
@@ -357,34 +276,49 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     alignItems: 'center',
   },
-  zeroText: {
-    position: 'absolute',
-    textAlign: 'center',
-    fontWeight: '700',
-    letterSpacing: 0.2,
-  },
-  end: {
-    position: 'absolute',
-  },
-  endName: {
-    fontWeight: '700',
-    letterSpacing: 0.2,
-  },
   centre: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  value: {
+    fontWeight: '800',
+    letterSpacing: -1,
+  },
+  goal: {
+    fontWeight: '600',
+  },
+  indicator: {
+    position: 'absolute',
+    alignItems: 'center',
+  },
+  indValue: {
+    fontWeight: '800',
+    letterSpacing: -0.3,
+    marginTop: 1,
+  },
+  indUnit: {
+    fontWeight: '600',
+  },
+  indLabel: {
+    fontWeight: '500',
+  },
+  badgeRow: {
     position: 'absolute',
     left: 0,
     right: 0,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  value: {
-    fontWeight: '800',
-    letterSpacing: -0.5,
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    maxWidth: 150,
   },
-  unit: {
-    fontWeight: '500',
-  },
-  caption: {
-    fontWeight: '600',
+  badgeText: {
+    fontWeight: '700',
+    flexShrink: 1,
   },
 });
