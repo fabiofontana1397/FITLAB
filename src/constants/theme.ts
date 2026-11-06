@@ -97,21 +97,24 @@ export const OnBrand = {
 } as const;
 
 /**
- * Workout session ("gym floor") mode: a black canvas with graphite tiles and
- * a neon go-colour, legible at arm's length under gym lighting while a set is
- * running. Deliberately the same in both schemes — the session takes over the
- * whole screen, so it sets its own lighting rather than following the app's,
- * the way a camera viewfinder does.
+ * Workout session mode: a white canvas with light grey tiles, a green go-colour
+ * and the watch-yellow clock. Deliberately the same in both schemes — the
+ * session takes over the whole screen, so it sets its own lighting rather
+ * than following the app's.
  */
 export const SessionColors = {
-  background: '#000000',
-  card: '#1C1C1E',
-  cardHigh: '#2C2C2E',
-  text: '#FFFFFF',
-  muted: '#8E8E93',
-  go: '#3DF56B',
-  goSoft: 'rgba(61,245,107,0.16)',
+  background: '#FFFFFF',
+  card: '#F2F2F7',
+  cardHigh: '#E5E5EA',
+  text: '#111113',
+  muted: '#6E6E73',
+  go: '#22B35E',
+  goSoft: 'rgba(34,179,94,0.14)',
+  onGo: '#FFFFFF',
   accent: orange[500],
+  /** The running clock, in the yellow of the watch's workout screen (a touch deeper to read on white). */
+  clock: '#E5A400',
+  danger: '#D6402C',
 } as const;
 
 export const Colors = {

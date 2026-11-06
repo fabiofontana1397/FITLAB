@@ -137,6 +137,7 @@ const ICONS = {
   bell: { set: 'ion', name: 'notifications-outline' },
   play: { set: 'ion', name: 'play' },
   pause: { set: 'ion', name: 'pause' },
+  stop: { set: 'ion', name: 'stop' },
   edit: { set: 'ion', name: 'create-outline' },
   link: { set: 'ion', name: 'link' },
   watch: { set: 'mci', name: 'watch-variant' },
