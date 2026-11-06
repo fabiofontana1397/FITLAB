@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { LinearTransition } from 'react-native-reanimated';
 
 import { FoodSearchModal } from '@/components/nutrition/food-search-modal';
 import { MealCard } from '@/components/nutrition/meal-card';
@@ -34,8 +33,6 @@ import { hapticSelection } from '@/lib/haptics';
 const SCREEN_PADDING = Layout.screenGutter;
 const CARD_RADIUS = Radius.large;
 const CARD_PADDING = 14;
-// Opening a meal grows its card (and slides the ones below) instead of snapping.
-const MEAL_CARD_TRANSITION = LinearTransition.springify().damping(24).stiffness(220).mass(0.9);
 
 function withAlpha(hex: string, alpha: number): string {
   if (!/^#([0-9a-f]{6})$/i.test(hex)) return hex;
@@ -225,7 +222,6 @@ export default function NutritionScreen() {
                 setEditingEntry(null);
                 setActiveSlot(meta.id);
               }}
-              layout={MEAL_CARD_TRANSITION}
             />
           );
         })}

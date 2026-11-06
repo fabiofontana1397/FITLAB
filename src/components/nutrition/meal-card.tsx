@@ -1,6 +1,6 @@
-import type { ComponentProps } from 'react';
+import { useEffect } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
+import Animated, { Easing, interpolate, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { FoodThumb } from '@/components/nutrition/food-thumb';
 import { ThemedText } from '@/components/themed-text';
@@ -28,9 +28,11 @@ export type MealCardProps = {
   /** A food swiped to the left and deleted. */
   onDeleteEntry: (entry: MealFoodEntry) => void;
   onAddFood: () => void;
-  /** The Reanimated layout transition the card (and the ones below) glide with when it folds. */
-  layout?: ComponentProps<typeof FlatCard>['layout'];
 };
+
+// Opening eases out (quick start, soft landing); closing is shorter and eases in-out so it never feels sluggish.
+const OPEN_TIMING = { duration: 320, easing: Easing.bezier(0.22, 1, 0.36, 1) };
+const CLOSE_TIMING = { duration: 240, easing: Easing.bezier(0.4, 0, 0.2, 1) };
 
 function withAlpha(hex: string, alpha: number): string {
   if (!/^#([0-9a-f]{6})$/i.test(hex)) return hex;
@@ -50,11 +52,28 @@ function countLabel(n: number): string {
  *   hairlines, then a full-width "+ Aggiungi alimento" outline button.
  * Tapping the header folds the foods away.
  */
-export function MealCard({ label, time, icon, color, entries, totals, expanded, onToggle, onEditEntry, onDeleteEntry, onAddFood, layout }: MealCardProps) {
+export function MealCard({ label, time, icon, color, entries, totals, expanded, onToggle, onEditEntry, onDeleteEntry, onAddFood }: MealCardProps) {
   const theme = useTheme();
+  // 0 = folded, 1 = open. The foods stay mounted and the frame's height follows
+  // `progress`, so the cards below slide in the same frame instead of jumping.
+  const progress = useSharedValue(expanded ? 1 : 0);
+  const contentHeight = useSharedValue(-1); // -1 until measured: the frame is auto-sized
+
+  useEffect(() => {
+    progress.value = withTiming(expanded ? 1 : 0, expanded ? OPEN_TIMING : CLOSE_TIMING);
+  }, [expanded, progress]);
+
+  const frameStyle = useAnimatedStyle(() => {
+    if (contentHeight.value < 0) return progress.value === 0 ? { height: 0, opacity: 0 } : {};
+    return {
+      height: progress.value * contentHeight.value,
+      // Fades in over the second part of the opening, out over the first part of the closing.
+      opacity: interpolate(progress.value, [0, 0.55, 1], [0, 0, 1]),
+    };
+  });
 
   return (
-    <FlatCard radius={24} style={styles.card} layout={layout}>
+    <FlatCard radius={24} style={styles.card}>
       <Pressable onPress={onToggle} accessibilityRole="button" accessibilityState={{ expanded }} accessibilityLabel={`${label}, ${Math.round(totals.kcal)} kcal`} style={styles.header}>
         <View style={[styles.icon, { backgroundColor: withAlpha(color, 0.14) }]}>
           <Icon name={icon} size={22} color={color} />
@@ -86,8 +105,12 @@ export function MealCard({ label, time, icon, color, entries, totals, expanded, 
         ))}
       </View>
 
-      {expanded ? (
-        <Animated.View entering={FadeIn.duration(220).delay(60)} exiting={FadeOut.duration(110)}>
+      <Animated.View style={[styles.frame, frameStyle]} pointerEvents={expanded ? 'auto' : 'none'} accessibilityElementsHidden={!expanded} importantForAccessibility={expanded ? 'auto' : 'no-hide-descendants'}>
+        <View
+          onLayout={(e) => {
+            const h = e.nativeEvent.layout.height;
+            if (h > 0 && h !== contentHeight.value) contentHeight.value = h;
+          }}>
           <View style={[styles.rule, { backgroundColor: theme.borderStrong }]} />
           {entries.map((entry, i) => {
             const food = findFood(entry.foodId);
@@ -131,8 +154,8 @@ export function MealCard({ label, time, icon, color, entries, totals, expanded, 
               Aggiungi alimento
             </ThemedText>
           </Pressable>
-        </Animated.View>
-      ) : null}
+        </View>
+      </Animated.View>
     </FlatCard>
   );
 }
@@ -193,6 +216,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 17,
     fontWeight: '700',
+  },
+  frame: {
+    overflow: 'hidden',
   },
   rule: {
     height: StyleSheet.hairlineWidth,
