@@ -12,6 +12,7 @@ import { TabHeader } from '@/components/tab-header';
 import { LogActivityModal } from '@/components/training/log-activity-modal';
 import { LoggedActivitiesCard } from '@/components/training/logged-activities-card';
 import { MissedWorkoutsCard, type MissedWorkout } from '@/components/training/missed-workouts-card';
+import { PastWorkoutCard } from '@/components/training/past-workout-card';
 import { SwapSlide } from '@/components/training/swap-slide';
 import { TrainingWeekCard } from '@/components/training/training-week-card';
 import { levelLabel, WorkoutSummaryCard } from '@/components/training/workout-summary-card';
@@ -123,7 +124,11 @@ export default function TrainingScreen() {
   // The sessions from the selected day to the end of the week, one section each,
   // in calendar order: the selected day whatever it is (a rest day says so), then
   // every later workout or cardio day. An earlier day is one tap on the week away.
-  const sectionDates = trainingPlan
+  // A past day shows only its own session, with how it went.
+  const viewingPast = selectedDate < today;
+  const sectionDates = viewingPast
+    ? [selectedDate]
+    : trainingPlan
     ? viewedWeekDates.filter(
         (date) => date === selectedDate || (date > selectedDate && (dayPlanOf(date)?.type === 'workout' || dayPlanOf(date)?.type === 'cardio'))
       )
@@ -189,11 +194,13 @@ export default function TrainingScreen() {
           <Icon name="chevronRight" size={16} color={OnBrand.text} />
         </PressableScale>
 
+        {viewingPast ? null : (
         <MissedWorkoutsCard
           workouts={missedWorkouts}
           onRecover={setSessionDate}
           onOpen={(date) => router.push({ pathname: '/workout-detail', params: { date } })}
         />
+        )}
 
         {sectionDates.map((date) => {
           const day = dayPlanOf(date);
@@ -226,6 +233,13 @@ export default function TrainingScreen() {
               <SwapSlide nonce={slide.dates?.includes(date) ? slide.nonce : 0} from={slideFrom(date)}>
               <View style={styles.dayBody}>
               {done ? null : <LoggedActivitiesCard date={date} inline />}
+              {date < today && trainingPlan && day?.type === 'workout' && (day.exercises ?? []).length > 0 ? (
+                <PastWorkoutCard
+                  completed={done}
+                  exercises={(day.exercises ?? []).map((ex) => ({ id: ex.id, name: ex.name, done: isExerciseCompleted(completedExercises, ex.id, date) }))}
+                  onRecover={() => setSessionDate(date)}
+                />
+              ) : null}
               {!trainingPlan ? (
                 <FlatCard radius={20} style={styles.messageCard}>
                   <ThemedText style={styles.cardTitle}>{ctx.mode === 'diet' ? 'Programma di allenamento non richiesto' : 'Nessun programma generato'}</ThemedText>
