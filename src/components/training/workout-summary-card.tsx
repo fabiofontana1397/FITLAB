@@ -50,15 +50,20 @@ export type WorkoutSummaryCardProps = {
   onStart?: () => void;
   /** Moves this session to today and today's here (the switch button on the days ahead). */
   onSwap?: () => void;
+  /** A past day: 'done' gets a green tick, 'missed' is highlighted in red. */
+  status?: 'done' | 'missed';
+  /** Starts the session on the day it was missed ("Recupera"). */
+  onRecover?: () => void;
 };
 
 /** A day's session: the play button that starts it, its name, "Forza - Livello base"
  * and its duration + estimated kcal. The whole box opens the session's sheet,
  * except the play button, which starts it. */
-export function WorkoutSummaryCard({ title, subtitle, minutes, kcal, onOpen, onStart, onSwap }: WorkoutSummaryCardProps) {
+export function WorkoutSummaryCard({ title, subtitle, minutes, kcal, onOpen, onStart, onSwap, status, onRecover }: WorkoutSummaryCardProps) {
   const theme = useTheme();
+  const missed = status === 'missed';
   return (
-    <FlatCard radius={20} style={styles.card}>
+    <FlatCard radius={20} style={[styles.card, missed && { borderWidth: 1.5, borderColor: theme.danger, backgroundColor: theme.danger + '14' }]}>
       <Pressable onPress={onOpen} accessibilityRole="button" accessibilityLabel={`Dettagli: ${title}`} style={StyleSheet.absoluteFill} />
       <View style={styles.row} pointerEvents="box-none">
         {onStart ? (
@@ -73,6 +78,12 @@ export function WorkoutSummaryCard({ title, subtitle, minutes, kcal, onOpen, onS
               <Icon name="swap" size={26} color={theme.accent} />
             </View>
           </PressableScale>
+        ) : status ? (
+          <View
+            accessibilityLabel={missed ? 'Non completato' : 'Completato'}
+            style={[styles.play, styles.swap, { width: PLAY_SIZE, height: PLAY_SIZE, borderRadius: PLAY_SIZE / 2, backgroundColor: missed ? theme.danger : theme.brandGreen }]}>
+            <Icon name={missed ? 'close' : 'check'} size={28} color="#FFFFFF" />
+          </View>
         ) : null}
 
         <View style={styles.open} pointerEvents="none">
@@ -97,6 +108,18 @@ export function WorkoutSummaryCard({ title, subtitle, minutes, kcal, onOpen, onS
           <Icon name="chevronRight" size={18} color={theme.textTertiary} />
         </View>
       </View>
+      {missed && onRecover ? (
+        <PressableScale
+          onPress={onRecover}
+          haptic="press"
+          scaleTo={0.97}
+          accessibilityRole="button"
+          accessibilityLabel={`Recupera ${title}`}
+          style={[styles.recover, { backgroundColor: theme.accentSoft }]}>
+          <Icon name="play" size={13} color={theme.accent} />
+          <ThemedText style={[styles.recoverLabel, { color: theme.accent }]}>Recupera</ThemedText>
+        </PressableScale>
+      ) : null}
     </FlatCard>
   );
 }
@@ -154,6 +177,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
+  },
+  recover: {
+    marginTop: 12,
+    height: 40,
+    borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  recoverLabel: {
+    fontSize: 13,
+    lineHeight: 17,
+    fontWeight: '700',
   },
   statText: {
     fontSize: 12,
