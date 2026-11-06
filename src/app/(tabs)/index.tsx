@@ -5,8 +5,9 @@ import { useState } from 'react';
 import { Platform, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 
 import { EnergyDetailsPopup } from '@/components/home/energy-details-popup';
-import { GoalBar, goalBandCopy } from '@/components/home/goal-bar';
-import { OggiGauge } from '@/components/home/oggi-gauge';
+import { EnergyBars } from '@/components/home/energy-bars';
+import { goalBandCopy } from '@/components/home/goal-band-copy';
+import { GoalRing } from '@/components/home/goal-ring';
 import { DayCalendarModal } from '@/components/ui/day-calendar-modal';
 import { AnimatedFill, GrowBar } from '@/components/motion/animated-fill';
 import { PressableScale } from '@/components/motion/pressable-scale';
@@ -97,8 +98,6 @@ export default function HomeScreen() {
     hapticTap();
     router.push('/energy-guide' as Href);
   };
-  // adjustsFontSizeToFit does nothing on the web, so the three kcal values step down on the narrowest phones.
-  const narrow = useWindowDimensions().width < 360;
 
   // The active month's weekly split: the same weekday-indexed lookup the
   // Training tab uses, so Home and Training agree on what's planned.
@@ -132,6 +131,11 @@ export default function HomeScreen() {
     measured: health.measuredFor(viewDate),
     // Today the resting + everyday kcal accrue hour by hour; past days are complete.
     elapsedHours: viewDate === today ? elapsedHours : undefined,
+  });
+  // The same day lived to its end with the planned session done: what the burned bar fills towards.
+  const fullDay = dayEnergy(ctx, weeklySplit[planIndexFor(viewDate, swaps)] ?? null, 1, sumActivityKcalForDate(activityLogEntries, viewDate), {
+    calibration: health.calibration,
+    measured: health.measuredFor(viewDate),
   });
   const basalKcal = energy.resting + energy.everyday;
   const trainingBurnKcal = energy.exercise;
@@ -245,54 +249,31 @@ export default function HomeScreen() {
           </Pressable>
         </View>
 
-        <Pressable onPress={openGuide} style={styles.gaugeWrap} accessibilityRole="button" accessibilityLabel={balanceA11y} accessibilityHint="Apre la spiegazione del grafico">
-          <OggiGauge
-            burnedKcal={isFutureDay ? 0 : burnedKcal}
-            eatenKcal={isFutureDay ? 0 : eatenKcal}
-            burnedColor={theme.brandGreen}
-            eatenColor={theme.accent}
-            reading={balanceReading}
-            inactive={isFutureDay}
-            value={isFutureDay ? '—' : formatSignedKcal(balanceKcal)}
-            goalLabel={isFutureDay ? '' : `/${formatSignedKcal(dailyGoalKcal)} kcal`}
-            badge={{ label: bandCopy.badge, tone: bandCopy.tone }}
-          />
-        </Pressable>
+        <GoalRing
+          band={band}
+          copy={bandCopy}
+          inactive={isFutureDay}
+          value={isFutureDay ? '—' : formatSignedKcal(balanceKcal)}
+          goalText={isFutureDay ? '—' : `${formatSignedKcal(dailyGoalKcal)} kcal`}
+          onPress={openGuide}
+          onGoalPress={() => setDetailsFocus('day')}
+          accessibilityLabel={balanceA11y}
+        />
 
+        <View style={[styles.oggiDivider, { backgroundColor: theme.border }]} />
 
-        <View style={[styles.oggiRow, { borderBottomColor: theme.border }]}>
-          <Pressable onPress={() => setInfoTopic('burned')} style={styles.sideCol}>
-            <View style={styles.sideIcon}>
-              <Icon name="flameLine" size={22} color={isFutureDay ? theme.textTertiary : theme.brandGreen} />
-            </View>
-            <ThemedText style={styles.sideLabel} themeColor="textTertiary">
-              Bruciate
-            </ThemedText>
-            <ThemedText style={[styles.sideValue, narrow && styles.sideValueNarrow]} numberOfLines={1} adjustsFontSizeToFit>{isFutureDay ? '—' : `${formatKcal(burnedKcal)} kcal`}</ThemedText>
-          </Pressable>
-          <View style={[styles.sideDivider, { backgroundColor: theme.border }]} />
-          <Pressable onPress={() => setDetailsFocus('day')} style={styles.sideCol}>
-            <View style={styles.sideIcon}>
-              <Icon name="crosshair" size={22} color={isFutureDay ? theme.textTertiary : theme.textSecondary} />
-            </View>
-            <ThemedText style={styles.sideLabel} themeColor="textTertiary">
-              Obiettivo
-            </ThemedText>
-            <ThemedText style={[styles.sideValue, narrow && styles.sideValueNarrow]} numberOfLines={1} adjustsFontSizeToFit>{isFutureDay ? '—' : `${formatSignedKcal(dailyGoalKcal)} kcal`}</ThemedText>
-          </Pressable>
-          <View style={[styles.sideDivider, { backgroundColor: theme.border }]} />
-          <Pressable onPress={() => setInfoTopic('eaten')} style={styles.sideCol}>
-            <View style={styles.sideIcon}>
-              <Icon name="utensils" size={22} color={isFutureDay ? theme.textTertiary : theme.accent} />
-            </View>
-            <ThemedText style={styles.sideLabel} themeColor="textTertiary">
-              Assunte
-            </ThemedText>
-            <ThemedText style={[styles.sideValue, narrow && styles.sideValueNarrow]} numberOfLines={1} adjustsFontSizeToFit>{isFutureDay ? '—' : `${formatKcal(eatenKcal)} kcal`}</ThemedText>
-          </Pressable>
-        </View>
-
-        <GoalBar band={band} copy={bandCopy} inactive={isFutureDay} accessibilityLabel={`${bandCopy.badge}. ${bandCopy.message}${bandCopy.cause ? ` ${bandCopy.cause}` : ''}`} />
+        <EnergyBars
+          eatenKcal={isFutureDay ? 0 : eatenKcal}
+          eatenTargetKcal={calorieTarget > 0 ? calorieTarget : fullDay.total}
+          basalKcal={isFutureDay ? 0 : basalKcal}
+          basalDayKcal={fullDay.resting + fullDay.everyday}
+          exerciseKcal={isFutureDay ? 0 : trainingBurnKcal}
+          exerciseDayKcal={fullDay.exercise}
+          inactive={isFutureDay}
+          running={viewDate === today}
+          onEatenPress={() => setInfoTopic('eaten')}
+          onBurnedPress={() => setInfoTopic('burned')}
+        />
       </FlatCard>
 
       <View style={styles.actionsRow}>
@@ -639,47 +620,10 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     fontWeight: '700',
   },
-  gaugeWrap: {
-    alignSelf: 'stretch',
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  oggiRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginTop: 10,
-    paddingBottom: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  sideCol: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 4,
-  },
-  sideIcon: {
-    height: 26,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sideDivider: {
-    width: 1,
-    height: 62,
-    alignSelf: 'center',
-  },
-  sideValue: {
-    fontSize: 17,
-    lineHeight: 21,
-    fontWeight: '800',
-    letterSpacing: -0.3,
-  },
-  sideValueNarrow: {
-    fontSize: 14,
-    lineHeight: 18,
-  },
-  sideLabel: {
-    fontSize: 13,
-    lineHeight: 17,
-    fontWeight: '500',
+  oggiDivider: {
+    height: StyleSheet.hairlineWidth,
+    marginTop: 18,
+    marginBottom: 18,
   },
   actionsRow: {
     flexDirection: 'row',
