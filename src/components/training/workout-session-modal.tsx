@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Image, Modal, Pressable, ScrollView, StyleSheet, Vibration, View } from 'react-native';
+import { Image, Modal, Pressable, StyleSheet, Vibration, View } from 'react-native';
 import Animated, {
   useAnimatedProps,
   useAnimatedStyle,
@@ -348,6 +348,7 @@ function SessionView({ onClose, title, exercises, date }: Omit<WorkoutSessionMod
   }
 
   const isLast = exIndex === exercises.length - 1;
+  const resting = view === 'resting';
 
   return (
     <View style={[styles.root, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 16 }]}>
@@ -370,129 +371,105 @@ function SessionView({ onClose, title, exercises, date }: Omit<WorkoutSessionMod
           onClose={onClose}
         />
       ) : (
-        <>
-          <ScrollView style={styles.scroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-            <View style={styles.statsRow}>
-              <LiveStats bankMs={bankMs} runSince={runSince} weightKg={ctx.weightKg} bmrPerDay={bmrPerDay} paused={paused} />
-              <View style={styles.controls}>
-                {confirmEnd ? (
-                  <>
-                    <Pressable onPress={finishWorkout} accessibilityRole="button" accessibilityLabel="Termina l'allenamento" style={[styles.controlBtn, { backgroundColor: C.danger }]}>
-                      <Icon name="check" size={26} color="#FFFFFF" />
-                    </Pressable>
-                    <Pressable onPress={() => setConfirmEnd(false)} accessibilityRole="button" accessibilityLabel="Annulla" style={[styles.controlBtn, { backgroundColor: C.cardHigh }]}>
-                      <Icon name="close" size={24} color={C.text} />
-                    </Pressable>
-                  </>
-                ) : (
-                  <>
-                    <Pressable
-                      onPress={togglePause}
-                      accessibilityRole="button"
-                      accessibilityLabel={paused ? 'Riprendi allenamento' : 'Metti in pausa l’allenamento'}
-                      style={[styles.controlBtn, { backgroundColor: paused ? C.green : C.cardHigh }]}>
-                      <Icon name={paused ? 'play' : 'pause'} size={24} color={paused ? C.onGreen : C.text} />
-                    </Pressable>
-                    <Pressable
-                      onPress={() => {
-                        hapticTap();
-                        setConfirmEnd(true);
-                      }}
-                      accessibilityRole="button"
-                      accessibilityLabel="Fine allenamento"
-                      style={[styles.controlBtn, { backgroundColor: C.cardHigh }]}>
-                      <Icon name="stop" size={22} color={C.danger} />
-                    </Pressable>
-                  </>
-                )}
-              </View>
+        // One fixed page, no scrolling: the clock block, the exercise (its picture takes whatever height is left),
+        // the numbers, the sets and the main button.
+        <View style={styles.page}>
+          <View style={styles.statsRow}>
+            <LiveStats bankMs={bankMs} runSince={runSince} weightKg={ctx.weightKg} bmrPerDay={bmrPerDay} paused={paused} />
+            <View style={styles.controls}>
+              {confirmEnd ? (
+                <>
+                  <Pressable onPress={finishWorkout} accessibilityRole="button" accessibilityLabel="Termina l'allenamento" style={[styles.controlBtn, { backgroundColor: C.danger }]}>
+                    <Icon name="check" size={24} color="#FFFFFF" />
+                  </Pressable>
+                  <Pressable onPress={() => setConfirmEnd(false)} accessibilityRole="button" accessibilityLabel="Annulla" style={[styles.controlBtn, { backgroundColor: C.cardHigh }]}>
+                    <Icon name="close" size={22} color={C.text} />
+                  </Pressable>
+                </>
+              ) : (
+                <>
+                  <Pressable
+                    onPress={togglePause}
+                    accessibilityRole="button"
+                    accessibilityLabel={paused ? 'Riprendi allenamento' : 'Metti in pausa l’allenamento'}
+                    style={[styles.controlBtn, { backgroundColor: paused ? C.green : C.cardHigh }]}>
+                    <Icon name={paused ? 'play' : 'pause'} size={22} color={paused ? C.onGreen : C.text} />
+                  </Pressable>
+                  <Pressable
+                    onPress={() => {
+                      hapticTap();
+                      setConfirmEnd(true);
+                    }}
+                    accessibilityRole="button"
+                    accessibilityLabel="Fine allenamento"
+                    style={[styles.controlBtn, { backgroundColor: C.cardHigh }]}>
+                    <Icon name="stop" size={20} color={C.danger} />
+                  </Pressable>
+                </>
+              )}
             </View>
-            <ThemedText style={[styles.controlHint, confirmEnd && { color: C.danger }]}>
-              {confirmEnd ? 'Terminare l’allenamento? Le serie fatte restano salvate.' : paused ? 'In pausa · tocca play per riprendere' : ' '}
-            </ThemedText>
+          </View>
+          <ThemedText style={[styles.controlHint, confirmEnd && { color: C.danger }]} numberOfLines={1}>
+            {confirmEnd ? 'Terminare? Le serie fatte restano salvate.' : paused ? 'In pausa · tocca play per riprendere' : ' '}
+          </ThemedText>
 
-            <View style={styles.selector}>
-              <NavButton icon="arrowBack" disabled={exIndex === 0} onPress={() => go(exIndex - 1)} label="Esercizio precedente" />
-              <View style={styles.selectorText}>
-                <ThemedText style={styles.counter}>
-                  Esercizio {exIndex + 1} di {exercises.length}
-                </ThemedText>
-                <ThemedText style={styles.exerciseName} numberOfLines={2}>
-                  {exercise.name}
-                </ThemedText>
-              </View>
-              <NavButton icon="chevronRight" disabled={isLast} onPress={() => go(exIndex + 1)} label="Esercizio successivo" />
+          <View style={styles.selector}>
+            <NavButton icon="arrowBack" disabled={exIndex === 0} onPress={() => go(exIndex - 1)} label="Esercizio precedente" />
+            <View style={styles.selectorText}>
+              <ThemedText style={styles.counter}>
+                Esercizio {exIndex + 1} di {exercises.length}
+              </ThemedText>
+              <ThemedText style={styles.exerciseName} numberOfLines={1} adjustsFontSizeToFit>
+                {exercise.name}
+              </ThemedText>
             </View>
+            <NavButton icon="chevronRight" disabled={isLast} onPress={() => go(exIndex + 1)} label="Esercizio successivo" />
+          </View>
 
+          <View style={styles.gifBox}>
             {media ? (
-              <View style={styles.gifBox}>
-                <Image source={{ uri: media.gifUrl }} style={styles.gif} resizeMode="contain" accessibilityLabel={`Esecuzione: ${exercise.name}`} />
-              </View>
-            ) : null}
-
-            <View style={{ alignSelf: 'stretch', gap: 10 }}>
-              <View style={styles.infoRow}>
-                <Info label="Serie" value={String(exercise.sets)} />
-                <Info label={timed ? 'Durata' : 'Ripetizioni'} value={exercise.reps} />
-                <Info label="Modalità" value={exercise.tempo === 'isometria' ? 'Tenuta' : exercise.tempo} />
-                <Info
-                  label="Carico"
-                  value={load == null ? '—' : `${load} kg`}
-                  active={editingLoad}
-                  onPress={load == null ? undefined : () => setEditingLoad((e) => !e)}
-                />
-              </View>
-              {editingLoad && load != null ? (
-                <View style={styles.loadEditor}>
-                  <Pressable onPress={() => changeLoad(-loadStep)} style={styles.loadBtn} accessibilityLabel="Diminuisci carico">
-                    <Icon name="trendFlat" size={18} color={C.text} />
-                  </Pressable>
-                  <ThemedText style={styles.loadValue}>{load} kg</ThemedText>
-                  <Pressable onPress={() => changeLoad(loadStep)} style={styles.loadBtn} accessibilityLabel="Aumenta carico">
-                    <Icon name="plus" size={18} color={C.text} />
-                  </Pressable>
-                </View>
-              ) : null}
-            </View>
-
-            {view === 'resting' ? (
-              <Pressable onPress={togglePause} accessibilityLabel={paused ? 'Riprendi allenamento' : 'Metti in pausa l’allenamento'}>
-                <CountdownRing fraction={restTotal > 0 ? restLeft / restTotal : 0}>
-                  {restAfter ? (
-                    <View style={styles.doneBadge}>
-                      <Icon name="check" size={13} color={C.green} />
-                      <ThemedText style={styles.doneBadgeText}>Serie {restAfter.set} fatta</ThemedText>
-                    </View>
-                  ) : null}
-                  <ThemedText style={styles.ringTime}>{clock(restLeft)}</ThemedText>
-                  <ThemedText style={styles.ringHint}>{paused ? 'in pausa · tocca per riprendere' : 'recupero · tocca per la pausa'}</ThemedText>
-                </CountdownRing>
-              </Pressable>
+              <Image source={{ uri: media.gifUrl }} style={styles.gif} resizeMode="contain" accessibilityLabel={`Esecuzione: ${exercise.name}`} />
             ) : (
-              <SetsRing total={exercise.sets} done={setsDone}>
-                {exerciseDone ? (
-                  <>
-                    <Icon name="check" size={58} color={C.green} />
-                    <ThemedText style={[styles.ringLabel, { color: C.green }]}>Completato</ThemedText>
-                  </>
-                ) : (
-                  <>
-                    <ThemedText style={styles.ringLabel}>Serie</ThemedText>
-                    <ThemedText style={styles.ringTime}>
-                      {setsDone + 1}
-                      <ThemedText style={styles.ringTimeSmall}>/{exercise.sets}</ThemedText>
-                    </ThemedText>
-                    <ThemedText style={styles.ringHint}>
-                      {exercise.sets - setsDone === 1 ? 'ultima serie' : `${setsDone} ${setsDone === 1 ? 'fatta' : 'fatte'} · ${exercise.sets - setsDone} da fare`}
-                    </ThemedText>
-                  </>
-                )}
-              </SetsRing>
+              <Icon name="barbell" size={48} color={C.cardHigh} />
             )}
-          </ScrollView>
+          </View>
+
+          {editingLoad && load != null ? (
+            <View style={styles.loadEditor}>
+              <Pressable onPress={() => changeLoad(-loadStep)} style={styles.loadBtn} accessibilityLabel="Diminuisci carico">
+                <Icon name="trendFlat" size={18} color={C.text} />
+              </Pressable>
+              <ThemedText style={styles.loadValue}>{load} kg</ThemedText>
+              <Pressable onPress={() => changeLoad(loadStep)} style={styles.loadBtn} accessibilityLabel="Aumenta carico">
+                <Icon name="plus" size={18} color={C.text} />
+              </Pressable>
+              <Pressable onPress={() => setEditingLoad(false)} style={[styles.loadBtn, { backgroundColor: C.green }]} accessibilityLabel="Fatto">
+                <Icon name="check" size={18} color={C.onGreen} />
+              </Pressable>
+            </View>
+          ) : (
+            <View style={styles.infoRow}>
+              <Info label="Serie" value={String(exercise.sets)} />
+              <Info label={timed ? 'Durata' : 'Ripetizioni'} value={exercise.reps} />
+              <Info label="Modalità" value={exercise.tempo === 'isometria' ? 'Tenuta' : exercise.tempo} />
+              <Info label="Carico" value={load == null ? '—' : `${load} kg`} onPress={load == null ? undefined : () => setEditingLoad(true)} />
+            </View>
+          )}
+
+          <SetsPanel
+            total={exercise.sets}
+            done={setsDone}
+            exerciseDone={exerciseDone}
+            resting={resting}
+            restLeft={restLeft}
+            restTotal={restTotal}
+            restAfter={restAfter}
+            paused={paused}
+            onTogglePause={togglePause}
+          />
 
           <View style={styles.footer}>
-            {view === 'resting' ? (
+            {resting ? (
               <PrimaryAction icon="play" label="Salta recupero" onPress={skipRest} disabled={paused} />
             ) : exerciseDone ? (
               <PrimaryAction icon="chevronRight" label={isLast ? 'Termina' : 'Esercizio successivo'} onPress={() => (isLast ? finishWorkout() : go(exIndex + 1))} disabled={paused} />
@@ -500,9 +477,89 @@ function SessionView({ onClose, title, exercises, date }: Omit<WorkoutSessionMod
               <PrimaryAction icon="check" label={`Serie ${setsDone + 1} fatta`} onPress={completeSet} disabled={paused} />
             )}
           </View>
-        </>
+        </View>
       )}
     </View>
+  );
+}
+
+/**
+ * The sets of the exercise as horizontal bars (one per set, green when done, the
+ * next one outlined), under a title line. While resting the same card shows the
+ * rest countdown and a draining bar, so the page never changes height.
+ */
+function SetsPanel({
+  total,
+  done,
+  exerciseDone,
+  resting,
+  restLeft,
+  restTotal,
+  restAfter,
+  paused,
+  onTogglePause,
+}: {
+  total: number;
+  done: number;
+  exerciseDone: boolean;
+  resting: boolean;
+  restLeft: number;
+  restTotal: number;
+  restAfter: { name: string; set: number } | null;
+  paused: boolean;
+  onTogglePause: () => void;
+}) {
+  const fraction = restTotal > 0 ? Math.min(Math.max(restLeft / restTotal, 0), 1) : 0;
+  return (
+    <Pressable
+      onPress={resting ? onTogglePause : undefined}
+      disabled={!resting}
+      accessibilityLabel={resting ? (paused ? 'Riprendi allenamento' : 'Metti in pausa l’allenamento') : `Serie ${Math.min(done + 1, total)} di ${total}`}
+      style={styles.panel}>
+      <View style={styles.panelTop}>
+        {resting ? (
+          <>
+            <View style={styles.panelLeft}>
+              {restAfter ? (
+                <View style={styles.doneBadge}>
+                  <Icon name="check" size={13} color={C.green} />
+                  <ThemedText style={styles.doneBadgeText}>Serie {restAfter.set} fatta</ThemedText>
+                </View>
+              ) : null}
+              <ThemedText style={styles.panelHint}>{paused ? 'in pausa' : 'recupero'}</ThemedText>
+            </View>
+            <ThemedText style={styles.restTime}>{clock(restLeft)}</ThemedText>
+          </>
+        ) : exerciseDone ? (
+          <View style={styles.panelLeft}>
+            <Icon name="check" size={22} color={C.green} />
+            <ThemedText style={[styles.panelTitle, { color: C.green }]}>Esercizio completato</ThemedText>
+          </View>
+        ) : (
+          <>
+            <ThemedText style={styles.panelTitle}>
+              Serie {done + 1}
+              <ThemedText style={styles.panelTitleSmall}> / {total}</ThemedText>
+            </ThemedText>
+            <ThemedText style={styles.panelHint}>
+              {total - done === 1 ? 'ultima serie' : `${done} ${done === 1 ? 'fatta' : 'fatte'} · ${total - done} da fare`}
+            </ThemedText>
+          </>
+        )}
+      </View>
+      <View style={styles.bars}>
+        {Array.from({ length: total }, (_, i) => (
+          <View
+            key={i}
+            style={[
+              styles.bar,
+              i < done ? { backgroundColor: C.green } : i === done && !exerciseDone ? { backgroundColor: C.cardHigh, borderWidth: 1.5, borderColor: C.green } : { backgroundColor: C.cardHigh },
+            ]}
+          />
+        ))}
+      </View>
+      <View style={styles.restTrack}>{resting ? <View style={[styles.restFill, { width: `${fraction * 100}%` }]} /> : null}</View>
+    </Pressable>
   );
 }
 
@@ -523,8 +580,10 @@ function LiveStats({ bankMs, runSince, weightKg, bmrPerDay, paused }: { bankMs: 
   return (
     <View style={styles.stats} accessible accessibilityLabel={`${watchClock(ms)}, ${kcal.active} kcal attive, ${kcal.total} kcal totali`}>
       <ThemedText style={[styles.watchTime, paused && { opacity: 0.45 }]}>{watchClock(ms)}</ThemedText>
-      <KcalLine value={kcal.active} top="KCAL" bottom="ATTIVE" />
-      <KcalLine value={kcal.total} top="TOTALE" bottom="KCAL" />
+      <View style={styles.kcalRow}>
+        <KcalLine value={kcal.active} top="KCAL" bottom="ATTIVE" />
+        <KcalLine value={kcal.total} top="TOTALE" bottom="KCAL" />
+      </View>
     </View>
   );
 }
@@ -588,30 +647,6 @@ function SetsRing({ total, done, children }: { total: number; done: number; chil
       {done >= total ? <View style={[StyleSheet.absoluteFill, styles.glow]} pointerEvents="none" /> : null}
       <View style={{ alignItems: 'center' }}>{children}</View>
     </Animated.View>
-  );
-}
-
-function CountdownRing({ fraction, children }: { fraction: number; children: React.ReactNode }) {
-  const f = Math.min(Math.max(fraction, 0), 1);
-  return (
-    <View style={{ width: RING, height: RING, alignItems: 'center', justifyContent: 'center' }}>
-      <Svg width={RING} height={RING} style={StyleSheet.absoluteFill}>
-        <Circle cx={RING / 2} cy={RING / 2} r={RING_R} stroke={C.card} strokeWidth={RING_STROKE} fill="none" />
-        <Circle
-          cx={RING / 2}
-          cy={RING / 2}
-          r={RING_R}
-          stroke={C.green}
-          strokeWidth={RING_STROKE}
-          strokeLinecap="round"
-          fill="none"
-          strokeDasharray={`${RING_CIRC} ${RING_CIRC}`}
-          strokeDashoffset={RING_CIRC * (1 - f)}
-          transform={`rotate(-90 ${RING / 2} ${RING / 2})`}
-        />
-      </Svg>
-      <View style={{ alignItems: 'center', gap: 2 }}>{children}</View>
-    </View>
   );
 }
 
@@ -771,15 +806,11 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     fontWeight: '700',
   },
-  scroll: {
+  // The whole session on one page, no scrolling: the picture takes the height that is left.
+  page: {
     flex: 1,
-  },
-  // The session's scrolling body: stats and controls, then the exercise.
-  content: {
-    alignItems: 'center',
-    gap: 16,
-    paddingTop: 12,
-    paddingBottom: 12,
+    gap: 10,
+    paddingTop: 8,
   },
   doneContent: {
     flex: 1,
@@ -788,7 +819,7 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   footer: {
-    paddingTop: 8,
+    paddingTop: 2,
   },
   statsRow: {
     alignSelf: 'stretch',
@@ -802,38 +833,44 @@ const styles = StyleSheet.create({
   // The watch's workout screen: a big yellow clock, then big numerals with small caps labels.
   watchTime: {
     color: C.clock,
-    fontSize: 54,
-    lineHeight: 62,
+    fontSize: 46,
+    lineHeight: 52,
     fontWeight: '700',
     letterSpacing: -1,
     fontVariant: ['tabular-nums'],
   },
+  kcalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 18,
+  },
   kcalLine: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   kcalValue: {
     color: C.text,
-    fontSize: 46,
-    lineHeight: 52,
+    fontSize: 34,
+    lineHeight: 40,
     fontWeight: '500',
     letterSpacing: -1,
     fontVariant: ['tabular-nums'],
   },
   kcalLabel: {
     color: C.text,
-    fontSize: 15,
-    lineHeight: 18,
+    fontSize: 12,
+    lineHeight: 14,
     fontWeight: '700',
   },
   controls: {
-    gap: 14,
+    flexDirection: 'row',
+    gap: 10,
   },
   controlBtn: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -844,6 +881,7 @@ const styles = StyleSheet.create({
     lineHeight: 17,
     fontWeight: '600',
     minHeight: 17,
+    marginTop: -4,
   },
   selector: {
     flexDirection: 'row',
@@ -864,8 +902,8 @@ const styles = StyleSheet.create({
   },
   exerciseName: {
     color: C.text,
-    fontSize: 26,
-    lineHeight: 31,
+    fontSize: 22,
+    lineHeight: 27,
     fontWeight: '800',
     letterSpacing: -0.5,
     textAlign: 'center',
@@ -879,8 +917,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   gifBox: {
-    width: 128,
-    height: 128,
+    flex: 1,
+    minHeight: 72,
+    alignSelf: 'stretch',
+    alignItems: 'center',
+    justifyContent: 'center',
     borderRadius: 24,
     backgroundColor: '#FFFFFF',
     borderWidth: StyleSheet.hairlineWidth,
@@ -900,7 +941,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     gap: 3,
-    paddingVertical: 12,
+    paddingVertical: 8,
     borderRadius: 16,
     backgroundColor: C.card,
   },
@@ -918,10 +959,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   loadEditor: {
+    height: 60,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 18,
+    gap: 14,
   },
   loadBtn: {
     width: 44,
@@ -958,6 +1000,69 @@ const styles = StyleSheet.create({
     letterSpacing: -1,
     fontVariant: ['tabular-nums'],
   },
+  panel: {
+    alignSelf: 'stretch',
+    padding: 14,
+    gap: 10,
+    borderRadius: 20,
+    backgroundColor: C.card,
+  },
+  panelTop: {
+    minHeight: 40,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  panelLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  panelTitle: {
+    color: C.text,
+    fontSize: 22,
+    lineHeight: 27,
+    fontWeight: '800',
+  },
+  panelTitleSmall: {
+    color: C.muted,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  panelHint: {
+    color: C.muted,
+    fontSize: 13,
+    lineHeight: 17,
+    fontWeight: '600',
+  },
+  restTime: {
+    color: C.text,
+    fontSize: 34,
+    lineHeight: 40,
+    fontWeight: '800',
+    fontVariant: ['tabular-nums'],
+  },
+  bars: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  bar: {
+    flex: 1,
+    height: 12,
+    borderRadius: 6,
+  },
+  restTrack: {
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: 'transparent',
+    overflow: 'hidden',
+  },
+  restFill: {
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: C.orange,
+  },
   ringTimeSmall: {
     color: C.muted,
     fontSize: 28,
@@ -986,8 +1091,8 @@ const styles = StyleSheet.create({
   },
   primary: {
     alignSelf: 'stretch',
-    height: 60,
-    borderRadius: 30,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: C.green,
     flexDirection: 'row',
     alignItems: 'center',

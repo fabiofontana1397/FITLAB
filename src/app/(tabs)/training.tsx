@@ -261,11 +261,12 @@ export default function TrainingScreen() {
                   kcal={plannedSessionKcal(day, ctx)}
                   onOpen={() => router.push({ pathname: '/workout-detail', params: { date } })}
                   // Only today's session can be started; the days ahead can be brought forward instead.
-                  onStart={date === today ? () => setSessionDate(date) : undefined}
+                  onStart={date === today && !done ? () => setSessionDate(date) : undefined}
                   onSwap={date > today && !done ? () => swapWithToday(date) : undefined}
                   // A past day shows how it went: a green tick, or red and a way to catch up.
-                  status={date < today ? (done ? 'done' : 'missed') : undefined}
+                  status={done ? 'done' : date < today ? 'missed' : undefined}
                   onRecover={date < today && !done ? () => setSessionDate(date) : undefined}
+                  progress={{ done: (day.exercises ?? []).filter((ex) => isExerciseCompleted(completedExercises, ex.id, date)).length, total: (day.exercises ?? []).length }}
                   resume={
                     inProgress ? { elapsedLabel: sessionClock(savedElapsedMs(activeSession)), onResume: () => setSessionDate(date) } : undefined
                   }
