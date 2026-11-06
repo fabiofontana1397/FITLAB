@@ -12,7 +12,6 @@ import { TabHeader } from '@/components/tab-header';
 import { LogActivityModal } from '@/components/training/log-activity-modal';
 import { LoggedActivitiesCard } from '@/components/training/logged-activities-card';
 import { MissedWorkoutsCard, type MissedWorkout } from '@/components/training/missed-workouts-card';
-import { PastWorkoutCard } from '@/components/training/past-workout-card';
 import { SwapSlide } from '@/components/training/swap-slide';
 import { TrainingWeekCard } from '@/components/training/training-week-card';
 import { levelLabel, WorkoutSummaryCard } from '@/components/training/workout-summary-card';
@@ -208,7 +207,7 @@ export default function TrainingScreen() {
           const emphasized = date === today || date === selectedDate;
           const done = isDayComplete(date);
           const statusLabel = done ? 'Completato' : date < today ? 'Non completato' : 'In programma';
-          const statusColor = done ? theme.brandGreen : date < today ? theme.textTertiary : theme.accent;
+          const statusColor = done ? theme.brandGreen : date < today ? theme.danger : theme.accent;
           return (
             <View
               key={date}
@@ -233,13 +232,6 @@ export default function TrainingScreen() {
               <SwapSlide nonce={slide.dates?.includes(date) ? slide.nonce : 0} from={slideFrom(date)}>
               <View style={styles.dayBody}>
               {done ? null : <LoggedActivitiesCard date={date} inline />}
-              {date < today && trainingPlan && day?.type === 'workout' && (day.exercises ?? []).length > 0 ? (
-                <PastWorkoutCard
-                  completed={done}
-                  exercises={(day.exercises ?? []).map((ex) => ({ id: ex.id, name: ex.name, done: isExerciseCompleted(completedExercises, ex.id, date) }))}
-                  onRecover={() => setSessionDate(date)}
-                />
-              ) : null}
               {!trainingPlan ? (
                 <FlatCard radius={20} style={styles.messageCard}>
                   <ThemedText style={styles.cardTitle}>{ctx.mode === 'diet' ? 'Programma di allenamento non richiesto' : 'Nessun programma generato'}</ThemedText>
@@ -259,6 +251,9 @@ export default function TrainingScreen() {
                   // Only today's session can be started; the days ahead can be brought forward instead.
                   onStart={date === today ? () => setSessionDate(date) : undefined}
                   onSwap={date > today && !done ? () => swapWithToday(date) : undefined}
+                  // A past day shows how it went: a green tick, or red and a way to catch up.
+                  status={date < today ? (done ? 'done' : 'missed') : undefined}
+                  onRecover={date < today && !done ? () => setSessionDate(date) : undefined}
                 />
               ) : day?.type === 'cardio' ? (
                 <PressableScale
