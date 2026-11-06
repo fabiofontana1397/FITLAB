@@ -54,12 +54,14 @@ export type WorkoutSummaryCardProps = {
   status?: 'done' | 'missed';
   /** Starts the session on the day it was missed ("Recupera"). */
   onRecover?: () => void;
+  /** A session was started and left with the X: "Riprendi" reopens it where it stopped. */
+  resume?: { elapsedLabel: string; onResume: () => void };
 };
 
 /** A day's session: the play button that starts it, its name, "Forza - Livello base"
  * and its duration + estimated kcal. The whole box opens the session's sheet,
  * except the play button, which starts it. */
-export function WorkoutSummaryCard({ title, subtitle, minutes, kcal, onOpen, onStart, onSwap, status, onRecover }: WorkoutSummaryCardProps) {
+export function WorkoutSummaryCard({ title, subtitle, minutes, kcal, onOpen, onStart, onSwap, status, onRecover, resume }: WorkoutSummaryCardProps) {
   const theme = useTheme();
   const missed = status === 'missed';
   return (
@@ -108,6 +110,18 @@ export function WorkoutSummaryCard({ title, subtitle, minutes, kcal, onOpen, onS
           <Icon name="chevronRight" size={18} color={theme.textTertiary} />
         </View>
       </View>
+      {resume ? (
+        <PressableScale
+          onPress={resume.onResume}
+          haptic="press"
+          scaleTo={0.97}
+          accessibilityRole="button"
+          accessibilityLabel={`Riprendi ${title}, ${resume.elapsedLabel} di allenamento`}
+          style={[styles.recover, { backgroundColor: theme.accent }]}>
+          <Icon name="play" size={13} color={OnBrand.text} />
+          <ThemedText style={[styles.recoverLabel, { color: OnBrand.text }]}>Riprendi · {resume.elapsedLabel}</ThemedText>
+        </PressableScale>
+      ) : null}
       {missed && onRecover ? (
         <PressableScale
           onPress={onRecover}

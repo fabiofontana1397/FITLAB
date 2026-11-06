@@ -30,6 +30,15 @@ import { usePlanStore } from '@/store/plan-store';
 import { isExerciseCompleted, useTrainingProgressStore } from '@/store/training-progress-store';
 import { planIndexFor, useTrainingSwapStore } from '@/store/training-swap-store';
 import { useUserStore } from '@/store/user-store';
+import { savedElapsedMs, useWorkoutSessionStore } from '@/store/workout-session-store';
+
+/** "12:34" for the workout time of a session in progress. */
+function sessionClock(ms: number): string {
+  const s = Math.floor(Math.max(0, ms) / 1000);
+  const h = Math.floor(s / 3600);
+  const mm = String(Math.floor((s % 3600) / 60)).padStart(2, '0');
+  return `${h > 0 ? `${h}:` : ''}${mm}:${String(s % 60).padStart(2, '0')}`;
+}
 
 /** Short label for the user's goal, shown next to the session level. */
 const GOAL_SHORT_LABEL: Record<Goal, string> = {
@@ -53,6 +62,8 @@ export default function TrainingScreen() {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [sessionDate, setSessionDate] = useState<string | null>(null);
   const swaps = useTrainingSwapStore((s) => s.swaps);
+  // A session started and left with the X, to resume from its card.
+  const activeSession = useWorkoutSessionStore((s) => s.active);
   const swapDays = useTrainingSwapStore((s) => s.swapDays);
   // Where each day's section sits, so an exchange can slide the two sessions across; `nonce` re-runs the motion.
   const [sectionY, setSectionY] = useState<Record<string, number>>({});
@@ -206,8 +217,9 @@ export default function TrainingScreen() {
           // Today's section (or the day picked in the week) is the main thing on the page; the days after it keep quiet.
           const emphasized = date === today || date === selectedDate;
           const done = isDayComplete(date);
-          const statusLabel = done ? 'Completato' : date < today ? 'Non completato' : 'In programma';
-          const statusColor = done ? theme.brandGreen : date < today ? theme.danger : theme.accent;
+          const inProgress = !done && activeSession != null && activeSession.date === date && day?.type === 'workout';
+          const statusLabel = done ? 'Completato' : inProgress ? 'In corso' : date < today ? 'Non completato' : 'In programma';
+          const statusColor = done ? theme.brandGreen : inProgress ? theme.accent : date < today ? theme.danger : theme.accent;
           return (
             <View
               key={date}
@@ -254,6 +266,9 @@ export default function TrainingScreen() {
                   // A past day shows how it went: a green tick, or red and a way to catch up.
                   status={date < today ? (done ? 'done' : 'missed') : undefined}
                   onRecover={date < today && !done ? () => setSessionDate(date) : undefined}
+                  resume={
+                    inProgress ? { elapsedLabel: sessionClock(savedElapsedMs(activeSession)), onResume: () => setSessionDate(date) } : undefined
+                  }
                 />
               ) : day?.type === 'cardio' ? (
                 <PressableScale
