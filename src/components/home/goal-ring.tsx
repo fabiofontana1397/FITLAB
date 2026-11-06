@@ -1,11 +1,12 @@
 import { useIsFocused } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
-import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withRepeat, withSpring, withTiming } from 'react-native-reanimated';
 import Svg, { Line, Path } from 'react-native-svg';
 
 import type { GoalBandCopy } from '@/components/home/goal-band-copy';
 import { ThemedText } from '@/components/themed-text';
+import { Palette } from '@/constants/theme';
 import { balancePosition, type GoalBand } from '@/domain/calorie-balance';
 import { useTheme } from '@/hooks/use-theme';
 import { formatSignedKcal } from '@/lib/format-kcal';
@@ -28,8 +29,8 @@ const R_OUT = R + LEN / 2;
 const TICK_R = R_OUT + 9;
 const CY = TICK_R + 14;
 const BASE_H = CY + 30;
-const MARKER = 24;
-const HALO = 42;
+const MARKER = 26;
+const HALO = 46;
 const CHAMPAGNE: Rgb = [248, 220, 149];
 
 type Rgb = [number, number, number];
@@ -114,15 +115,14 @@ export function GoalRing({ band, copy, value, goalText, inactive = false, onPres
     return out;
   }, [band.goalKcal, band.halfRangeKcal]);
 
-  // The marker's angle: from zero out to the real value each time Home is shown, springing past it a little.
+  // The marker's angle. Every time Home is shown it starts at the surplus end of the scale and runs across to the real value, springing past it a little before it settles; afterwards it glides between values.
   const targetDeg = band.position * SPAN;
-  const zeroDeg = balancePosition(0 - band.goalKcal, band.halfRangeKcal).position * SPAN;
-  const ang = useSharedValue(0);
+  const ang = useSharedValue(-SPAN);
   const halo = useSharedValue(0);
   const armed = useRef(false);
   useEffect(() => {
     if (!focused || noReading) {
-      ang.value = zeroDeg;
+      ang.value = -SPAN;
       armed.current = false;
       return;
     }
@@ -131,26 +131,34 @@ export function GoalRing({ band, copy, value, goalText, inactive = false, onPres
       return;
     }
     if (!armed.current) {
-      ang.value = zeroDeg;
       armed.current = true;
+      ang.value = -SPAN;
+      // The short delay lets the start position paint first, so the run is seen.
+      ang.value = withDelay(140, withSpring(targetDeg, { damping: 12, stiffness: 36, mass: 1 }));
+      return;
     }
-    ang.value = withSpring(targetDeg, { damping: 11, stiffness: 60, mass: 1 });
-  }, [focused, noReading, targetDeg, zeroDeg, reduceMotion, ang]);
+    ang.value = withSpring(targetDeg, { damping: 18, stiffness: 90 });
+  }, [focused, noReading, targetDeg, reduceMotion, ang]);
   useEffect(() => {
     if (!focused || reduceMotion || noReading) {
       halo.value = 0;
       return;
     }
-    halo.value = withRepeat(withTiming(1, { duration: 1500, easing: Easing.out(Easing.quad) }), -1, false);
+    halo.value = withRepeat(withTiming(1, { duration: 1700, easing: Easing.out(Easing.quad) }), -1, false);
   }, [focused, reduceMotion, noReading, halo]);
 
-  const at = (size: number, scale = 1) => {
-    'worklet';
+  // `ang.value` is read right in each style (not through a helper), so the style follows it every frame.
+  const markerStyle = useAnimatedStyle(() => {
     const a = (ang.value * Math.PI) / 180;
-    return [{ translateX: (CX + R * Math.sin(a)) * k - size / 2 }, { translateY: (CY - R * Math.cos(a)) * k - size / 2 }, { scale }] as const;
-  };
-  const markerStyle = useAnimatedStyle(() => ({ transform: [...at(MARKER)] }));
-  const haloStyle = useAnimatedStyle(() => ({ transform: [...at(HALO, 0.5 + halo.value * 0.9)], opacity: 0.3 * (1 - halo.value) }));
+    return { transform: [{ translateX: (CX + R * Math.sin(a)) * k - (MARKER * k) / 2 }, { translateY: (CY - R * Math.cos(a)) * k - (MARKER * k) / 2 }] };
+  });
+  const haloStyle = useAnimatedStyle(() => {
+    const a = (ang.value * Math.PI) / 180;
+    return {
+      transform: [{ translateX: (CX + R * Math.sin(a)) * k - (HALO * k) / 2 }, { translateY: (CY - R * Math.cos(a)) * k - (HALO * k) / 2 }, { scale: 0.55 + halo.value * 0.75 }],
+      opacity: 0.5 * (1 - halo.value),
+    };
+  });
 
   const goodText = theme.balanceGoalScale[3];
   const toneColor = copy.tone === 'good' ? goodText : copy.tone === 'warn' ? theme.accent : theme.textSecondary;
@@ -197,10 +205,10 @@ export function GoalRing({ band, copy, value, goalText, inactive = false, onPres
 
           {noReading ? null : (
             <>
-              <Animated.View pointerEvents="none" style={[styles.halo, { width: HALO * k, height: HALO * k, borderRadius: (HALO * k) / 2, backgroundColor: theme.text }, haloStyle]} />
+              <Animated.View pointerEvents="none" style={[styles.halo, { width: HALO * k, height: HALO * k, borderRadius: (HALO * k) / 2, borderColor: theme.text }, haloStyle]} />
               <Animated.View
                 pointerEvents="none"
-                style={[styles.marker, { width: MARKER * k, height: MARKER * k, borderRadius: (MARKER * k) / 2, backgroundColor: theme.text, borderColor: theme.backgroundElevated }, markerStyle]}
+                style={[styles.marker, { width: MARKER * k, height: MARKER * k, borderRadius: (MARKER * k) / 2, borderWidth: 8 * k, backgroundColor: Palette.neutral[950] }, markerStyle]}
               />
             </>
           )}
@@ -265,17 +273,18 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     top: 0,
+    borderWidth: 2,
   },
   marker: {
     position: 'absolute',
     left: 0,
     top: 0,
-    borderWidth: 3.5,
+    borderColor: '#FFFFFF',
     shadowColor: '#000',
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 4,
+    shadowOpacity: 0.3,
+    shadowRadius: 7,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 5,
   },
   centre: {
     position: 'absolute',

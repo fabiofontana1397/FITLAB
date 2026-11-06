@@ -1,6 +1,8 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { useIsFocused } from 'expo-router';
+import { useEffect } from 'react';
+import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import Animated, { Easing, cancelAnimation, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 
-import { AnimatedFill } from '@/components/motion/animated-fill';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
 import { useTheme } from '@/hooks/use-theme';
@@ -23,6 +25,24 @@ export type EnergyBarsProps = {
   onEatenPress?: () => void;
   onBurnedPress?: () => void;
 };
+
+/** A bar's fill: empty whenever Home is out of view, filling to `progress` (0..1) every time it comes back, and easing to any new value after that. */
+function Fill({ progress, delay = 0, style }: { progress: number; delay?: number; style?: StyleProp<ViewStyle> }) {
+  const focused = useIsFocused();
+  const reduceMotion = useReducedMotion();
+  const value = useSharedValue(0);
+  const to = Math.min(Math.max(progress, 0), 1);
+  useEffect(() => {
+    cancelAnimation(value);
+    if (!focused) {
+      value.value = 0;
+      return;
+    }
+    value.value = reduceMotion ? to : withDelay(delay + 120, withTiming(to, { duration: 1000, easing: Easing.bezier(0.16, 1, 0.3, 1) }));
+  }, [focused, reduceMotion, to, delay, value]);
+  const animated = useAnimatedStyle(() => ({ width: `${value.value * 100}%` }));
+  return <Animated.View style={[style, animated]} />;
+}
 
 /** `#rrggbb` with an alpha. */
 function alpha(hex: string, a: number): string {
@@ -65,7 +85,7 @@ export function EnergyBars({ eatenKcal, eatenTargetKcal, basalKcal, basalDayKcal
           </ThemedText>
         </View>
         <View style={[styles.track, { backgroundColor: theme.backgroundElement }]}>
-          <AnimatedFill progress={eatenShare} delay={120} style={[styles.segment, { backgroundColor: theme.accent }]} />
+          <Fill progress={eatenShare} delay={120} style={[styles.segment, { backgroundColor: theme.accent }]} />
         </View>
       </Pressable>
 
@@ -83,8 +103,8 @@ export function EnergyBars({ eatenKcal, eatenTargetKcal, basalKcal, basalDayKcal
           </ThemedText>
         </View>
         <View style={[styles.track, styles.stack, { backgroundColor: theme.backgroundElement }]}>
-          <AnimatedFill progress={basalShare} delay={200} style={[styles.segment, { backgroundColor: alpha(green, 0.42) }]} />
-          <AnimatedFill progress={exerciseShare} delay={320} style={[styles.segment, { backgroundColor: green }]} />
+          <Fill progress={basalShare} delay={200} style={[styles.segment, { backgroundColor: alpha(green, 0.42) }]} />
+          <Fill progress={exerciseShare} delay={320} style={[styles.segment, { backgroundColor: green }]} />
         </View>
         <View style={styles.legend}>
           <View style={styles.legendItem}>
