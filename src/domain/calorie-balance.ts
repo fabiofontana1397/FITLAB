@@ -174,6 +174,9 @@ export type GoalBandCause = 'eaten' | 'burned' | 'both' | null;
 
 export type GoalBand = {
   state: GoalBandState;
+  /** The goal and the balance the band was read from (the bar's axis is drawn in these). */
+  goalKcal: number;
+  balanceKcal: number;
   /** balance − goal: positive = more calories than planned (towards surplus). */
   deltaKcal: number;
   /** ±kcal of the green zone. */
@@ -239,5 +242,5 @@ export function goalBand({
     else if (Math.min(fromEaten, fromBurned) >= 0.4 * Math.max(fromEaten, fromBurned)) cause = 'both';
     else cause = fromEaten > fromBurned ? 'eaten' : 'burned';
   }
-  return { state, deltaKcal, toleranceKcal, halfRangeKcal, position, clamped, cause, eatenVsPlanKcal, burnedVsPlanKcal };
+  return { state, goalKcal, balanceKcal, deltaKcal, toleranceKcal, halfRangeKcal, position, clamped, cause, eatenVsPlanKcal, burnedVsPlanKcal };
 }

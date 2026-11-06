@@ -1,9 +1,10 @@
+import { useIsFocused } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
-import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withSpring, withTiming } from 'react-native-reanimated';
 
 import { ThemedText } from '@/components/themed-text';
-import { type GoalBand, type GoalBandState } from '@/domain/calorie-balance';
+import { balancePosition, type GoalBand, type GoalBandState } from '@/domain/calorie-balance';
 import { useTheme } from '@/hooks/use-theme';
 import { formatKcal, formatSignedKcal } from '@/lib/format-kcal';
 
@@ -11,9 +12,13 @@ import { formatKcal, formatSignedKcal } from '@/lib/format-kcal';
 const STRIPS = 25;
 const MID = (STRIPS - 1) / 2;
 const GAP = 3;
-const STRIP_H = 18;
-const CURSOR_W = 6;
-const MOVE_MS = 700;
+const STRIP_H = 20;
+const MARKER = 18;
+const HALO = 34;
+const TAG_W = 30;
+const TICK_W = 48;
+/** Room above the strips for the marker's tag. */
+const TAG_ROOM = 26;
 const CHAMPAGNE: Rgb = [248, 220, 149];
 
 type Rgb = [number, number, number];
@@ -78,28 +83,40 @@ function causeText(band: GoalBand): string | null {
 
 // ─── The bar ────────────────────────────────────────────────────────────────
 
+/** A round step (1, 2 or 5 × 10ⁿ) giving about four ticks across `span` kcal. */
+function niceStep(span: number): number {
+  const raw = span / 4;
+  const pow = Math.pow(10, Math.floor(Math.log10(raw)));
+  const n = raw / pow;
+  return (n < 1.5 ? 1 : n < 3 ? 2 : n < 7 ? 5 : 10) * pow;
+}
+
 export type GoalBarProps = {
   band: GoalBand;
   copy: GoalBandCopy;
-  /** Nothing to read (a day not yet started): the strips stay grey and there is no cursor. */
+  /** Nothing to read (a day not yet started): the strips stay grey and there is no marker. */
   inactive?: boolean;
   accessibilityLabel: string;
 };
 
 /**
  * "Obiettivo deficit / surplus": a symmetric scale of vertical strips centred
- * on the goal. Surplus to the left, deficit to the right; the green zone is
- * the acceptable range around the goal. The dark cursor is where the day
- * actually is; it glides when the numbers change and rests on the end of the
- * scale when the real value lies beyond it.
+ * on the goal, with a light kcal axis under it. Surplus to the left, deficit
+ * to the right; the green zone is the acceptable range around the goal. The
+ * marker is where the day actually is: every time Home comes into view it
+ * springs out from zero (equilibrium) to the real value, it breathes while it
+ * rests, and it rests on the end of the scale when the real value lies past it.
  */
 export function GoalBar({ band, copy, inactive = false, accessibilityLabel }: GoalBarProps) {
   const theme = useTheme();
   const reduceMotion = useReducedMotion();
+  const focused = useIsFocused();
   const [barW, setBarW] = useState(0);
   const noReading = inactive || band.state === 'missing';
 
   const stripW = barW > 0 ? (barW - GAP * (STRIPS - 1)) / STRIPS : 0;
+  const xOf = (position: number) => (barW > 0 ? stripW / 2 + ((position + 1) / 2) * (barW - stripW) : 0);
+
   const colors = useMemo(() => {
     const [pale, soft, , deep] = theme.balanceGoalScale.map((c) => rgbOf(c) as Rgb);
     const orange = rgbOf(theme.accent) as Rgb;
@@ -117,20 +134,56 @@ export function GoalBar({ band, copy, inactive = false, accessibilityLabel }: Go
     });
   }, [theme.balanceGoalScale, theme.accent, theme.backgroundElement, band.halfRangeKcal, band.toleranceKcal, inactive]);
 
-  // The cursor's centre, in px from the bar's left edge: strip centres span the range, so ±1 lands on the end strips.
-  const targetX = barW > 0 ? stripW / 2 + ((band.position + 1) / 2) * (barW - stripW) : 0;
+  // The kcal axis: round balance values across the range, equilibrium (0) included whenever it is in view.
+  const ticks = useMemo(() => {
+    if (barW <= 0) return [];
+    const lo = band.goalKcal - band.halfRangeKcal;
+    const hi = band.goalKcal + band.halfRangeKcal;
+    const step = niceStep(band.halfRangeKcal * 2);
+    const out: { v: number; x: number }[] = [];
+    for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) {
+      const x = xOf(balancePosition(v - band.goalKcal, band.halfRangeKcal).position);
+      if (x >= TICK_W / 2 && x <= barW - TICK_W / 2) out.push({ v: Math.round(v), x });
+    }
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [barW, band.goalKcal, band.halfRangeKcal]);
+
+  // The marker: out from zero to the real value each time Home is shown, springing past it a little; between values it glides.
+  const targetX = xOf(band.position);
+  const zeroX = xOf(balancePosition(0 - band.goalKcal, band.halfRangeKcal).position);
   const x = useSharedValue(0);
-  const seen = useRef(false);
+  const halo = useSharedValue(0);
+  const armed = useRef(false);
   useEffect(() => {
     if (barW <= 0) return;
-    // First placement: start from the goal and glide out; afterwards glide between values.
-    if (!seen.current) {
-      x.value = barW / 2;
-      seen.current = true;
+    if (!focused || noReading) {
+      x.value = zeroX;
+      armed.current = false;
+      return;
     }
-    x.value = reduceMotion ? targetX : withTiming(targetX, { duration: MOVE_MS, easing: Easing.bezier(0.16, 1, 0.3, 1) });
-  }, [barW, targetX, reduceMotion, x]);
-  const cursorStyle = useAnimatedStyle(() => ({ transform: [{ translateX: x.value - CURSOR_W / 2 }] }));
+    if (reduceMotion) {
+      x.value = targetX;
+      return;
+    }
+    // First time (or first since Home was left): start from zero, then run out to the value.
+    if (!armed.current) {
+      x.value = zeroX;
+      armed.current = true;
+    }
+    x.value = withSpring(targetX, { damping: 11, stiffness: 70, mass: 1 });
+  }, [barW, focused, noReading, targetX, zeroX, reduceMotion, x]);
+  useEffect(() => {
+    if (!focused || reduceMotion || noReading) {
+      halo.value = 0;
+      return;
+    }
+    halo.value = withRepeat(withTiming(1, { duration: 1500, easing: Easing.out(Easing.quad) }), -1, false);
+  }, [focused, reduceMotion, noReading, halo]);
+
+  const markerStyle = useAnimatedStyle(() => ({ transform: [{ translateX: x.value - MARKER / 2 }] }));
+  const haloStyle = useAnimatedStyle(() => ({ transform: [{ translateX: x.value - HALO / 2 }, { scale: 0.5 + halo.value * 0.9 }], opacity: 0.35 * (1 - halo.value) }));
+  const tagStyle = useAnimatedStyle(() => ({ transform: [{ translateX: Math.min(Math.max(x.value, TAG_W / 2), Math.max(TAG_W / 2, barW - TAG_W / 2)) - TAG_W / 2 }] }));
 
   const goodText = theme.balanceGoalScale[3];
   const onLayout = (e: LayoutChangeEvent) => setBarW(e.nativeEvent.layout.width);
@@ -146,7 +199,7 @@ export function GoalBar({ band, copy, inactive = false, accessibilityLabel }: Go
               style={{
                 width: stripW,
                 height: i === MID ? STRIP_H + 4 : STRIP_H,
-                borderRadius: Math.min(stripW / 2, 4),
+                borderRadius: stripW / 2,
                 backgroundColor: c,
                 marginLeft: i === 0 ? 0 : GAP,
               }}
@@ -154,11 +207,26 @@ export function GoalBar({ band, copy, inactive = false, accessibilityLabel }: Go
           ))}
         </View>
         {noReading || barW <= 0 ? null : (
-          <Animated.View pointerEvents="none" style={[styles.cursor, { backgroundColor: theme.text, borderColor: theme.backgroundElevated }, cursorStyle]} />
+          <>
+            <Animated.View pointerEvents="none" style={[styles.halo, { backgroundColor: theme.text }, haloStyle]} />
+            <Animated.View pointerEvents="none" style={[styles.tag, { backgroundColor: theme.text }, tagStyle]}>
+              <ThemedText style={[styles.tagText, { color: theme.backgroundElevated }]}>Tu</ThemedText>
+            </Animated.View>
+            <Animated.View pointerEvents="none" style={[styles.marker, { backgroundColor: theme.text, borderColor: theme.backgroundElevated }, markerStyle]} />
+          </>
         )}
       </View>
 
-      {/* Under the bar: the two ends, and the goal marked under the centre. */}
+      {/* The kcal axis, in light grey: surplus (positive balance) to the left, deficit (negative) to the right. */}
+      <View style={styles.axis} pointerEvents="none">
+        {ticks.map((t) => (
+          <ThemedText key={t.v} style={[styles.tick, { left: t.x - TICK_W / 2 }]} themeColor="textTertiary">
+            {formatSignedKcal(t.v)}
+          </ThemedText>
+        ))}
+      </View>
+
+      {/* The two ends' names, and the goal marked under the centre. */}
       <View style={styles.legend}>
         <ThemedText style={styles.endName} themeColor="textSecondary">
           ‹ Surplus
@@ -188,27 +256,69 @@ const styles = StyleSheet.create({
     marginTop: 14,
   },
   stripsWrap: {
-    height: STRIP_H + 4,
-    justifyContent: 'center',
+    height: STRIP_H + 4 + TAG_ROOM,
+    justifyContent: 'flex-end',
   },
   strips: {
     flexDirection: 'row',
     alignItems: 'center',
     height: STRIP_H + 4,
   },
-  cursor: {
+  marker: {
     position: 'absolute',
     left: 0,
-    top: -4,
-    width: CURSOR_W,
-    height: STRIP_H + 12,
-    borderRadius: CURSOR_W / 2,
-    borderWidth: 1.5,
+    bottom: (STRIP_H + 4 - MARKER) / 2,
+    width: MARKER,
+    height: MARKER,
+    borderRadius: MARKER / 2,
+    borderWidth: 3,
+    shadowColor: '#000',
+    shadowOpacity: 0.22,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  halo: {
+    position: 'absolute',
+    left: 0,
+    bottom: (STRIP_H + 4 - HALO) / 2,
+    width: HALO,
+    height: HALO,
+    borderRadius: HALO / 2,
+  },
+  tag: {
+    position: 'absolute',
+    left: 0,
+    top: 2,
+    width: TAG_W,
+    height: 18,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tagText: {
+    fontSize: 11,
+    lineHeight: 14,
+    fontWeight: '700',
+  },
+  axis: {
+    height: 14,
+    marginTop: 6,
+  },
+  tick: {
+    position: 'absolute',
+    top: 0,
+    width: TICK_W,
+    textAlign: 'center',
+    fontSize: 10,
+    lineHeight: 14,
+    fontWeight: '500',
+    fontVariant: ['tabular-nums'],
   },
   legend: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 8,
+    marginTop: 4,
     minHeight: 30,
   },
   endName: {
@@ -220,7 +330,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    top: -4,
+    top: -2,
     alignItems: 'center',
   },
   goalTip: {

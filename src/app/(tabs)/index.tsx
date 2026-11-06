@@ -259,9 +259,8 @@ export default function HomeScreen() {
           />
         </Pressable>
 
-        <GoalBar band={band} copy={bandCopy} inactive={isFutureDay} accessibilityLabel={`${bandCopy.badge}. ${bandCopy.message}${bandCopy.cause ? ` ${bandCopy.cause}` : ''}`} />
 
-        <View style={[styles.oggiRow, { borderTopColor: theme.border }]}>
+        <View style={[styles.oggiRow, { borderBottomColor: theme.border }]}>
           <Pressable onPress={() => setInfoTopic('burned')} style={styles.sideCol}>
             <View style={styles.sideIcon}>
               <Icon name="flameLine" size={22} color={isFutureDay ? theme.textTertiary : theme.brandGreen} />
@@ -292,6 +291,8 @@ export default function HomeScreen() {
             <ThemedText style={[styles.sideValue, narrow && styles.sideValueNarrow]} numberOfLines={1} adjustsFontSizeToFit>{isFutureDay ? '—' : `${formatKcal(eatenKcal)} kcal`}</ThemedText>
           </Pressable>
         </View>
+
+        <GoalBar band={band} copy={bandCopy} inactive={isFutureDay} accessibilityLabel={`${bandCopy.badge}. ${bandCopy.message}${bandCopy.cause ? ` ${bandCopy.cause}` : ''}`} />
       </FlatCard>
 
       <View style={styles.actionsRow}>
@@ -646,9 +647,9 @@ const styles = StyleSheet.create({
   oggiRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginTop: 16,
-    paddingTop: 14,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    marginTop: 10,
+    paddingBottom: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   sideCol: {
     flex: 1,
