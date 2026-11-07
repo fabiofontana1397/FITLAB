@@ -19,6 +19,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useUserContext } from '@/hooks/use-user-context';
 import { WEEKDAY_LABELS } from '@/lib/planning/exercise-library';
 import { dishImage } from '@/lib/planning/fitlab/dish-images';
+import { inMealOrder } from '@/lib/planning/meal-slots';
 import { exportDietPlanPdf } from '@/lib/planning/pdf-export';
 import { currentMonthIndex, currentMonthProgress, monthProgress } from '@/lib/planning/plan-progress';
 import type { PlanMeal } from '@/lib/planning/types';
@@ -184,7 +185,7 @@ export default function DietPlanScreen() {
                       <ThemedText style={[styles.cardTitle, { color: theme.accent }]}>{` · ${selectedDayData.calorieTarget} kcal`}</ThemedText>
                     ) : null}
                   </ThemedText>
-                  {selectedDayData.meals.map((meal) => (
+                  {inMealOrder(selectedDayData.meals).map((meal) => (
                     <MealCard key={meal.slotId} meal={meal} />
                   ))}
                 </View>

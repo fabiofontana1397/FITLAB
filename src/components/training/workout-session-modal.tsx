@@ -243,6 +243,12 @@ function SessionView({ onClose, title, exercises, date }: Omit<WorkoutSessionMod
 
   /** Ends the workout (all sets done, or "Fine"): freezes the clock and clears the saved session. */
   const finishWorkout = () => {
+    // A session that was run counts as done on the Training page: every exercise of the day is ticked (read fresh,
+    // since the last one may have been ticked a moment ago). One that never did a set is just abandoned.
+    if (exercises.some((ex) => (doneMap[ex.id] ?? 0) > 0)) {
+      const fresh = useTrainingProgressStore.getState();
+      for (const ex of exercises) if (!isExerciseCompleted(fresh.completed, ex.id, date)) fresh.toggleCompleted(ex.id, date);
+    }
     setFinalMs(elapsedAt(Date.now()));
     setRunSince(null);
     setConfirmEnd(false);

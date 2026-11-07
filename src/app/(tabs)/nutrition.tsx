@@ -17,6 +17,7 @@ import { useEnsurePlan } from '@/hooks/use-ensure-plan';
 import { Layout, Radius } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { daysAgoISO, isoMondayIndex } from '@/lib/mock/dates';
+import { inMealOrder } from '@/lib/planning/meal-slots';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
 import {
   entriesForSlot,
@@ -98,7 +99,7 @@ export default function NutritionScreen() {
 
   // The meals the person actually has (from the plan); only a user without a diet plan sees the six generic slots.
   const mealSlots = planDayForSelectedDate
-    ? planDayForSelectedDate.meals.map((m) => {
+    ? inMealOrder(planDayForSelectedDate.meals).map((m) => {
         const meta = MEAL_SLOTS.find((x) => x.id === m.slotId);
         return { id: m.slotId as MealSlot, label: m.label, time: m.time, icon: meta?.icon ?? ('mealSnack' as const) };
       })

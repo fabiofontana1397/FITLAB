@@ -30,7 +30,7 @@ const LINE_R = R_OUT + 9;
 const LABEL_R = LINE_R + 15;
 /** Room above the line for the goal's label over the centre strip. */
 const CY = LABEL_R + 26;
-const BASE_H = CY + 44;
+const BASE_H = CY + 40;
 /** The dotted kcal scale runs this far either side of equilibrium; its two ends are named at the ends of the ring. */
 const SCALE_KCAL = 1000;
 /** How much the strips swell where the day is (and as it passes): inward, outward and in thickness, in space units. */
@@ -106,7 +106,7 @@ export function GoalRing({ band, copy, value, goalText, inactive = false, onPres
   const reduceMotion = useReducedMotion();
   const focused = useIsFocused();
   const [width, setWidth] = useState(BASE_W);
-  const k = Math.min(1.1, width / BASE_W);
+  const k = Math.min(0.92, width / BASE_W);
   const noReading = inactive || band.state === 'missing';
 
   const colors = useMemo(() => {
@@ -246,10 +246,10 @@ export function GoalRing({ band, copy, value, goalText, inactive = false, onPres
           <ThemedText themeColor="textSecondary" style={[styles.end, label(12), { left: (px(R, -SPAN) - 40) * k, top: (CY + 10) * k, width: 80 * k }]}>
             ‹ Surplus
           </ThemedText>
-          <ThemedText themeColor="textTertiary" style={[styles.end, label(11), { left: (px(R, -SPAN) - 40) * k, top: (CY + 27) * k, width: 80 * k }]}>
+          <ThemedText themeColor="textTertiary" style={[styles.end, label(11), { left: (px(R, -SPAN) - 40) * k, top: (CY + 25) * k, width: 80 * k }]}>
             {formatSignedKcal(SCALE_KCAL)}
           </ThemedText>
-          <ThemedText themeColor="textTertiary" style={[styles.end, label(11), { left: (px(R, SPAN) - 40) * k, top: (CY + 27) * k, width: 80 * k }]}>
+          <ThemedText themeColor="textTertiary" style={[styles.end, label(11), { left: (px(R, SPAN) - 40) * k, top: (CY + 25) * k, width: 80 * k }]}>
             {formatSignedKcal(-SCALE_KCAL)}
           </ThemedText>
           <ThemedText themeColor="textSecondary" style={[styles.end, label(12), { left: (px(R, SPAN) - 40) * k, top: (CY + 10) * k, width: 80 * k }]}>
@@ -355,16 +355,16 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
   },
   message: {
-    marginTop: 8,
-    fontSize: 14,
-    lineHeight: 19,
+    marginTop: 2,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '600',
     textAlign: 'center',
   },
   cause: {
-    marginTop: 2,
+    marginTop: 1,
     fontSize: 12,
-    lineHeight: 16,
+    lineHeight: 15,
     fontWeight: '500',
     textAlign: 'center',
   },
