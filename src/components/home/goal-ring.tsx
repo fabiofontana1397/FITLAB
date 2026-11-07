@@ -245,8 +245,8 @@ export function GoalRing({ band, copy, value, goalText, inactive = false, onPres
           </ThemedText>
 
           {/* The middle: the balance, the goal, the state. */}
-          <View pointerEvents="box-none" style={[styles.centre, { top: (CY - 88) * k, paddingHorizontal: 70 * k }]}>
-            <ThemedText pointerEvents="none" style={[styles.value, { fontSize: (value.length >= 7 ? 27 : value.length === 6 ? 31 : 36) * k, lineHeight: 40 * k }]} numberOfLines={1}>
+          <View pointerEvents="box-none" style={[styles.centre, { top: (CY - 80) * k, paddingHorizontal: 70 * k }]}>
+            <ThemedText pointerEvents="none" style={[styles.value, { fontSize: (value.length >= 7 ? 22 : value.length === 6 ? 25 : 28) * k, lineHeight: 32 * k }]} numberOfLines={1}>
               {value}
             </ThemedText>
             <Pressable onPress={onGoalPress} hitSlop={8} accessibilityRole="button" accessibilityLabel={`Obiettivo ${goalText}`} style={styles.goalRow}>
