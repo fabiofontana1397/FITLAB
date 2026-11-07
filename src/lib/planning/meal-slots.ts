@@ -13,6 +13,18 @@ const LABELS: Record<MealSlot, string> = {
   spuntinoSera: 'Spuntino pre-nanna',
 };
 
+/** The order a day's meals are always shown in, whatever times the person typed: breakfast, lunch, the snack between lunch and dinner, dinner. */
+export const MEAL_SLOT_ORDER: MealSlot[] = ['colazione', 'spuntinoMattina', 'pranzo', 'spuntinoPomeriggio', 'cena', 'spuntinoSera'];
+
+/** A day's meals in `MEAL_SLOT_ORDER` (also straightens plans saved in time order). */
+export function inMealOrder<T extends { slotId: string }>(meals: T[]): T[] {
+  const rank = (id: string) => {
+    const i = MEAL_SLOT_ORDER.indexOf(id as MealSlot);
+    return i < 0 ? MEAL_SLOT_ORDER.length : i;
+  };
+  return [...meals].sort((a, b) => rank(a.slotId) - rank(b.slotId));
+}
+
 // Each slot's own time-answer id and fallback — questionnaire v2 asks for
 // every slot's time directly (including the two-pre-nanna snack, no longer
 // derived as "dinnerTime + 120min") instead of inferring times from
@@ -47,11 +59,6 @@ function parseTime(value: unknown, fallback: string): string {
   return `${match[1].padStart(2, '0')}:${match[2]}`;
 }
 
-function toMinutes(hhmm: string): number {
-  const [h, m] = hhmm.split(':').map(Number);
-  return h * 60 + m;
-}
-
 /**
  * Builds the actual set of meal slots for this user directly from
  * `mealsSelected` (the questionnaire's direct "which meals do you eat"
@@ -74,7 +81,7 @@ export function buildMealSlotsFromAnswers(answers: Record<string, unknown>): Mea
       time: parseTime(answers[TIME_ANSWER_ID[id]], TIME_FALLBACK[id]),
       weight: MEAL_WEIGHTS[id],
     }))
-    .sort((a, b) => toMinutes(a.time) - toMinutes(b.time));
+    .sort((a, b) => MEAL_SLOT_ORDER.indexOf(a.id) - MEAL_SLOT_ORDER.indexOf(b.id));
 
   const totalWeight = slots.reduce((sum, s) => sum + s.weight, 0) || 1;
   return slots.map((s) => ({ id: s.id, label: LABELS[s.id], time: s.time, sharePct: s.weight / totalWeight }));
