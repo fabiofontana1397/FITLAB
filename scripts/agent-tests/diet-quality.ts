@@ -18,9 +18,9 @@ import type { Persona } from './personas';
 
 const WEEKDAYS = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
 const DAIRY_DRINKS = new Set(['Yogurt greco 0%', 'Yogurt greco 2%', 'Yogurt magro', 'Yogurt proteico', 'Skyr', 'Kefir', 'Budino proteico', 'Barretta proteica', 'Bevanda proteica', 'Latte vaccino', 'Latte senza lattosio']);
-// a snack is assembled, not cooked: no raw meat/fish, no pasta, rice, potatoes, polenta or couscous to boil
+// a snack is assembled, not cooked: no raw meat/fish, no pasta, rice, potatoes or couscous to boil
 const COOKED_SUBS = new Set(['Carni bianche', 'Carni rosse', 'Carni suine', 'Preparazioni di carne', 'Preparazioni di pesce', 'Pesce', 'Crostacei', 'Pasta e derivati', 'Cereali', 'Pseudocereali', 'Tuberi']);
-const COOKED_NAMES = new Set(['Polenta', 'Cous cous']);
+const COOKED_NAMES = new Set(['Cous cous']);
 const NO_COOK_OK = new Set(['Tonno al naturale']);
 const SLOW_DISHES = new Set(DISHES.filter((d) => d.slow).map((d) => d.id));
 const FISH_SUBS = new Set(['Pesce', 'Crostacei', 'Preparazioni di pesce']);

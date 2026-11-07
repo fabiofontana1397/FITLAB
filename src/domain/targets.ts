@@ -3,21 +3,20 @@
  * training week — so the diet always follows what the training plan makes the
  * person burn:
  *
- *   target(day) = average expenditure + 60% of that day's difference from the
- *                 average (training days eat a bit more, rest days a bit less)
+ *   target(day) = that day's expenditure (resting + everyday + its planned session)
  *                 + the goal's daily balance (deficit / surplus / 0)
  *                 + the current calibration adjustment
  *
- * The weekly average of the targets is exactly "average expenditure + balance",
- * which is also what Home shows as the weekly goal.
+ * So training days eat more by exactly what the session burns, and rest days
+ * eat less, and EVERY day's balance (intake − expenditure) is the goal: the
+ * gap Home shows for a day is always the same figure the plan was built on.
+ * Only the safety floor can break that, on a rest day of a small, aggressive
+ * plan (noted in `adjustments`).
  */
 import { dayEnergy, weekEnergy, type SessionLike } from './energy';
 import type { Goal, UserContext } from './user-context';
 
 export const MIN_CALORIES = { female: 1200, male: 1500, unspecified: 1350 } as const;
-
-/** Share of a day's difference from the weekly average that the target follows. */
-const CYCLING_SHARE = 0.6;
 
 export type GoalPace = {
   /** Planned body-weight change per week in kg (negative = loss). */
@@ -125,9 +124,27 @@ export function computeTargets(ctx: UserContext, week: (SessionLike | null | und
   const fatKcalShare = ctx.answers.dietaryPattern === 'lowCarb' ? 0.4 : 0.3;
   const fatsG = Math.max(Math.round((average * fatKcalShare) / 9), Math.round(ctx.weightKg * 0.7));
 
+  // Each day eats its own expenditure plus the goal's balance. On a small, aggressive plan a rest day can fall
+  // under the safety floor: it stays at the floor, and what it could not cut comes off the days that have room,
+  // so the week keeps its balance.
+  const dailyBalance = pace.dailyBalanceKcal + (calibration?.calorieAdjustment ?? 0);
+  const raw = energy.days.map((d) => d.total + dailyBalance);
+  const eats = raw.map((x) => Math.max(Math.round(x), floor));
+  const shortfall = eats.reduce((s, x, i) => s + (x - Math.round(raw[i])), 0);
+  if (shortfall > 0) {
+    const room = eats.map((x, i) => (raw[i] >= floor ? x - floor : 0));
+    const totalRoom = room.reduce((s, x) => s + x, 0);
+    const take = Math.min(shortfall, totalRoom);
+    if (totalRoom > 0) eats.forEach((x, i) => { eats[i] = Math.round(x - (take * room[i]) / totalRoom); });
+    adjustments.push(
+      take < shortfall
+        ? `Soglia minima di sicurezza (${floor} kcal): in alcuni giorni il bilancio è meno negativo dell'obiettivo.`
+        : `Soglia minima di sicurezza (${floor} kcal) nei giorni di riposo: il bilancio dei giorni di allenamento è stato riequilibrato per mantenere l'obiettivo della settimana.`
+    );
+  }
   const perWeekday: DayTarget[] = energy.days.map((d, i) => {
     const isTrainingDay = (week?.[i]?.type ?? 'rest') !== 'rest';
-    const calories = Math.round(average + CYCLING_SHARE * (d.total - energy.averageTotal));
+    const calories = eats[i];
     const carbsG = Math.max(Math.round((calories - proteinG * 4 - fatsG * 9) / 4), 0);
     return { calories, macros: { protein: proteinG, carbs: carbsG, fats: fatsG }, expenditure: d.total, exerciseKcal: d.exercise, isTrainingDay };
   });

@@ -591,7 +591,7 @@ export const PERSONAS: Persona[] = [
       mealsSelected: ['colazione', 'spuntinoPomeriggio', 'pranzo', 'cena'],
       afternoonSnackTime: '17:00',
       preferredProteins: foodIds('Petto di tacchino', 'Salmone', 'Uova intere', 'Yogurt greco 0%', 'Ceci', 'Ricotta magra'),
-      preferredCarbs: foodIds('Riso integrale', 'Pasta integrale', 'Patate dolci', "Fiocchi d'avena", 'Quinoa'),
+      preferredCarbs: foodIds('Riso integrale', 'Pasta integrale', 'Patate dolci', "Fiocchi d'avena", 'Farro'),
       preferredFats: foodIds('Avocado', 'Mandorle', 'Noci'),
       preferredFruit: foodIds('Mela', 'Kiwi', 'Mirtilli', 'Banana'),
       preferredVegetables: foodIds('Zucchine', 'Spinaci', 'Carciofi', 'Peperoni', 'Broccoli'),

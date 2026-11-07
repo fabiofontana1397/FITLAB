@@ -12,7 +12,7 @@ import type { DietStrategy } from './strategy-types';
 import type { DietDayPlan, DietMonthPlan, DietPlan, PlanMeal, PlanPhaseKind } from './types';
 
 /** Bump when the generator changes in a way existing plans should pick up (they are rebuilt in place, keeping start date and history). */
-export const DIET_ENGINE_VERSION = 'fitlab-3';
+export const DIET_ENGINE_VERSION = 'fitlab-4';
 
 export type DietPlanInput = {
   ctx: UserContext;
