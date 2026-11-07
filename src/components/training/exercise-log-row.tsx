@@ -88,7 +88,7 @@ export function ExerciseLogRow({ exercise, setsToday, history, onAddSet }: Exerc
                 value={reps}
                 onChangeText={setReps}
                 keyboardType="number-pad"
-                style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.backgroundElement }]}
+                style={[styles.input, { color: theme.text, borderColor: theme.boxEdge, backgroundColor: theme.backgroundElement }]}
                 placeholderTextColor={theme.textTertiary}
               />
             </View>
@@ -101,7 +101,7 @@ export function ExerciseLogRow({ exercise, setsToday, history, onAddSet }: Exerc
                 onChangeText={setWeight}
                 keyboardType="decimal-pad"
                 placeholder="0"
-                style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.backgroundElement }]}
+                style={[styles.input, { color: theme.text, borderColor: theme.boxEdge, backgroundColor: theme.backgroundElement }]}
                 placeholderTextColor={theme.textTertiary}
               />
             </View>

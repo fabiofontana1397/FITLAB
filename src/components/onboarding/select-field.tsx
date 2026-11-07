@@ -23,7 +23,7 @@ export function SelectField({ options, value, onChange, placeholder = 'Seleziona
   const current = options.find((o) => o.value === value);
 
   return (
-    <GlassSurface level="card" radius={Radius.medium} style={[styles.box, (open || current) && { borderColor: open ? theme.accent : theme.border }]}>
+    <GlassSurface level="card" radius={Radius.medium} style={[styles.box, (open || current) && { borderColor: open ? theme.accent : theme.boxEdge }]}>
       <Pressable onPress={() => (hapticSelection(), setOpen((o) => !o))} style={styles.header} accessibilityRole="button" accessibilityState={{ expanded: open }}>
         <ThemedText type="small" style={{ flex: 1 }} themeColor={current ? undefined : 'textTertiary'}>
           {current?.label ?? placeholder}

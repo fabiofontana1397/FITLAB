@@ -132,7 +132,7 @@ function ChoiceCard({ index, label, description, icon, selected, multi, onPress 
             surfaceStyle,
             {
               backgroundColor: selected ? theme.accentSoft : theme.backgroundElement,
-              borderColor: selected ? theme.accent : theme.border,
+              borderColor: selected ? theme.accent : theme.boxEdge,
             },
           ]}>
           {icon ? (

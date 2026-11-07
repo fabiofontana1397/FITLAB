@@ -36,7 +36,7 @@ export const AuthField = forwardRef<TextInput, AuthFieldProps>(function AuthFiel
           styles.box,
           {
             backgroundColor: theme.backgroundElement,
-            borderColor: error ? theme.danger : focused ? theme.accent : theme.border,
+            borderColor: error ? theme.danger : focused ? theme.accent : theme.boxEdge,
             borderWidth: focused || error ? 1.5 : 1,
           },
         ]}>

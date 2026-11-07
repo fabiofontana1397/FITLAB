@@ -180,7 +180,7 @@ export default function NutritionScreen() {
       </View>
 
       {planDayForSelectedDate ? (
-        <View style={[styles.followRow, { backgroundColor: theme.backgroundElevated, borderColor: theme.border }]}>
+        <View style={[styles.followRow, { backgroundColor: theme.backgroundElevated, borderColor: theme.boxEdge }]}>
           <ThemedText style={styles.followText}>
             {selectedDate === today ? 'Inserisci la dieta di oggi nei pasti' : 'Inserisci la dieta di questo giorno nei pasti'}
           </ThemedText>

@@ -95,7 +95,7 @@ export function QuestionField({ question, value, onChange, compact = false }: Qu
               <View
                 style={[
                   styles.scaleCircle,
-                  { backgroundColor: isSelected ? theme.accent : theme.backgroundElement, borderColor: theme.border },
+                  { backgroundColor: isSelected ? theme.accent : theme.backgroundElement, borderColor: theme.boxEdge },
                 ]}>
                 <ThemedText type="smallBold" style={{ color: isSelected ? theme.onAccent : theme.text }}>
                   {n}
@@ -117,7 +117,7 @@ export function QuestionField({ question, value, onChange, compact = false }: Qu
           keyboardType="decimal-pad"
           placeholder="0"
           placeholderTextColor={theme.textTertiary}
-          style={[styles.numberInput, { color: theme.text, backgroundColor: theme.backgroundElement, borderColor: theme.border }]}
+          style={[styles.numberInput, { color: theme.text, backgroundColor: theme.backgroundElement, borderColor: theme.boxEdge }]}
         />
         {question.unit ? (
           <ThemedText type="caption" themeColor="textSecondary">
@@ -146,7 +146,7 @@ export function QuestionField({ question, value, onChange, compact = false }: Qu
           maxLength={5}
           style={[
             styles.numberInput,
-            { color: theme.text, backgroundColor: theme.backgroundElement, borderColor: isInvalid ? theme.danger : theme.border },
+            { color: theme.text, backgroundColor: theme.backgroundElement, borderColor: isInvalid ? theme.danger : theme.boxEdge },
           ]}
         />
         {isInvalid || isIncomplete ? (
@@ -169,7 +169,7 @@ export function QuestionField({ question, value, onChange, compact = false }: Qu
       style={[
         styles.textInput,
         question.type === 'longtext' && (compact ? styles.compactLongTextInput : styles.longTextInput),
-        { color: theme.text, backgroundColor: theme.backgroundElement, borderColor: theme.border },
+        { color: theme.text, backgroundColor: theme.backgroundElement, borderColor: theme.boxEdge },
       ]}
     />
   );

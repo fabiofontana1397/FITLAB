@@ -372,7 +372,7 @@ function FoodSearchForm({ slot, date, editEntry, onClose, onSaved }: Omit<FoodSe
                   }}
                   accessibilityRole="button"
                   accessibilityState={{ selected: active }}
-                  style={[styles.chip, active ? { backgroundColor: theme.accentSoft } : { backgroundColor: theme.backgroundElevated, borderColor: theme.border, borderWidth: StyleSheet.hairlineWidth }]}>
+                  style={[styles.chip, active ? { backgroundColor: theme.accentSoft } : { backgroundColor: theme.backgroundElevated, borderColor: theme.boxEdge, borderWidth: StyleSheet.hairlineWidth }]}>
                   <Icon name={c.icon} size={24} color={active ? theme.accent : theme.textSecondary} />
                   <ThemedText style={[styles.chipLabel, { color: active ? theme.accent : theme.text }, active && styles.chipLabelActive]} numberOfLines={1}>
                     {c.label}

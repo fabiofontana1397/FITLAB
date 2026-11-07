@@ -112,7 +112,7 @@ function NewLoadForm({
             onChangeText={setReps}
             keyboardType="number-pad"
             autoFocus
-            style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.backgroundElement }]}
+            style={[styles.input, { color: theme.text, borderColor: theme.boxEdge, backgroundColor: theme.backgroundElement }]}
             placeholderTextColor={theme.textTertiary}
           />
         </View>
@@ -125,7 +125,7 @@ function NewLoadForm({
             onChangeText={setWeight}
             keyboardType="decimal-pad"
             placeholder="0"
-            style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.backgroundElement }]}
+            style={[styles.input, { color: theme.text, borderColor: theme.boxEdge, backgroundColor: theme.backgroundElement }]}
             placeholderTextColor={theme.textTertiary}
           />
         </View>
@@ -146,7 +146,7 @@ function NewLoadForm({
                   styles.rirChip,
                   {
                     backgroundColor: selected ? theme.accent : theme.backgroundElement,
-                    borderColor: selected ? theme.accent : theme.border,
+                    borderColor: selected ? theme.accent : theme.boxEdge,
                   },
                 ]}>
                 <ThemedText type="caption" style={{ color: selected ? theme.onAccent : theme.text, fontWeight: '700' }}>
