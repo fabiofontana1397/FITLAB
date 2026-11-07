@@ -1,18 +1,17 @@
 import { useIsFocused } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
-import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withRepeat, withSpring, withTiming } from 'react-native-reanimated';
-import Svg, { Line, Path } from 'react-native-svg';
+import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withSpring } from 'react-native-reanimated';
+import Svg, { Circle, Line, Path } from 'react-native-svg';
 
 import type { GoalBandCopy } from '@/components/home/goal-band-copy';
 import { ThemedText } from '@/components/themed-text';
-import { Palette } from '@/constants/theme';
 import { balancePosition, type GoalBand } from '@/domain/calorie-balance';
 import { useTheme } from '@/hooks/use-theme';
 import { formatSignedKcal } from '@/lib/format-kcal';
 
 // ─── Geometry ──────────────────────────────────────────────────────────────
-// Drawn in a fixed 300-wide space and scaled to the card. Angles are degrees
+// Drawn in a fixed 316-wide space and scaled to the card. Angles are degrees
 // clockwise from 12 o'clock: -90 is 9 o'clock (surplus end), +90 is 3 o'clock
 // (deficit end); the goal sits at the top, at 0.
 const BASE_W = 316;
@@ -26,11 +25,16 @@ const LEN = 20;
 const STRIP_W = 7;
 const R_IN = R - LEN / 2;
 const R_OUT = R + LEN / 2;
-const TICK_R = R_OUT + 9;
-const CY = TICK_R + 14;
+/** The thin grey scale line over the ring, its dots, and the labels beyond it. */
+const LINE_R = R_OUT + 9;
+const LABEL_R = LINE_R + 15;
+const CY = LABEL_R + 14;
 const BASE_H = CY + 30;
-const MARKER = 26;
-const HALO = 46;
+/** The kcal scale runs this far either side of equilibrium. */
+const SCALE_KCAL = 600;
+/** How the marker strip grows once it reaches the real value (× the others). */
+const GROW_W = 1.6;
+const GROW_LEN = 2;
 const CHAMPAGNE: Rgb = [248, 220, 149];
 
 type Rgb = [number, number, number];
@@ -44,14 +48,7 @@ const mix = (a: Rgb, b: Rgb, t: number): Rgb => [a[0] + (b[0] - a[0]) * t, a[1] 
 const css = (c: Rgb) => `rgb(${Math.round(c[0])},${Math.round(c[1])},${Math.round(c[2])})`;
 const px = (r: number, deg: number) => CX + r * Math.sin((deg * Math.PI) / 180);
 const py = (r: number, deg: number) => CY - r * Math.cos((deg * Math.PI) / 180);
-
-/** A round step (1, 2 or 5 × 10ⁿ) giving about four ticks across `span` kcal. */
-function niceStep(span: number): number {
-  const raw = span / 4;
-  const pow = Math.pow(10, Math.floor(Math.log10(raw)));
-  const n = raw / pow;
-  return (n < 1.5 ? 1 : n < 3 ? 2 : n < 7 ? 5 : 10) * pow;
-}
+const arc = (r: number, from: number, to: number) => `M ${px(r, from)} ${py(r, from)} A ${r} ${r} 0 0 1 ${px(r, to)} ${py(r, to)}`;
 
 export type GoalRingProps = {
   band: GoalBand;
@@ -70,11 +67,13 @@ export type GoalRingProps = {
 /**
  * "Calorie di oggi": the day's balance on a half ring of radial strips, centred
  * on the goal. Surplus runs to the left, deficit to the right, the green zone
- * is the acceptable range around the goal, and a light kcal axis runs along the
- * outside. The marker is where the day actually is: every time Home comes into
- * view it springs from zero (equilibrium) to the real value, then breathes; it
- * rests on an end of the scale when the real value lies beyond it. In the
- * middle: the balance, the goal and the state.
+ * is the acceptable range around the goal.
+ *
+ * Over the ring runs a thin grey line marking equilibrium (0): solid towards
+ * the surplus, dashed towards the deficit, with a dot every 100 (or 200) kcal
+ * out to ±600. The marker is one of the strips, enlarged: every time Home comes
+ * into view it runs along the whole arc and swells as it reaches the real
+ * value. It rests on an end of the scale when the real value lies beyond it.
  */
 export function GoalRing({ band, copy, value, goalText, inactive = false, onPress, onGoalPress, accessibilityLabel }: GoalRingProps) {
   const theme = useTheme();
@@ -101,28 +100,42 @@ export function GoalRing({ band, copy, value, goalText, inactive = false, onPres
     });
   }, [theme.balanceGoalScale, theme.accent, theme.backgroundElement, band.halfRangeKcal, band.toleranceKcal, inactive]);
 
-  // The kcal axis: round balance values around the outside; equilibrium (0) is among them whenever it is in view.
-  const ticks = useMemo(() => {
-    const lo = band.goalKcal - band.halfRangeKcal;
-    const hi = band.goalKcal + band.halfRangeKcal;
-    const step = niceStep(band.halfRangeKcal * 2);
-    const out: { v: number; deg: number }[] = [];
-    for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) {
-      const deg = balancePosition(v - band.goalKcal, band.halfRangeKcal).position * SPAN;
-      // Not on top of the goal's own mark, nor out at the very ends (the end names sit there).
-      if (Math.abs(deg) > 9 && Math.abs(deg) < 84) out.push({ v: Math.round(v), deg });
+  // Where a balance of `v` kcal sits on the ring, in degrees (surplus left, deficit right).
+  const degOf = (v: number) => balancePosition(v - band.goalKcal, band.halfRangeKcal).position * SPAN;
+  const zeroDeg = degOf(0);
+
+  // The equilibrium scale: a dot every 100 kcal (200 where they would crowd), ±600; labels where there is room.
+  const scale = useMemo(() => {
+    const degPer100 = (100 / band.halfRangeKcal) * SPAN;
+    const step = (degPer100 * Math.PI * LINE_R) / 180 < 5 ? 200 : 100;
+    const dots: { x: number; y: number }[] = [];
+    for (let v = -SCALE_KCAL; v <= SCALE_KCAL; v += step) {
+      if (v === 0) continue;
+      const deg = degOf(v);
+      if (Math.abs(deg) < SPAN - 1.5) dots.push({ x: px(LINE_R, deg), y: py(LINE_R, deg) });
     }
-    return out;
+    // Labels: 0 first, then the ends, then the middle ones, each only if clear of those already placed.
+    const minGap = ((32 / LABEL_R) * 180) / Math.PI;
+    const placed: { v: number; deg: number }[] = [];
+    for (const v of [0, SCALE_KCAL, -SCALE_KCAL, SCALE_KCAL / 2, -SCALE_KCAL / 2]) {
+      const deg = degOf(v);
+      if (Math.abs(deg) >= SPAN - 4) continue;
+      // Not over the goal's own mark at the top.
+      if (v !== 0 && Math.abs(deg) < 9) continue;
+      if (placed.every((p) => Math.abs(p.deg - deg) >= minGap)) placed.push({ v, deg });
+    }
+    return { dots, labels: placed };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [band.goalKcal, band.halfRangeKcal]);
 
-  // The marker's angle. Every time Home is shown it starts at the surplus end of the scale and runs across to the real value, springing past it a little before it settles; afterwards it glides between values.
+  // The marker strip. Every time Home is shown it starts at the end of the scale farthest from the real value and runs along the arc to it, swelling as it gets there; afterwards it glides between values.
   const targetDeg = band.position * SPAN;
-  const ang = useSharedValue(-SPAN);
-  const halo = useSharedValue(0);
+  const startDeg = band.position <= 0 ? SPAN : -SPAN;
+  const ang = useSharedValue(startDeg);
   const armed = useRef(false);
   useEffect(() => {
     if (!focused || noReading) {
-      ang.value = -SPAN;
+      ang.value = startDeg;
       armed.current = false;
       return;
     }
@@ -132,31 +145,28 @@ export function GoalRing({ band, copy, value, goalText, inactive = false, onPres
     }
     if (!armed.current) {
       armed.current = true;
-      ang.value = -SPAN;
-      // The short delay lets the start position paint first, so the run is seen.
-      ang.value = withDelay(140, withSpring(targetDeg, { damping: 12, stiffness: 36, mass: 1 }));
+      ang.value = startDeg;
+      // The short delay lets the start position paint first, so the run is seen from its beginning.
+      ang.value = withDelay(160, withSpring(targetDeg, { damping: 15, stiffness: 28, mass: 1 }));
       return;
     }
     ang.value = withSpring(targetDeg, { damping: 18, stiffness: 90 });
-  }, [focused, noReading, targetDeg, reduceMotion, ang]);
-  useEffect(() => {
-    if (!focused || reduceMotion || noReading) {
-      halo.value = 0;
-      return;
-    }
-    halo.value = withRepeat(withTiming(1, { duration: 1700, easing: Easing.out(Easing.quad) }), -1, false);
-  }, [focused, reduceMotion, noReading, halo]);
+  }, [focused, noReading, targetDeg, startDeg, reduceMotion, ang]);
 
-  // `ang.value` is read right in each style (not through a helper), so the style follows it every frame.
+  // `ang.value` is read right in the style (not through a helper), so the style follows it every frame.
   const markerStyle = useAnimatedStyle(() => {
     const a = (ang.value * Math.PI) / 180;
-    return { transform: [{ translateX: (CX + R * Math.sin(a)) * k - (MARKER * k) / 2 }, { translateY: (CY - R * Math.cos(a)) * k - (MARKER * k) / 2 }] };
-  });
-  const haloStyle = useAnimatedStyle(() => {
-    const a = (ang.value * Math.PI) / 180;
+    // 0 far from the real value (an ordinary strip), 1 on it (fully enlarged).
+    const near = Math.min(1, Math.max(0, 1 - Math.abs(ang.value - targetDeg) / 55));
+    const g = near * near * (3 - 2 * near);
     return {
-      transform: [{ translateX: (CX + R * Math.sin(a)) * k - (HALO * k) / 2 }, { translateY: (CY - R * Math.cos(a)) * k - (HALO * k) / 2 }, { scale: 0.55 + halo.value * 0.75 }],
-      opacity: 0.5 * (1 - halo.value),
+      transform: [
+        { translateX: (CX + R * Math.sin(a)) * k - (STRIP_W * k) / 2 },
+        { translateY: (CY - R * Math.cos(a)) * k - (LEN * k) / 2 },
+        { rotate: `${ang.value}deg` },
+        { scaleX: 1 + (GROW_W - 1) * g },
+        { scaleY: 1 + (GROW_LEN - 1) * g },
+      ],
     };
   });
 
@@ -169,6 +179,7 @@ export function GoalRing({ band, copy, value, goalText, inactive = false, onPres
   })();
   const onLayout = (e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width);
   const label = (size: number) => ({ fontSize: size * k, lineHeight: (size + 4) * k });
+  const lineColor = theme.textTertiary;
 
   return (
     <View style={styles.root}>
@@ -177,20 +188,38 @@ export function GoalRing({ band, copy, value, goalText, inactive = false, onPres
           <Svg width={BASE_W * k} height={BASE_H * k} viewBox={`0 0 ${BASE_W} ${BASE_H}`} style={StyleSheet.absoluteFill}>
             {colors.map((c, i) => {
               const deg = ((i - MID) / MID) * SPAN;
-              const extra = i === MID ? 4 : 0;
-              return <Line key={i} x1={px(R_IN - extra, deg)} y1={py(R_IN - extra, deg)} x2={px(R_OUT + extra, deg)} y2={py(R_OUT + extra, deg)} stroke={c} strokeWidth={STRIP_W} strokeLinecap="round" />;
+              return <Line key={i} x1={px(R_IN, deg)} y1={py(R_IN, deg)} x2={px(R_OUT, deg)} y2={py(R_OUT, deg)} stroke={c} strokeWidth={STRIP_W} strokeLinecap="round" />;
             })}
+
+            {/* The equilibrium line: solid from the surplus end to 0, dashed from 0 to the deficit end. */}
+            {zeroDeg > -SPAN + 0.5 ? <Path d={arc(LINE_R, -SPAN, zeroDeg)} stroke={lineColor} strokeWidth={1.2} fill="none" /> : null}
+            {zeroDeg < SPAN - 0.5 ? <Path d={arc(LINE_R, zeroDeg, SPAN)} stroke={lineColor} strokeWidth={1.2} strokeDasharray="3 4" fill="none" /> : null}
+            {scale.dots.map((d, i) => (
+              <Circle key={i} cx={d.x} cy={d.y} r={1.7} fill={lineColor} />
+            ))}
+            {/* 0 itself: a short tick across the line. */}
+            <Line x1={px(LINE_R - 5, zeroDeg)} y1={py(LINE_R - 5, zeroDeg)} x2={px(LINE_R + 5, zeroDeg)} y2={py(LINE_R + 5, zeroDeg)} stroke={theme.textSecondary} strokeWidth={1.6} strokeLinecap="round" />
+
             {/* The goal's mark: a small tip over the centre strip. */}
-            <Path d={`M ${CX - 4.5} ${CY - R_OUT - 11} L ${CX + 4.5} ${CY - R_OUT - 11} L ${CX} ${CY - R_OUT - 5} Z`} fill={goodText} />
+            <Path d={`M ${CX - 4.5} ${CY - LINE_R - 12} L ${CX + 4.5} ${CY - LINE_R - 12} L ${CX} ${CY - LINE_R - 6} Z`} fill={goodText} />
           </Svg>
 
-          {/* The kcal axis, in light grey, around the outside. */}
-          {ticks.map((t) => (
+          {scale.labels.map((t) => (
             <ThemedText
               key={t.v}
-              themeColor="textTertiary"
+              themeColor={t.v === 0 ? 'textSecondary' : 'textTertiary'}
               numberOfLines={1}
-              style={[styles.tick, label(11), { left: (t.deg > 35 ? px(TICK_R, t.deg) : t.deg < -35 ? px(TICK_R, t.deg) - 48 : px(TICK_R, t.deg) - 24) * k, top: (py(TICK_R, t.deg) - 7) * k, width: 48 * k, textAlign: t.deg > 35 ? 'left' : t.deg < -35 ? 'right' : 'center' }]}>
+              style={[
+                styles.tick,
+                label(11),
+                t.v === 0 && styles.tickZero,
+                {
+                  left: (t.deg > 35 ? px(LABEL_R, t.deg) : t.deg < -35 ? px(LABEL_R, t.deg) - 48 : px(LABEL_R, t.deg) - 24) * k,
+                  top: (py(LABEL_R, t.deg) - 7) * k,
+                  width: 48 * k,
+                  textAlign: t.deg > 35 ? 'left' : t.deg < -35 ? 'right' : 'center',
+                },
+              ]}>
               {formatSignedKcal(t.v)}
             </ThemedText>
           ))}
@@ -203,14 +232,9 @@ export function GoalRing({ band, copy, value, goalText, inactive = false, onPres
             Deficit ›
           </ThemedText>
 
+          {/* The marker: one strip, enlarged where the day actually is. */}
           {noReading ? null : (
-            <>
-              <Animated.View pointerEvents="none" style={[styles.halo, { width: HALO * k, height: HALO * k, borderRadius: (HALO * k) / 2, borderColor: theme.text }, haloStyle]} />
-              <Animated.View
-                pointerEvents="none"
-                style={[styles.marker, { width: MARKER * k, height: MARKER * k, borderRadius: (MARKER * k) / 2, borderWidth: 8 * k, backgroundColor: Palette.neutral[950] }, markerStyle]}
-              />
-            </>
+            <Animated.View pointerEvents="none" style={[styles.marker, { width: STRIP_W * k, height: LEN * k, borderRadius: (STRIP_W * k) / 2, backgroundColor: theme.text }, markerStyle]} />
           )}
 
           {/* The middle: the balance, the goal, the state. */}
@@ -263,28 +287,24 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
     pointerEvents: 'none',
   },
+  tickZero: {
+    fontWeight: '700',
+  },
   end: {
     position: 'absolute',
     textAlign: 'center',
-    pointerEvents: 'none',
     fontWeight: '600',
-  },
-  halo: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    borderWidth: 2,
+    pointerEvents: 'none',
   },
   marker: {
     position: 'absolute',
     left: 0,
     top: 0,
-    borderColor: '#FFFFFF',
     shadowColor: '#000',
     shadowOpacity: 0.3,
-    shadowRadius: 7,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 5,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
   },
   centre: {
     position: 'absolute',
