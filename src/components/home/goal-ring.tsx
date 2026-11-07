@@ -1,7 +1,7 @@
 import { useIsFocused } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
-import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withSpring } from 'react-native-reanimated';
+import Animated, { useAnimatedProps, useReducedMotion, useSharedValue, withDelay, withSpring, type SharedValue } from 'react-native-reanimated';
 import Svg, { Circle, Line, Path } from 'react-native-svg';
 
 import type { GoalBandCopy } from '@/components/home/goal-band-copy';
@@ -32,9 +32,12 @@ const CY = LABEL_R + 14;
 const BASE_H = CY + 30;
 /** The kcal scale runs this far either side of equilibrium. */
 const SCALE_KCAL = 600;
-/** How the marker strip grows once it reaches the real value (× the others). */
-const GROW_W = 1.6;
-const GROW_LEN = 2;
+/** How much the strips swell where the day is (and as it passes): inward, outward and in thickness, in space units. */
+const GROW_IN = 9;
+const GROW_OUT = 6;
+const GROW_STROKE = 3.5;
+/** How far the swelling reaches either side of the marker position, in degrees (the strips are 6° apart). */
+const REACH = 6;
 const CHAMPAGNE: Rgb = [248, 220, 149];
 
 type Rgb = [number, number, number];
@@ -50,6 +53,27 @@ const px = (r: number, deg: number) => CX + r * Math.sin((deg * Math.PI) / 180);
 const py = (r: number, deg: number) => CY - r * Math.cos((deg * Math.PI) / 180);
 const arc = (r: number, from: number, to: number) => `M ${px(r, from)} ${py(r, from)} A ${r} ${r} 0 0 1 ${px(r, to)} ${py(r, to)}`;
 
+const AnimatedLine = Animated.createAnimatedComponent(Line);
+
+/**
+ * One strip of the ring. It swells with how close the moving position `ang` is
+ * to it (a smooth bump a few strips wide), so the marker is the ring itself:
+ * strips grow as it passes and the one at the real value stays enlarged.
+ */
+function Strip({ index, color, ang, strength }: { index: number; color: string; ang: SharedValue<number>; strength: SharedValue<number> }) {
+  const deg = ((index - MID) / MID) * SPAN;
+  const sin = Math.sin((deg * Math.PI) / 180);
+  const cos = Math.cos((deg * Math.PI) / 180);
+  const props = useAnimatedProps(() => {
+    const d = (ang.value - deg) / REACH;
+    const g = Math.exp(-d * d) * strength.value;
+    const rin = R_IN - GROW_IN * g;
+    const rout = R_OUT + GROW_OUT * g;
+    return { x1: CX + rin * sin, y1: CY - rin * cos, x2: CX + rout * sin, y2: CY - rout * cos, strokeWidth: STRIP_W + GROW_STROKE * g };
+  });
+  return <AnimatedLine animatedProps={props} x1={px(R_IN, deg)} y1={py(R_IN, deg)} x2={px(R_OUT, deg)} y2={py(R_OUT, deg)} stroke={color} strokeWidth={STRIP_W} strokeLinecap="round" />;
+}
+
 export type GoalRingProps = {
   band: GoalBand;
   copy: GoalBandCopy;
@@ -57,7 +81,7 @@ export type GoalRingProps = {
   value: string;
   /** The goal in the middle, already formatted ("-1.842 kcal"). */
   goalText: string;
-  /** Nothing to read (a day not yet started): grey strips, no marker. */
+  /** Nothing to read (a day not yet started): grey strips, nothing swells. */
   inactive?: boolean;
   onPress?: () => void;
   onGoalPress?: () => void;
@@ -71,9 +95,10 @@ export type GoalRingProps = {
  *
  * Over the ring runs a thin grey line marking equilibrium (0): solid towards
  * the surplus, dashed towards the deficit, with a dot every 100 (or 200) kcal
- * out to ±600. The marker is one of the strips, enlarged: every time Home comes
- * into view it runs along the whole arc and swells as it reaches the real
- * value. It rests on an end of the scale when the real value lies beyond it.
+ * out to ±600. There is no separate marker: the strips of the ring are the
+ * marker. Every time Home comes into view a swelling runs along the arc, each
+ * strip growing as it passes, and the strip at the real value stays enlarged.
+ * It rests on an end of the scale when the real value lies beyond it.
  */
 export function GoalRing({ band, copy, value, goalText, inactive = false, onPress, onGoalPress, accessibilityLabel }: GoalRingProps) {
   const theme = useTheme();
@@ -128,10 +153,15 @@ export function GoalRing({ band, copy, value, goalText, inactive = false, onPres
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [band.goalKcal, band.halfRangeKcal]);
 
-  // The marker strip. Every time Home is shown it starts at the end of the scale farthest from the real value and runs along the arc to it, swelling as it gets there; afterwards it glides between values.
-  const targetDeg = band.position * SPAN;
+  // The moving position the strips swell around. Every time Home is shown it starts at the end of the scale farthest from the real value and runs along the arc to it; afterwards it glides between values.
+  // The real value lands on the nearest strip, which is the one that stays enlarged.
+  const targetDeg = (Math.round(band.position * MID) / MID) * SPAN;
   const startDeg = band.position <= 0 ? SPAN : -SPAN;
   const ang = useSharedValue(startDeg);
+  const strength = useSharedValue(1);
+  useEffect(() => {
+    strength.value = noReading ? 0 : 1;
+  }, [noReading, strength]);
   const armed = useRef(false);
   useEffect(() => {
     if (!focused || noReading) {
@@ -153,23 +183,6 @@ export function GoalRing({ band, copy, value, goalText, inactive = false, onPres
     ang.value = withSpring(targetDeg, { damping: 18, stiffness: 90 });
   }, [focused, noReading, targetDeg, startDeg, reduceMotion, ang]);
 
-  // `ang.value` is read right in the style (not through a helper), so the style follows it every frame.
-  const markerStyle = useAnimatedStyle(() => {
-    const a = (ang.value * Math.PI) / 180;
-    // 0 far from the real value (an ordinary strip), 1 on it (fully enlarged).
-    const near = Math.min(1, Math.max(0, 1 - Math.abs(ang.value - targetDeg) / 55));
-    const g = near * near * (3 - 2 * near);
-    return {
-      transform: [
-        { translateX: (CX + R * Math.sin(a)) * k - (STRIP_W * k) / 2 },
-        { translateY: (CY - R * Math.cos(a)) * k - (LEN * k) / 2 },
-        { rotate: `${ang.value}deg` },
-        { scaleX: 1 + (GROW_W - 1) * g },
-        { scaleY: 1 + (GROW_LEN - 1) * g },
-      ],
-    };
-  });
-
   const goodText = theme.balanceGoalScale[3];
   const toneColor = copy.tone === 'good' ? goodText : copy.tone === 'warn' ? theme.accent : theme.textSecondary;
   const messageColor = copy.tone === 'good' ? goodText : theme.text;
@@ -187,8 +200,7 @@ export function GoalRing({ band, copy, value, goalText, inactive = false, onPres
         <View style={{ width: BASE_W * k, height: BASE_H * k }}>
           <Svg width={BASE_W * k} height={BASE_H * k} viewBox={`0 0 ${BASE_W} ${BASE_H}`} style={StyleSheet.absoluteFill}>
             {colors.map((c, i) => {
-              const deg = ((i - MID) / MID) * SPAN;
-              return <Line key={i} x1={px(R_IN, deg)} y1={py(R_IN, deg)} x2={px(R_OUT, deg)} y2={py(R_OUT, deg)} stroke={c} strokeWidth={STRIP_W} strokeLinecap="round" />;
+              return <Strip key={i} index={i} color={c} ang={ang} strength={strength} />;
             })}
 
             {/* The equilibrium line: solid from the surplus end to 0, dashed from 0 to the deficit end. */}
@@ -231,11 +243,6 @@ export function GoalRing({ band, copy, value, goalText, inactive = false, onPres
           <ThemedText themeColor="textSecondary" style={[styles.end, label(12), { left: (px(R, SPAN) - 40) * k, top: (CY + 10) * k, width: 80 * k }]}>
             Deficit ›
           </ThemedText>
-
-          {/* The marker: one strip, enlarged where the day actually is. */}
-          {noReading ? null : (
-            <Animated.View pointerEvents="none" style={[styles.marker, { width: STRIP_W * k, height: LEN * k, borderRadius: (STRIP_W * k) / 2, backgroundColor: theme.text }, markerStyle]} />
-          )}
 
           {/* The middle: the balance, the goal, the state. */}
           <View pointerEvents="box-none" style={[styles.centre, { top: (CY - 88) * k, paddingHorizontal: 70 * k }]}>
@@ -295,16 +302,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: '600',
     pointerEvents: 'none',
-  },
-  marker: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    shadowColor: '#000',
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 4,
   },
   centre: {
     position: 'absolute',
