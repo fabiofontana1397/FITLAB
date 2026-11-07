@@ -142,7 +142,7 @@ function candidateDishes(kind: SlotKind, slotId: string, pools: FitLabPools, see
 const FISH_SUBS = new Set(['Pesce', 'Crostacei', 'Preparazioni di pesce']);
 // a snack is assembled, not cooked: nothing to boil, roast or fry (canned tuna is fine)
 const COOKED_SUBS = new Set(['Carni bianche', 'Carni rosse', 'Carni suine', 'Preparazioni di carne', 'Preparazioni di pesce', 'Pesce', 'Crostacei', 'Pasta e derivati', 'Cereali', 'Pseudocereali', 'Tuberi']);
-const needsCooking = (f: FitLabFood) => (COOKED_SUBS.has(f.sub) || f.name === 'Polenta' || f.name === 'Cous cous') && f.name !== 'Tonno al naturale';
+const needsCooking = (f: FitLabFood) => (COOKED_SUBS.has(f.sub) || f.name === 'Cous cous') && f.name !== 'Tonno al naturale';
 const isFish = (food: FitLabFood) => FISH_SUBS.has(food.sub);
 
 function foodCost(food: FitLabFood, role: Role, kind: SlotKind, seed: number, pools: FitLabPools, day: DayState, week: WeekUsage): number {
@@ -154,7 +154,7 @@ function foodCost(food: FitLabFood, role: Role, kind: SlotKind, seed: number, po
     (role === 'protein' && (kind === 'lunch' || kind === 'dinner') ? (used(week.food, food.id) >= 4 ? 150 : used(week.food, food.id) >= 3 ? 45 : 0) : 0) +
     (role === 'protein' && day.families.has(familyOf(food)) ? 12 : 0) +
     (role === 'protein' && food.name === 'Uova intere' && (kind === 'lunch' || kind === 'dinner') ? 1.2 : 0) +
-    // tofu and seitan stay occasional for someone who did not ask for them
+    // plant proteins (none in the catalog at the moment) would stay occasional for someone who did not ask for them
     (role === 'protein' && food.sub === 'Proteine vegetali' && !pools.wantsPlantProtein ? 5 : 0) +
     // fish takes longer to prepare: dinner, not lunch (canned tuna is quick)
     (role === 'protein' && isFish(food) ? (kind === 'lunch' && food.name !== 'Tonno al naturale' ? 100 : kind === 'dinner' ? -1.5 : 0) : 0) -

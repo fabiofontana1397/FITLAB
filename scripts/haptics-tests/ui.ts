@@ -55,7 +55,7 @@ const PLAN = {
   generatedAt: new Date().toISOString(),
   durationMonths: 3,
   goal: 'loseFat',
-  engine: 'fitlab-3',
+  engine: 'fitlab-4',
   calibration: {},
   months: [{ monthIndex: 1, phase: 'adattamento', title: 'Mese 1', focusNote: '', calorieTarget: 2000, macroTargetsG: { protein: 150, carbs: 200, fats: 60 }, weeklySplit: ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'].map(day) }],
 };

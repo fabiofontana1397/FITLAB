@@ -528,7 +528,7 @@ export function checkCoherence(persona: Persona, run: { ctx: UserContext; bundle
   if (diet && training && diet.durationMonths !== training.durationMonths) f.push({ level: 'FAIL', area: 'coerenza', code: 'C2', message: `Durata dieta (${diet.durationMonths}) ≠ durata allenamento (${training.durationMonths})` });
 
   // The diet must follow the training: for every month, the weekly balance (planned intake − planned
-  // expenditure) equals the goal's balance, and each day's target moves with that day's exercise.
+  // expenditure) equals the goal's balance, each day's target moves with that day's exercise, and every day's balance is the goal.
   bundle.monthTargets.forEach((t, i) => {
     const week = training?.months[i]?.weeklySplit ?? null;
     const exercisePlanned = week?.some((d) => d.type !== 'rest') ?? false;
@@ -537,6 +537,14 @@ export function checkCoherence(persona: Persona, run: { ctx: UserContext; bundle
     const floorHit = t.adjustments.some((x) => x.includes('minima'));
     if (!floorHit && Math.abs(weekly - expected) > 120) {
       f.push({ level: 'FAIL', area: 'coerenza', code: 'C3', message: `Mese ${i + 1}: bilancio settimanale ${weekly} kcal ≠ ${expected} previsto dall'obiettivo: dieta e allenamento non sono allineati` });
+    }
+    // Every day, not just the week: intake − expenditure is the same figure Home shows as the daily goal.
+    if (!floorHit) {
+      const goal = weekly / 7;
+      t.perWeekday.forEach((d, wd) => {
+        const balance = d.calories - d.expenditure;
+        if (Math.abs(balance - goal) > 15) f.push({ level: 'FAIL', area: 'coerenza', code: 'C7', message: `Mese ${i + 1}, giorno ${wd + 1}: bilancio ${Math.round(balance)} kcal ≠ obiettivo giornaliero ${Math.round(goal)} kcal (la dieta non segue il dispendio di quel giorno)` });
+      });
     }
     if (exercisePlanned) {
       const train = t.perWeekday.filter((d) => d.isTrainingDay);

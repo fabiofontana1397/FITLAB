@@ -32,7 +32,7 @@ const PLAN = {
   generatedAt: new Date().toISOString(),
   durationMonths: 3,
   goal: 'loseFat',
-  engine: 'fitlab-3',
+  engine: 'fitlab-4',
   calibration: {},
   months: [
     {

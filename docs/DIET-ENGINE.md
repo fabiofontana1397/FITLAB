@@ -12,24 +12,37 @@ Nessuna chiamata AI per utente: il motore è deterministico (costo zero). Catalo
 
 | Cosa | Dove | Come si modifica |
 |---|---|---|
-| **Catalogo alimenti** (170): categoria, regimi, allergeni, stato (secco/crudo/cotto), kcal e macro per 100 g | `data/fitlab/fitlab-catalogo-piatti.xlsx`, foglio "Catalogo Fit Lab" | Modifica l'Excel, poi `npm run catalog:import` rigenera `src/lib/planning/fitlab/data/foods.generated.ts` |
+| **Catalogo alimenti** (154): categoria, regimi, allergeni, stato (secco/crudo/cotto), kcal e macro per 100 g | `data/fitlab/fitlab-catalogo-piatti.xlsx`, foglio "Catalogo Fit Lab" | Modifica l'Excel, poi `npm run catalog:import` rigenera `src/lib/planning/fitlab/data/foods.generated.ts` |
 | **Valori nutrizionali** | `scripts/catalog/nutrition-data.ts` → colonne dell'Excel | `npx tsx scripts/catalog/fill-nutrition.ts <in.xlsx> <out.xlsx>` |
-| **Piatti** (49 dal file + 50 aggiunti dall'agente) | `src/lib/planning/fitlab/dishes.ts` | Aggiungi una voce: i nomi degli alimenti devono essere quelli del catalogo (un errore blocca il caricamento) |
+| **Piatti** (dal file + aggiunti dall'agente) | `src/lib/planning/fitlab/dishes.ts` | Aggiungi una voce: i nomi degli alimenti devono essere quelli del catalogo (un errore blocca il caricamento) |
+
+Il catalogo contiene solo alimenti comuni nella cucina italiana di tutti i giorni: niente tofu, seitan, edamame, polenta, quinoa, grano saraceno, riso rosso o venere, crema di riso, semi di canapa, noci e burro di macadamia, burro di anacardi e di noci, germogli, bevanda di cocco.
 
 Convenzioni: valori per 100 g **nello stato del catalogo** (pasta e riso a secco, carne e pesce a crudo, legumi cotti); carboidrati disponibili (senza fibra); kcal = 4P + 4C + 9F + 2·fibre (Reg. UE 1169/2011). Sono medie di riferimento (CREA, USDA, etichette) da validare con un professionista.
+
+## Calorie del giorno
+
+```
+calorie(giorno) = dispendio del giorno (metabolismo + attività quotidiana + allenamento previsto)
+                  + bilancio dell'obiettivo (deficit, surplus o 0)
+```
+
+I giorni di allenamento mangiano di più, esattamente quanto brucia la seduta; i giorni di riposo mangiano meno. Così **ogni giorno** ha lo stesso bilancio (calorie − dispendio): è l'obiettivo che Home mostra, ed è anche la scomposizione esatta dello scostamento (calorie assunte contro piano e calorie bruciate contro piano). Proteine e grassi restano costanti, i carboidrati assorbono la variazione.
+
+Unica eccezione: la soglia minima di sicurezza (`MIN_CALORIES`). Se un giorno di riposo di un piano piccolo e aggressivo scendesse sotto, resta alla soglia e la differenza viene tolta ai giorni che hanno margine, così la settimana mantiene il bilancio previsto (nota in `adjustments`). Il controllo C7 del banco di prova verifica che ogni giorno rispetti il bilancio.
 
 ## Come nasce un pasto
 
 | Passo | Dove | Cosa fa |
 |---|---|---|
-| 1. Target | `domain/targets.ts` | Calorie e macro di ogni giorno (allenamento incluso), poi quota per pasto da `lib/nutrition/meal-distribution.ts` (colazione ≈ 24%, spuntino ≈ 12%, pranzo ≈ 34%, cena ≈ 31%) |
+| 1. Target | `domain/targets.ts` | Calorie e macro di ogni giorno (vedi «Calorie del giorno»), poi quota per pasto da `lib/nutrition/meal-distribution.ts` (colazione ≈ 24%, spuntino ≈ 12%, pranzo ≈ 34%, cena ≈ 31%) |
 | 2. Filtri | `fitlab/pools.ts` | Regime alimentare e allergeni dalle colonne del catalogo, esclusioni per nome, pesi dalle preferenze / abitudini / alimenti richiesti; chi mangia spesso fuori ha pranzi trasportabili |
 | 3. Ricetta | `fitlab/dishes.ts` | Il piatto definisce i ruoli: base (primo), proteine (secondo), contorni (verdure o frutta), grassi, olio EVO, passata, condimenti. Il primo alimento di ogni lista è quello scritto nel file, gli altri sono le alternative |
 | 4. Quantità | `fitlab/solver.ts` | Grammi calcolati insieme su proteine, carboidrati e grassi del pasto, con porzioni realistiche e pesi nello stato del catalogo |
 | 5. Scelta | `fitlab/meal-builder.ts` | Prova i piatti migliori e le combinazioni di alimenti, tiene la più vicina ai target con meno ripetizioni |
 | 6. Sostituzioni | `meal-builder.ts` | Alimenti della stessa categoria compatibili col pasto, con la quantità ricalcolata sul nutriente che l'alimento porta |
 
-**Pranzo veloce, pesce a cena.** A pranzo solo piatti veloci da preparare: i piatti lunghi (forno, polenta, ragù, zuppe, risotti, riso nero/rosso, farro e orzo) restano per la cena (campo `slow` in `dishes.ts`), e il pesce da cuocere va a cena (il tonno in scatola va bene a pranzo). Controllo Q10 nel banco di prova.
+**Pranzo veloce, pesce a cena.** A pranzo solo piatti veloci da preparare: i piatti lunghi (forno, ragù, zuppe, risotti, farro e orzo) restano per la cena (campo `slow` in `dishes.ts`), e il pesce da cuocere va a cena (il tonno in scatola va bene a pranzo). Controllo Q10 nel banco di prova.
 
 Gli spuntini sono senza cottura; pranzo e cena hanno sempre una verdura e un carboidrato; la colazione ha proteine, carboidrati e frutta o grassi.
 
