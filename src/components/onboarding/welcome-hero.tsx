@@ -65,7 +65,7 @@ export function WelcomeHero() {
                 height: CHIP_HEIGHT * f,
                 borderRadius: (CHIP_HEIGHT * f) / 2,
                 backgroundColor: chipBg,
-                borderColor: theme.border,
+                borderColor: theme.boxEdge,
               },
             ]}
           >

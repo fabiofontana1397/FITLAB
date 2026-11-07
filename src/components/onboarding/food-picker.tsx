@@ -91,7 +91,7 @@ export function FoodPicker({ question, value, onChange }: FoodPickerProps) {
       <Modal visible={open} transparent animationType={modalAnimation('fade')} onRequestClose={close} statusBarTranslucent>
         <View style={[styles.backdrop, { backgroundColor: theme.scrim }]}>
           <Pressable style={StyleSheet.absoluteFill} onPress={close} accessibilityLabel="Chiudi" />
-          <SwipeDismiss onDismiss={close} style={[styles.card, { backgroundColor: theme.backgroundElevated, borderColor: theme.border }]}>
+          <SwipeDismiss onDismiss={close} style={[styles.card, { backgroundColor: theme.backgroundElevated, borderColor: theme.boxEdge }]}>
         <View style={styles.header}>
           <View style={{ flex: 1 }}>
             <ThemedText type="subtitle">{PICKER_TITLE[component]}</ThemedText>
@@ -109,7 +109,7 @@ export function FoodPicker({ question, value, onChange }: FoodPickerProps) {
           onChangeText={setQuery}
           placeholder="Cerca un alimento"
           placeholderTextColor={theme.textTertiary}
-          style={[styles.search, { color: theme.text, backgroundColor: theme.backgroundElement, borderColor: theme.border }]}
+          style={[styles.search, { color: theme.text, backgroundColor: theme.backgroundElement, borderColor: theme.boxEdge }]}
         />
 
         <PopupScrollView {...ScrollDefaults} style={styles.list}>

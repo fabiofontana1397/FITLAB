@@ -62,7 +62,7 @@ export function PlanExerciseRow({
 
         <View style={styles.headerSpacer} />
 
-        <Pressable onPress={() => setInfoOpen(true)} hitSlop={8} style={[styles.iconButton, { borderColor: theme.border }]}>
+        <Pressable onPress={() => setInfoOpen(true)} hitSlop={8} style={[styles.iconButton, { borderColor: theme.boxEdge }]}>
           <Icon name="info" size={15} color={theme.textSecondary} />
         </Pressable>
       </View>

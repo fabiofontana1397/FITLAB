@@ -36,7 +36,7 @@ export function PeriodTimeline({ label, periods }: { label: string; periods: Tim
                   styles.node,
                   {
                     backgroundColor: done ? theme.accent : theme.backgroundElevated,
-                    borderColor: period.isCurrent || done ? theme.accent : theme.border,
+                    borderColor: period.isCurrent || done ? theme.accent : theme.boxEdge,
                   },
                 ]}>
                 {done ? (

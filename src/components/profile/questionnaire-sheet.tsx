@@ -66,7 +66,7 @@ export function QuestionnaireSheet({ visible, onClose, groups, answers, mode, on
           <View style={styles.inner}>
             <OutcomeBanner saving={saving} isGenerating={isGenerating} outcome={outcome} />
 
-            <View style={[styles.modeRow, { borderColor: theme.border }]}>
+            <View style={[styles.modeRow, { borderColor: theme.boxEdge }]}>
               <Icon name="sparkle" size={16} color={theme.accent} />
               <View style={{ flex: 1 }}>
                 <ThemedText type="caption" themeColor="textSecondary">

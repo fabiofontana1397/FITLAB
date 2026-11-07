@@ -62,7 +62,7 @@ export default function OnboardingCreatedScreen() {
 function StartingPoint({ calories, protein, carbs, fats }: { calories: number; protein: number; carbs: number; fats: number }) {
   const theme = useTheme();
   return (
-    <View style={[styles.card, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+    <View style={[styles.card, { backgroundColor: theme.backgroundElement, borderColor: theme.boxEdge }]}>
       <ThemedText type="label" themeColor="textSecondary">
         Il tuo punto di partenza
       </ThemedText>

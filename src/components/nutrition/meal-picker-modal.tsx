@@ -74,7 +74,7 @@ export function MealPickerModal({ visible, date, onClose, onPick }: MealPickerMo
               onPress={() => onPick(slot.id)}
               style={({ pressed }) => [
                 styles.box,
-                { backgroundColor: theme.backgroundElevated, borderColor: theme.border, opacity: pressed ? 0.8 : 1 },
+                { backgroundColor: theme.backgroundElevated, borderColor: theme.boxEdge, opacity: pressed ? 0.8 : 1 },
               ]}>
               <View style={[styles.boxIcon, { backgroundColor: withAlpha(color, 0.14) }]}>
                 <Icon name={slot.icon} size={18} color={color} />

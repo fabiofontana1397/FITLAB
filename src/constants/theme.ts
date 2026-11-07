@@ -135,6 +135,8 @@ export const Colors = {
     border: 'rgba(14,14,17,0.07)',
     borderStrong: 'rgba(14,14,17,0.14)',
     cardEdge: 'rgba(255,255,255,0)',
+    /** Outline of a box (card, chip, row, input with a fill): the hairline in light mode, none in dark. Dividers keep `border`. */
+    boxEdge: 'rgba(14,14,17,0.07)',
     // Round header buttons (notifications, profile…).
     iconButton: '#F4F4F4',
     // Text colours sampled from the light reference: near-black titles and
@@ -204,7 +206,8 @@ export const Colors = {
     surfaceGlassStrong: 'rgba(38,39,44,0.82)',
     border: 'rgba(255,255,255,0.10)',
     borderStrong: 'rgba(255,255,255,0.20)',
-    cardEdge: 'rgba(255,255,255,0.09)',
+    cardEdge: 'rgba(255,255,255,0)',
+    boxEdge: 'rgba(255,255,255,0)',
     iconButton: '#2D2E34',
     // Text colours sampled from the dark reference: white titles and values,
     // soft grey for secondary lines, a dimmer grey for hints.
@@ -401,8 +404,8 @@ export const GlassMaterial = {
     light: ['rgba(255,255,255,0.9)', 'rgba(255,255,255,0.45)', 'rgba(255,255,255,0.18)'],
     dark: ['rgba(255,255,255,0.24)', 'rgba(255,255,255,0.07)', 'rgba(255,255,255,0.02)'],
   },
-  surfaceBorder: { light: 'rgba(14,14,17,0.10)', dark: 'rgba(255,255,255,0.16)' },
-  surfaceBorderTop: { light: 'rgba(255,255,255,0.9)', dark: 'rgba(255,255,255,0.30)' },
+  surfaceBorder: { light: 'rgba(14,14,17,0.10)', dark: 'rgba(255,255,255,0)' },
+  surfaceBorderTop: { light: 'rgba(255,255,255,0.9)', dark: 'rgba(255,255,255,0)' },
   /** A round button's own inner highlight (profile avatar). */
   buttonInset: { light: 'inset 0px 1px 1px rgba(255,255,255,0.6)', dark: 'inset 0px 1px 1px rgba(255,255,255,0.25)' },
 } as const;

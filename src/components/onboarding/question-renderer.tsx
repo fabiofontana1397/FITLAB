@@ -133,7 +133,7 @@ function TextAnswer({ question, value, onChange }: { question: Question; value: 
         style={[
           styles.input,
           long && styles.inputLong,
-          { color: theme.text, backgroundColor: theme.backgroundElement, borderColor: theme.border },
+          { color: theme.text, backgroundColor: theme.backgroundElement, borderColor: theme.boxEdge },
         ]}
       />
       {question.optional ? (

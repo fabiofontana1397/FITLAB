@@ -28,10 +28,11 @@ const R_OUT = R + LEN / 2;
 /** The thin grey scale line over the ring, its dots, and the labels beyond it. */
 const LINE_R = R_OUT + 9;
 const LABEL_R = LINE_R + 15;
-const CY = LABEL_R + 14;
-const BASE_H = CY + 30;
-/** The kcal scale runs this far either side of equilibrium. */
-const SCALE_KCAL = 600;
+/** Room above the line for the goal's label over the centre strip. */
+const CY = LABEL_R + 26;
+const BASE_H = CY + 44;
+/** The dotted kcal scale runs this far either side of equilibrium; its two ends are named at the ends of the ring. */
+const SCALE_KCAL = 1000;
 /** How much the strips swell where the day is (and as it passes): inward, outward and in thickness, in space units. */
 const GROW_IN = 9;
 const GROW_OUT = 6;
@@ -95,7 +96,7 @@ export type GoalRingProps = {
  *
  * Over the ring runs a thin grey line marking equilibrium (0): solid towards
  * the surplus, dashed towards the deficit, with a dot every 100 (or 200) kcal
- * out to ±600. There is no separate marker: the strips of the ring are the
+ * out to ±1000, named (+1000 / -1000) at the two ends of the ring. There is no separate marker: the strips of the ring are the
  * marker. Every time Home comes into view a swelling runs along the arc, each
  * strip growing as it passes, and the strip at the real value stays enlarged.
  * It rests on an end of the scale when the real value lies beyond it.
@@ -129,7 +130,7 @@ export function GoalRing({ band, copy, value, goalText, inactive = false, onPres
   const degOf = (v: number) => balancePosition(v - band.goalKcal, band.halfRangeKcal).position * SPAN;
   const zeroDeg = degOf(0);
 
-  // The equilibrium scale: a dot every 100 kcal (200 where they would crowd), ±600; labels where there is room.
+  // The equilibrium scale: a dot every 100 kcal (200 where they would crowd) out to ±1000, and the label "0" where there is room (not under the goal's own label at the top).
   const scale = useMemo(() => {
     const degPer100 = (100 / band.halfRangeKcal) * SPAN;
     const step = (degPer100 * Math.PI * LINE_R) / 180 < 5 ? 200 : 100;
@@ -139,17 +140,8 @@ export function GoalRing({ band, copy, value, goalText, inactive = false, onPres
       const deg = degOf(v);
       if (Math.abs(deg) < SPAN - 1.5) dots.push({ x: px(LINE_R, deg), y: py(LINE_R, deg) });
     }
-    // Labels: 0 first, then the ends, then the middle ones, each only if clear of those already placed.
-    const minGap = ((32 / LABEL_R) * 180) / Math.PI;
-    const placed: { v: number; deg: number }[] = [];
-    for (const v of [0, SCALE_KCAL, -SCALE_KCAL, SCALE_KCAL / 2, -SCALE_KCAL / 2]) {
-      const deg = degOf(v);
-      if (Math.abs(deg) >= SPAN - 4) continue;
-      // Not over the goal's own mark at the top.
-      if (v !== 0 && Math.abs(deg) < 9) continue;
-      if (placed.every((p) => Math.abs(p.deg - deg) >= minGap)) placed.push({ v, deg });
-    }
-    return { dots, labels: placed };
+    const zero = degOf(0);
+    return { dots, zeroLabel: Math.abs(zero) >= 14 && Math.abs(zero) < SPAN - 4 ? zero : null };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [band.goalKcal, band.halfRangeKcal]);
 
@@ -216,47 +208,62 @@ export function GoalRing({ band, copy, value, goalText, inactive = false, onPres
             <Path d={`M ${CX - 4.5} ${CY - LINE_R - 12} L ${CX + 4.5} ${CY - LINE_R - 12} L ${CX} ${CY - LINE_R - 6} Z`} fill={goodText} />
           </Svg>
 
-          {scale.labels.map((t) => (
+          {scale.zeroLabel != null ? (
             <ThemedText
-              key={t.v}
-              themeColor={t.v === 0 ? 'textSecondary' : 'textTertiary'}
+              themeColor="textSecondary"
               numberOfLines={1}
               style={[
                 styles.tick,
+                styles.tickZero,
                 label(11),
-                t.v === 0 && styles.tickZero,
                 {
-                  left: (t.deg > 35 ? px(LABEL_R, t.deg) : t.deg < -35 ? px(LABEL_R, t.deg) - 48 : px(LABEL_R, t.deg) - 24) * k,
-                  top: (py(LABEL_R, t.deg) - 7) * k,
+                  left: (scale.zeroLabel > 35 ? px(LABEL_R, scale.zeroLabel) : scale.zeroLabel < -35 ? px(LABEL_R, scale.zeroLabel) - 48 : px(LABEL_R, scale.zeroLabel) - 24) * k,
+                  top: (py(LABEL_R, scale.zeroLabel) - 7) * k,
                   width: 48 * k,
-                  textAlign: t.deg > 35 ? 'left' : t.deg < -35 ? 'right' : 'center',
+                  textAlign: scale.zeroLabel > 35 ? 'left' : scale.zeroLabel < -35 ? 'right' : 'center',
                 },
               ]}>
-              {formatSignedKcal(t.v)}
+              0
             </ThemedText>
-          ))}
+          ) : null}
+
+          {/* The goal's kcal, on the centre strip. */}
+          <Pressable
+            onPress={onGoalPress}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={`Obiettivo ${goalText}`}
+            style={[styles.goalLabel, { top: (CY - LINE_R - 32) * k, left: 0, right: 0, height: 18 * k }]}>
+            <ThemedText style={label(12)} themeColor="textSecondary" numberOfLines={1}>
+              Obiettivo
+            </ThemedText>
+            <ThemedText style={[styles.goalValue, label(12), { color: goodText }]} numberOfLines={1}>
+              {goalText}
+            </ThemedText>
+          </Pressable>
 
           {/* The two ends of the scale. */}
           <ThemedText themeColor="textSecondary" style={[styles.end, label(12), { left: (px(R, -SPAN) - 40) * k, top: (CY + 10) * k, width: 80 * k }]}>
             ‹ Surplus
+          </ThemedText>
+          <ThemedText themeColor="textTertiary" style={[styles.end, label(11), { left: (px(R, -SPAN) - 40) * k, top: (CY + 27) * k, width: 80 * k }]}>
+            {formatSignedKcal(SCALE_KCAL)}
+          </ThemedText>
+          <ThemedText themeColor="textTertiary" style={[styles.end, label(11), { left: (px(R, SPAN) - 40) * k, top: (CY + 27) * k, width: 80 * k }]}>
+            {formatSignedKcal(-SCALE_KCAL)}
           </ThemedText>
           <ThemedText themeColor="textSecondary" style={[styles.end, label(12), { left: (px(R, SPAN) - 40) * k, top: (CY + 10) * k, width: 80 * k }]}>
             Deficit ›
           </ThemedText>
 
           {/* The middle: the balance, the goal, the state. */}
-          <View pointerEvents="box-none" style={[styles.centre, { top: (CY - 80) * k, paddingHorizontal: 70 * k }]}>
-            <ThemedText pointerEvents="none" style={[styles.value, { fontSize: (value.length >= 7 ? 22 : value.length === 6 ? 25 : 28) * k, lineHeight: 32 * k }]} numberOfLines={1}>
+          <View pointerEvents="none" style={[styles.centre, { top: (CY - 82) * k, paddingHorizontal: 70 * k }]}>
+            <ThemedText style={[styles.value, { fontSize: (value.length >= 7 ? 22 : value.length === 6 ? 25 : 28) * k, lineHeight: 32 * k }]} numberOfLines={1}>
               {value}
             </ThemedText>
-            <Pressable onPress={onGoalPress} hitSlop={8} accessibilityRole="button" accessibilityLabel={`Obiettivo ${goalText}`} style={styles.goalRow}>
-              <ThemedText style={label(12)} themeColor="textSecondary" numberOfLines={1}>
-                Obiettivo
-              </ThemedText>
-              <ThemedText style={[styles.goalValue, label(12), { color: goodText }]} numberOfLines={1}>
-                {goalText}
-              </ThemedText>
-            </Pressable>
+            <ThemedText style={[styles.unit, label(12)]} themeColor="textSecondary">
+              kcal di bilancio
+            </ThemedText>
           </View>
           <View style={[styles.chipRow, { top: (CY - 26) * k, height: 24 * k }]}>
             <View pointerEvents="none" style={[styles.chip, { backgroundColor: chipBg, height: 24 * k, borderRadius: 12 * k, paddingHorizontal: 11 * k }]}>
@@ -333,9 +340,14 @@ const styles = StyleSheet.create({
   chipText: {
     fontWeight: '700',
   },
-  goalRow: {
+  unit: {
+    fontWeight: '500',
+  },
+  goalLabel: {
+    position: 'absolute',
     flexDirection: 'row',
-    alignItems: 'baseline',
+    alignItems: 'center',
+    justifyContent: 'center',
     gap: 4,
   },
   goalValue: {

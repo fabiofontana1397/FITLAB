@@ -132,7 +132,7 @@ export function WheelSelectionBand() {
   return (
     <View
       pointerEvents="none"
-      style={[styles.band, { backgroundColor: theme.backgroundSelected, borderColor: theme.border }]}
+      style={[styles.band, { backgroundColor: theme.backgroundSelected, borderColor: theme.boxEdge }]}
     />
   );
 }

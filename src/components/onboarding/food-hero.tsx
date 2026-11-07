@@ -74,7 +74,7 @@ function FloatingItem({ label, source, x, y, index, scale }: { label: string; so
 
   return (
     <Animated.View style={[styles.item, { left: '50%', top: '50%', marginLeft: x * scale - 38, marginTop: y * scale - 28 }, style]}>
-      <View style={[styles.chip, { backgroundColor: theme.tabBarBlur === 'light' ? '#FFFFFF' : theme.backgroundSelected, borderColor: theme.border }]}>
+      <View style={[styles.chip, { backgroundColor: theme.tabBarBlur === 'light' ? '#FFFFFF' : theme.backgroundSelected, borderColor: theme.boxEdge }]}>
         <Image source={source} style={{ width: 28, height: 28 }} contentFit="contain" />
         <ThemedText type="caption" style={{ fontWeight: '700' }}>
           {label}

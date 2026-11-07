@@ -350,7 +350,7 @@ export default function ProgressScreen() {
           }
         />
 
-        <Pressable onPress={() => setPosePickerOpen(true)} style={[styles.addPhotoRow, { borderColor: theme.border }]}>
+        <Pressable onPress={() => setPosePickerOpen(true)} style={[styles.addPhotoRow, { borderColor: theme.boxEdge }]}>
           <Icon name="camera" size={20} color={theme.accent} />
           <ThemedText style={[styles.addPhotoLabel, { color: theme.accent }]}>Aggiungi foto</ThemedText>
         </Pressable>

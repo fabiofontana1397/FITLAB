@@ -61,7 +61,7 @@ export function TrainingWeekCard({ weekDates, selectedDate, onSelectDate, isDayC
                     styles.circle,
                     complete
                       ? { backgroundColor: theme.accent, borderColor: theme.accent }
-                      : { borderColor: today ? theme.accent : theme.border },
+                      : { borderColor: today ? theme.accent : theme.boxEdge },
                   ]}>
                   {complete ? <Icon name="check" size={13} color={theme.onAccent} /> : null}
                 </Pressable>

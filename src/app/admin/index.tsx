@@ -74,7 +74,7 @@ export default function AdminUsersScreen() {
         onChangeText={setQuery}
         placeholder="Cerca per nome o email"
         placeholderTextColor={theme.textTertiary}
-        style={[styles.search, { color: theme.text, backgroundColor: theme.backgroundElement, borderColor: theme.border }]}
+        style={[styles.search, { color: theme.text, backgroundColor: theme.backgroundElement, borderColor: theme.boxEdge }]}
       />
 
       {error ? (
