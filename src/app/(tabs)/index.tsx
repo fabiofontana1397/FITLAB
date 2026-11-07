@@ -605,9 +605,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   oggiCard: {
-    marginTop: 14,
-    paddingTop: 12,
-    paddingBottom: 12,
+    marginTop: 18,
+    paddingTop: 14,
+    paddingBottom: 14,
     paddingHorizontal: 14,
   },
   cardTitleRow: {
@@ -622,13 +622,13 @@ const styles = StyleSheet.create({
   },
   oggiDivider: {
     height: StyleSheet.hairlineWidth,
-    marginTop: 10,
-    marginBottom: 12,
+    marginTop: 18,
+    marginBottom: 18,
   },
   actionsRow: {
     flexDirection: 'row',
     gap: 12,
-    marginTop: 12,
+    marginTop: 18,
   },
   // Pill-shaped: a short bar whose ends are half circles (radius = half the height), with a round icon disc at its start.
   actionWrap: {
