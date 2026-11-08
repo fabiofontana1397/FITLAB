@@ -5,6 +5,7 @@ import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from 'react-nat
 import { GlassSurface } from '@/components/glass/glass-surface';
 import { DIET_PHASE_SHORT_LABEL } from '@/components/nutrition/diet-overview-popup';
 import { DishPhoto, DishPlaceholder } from '@/components/nutrition/dish-photo';
+import { MealRecipeSheet } from '@/components/nutrition/meal-recipe-sheet';
 import { PlanMonthStepper } from '@/components/training/plan-month-stepper';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
@@ -12,14 +13,13 @@ import { SheetScreen } from '@/components/ui/sheet-screen';
 import { InsightCard } from '@/components/ui/insight-card';
 import { PrimaryButton } from '@/components/ui/primary-button';
 import { SegmentedControl } from '@/components/ui/segmented-control';
-import { FOOD_IMAGES_ENABLED } from '@/constants/food-images';
 import { Radius, Spacing } from '@/constants/theme';
 import { useEnsurePlan } from '@/hooks/use-ensure-plan';
 import { useTheme } from '@/hooks/use-theme';
 import { useUserContext } from '@/hooks/use-user-context';
 import { WEEKDAY_LABELS } from '@/lib/planning/exercise-library';
 import { dishImage } from '@/lib/planning/fitlab/dish-images';
-import { recipeForDish, WEIGHT_BASIS_NOTE } from '@/lib/planning/fitlab/recipes';
+import { recipeForDish } from '@/lib/planning/fitlab/recipes';
 import { inMealOrder } from '@/lib/planning/meal-slots';
 import { exportDietPlanPdf } from '@/lib/planning/pdf-export';
 import { currentMonthIndex, currentMonthProgress, monthProgress } from '@/lib/planning/plan-progress';
@@ -225,6 +225,7 @@ function MealCard({ meal }: { meal: PlanMeal }) {
   const theme = useTheme();
   const photo = dishImage(meal.recipe?.dishId);
   const preparation = recipeForDish(meal.recipe?.dishId);
+  const [detailOpen, setDetailOpen] = useState(false);
   return (
     <GlassSurface level="card" radius={Radius.large} style={styles.mealCard}>
       <View style={styles.mealHeader}>
@@ -249,8 +250,8 @@ function MealCard({ meal }: { meal: PlanMeal }) {
       ) : (
         <>
           {meal.recipe ? (
-            <View style={styles.recipeRow}>
-              {photo ? <DishPhoto image={photo} /> : !FOOD_IMAGES_ENABLED ? <DishPlaceholder /> : null}
+            <Pressable onPress={() => setDetailOpen(true)} style={styles.recipeRow} accessibilityRole="button" accessibilityLabel={`Apri la ricetta: ${meal.recipe.name}`}>
+              {photo ? <DishPhoto image={photo} size={72} radius={Radius.medium} /> : <DishPlaceholder size={72} radius={Radius.medium} />}
               <View style={styles.recipeText}>
                 <ThemedText type="smallBold">{meal.recipe.name}</ThemedText>
                 {meal.recipe.flavorings.length > 0 ? (
@@ -259,7 +260,8 @@ function MealCard({ meal }: { meal: PlanMeal }) {
                   </ThemedText>
                 ) : null}
               </View>
-            </View>
+              <Icon name="chevronRight" size={16} color={theme.textTertiary} />
+            </Pressable>
           ) : null}
           <View style={{ gap: 6 }}>
             {meal.items.map((item, index) => (
@@ -267,7 +269,15 @@ function MealCard({ meal }: { meal: PlanMeal }) {
             ))}
           </View>
 
-          {preparation ? <RecipePreparation recipe={preparation} /> : null}
+          {preparation ? (
+            <Pressable onPress={() => setDetailOpen(true)} hitSlop={8} style={styles.substituteToggle} accessibilityRole="button">
+              <ThemedText type="caption" style={{ color: theme.accent, fontWeight: '600' }}>
+                Ricetta e preparazione · {preparation.totalMinutes} min
+              </ThemedText>
+              <Icon name="chevronRight" size={14} color={theme.accent} />
+            </Pressable>
+          ) : null}
+          <MealRecipeSheet meal={detailOpen ? meal : null} onClose={() => setDetailOpen(false)} />
 
           <View style={[styles.mealFooterDivider, { borderTopColor: theme.border }]}>
             <ThemedText type="caption" themeColor="textSecondary">
@@ -277,41 +287,6 @@ function MealCard({ meal }: { meal: PlanMeal }) {
         </>
       )}
     </GlassSurface>
-  );
-}
-
-/** The preparation of the official recipe, collapsed behind a tap: steps, times, difficulty and equipment. No weights
- * here: the quantities are the ones listed above, solved for this person. */
-function RecipePreparation({ recipe }: { recipe: NonNullable<ReturnType<typeof recipeForDish>> }) {
-  const theme = useTheme();
-  const [open, setOpen] = useState(false);
-  return (
-    <View style={{ gap: 6 }}>
-      <Pressable onPress={() => setOpen((v) => !v)} hitSlop={8} style={styles.substituteToggle} accessibilityRole="button" accessibilityState={{ expanded: open }}>
-        <ThemedText type="caption" style={{ color: theme.accent, fontWeight: '600' }}>
-          Preparazione · {recipe.totalMinutes} min
-        </ThemedText>
-        <Icon name={open ? 'chevronUp' : 'chevronDown'} size={14} color={theme.accent} />
-      </Pressable>
-      {open ? (
-        <View style={[styles.substituteList, { borderLeftColor: theme.border }]}>
-          <ThemedText type="caption" themeColor="textSecondary">
-            {recipe.description}
-          </ThemedText>
-          <ThemedText type="caption" themeColor="textSecondary">
-            Preparazione {recipe.prepMinutes} min{recipe.cookMinutes > 0 ? ` · cottura ${recipe.cookMinutes} min` : ''} · {recipe.difficulty} · {recipe.equipment.join(', ')}
-          </ThemedText>
-          {recipe.steps.map((step, i) => (
-            <ThemedText key={i} type="caption">
-              {i + 1}. {step}
-            </ThemedText>
-          ))}
-          <ThemedText type="caption" themeColor="textSecondary">
-            {WEIGHT_BASIS_NOTE}
-          </ThemedText>
-        </View>
-      ) : null}
-    </View>
   );
 }
 

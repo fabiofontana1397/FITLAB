@@ -57,6 +57,7 @@ export function DishPhoto({ image, size = 64, radius = 14 }: { image: MealImage;
       background={theme.backgroundElement}
       alt={image.alt}
       fallback={fallback}
+      fill
       lazy
       recyclingKey={image.id}
       transition={150}
