@@ -15,6 +15,7 @@ import { useBodyStore } from '@/store/body-store';
 import { useNutritionStore, sumMacros } from '@/store/nutrition-store';
 import { usePlanStore } from '@/store/plan-store';
 import { isExerciseCompleted, useTrainingProgressStore } from '@/store/training-progress-store';
+import { planIndexFor, useTrainingSwapStore } from '@/store/training-swap-store';
 import { useUserStore } from '@/store/user-store';
 
 export type WeekEnergyDay = {
@@ -72,6 +73,7 @@ export function useWeeklyEnergy(referenceDate?: string): {
   const nutritionEntries = useNutritionStore((s) => s.entries);
   const bodyEntries = useBodyStore((s) => s.entries);
   const activityLogEntries = useActivityLogStore((s) => s.entries);
+  const swaps = useTrainingSwapStore((s) => s.swaps);
   const { calibration, measuredFor, stepsFor } = useHealthEnergy();
   const elapsedHours = useElapsedHours();
 
@@ -112,7 +114,8 @@ export function useWeeklyEnergy(referenceDate?: string): {
         };
       }
 
-      const dayPlan = split[i];
+      // Same swap-aware lookup as Home's main gauge, so the mini rings agree with it.
+      const dayPlan = split[planIndexFor(date, swaps)];
       const exercises = dayPlan?.type === 'workout' ? (dayPlan.exercises ?? []) : [];
       const completed = exercises.filter((ex) => isExerciseCompleted(completedExercises, ex.id, date)).length;
       const dayTrainingProgress = dayPlan?.type === 'workout' ? (exercises.length > 0 ? completed / exercises.length : 1) : 1;
@@ -142,7 +145,7 @@ export function useWeeklyEnergy(referenceDate?: string): {
       };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [trainingPlan, weekDates, accountStartDate, completedExercises, nutritionEntries, activityLogEntries, calorieTarget, dietMonth, ctx, today, calibration, measuredFor, stepsFor, elapsedHours]);
+  }, [trainingPlan, weekDates, accountStartDate, completedExercises, nutritionEntries, activityLogEntries, calorieTarget, dietMonth, ctx, today, calibration, measuredFor, stepsFor, elapsedHours, swaps]);
 
   // Folded in as a plain post-processing pass (not inside the useMemo
   // above) so this dependency never touches that hook's own compiler-
