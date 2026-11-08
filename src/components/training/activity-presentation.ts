@@ -10,7 +10,13 @@ export const ACTIVITY_ICON: Partial<Record<ActivityType, IconName>> = {
   walking: 'footsteps',
   functional: 'functional',
   tennis: 'tennis',
-  hiking: 'footsteps',
+  hiking: 'hiking',
+  soccer: 'soccer',
+  basketball: 'basketball',
+  volleyball: 'volleyball',
+  boxing: 'boxing',
+  yoga: 'yoga',
+  skiing: 'skiing',
 };
 
 /** The broad kind of effort an activity is, shown as "Attività" in its sheet. */
