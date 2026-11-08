@@ -27,19 +27,21 @@ export type PhotoTileProps = {
   /** Stable key so a recycled row never flashes the previous photo. */
   recyclingKey?: string;
   transition?: number;
+  /** The picture fills the whole tile, edge to edge, with the tile's rounded corners: for square photos already cropped to their subject (dish photos). */
+  fill?: boolean;
 };
 
 /**
  * The one way FitLab shows a food or dish photo: the whole picture, always.
  *
- * - `contentFit="contain"`, centred: scaled down until all of it fits, its
+ * - `contentFit={fill ? 'cover' : 'contain'}`, centred: scaled down until all of it fits, its
  *   proportions kept, never cropped, zoomed or stretched — square, portrait
  *   or landscape alike. Spare room shows the tile's own background.
  * - Inset by `cornerSafeInset`, so the tile's rounded corners can't clip it.
  * - The tile has a fixed size, so nothing moves when the photo arrives.
  * - If the photo fails, the tile keeps its place and shows `fallback`.
  */
-export function PhotoTile({ source, width, height = width, radius, background, alt, fallback, lazy, recyclingKey, transition = 0 }: PhotoTileProps) {
+export function PhotoTile({ source, width, height = width, radius, background, alt, fallback, lazy, recyclingKey, transition = 0, fill }: PhotoTileProps) {
   // Remembers which source failed, so a tile handed a new source tries again.
   const sourceKey = typeof source === 'string' ? source : JSON.stringify(source);
   const [failedKey, setFailedKey] = useState<string | null>(null);
@@ -55,11 +57,11 @@ export function PhotoTile({ source, width, height = width, radius, background, a
   }
 
   return (
-    <View style={[styles.tile, tile, { padding: cornerSafeInset(radius) }]} aria-hidden={!alt}>
+    <View style={[styles.tile, tile, { padding: fill ? 0 : cornerSafeInset(radius) }]} aria-hidden={!alt}>
       <Image
         source={typeof source === 'string' ? { uri: source } : source}
         style={styles.photo}
-        contentFit="contain"
+        contentFit={fill ? 'cover' : 'contain'}
         contentPosition="center"
         loading={lazy ? 'lazy' : undefined}
         cachePolicy="memory-disk"
