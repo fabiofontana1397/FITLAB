@@ -82,5 +82,229 @@
     "category": "dinner",
     "image": "/images/meals/insalata-tonno-ceci.webp",
     "alt": "Insalata di tonno e ceci"
+  },
+  {
+    "id": "pl001",
+    "name": "Porridge d'avena, yogurt e frutti di bosco",
+    "category": "breakfast",
+    "image": "/images/meals/pl001.webp",
+    "alt": "Porridge d'avena, yogurt e frutti di bosco"
+  },
+  {
+    "id": "pl002",
+    "name": "Porridge di crema di riso e banana",
+    "category": "breakfast",
+    "image": "/images/meals/pl002.webp",
+    "alt": "Porridge di crema di riso e banana"
+  },
+  {
+    "id": "pl003",
+    "name": "Porridge di avena e albumi d'uovo",
+    "category": "breakfast",
+    "image": "/images/meals/pl003.webp",
+    "alt": "Porridge di avena e albumi d'uovo"
+  },
+  {
+    "id": "pl004",
+    "name": "Bowl di yogurt greco, muesli e kiwi",
+    "category": "breakfast",
+    "image": "/images/meals/pl004.webp",
+    "alt": "Bowl di yogurt greco, muesli e kiwi"
+  },
+  {
+    "id": "pl005",
+    "name": "Toast integrale con ricotta e marmellata",
+    "category": "breakfast",
+    "image": "/images/meals/pl005.webp",
+    "alt": "Toast integrale con ricotta e marmellata"
+  },
+  {
+    "id": "pl006",
+    "name": "Avocado toast",
+    "category": "breakfast",
+    "image": "/images/meals/pl006.webp",
+    "alt": "Avocado toast"
+  },
+  {
+    "id": "pl007",
+    "name": "Pancake d'avena con yogurt e banana",
+    "category": "breakfast",
+    "image": "/images/meals/pl007.webp",
+    "alt": "Pancake d'avena con yogurt e banana"
+  },
+  {
+    "id": "pl008",
+    "name": "Pane di segale con fiocchi di latte e marmellata",
+    "category": "breakfast",
+    "image": "/images/meals/pl008.webp",
+    "alt": "Pane di segale con fiocchi di latte e marmellata"
+  },
+  {
+    "id": "pl009",
+    "name": "Fette biscottate con yogurt e marmellata",
+    "category": "breakfast",
+    "image": "/images/meals/pl009.webp",
+    "alt": "Fette biscottate con yogurt e marmellata"
+  },
+  {
+    "id": "pl010",
+    "name": "Kefir con avena e mela",
+    "category": "breakfast",
+    "image": "/images/meals/pl010.webp",
+    "alt": "Kefir con avena e mela"
+  },
+  {
+    "id": "pl011",
+    "name": "Toast con fesa di tacchino e frutta",
+    "category": "snack",
+    "image": "/images/meals/pl011.webp",
+    "alt": "Toast con fesa di tacchino e frutta"
+  },
+  {
+    "id": "pl012",
+    "name": "Yogurt greco con frutta e mandorle",
+    "category": "snack",
+    "image": "/images/meals/pl012.webp",
+    "alt": "Yogurt greco con frutta e mandorle"
+  },
+  {
+    "id": "pl013",
+    "name": "Skyr con banana e semi di chia",
+    "category": "snack",
+    "image": "/images/meals/pl013.webp",
+    "alt": "Skyr con banana e semi di chia"
+  },
+  {
+    "id": "pl014",
+    "name": "Pane integrale con ricotta",
+    "category": "snack",
+    "image": "/images/meals/pl014.webp",
+    "alt": "Pane integrale con ricotta"
+  },
+  {
+    "id": "pl015",
+    "name": "Bresaola con pane e rucola",
+    "category": "snack",
+    "image": "/images/meals/pl015.webp",
+    "alt": "Bresaola con pane e rucola"
+  },
+  {
+    "id": "pl016",
+    "name": "Fette biscottate con yogurt e marmellata",
+    "category": "snack",
+    "image": "/images/meals/pl016.webp",
+    "alt": "Fette biscottate con yogurt e marmellata"
+  },
+  {
+    "id": "pl017",
+    "name": "Bowl di yogurt greco, muesli e kiwi",
+    "category": "snack",
+    "image": "/images/meals/pl017.webp",
+    "alt": "Bowl di yogurt greco, muesli e kiwi"
+  },
+  {
+    "id": "pl018",
+    "name": "Hummus con carote e crackers",
+    "category": "snack",
+    "image": "/images/meals/pl018.webp",
+    "alt": "Hummus con carote e crackers"
+  },
+  {
+    "id": "pl019",
+    "name": "Frutta fresca e frutta secca",
+    "category": "snack",
+    "image": "/images/meals/pl019.webp",
+    "alt": "Frutta fresca e frutta secca"
+  },
+  {
+    "id": "pl020",
+    "name": "Kefir con frutti di bosco",
+    "category": "snack",
+    "image": "/images/meals/pl020.webp",
+    "alt": "Kefir con frutti di bosco"
+  },
+  {
+    "id": "pl021",
+    "name": "Toast con avocado e uovo sodo",
+    "category": "snack",
+    "image": "/images/meals/pl021.webp",
+    "alt": "Toast con avocado e uovo sodo"
+  },
+  {
+    "id": "pl022",
+    "name": "Budino proteico con frutta",
+    "category": "snack",
+    "image": "/images/meals/pl022.webp",
+    "alt": "Budino proteico con frutta"
+  },
+  {
+    "id": "pl023",
+    "name": "Pasta integrale al pomodoro, pollo e zucchine",
+    "category": "lunch",
+    "image": "/images/meals/pl023.webp",
+    "alt": "Pasta integrale al pomodoro, pollo e zucchine"
+  },
+  {
+    "id": "pl024",
+    "name": "Riso integrale con salmone e broccoli",
+    "category": "lunch",
+    "image": "/images/meals/pl024.webp",
+    "alt": "Riso integrale con salmone e broccoli"
+  },
+  {
+    "id": "pl025",
+    "name": "Farro con tacchino, melanzane e pomodori",
+    "category": "lunch",
+    "image": "/images/meals/pl025.webp",
+    "alt": "Farro con tacchino, melanzane e pomodori"
+  },
+  {
+    "id": "pl026",
+    "name": "Pasta, merluzzo, pomodori e spinaci",
+    "category": "lunch",
+    "image": "/images/meals/pl026.webp",
+    "alt": "Pasta, merluzzo, pomodori e spinaci"
+  },
+  {
+    "id": "pl027",
+    "name": "Riso basmati con ceci e verdure mediterranee",
+    "category": "lunch",
+    "image": "/images/meals/pl027.webp",
+    "alt": "Riso basmati con ceci e verdure mediterranee"
+  },
+  {
+    "id": "pl028",
+    "name": "Patate al forno con orata e fagiolini",
+    "category": "lunch",
+    "image": "/images/meals/pl028.webp",
+    "alt": "Patate al forno con orata e fagiolini"
+  },
+  {
+    "id": "pl029",
+    "name": "Pasta e lenticchie con contorno di finocchi",
+    "category": "lunch",
+    "image": "/images/meals/pl029.webp",
+    "alt": "Pasta e lenticchie con contorno di finocchi"
+  },
+  {
+    "id": "pl030",
+    "name": "Polenta con manzo magro e cavolo nero",
+    "category": "lunch",
+    "image": "/images/meals/pl030.webp",
+    "alt": "Polenta con manzo magro e cavolo nero"
+  },
+  {
+    "id": "pl031",
+    "name": "Cous cous con gamberi e zucchine",
+    "category": "lunch",
+    "image": "/images/meals/pl031.webp",
+    "alt": "Cous cous con gamberi e zucchine"
+  },
+  {
+    "id": "pl032",
+    "name": "Pasta al ragù leggero con contorno di insalata",
+    "category": "lunch",
+    "image": "/images/meals/pl032.webp",
+    "alt": "Pasta al ragù leggero con contorno di insalata"
   }
 ]
