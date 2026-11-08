@@ -96,6 +96,8 @@ const ICONS = {
   scale: { set: 'mci', name: 'scale-bathroom' },
   ruler: { set: 'mci', name: 'tape-measure' },
   camera: { set: 'ion', name: 'camera-outline' },
+  image: { set: 'ion', name: 'image-outline' },
+  file: { set: 'ion', name: 'document-text-outline' },
   bolt: { set: 'ion', name: 'flash' },
   info: { set: 'ion', name: 'information-circle-outline' },
   alert: { set: 'ion', name: 'alert-circle-outline' },
