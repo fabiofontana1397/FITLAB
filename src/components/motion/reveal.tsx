@@ -1,6 +1,8 @@
+import { useIsFocused } from 'expo-router';
 import { createContext, useContext, useEffect, type RefObject } from 'react';
-import { Dimensions, type StyleProp, type ViewStyle } from 'react-native';
+import { Dimensions, Platform, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, {
+  cancelAnimation,
   interpolate,
   makeMutable,
   useAnimatedReaction,
@@ -41,7 +43,9 @@ export function useRevealProgress() {
 // the motion happens where the eye is rather than under the very edge.
 const IN_VIEW_MARGIN = 28;
 const STAGGER_WINDOW_MS = 700;
-const RISE = 22;
+const RISE = 26;
+/** How blurred a section starts (web only: React Native has no blur on iOS). */
+const BLUR_PX = 8;
 
 export type RevealProps = {
   /** Position in the screen's stack; drives the opening stagger. */
@@ -50,24 +54,35 @@ export type RevealProps = {
   children?: React.ReactNode;
 };
 
-/** One section of a screen that rises and fades in: staggered with its
- * siblings on first paint, or as it scrolls into view if it starts below the
- * fold. Plays once — scrolling back up never re-hides anything. With the
- * system's "reduce motion" on, content is simply there. */
+/**
+ * One section of a screen entering the way the reference animation does: it
+ * fades in out of a blur, rising and growing a little into place, one section
+ * after another from the top.
+ *
+ * It plays every time, not once:
+ *  - each time the page is switched to, the sections that are in view replay
+ *    their staggered entrance;
+ *  - each time a section comes back into view while scrolling (it left the
+ *    screen entirely, above or below), it enters again.
+ * With the system's "reduce motion" on, content is simply there.
+ */
 export function Reveal({ index = 0, style, children }: RevealProps) {
   const ctx = useContext(ScrollRevealContext);
   const reduceMotion = useReducedMotion();
+  const focused = useIsFocused();
 
   const fallbackScrollY = useSharedValue(0);
   const fallbackViewport = useSharedValue(Dimensions.get('window').height);
   const scrollY = ctx?.scrollY ?? fallbackScrollY;
   const viewportHeight = ctx?.viewportHeight ?? fallbackViewport;
-  const mountedAt = ctx?.mountedAt;
 
   const progress = useSharedValue(reduceMotion ? 1 : 0);
   const top = useSharedValue(-1);
+  const height = useSharedValue(0);
   const delay = useSharedValue(0);
   const triggered = useSharedValue(reduceMotion);
+  /** Bumped to make the reaction below run again (a page switch replays the entrance). */
+  const replay = useSharedValue(0);
 
   useEffect(() => {
     if (reduceMotion) {
@@ -75,28 +90,60 @@ export function Reveal({ index = 0, style, children }: RevealProps) {
       progress.set(1);
       return;
     }
-    const sinceMount = Date.now() - (mountedAt?.current ?? 0);
-    delay.set(sinceMount < STAGGER_WINDOW_MS ? Math.min(index, STAGGER_MAX_STEPS) * STAGGER_STEP : 0);
-    // index is only read for the first paint, on purpose.
+    if (!focused) {
+      // Page left: park the section hidden, ready to enter again.
+      cancelAnimation(progress);
+      triggered.set(false);
+      progress.set(0);
+      return;
+    }
+    // Page shown (first paint or coming back): the sections in view enter one after another.
+    delay.set(Math.min(index, STAGGER_MAX_STEPS) * STAGGER_STEP);
+    triggered.set(false);
+    progress.set(0);
+    replay.set(replay.get() + 1);
+    // The stagger only belongs to this page switch, not to later scroll-ins.
+    const clear = setTimeout(() => delay.set(0), STAGGER_WINDOW_MS);
+    return () => clearTimeout(clear);
+    // index is only read at the moment of the switch, on purpose.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reduceMotion]);
+  }, [reduceMotion, focused]);
 
   useAnimatedReaction(
-    () => top.value >= 0 && scrollY.value + viewportHeight.value > top.value + IN_VIEW_MARGIN,
-    (inView) => {
-      if (!inView || triggered.get()) return;
+    () => {
+      // 1 = in view, 2 = fully off screen (above or below), 0 = not measured yet; the page switch counter rides along.
+      const measured = top.value >= 0;
+      const outBelow = top.value > scrollY.value + viewportHeight.value;
+      const outAbove = top.value + height.value < scrollY.value;
+      const inView = measured && !outBelow && !outAbove && scrollY.value + viewportHeight.value > top.value + IN_VIEW_MARGIN;
+      return (inView ? 1 : measured && (outBelow || outAbove) ? 2 : 0) + replay.value * 3;
+    },
+    (state) => {
+      const kind = state % 3;
+      if (reduceMotion) return;
+      if (kind === 2) {
+        // Gone from the screen: hide it again so it can enter next time.
+        if (triggered.get()) {
+          triggered.set(false);
+          cancelAnimation(progress);
+          progress.set(0);
+        }
+        return;
+      }
+      if (kind !== 1 || triggered.get()) return;
       triggered.set(true);
       progress.set(withDelay(delay.get(), withSpring(1, SpringReveal)));
     }
   );
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(progress.value, [0, 0.55], [0, 1], 'clamp'),
-    transform: [
-      { translateY: (1 - progress.value) * RISE },
-      { scale: interpolate(progress.value, [0, 1], [0.985, 1]) },
-    ],
-  }));
+  const animatedStyle = useAnimatedStyle(() => {
+    const p = progress.value;
+    const base = {
+      opacity: interpolate(p, [0, 0.55], [0, 1], 'clamp'),
+      transform: [{ translateY: (1 - p) * RISE }, { scale: interpolate(p, [0, 1], [0.96, 1]) }],
+    };
+    return Platform.OS === 'web' ? { ...base, filter: `blur(${Math.max(0, (1 - p) * BLUR_PX)}px)` } : base;
+  });
 
   return (
     <RevealProgressContext.Provider value={progress}>
@@ -104,6 +151,7 @@ export function Reveal({ index = 0, style, children }: RevealProps) {
         style={[style, animatedStyle]}
         onLayout={(e) => {
           top.set(e.nativeEvent.layout.y);
+          height.set(e.nativeEvent.layout.height);
         }}>
         {children}
       </Animated.View>
