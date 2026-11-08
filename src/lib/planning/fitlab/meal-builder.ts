@@ -198,7 +198,7 @@ function toItem(food: FitLabFood, grams: number, role: NonNullable<PlanMealItem[
     grams,
     kcal: Math.round((food.kcal * grams) / 100),
     foodId: food.id,
-    quantityLabel: formatFoodQuantity(food.id, grams),
+    quantityLabel: food.sub === 'Latte' || food.sub === 'Bevande vegetali' ? `${grams} ml` : formatFoodQuantity(food.id, grams),
     role,
     substitutes,
   };
@@ -237,16 +237,21 @@ function substitutesFor(item: { food: FitLabFood; grams: number; role: Role }, k
 // ------------------------------------------------------------ fixed amounts --
 
 const VEG_GRAMS: Record<string, number> = { Lattuga: 60, Rucola: 40, Radicchio: 60, Germogli: 30, Carote: 100, Pomodori: 100, Zucca: 200, Funghi: 150, Cetrioli: 100, Sedano: 80, Finocchi: 150, Asparagi: 150, Carciofi: 150 };
+/** A recipe's accessory amount (given for a `refKcal` meal) follows the meal's calories, within a sensible range, in whole steps. */
+const accessoryGrams = (grams: number, step: number, kcalTarget: number, refKcal = 400): number => {
+  const scale = Math.min(Math.max(kcalTarget / refKcal, 0.4), 1.5);
+  return Math.max(step, Math.round((grams * scale) / step) * step);
+};
 const vegGrams = (food: FitLabFood, sides: number, kind: SlotKind, kcalTarget: number): number => {
   const base = VEG_GRAMS[food.name] ?? 150;
-  const factor = (kind === 'snack' ? 0.6 : 1) * (sides > 1 ? 0.8 : 1) * (kcalTarget < 350 ? 0.7 : 1);
+  const factor = (kind === 'snack' || kind === 'breakfast' ? 0.6 : 1) * (sides > 1 ? 0.8 : 1) * (kcalTarget < 350 ? 0.7 : 1);
   return Math.max(30, Math.round((base * factor) / 10) * 10);
 };
 
 // ------------------------------------------------------------------ builder --
 
 type Solved = { vars: PortionVar[]; total: Macros; error: number; score: number };
-type Fixed = { food: FitLabFood; grams: number; kind: 'veg' | 'spread' | 'sauce' };
+type Fixed = { food: FitLabFood; grams: number; kind: 'veg' | 'spread' | 'sauce' | 'accessory' };
 
 export function buildFitLabMeal(args: { kind: SlotKind; slotId: string; target: Macros; pools: FitLabPools; seed: number; day: DayState; week: WeekUsage }): BuiltMeal {
   const { kind, slotId, target, pools, seed, day, week } = args;
@@ -308,6 +313,14 @@ export function buildFitLabMeal(args: { kind: SlotKind; slotId: string; target: 
               fixed.push({ food: spreadPick, grams: g, kind: 'spread' });
               fixedMacros = addMacros(fixedMacros, macrosOfGrams(spreadPick, g));
             }
+            // the recipe's small fixed ingredients (milk, honey, lemon…): sized on the meal's calories, always counted
+            for (const a of cand.r.dish.accessories ?? []) {
+              const food = a.foods.map(foodByName).find(pools.allowed);
+              if (!food) continue;
+              const grams = accessoryGrams(a.grams, a.step, kcalTarget, cand.r.dish.refKcal);
+              fixed.push({ food, grams, kind: 'accessory' });
+              fixedMacros = addMacros(fixedMacros, macrosOfGrams(food, grams));
+            }
             if (cand.sauce) {
               fixed.push({ food: PASSATA, grams: 60, kind: 'sauce' });
               fixedMacros = addMacros(fixedMacros, macrosOfGrams(PASSATA, 60));
@@ -335,7 +348,7 @@ export function buildFitLabMeal(args: { kind: SlotKind; slotId: string; target: 
               repeatPenalty(used(week.slot, `${slotId}|name|${name}`), 70, 600) +
               (pf ? repeatPenalty(used(week.slot, `${slotId}|food|${pf.id}`), 0, 120) : 0) +
               (bf ? repeatPenalty(used(week.slot, `${slotId}|food|${bf.id}`), 0, 40) : 0);
-            const score = solved.error / 6 + variety + kcalOff * 500 + proteinShort * 0.6 + repeats;
+            const score = solved.error / 6 + variety + kcalOff * 500 + proteinShort * 1.2 + repeats;
             if (!best || score < best.score) best = { ...solved, score, cand, picks, fixed };
           }
         }
@@ -399,7 +412,7 @@ export function buildFitLabMeal(args: { kind: SlotKind; slotId: string; target: 
   for (const v of carbKept) items.push(toItem(v.food, v.grams, 'carb', sub(v)));
   for (const f of chosen.fixed.filter((x) => x.kind === 'veg')) items.push(toItem(f.food, f.grams, 'veg'));
   for (const v of fruitKept) items.push(toItem(v.food, v.grams, 'fruit'));
-  for (const f of chosen.fixed.filter((x) => x.kind === 'spread' || x.kind === 'sauce')) items.push(toItem(f.food, f.grams, 'extra'));
+  for (const f of chosen.fixed.filter((x) => x.kind === 'spread' || x.kind === 'sauce' || x.kind === 'accessory')) items.push(toItem(f.food, f.grams, 'extra'));
   for (const v of fatKept) items.push(toItem(v.food, v.grams, 'fat', v.food.id === OIL.id ? undefined : sub(v)));
 
   // remember what was used: variety within the day and across the week

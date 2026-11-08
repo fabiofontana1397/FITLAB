@@ -11,6 +11,7 @@ import ExcelJS from 'exceljs';
 const text = (v: unknown): string =>
   v && typeof v === 'object' && 'richText' in (v as object) ? (v as { richText: { text: string }[] }).richText.map((t) => t.text).join('') : String(v ?? '').trim();
 const num = (v: unknown): number => {
+  if (v === null || v === undefined || v === '') return NaN; // an empty cell is a missing value, not a 0
   const n = Number(typeof v === 'object' && v && 'result' in (v as object) ? (v as { result: unknown }).result : v);
   return Number.isFinite(n) ? n : NaN;
 };

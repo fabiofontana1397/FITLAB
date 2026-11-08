@@ -19,6 +19,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useUserContext } from '@/hooks/use-user-context';
 import { WEEKDAY_LABELS } from '@/lib/planning/exercise-library';
 import { dishImage } from '@/lib/planning/fitlab/dish-images';
+import { recipeForDish, WEIGHT_BASIS_NOTE } from '@/lib/planning/fitlab/recipes';
 import { inMealOrder } from '@/lib/planning/meal-slots';
 import { exportDietPlanPdf } from '@/lib/planning/pdf-export';
 import { currentMonthIndex, currentMonthProgress, monthProgress } from '@/lib/planning/plan-progress';
@@ -223,6 +224,7 @@ export default function DietPlanScreen() {
 function MealCard({ meal }: { meal: PlanMeal }) {
   const theme = useTheme();
   const photo = dishImage(meal.recipe?.dishId);
+  const preparation = recipeForDish(meal.recipe?.dishId);
   return (
     <GlassSurface level="card" radius={Radius.large} style={styles.mealCard}>
       <View style={styles.mealHeader}>
@@ -265,6 +267,8 @@ function MealCard({ meal }: { meal: PlanMeal }) {
             ))}
           </View>
 
+          {preparation ? <RecipePreparation recipe={preparation} /> : null}
+
           <View style={[styles.mealFooterDivider, { borderTopColor: theme.border }]}>
             <ThemedText type="caption" themeColor="textSecondary">
               Totale {meal.totalKcal} kcal
@@ -273,6 +277,41 @@ function MealCard({ meal }: { meal: PlanMeal }) {
         </>
       )}
     </GlassSurface>
+  );
+}
+
+/** The preparation of the official recipe, collapsed behind a tap: steps, times, difficulty and equipment. No weights
+ * here: the quantities are the ones listed above, solved for this person. */
+function RecipePreparation({ recipe }: { recipe: NonNullable<ReturnType<typeof recipeForDish>> }) {
+  const theme = useTheme();
+  const [open, setOpen] = useState(false);
+  return (
+    <View style={{ gap: 6 }}>
+      <Pressable onPress={() => setOpen((v) => !v)} hitSlop={8} style={styles.substituteToggle} accessibilityRole="button" accessibilityState={{ expanded: open }}>
+        <ThemedText type="caption" style={{ color: theme.accent, fontWeight: '600' }}>
+          Preparazione · {recipe.totalMinutes} min
+        </ThemedText>
+        <Icon name={open ? 'chevronUp' : 'chevronDown'} size={14} color={theme.accent} />
+      </Pressable>
+      {open ? (
+        <View style={[styles.substituteList, { borderLeftColor: theme.border }]}>
+          <ThemedText type="caption" themeColor="textSecondary">
+            {recipe.description}
+          </ThemedText>
+          <ThemedText type="caption" themeColor="textSecondary">
+            Preparazione {recipe.prepMinutes} min{recipe.cookMinutes > 0 ? ` · cottura ${recipe.cookMinutes} min` : ''} · {recipe.difficulty} · {recipe.equipment.join(', ')}
+          </ThemedText>
+          {recipe.steps.map((step, i) => (
+            <ThemedText key={i} type="caption">
+              {i + 1}. {step}
+            </ThemedText>
+          ))}
+          <ThemedText type="caption" themeColor="textSecondary">
+            {WEIGHT_BASIS_NOTE}
+          </ThemedText>
+        </View>
+      ) : null}
+    </View>
   );
 }
 
