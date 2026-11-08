@@ -31,7 +31,7 @@ const BY_ID = new Map(MEAL_IMAGES.map((m) => [m.id, m]));
 /** Dish id (dishes.ts) → photo id. Only dishes the photo honestly depicts:
  * the same plate look (base, main ingredients), even when a garnish differs. */
 export const DISH_IMAGE_IDS: Record<string, string> = {
-  // foto dedicate PL001–PL032 (PL002 non è nel catalogo ricette)
+  // foto dedicate PL001–PL046, PL048 (PL002 non è nel catalogo ricette)
   PL001: 'pl001',
   PL003: 'pl003',
   PL004: 'pl004',
@@ -63,6 +63,20 @@ export const DISH_IMAGE_IDS: Record<string, string> = {
   PL030: 'pl030',
   PL031: 'pl031',
   PL032: 'pl032',
+  PL034: 'pl034',
+  PL035: 'pl035',
+  PL036: 'pl036',
+  PL037: 'pl037',
+  PL038: 'pl038',
+  PL039: 'pl039',
+  PL040: 'pl040',
+  PL041: 'pl041',
+  PL042: 'pl042',
+  PL043: 'pl043',
+  PL044: 'pl044',
+  PL045: 'pl045',
+  PL046: 'pl046',
+  PL048: 'pl048',
   X302: 'risotto-funghi',
   X308: 'pollo-patate-insalata',
   X313: 'salmone-cereali-zucchine',
@@ -70,6 +84,17 @@ export const DISH_IMAGE_IDS: Record<string, string> = {
   PL047: 'frittata-spinaci-pomodori',
 };
 
+
+/** Second photos of a dish for the variant of its main ingredient (another fish, another meat): tried in order after the
+ * dish's own photo, each shown only when the meal has what it depicts (PHOTO_KEYS). */
+export const DISH_IMAGE_VARIANTS: Record<string, string[]> = {
+  PL034: ['pl034-sgombro'],
+  PL036: ['pl036-tacchino'],
+  PL038: ['pl038-trota'],
+  PL043: ['pl043-tacchino'],
+  PL045: ['pl045-orata'],
+  PL048: ['pl048-sgombro'],
+};
 
 /** What each photo actually shows: the foods that must be in the meal (each inner list is "any of these") for the photo to
  * be shown. A dish allows several proteins, bases and fruits, but a photo shows one of each (here only the ingredient that gives the dish its identity: the fish, the meat, the fruit): with another one in the
@@ -105,6 +130,26 @@ const PHOTO_KEYS: Record<string, string[][]> = {
   pl030: [['Polenta'], ['Manzo magro']],
   pl031: [['Gamberi']],
   pl032: [['Manzo magro']],
+  pl034: [['Tonno al naturale']],
+  'pl034-sgombro': [['Sgombro']],
+  pl035: [['Ricotta magra']],
+  pl036: [['Hamburger di pollo magro']],
+  'pl036-tacchino': [['Hamburger di tacchino magro']],
+  pl037: [['Fagioli borlotti']],
+  pl038: [['Salmone']],
+  'pl038-trota': [['Trota']],
+  pl039: [['Mozzarella', 'Mozzarella light']],
+  pl040: [['Lenticchie']],
+  pl041: [['Petto di tacchino']],
+  pl042: [['Ceci']],
+  pl043: [['Lonza di maiale magra']],
+  'pl043-tacchino': [['Petto di tacchino']],
+  pl044: [['Ricotta magra']],
+  pl045: [['Merluzzo']],
+  'pl045-orata': [['Orata']],
+  pl046: [['Fagioli cannellini']],
+  pl048: [['Tonno al naturale']],
+  'pl048-sgombro': [['Sgombro']],
   'risotto-funghi': [['Funghi']],
   'pollo-patate-insalata': [['Petto di pollo'], ['Patate']],
   'salmone-cereali-zucchine': [['Salmone']],
@@ -118,8 +163,8 @@ const depicts = (photoId: string, foodNames: string[]): boolean => (PHOTO_KEYS[p
  * really shows them (see PHOTO_KEYS). */
 export function dishImage(dishId: string | undefined, foodNames?: string[]): MealImage | undefined {
   if (!dishId) return undefined;
-  const id = DISH_IMAGE_IDS[dishId];
-  if (!id) return undefined;
-  if (foodNames && !depicts(id, foodNames)) return undefined;
-  return BY_ID.get(id);
+  const main = DISH_IMAGE_IDS[dishId];
+  if (!main) return undefined;
+  const id = [main, ...(DISH_IMAGE_VARIANTS[dishId] ?? [])].find((candidate) => !foodNames || depicts(candidate, foodNames));
+  return id ? BY_ID.get(id) : undefined;
 }
