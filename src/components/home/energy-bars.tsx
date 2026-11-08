@@ -1,8 +1,8 @@
-import { useIsFocused } from 'expo-router';
 import { useEffect } from 'react';
 import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { Easing, cancelAnimation, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 
+import { useIsSelectedTab } from '@/hooks/use-is-selected-tab';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
 import { useTheme } from '@/hooks/use-theme';
@@ -28,7 +28,7 @@ export type EnergyBarsProps = {
 
 /** A bar's fill: empty whenever Home is out of view, filling to `progress` (0..1) every time it comes back, and easing to any new value after that. */
 function Fill({ progress, delay = 0, style }: { progress: number; delay?: number; style?: StyleProp<ViewStyle> }) {
-  const focused = useIsFocused();
+  const focused = useIsSelectedTab();
   const reduceMotion = useReducedMotion();
   const value = useSharedValue(0);
   const to = Math.min(Math.max(progress, 0), 1);

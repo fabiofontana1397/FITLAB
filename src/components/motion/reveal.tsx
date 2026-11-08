@@ -1,4 +1,3 @@
-import { useIsFocused } from 'expo-router';
 import { createContext, useContext, useEffect, useRef, type RefObject } from 'react';
 import { Dimensions, Platform, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, {
@@ -14,6 +13,7 @@ import Animated, {
   type SharedValue,
 } from 'react-native-reanimated';
 
+import { useIsSelectedTab } from '@/hooks/use-is-selected-tab';
 import { SpringReveal, STAGGER_MAX_STEPS, STAGGER_STEP, TimingFill } from '@/constants/motion';
 
 /** Provided by ScreenScroll: where the list is scrolled to and how tall the
@@ -77,7 +77,7 @@ export type RevealProps = {
 export function Reveal({ index = 0, style, children }: RevealProps) {
   const ctx = useContext(ScrollRevealContext);
   const reduceMotion = useReducedMotion();
-  const focused = useIsFocused();
+  const focused = useIsSelectedTab();
   const ref = useRef<unknown>(null);
 
   const fallbackScrollY = useSharedValue(0);

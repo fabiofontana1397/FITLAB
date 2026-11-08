@@ -1,9 +1,9 @@
-import { useIsFocused } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 import Animated, { useAnimatedProps, useReducedMotion, useSharedValue, withDelay, withSpring, type SharedValue } from 'react-native-reanimated';
 import Svg, { Circle, Line, Path } from 'react-native-svg';
 
+import { useIsSelectedTab } from '@/hooks/use-is-selected-tab';
 import type { GoalBandCopy } from '@/components/home/goal-band-copy';
 import { ThemedText } from '@/components/themed-text';
 import { balancePosition, type GoalBand } from '@/domain/calorie-balance';
@@ -104,7 +104,7 @@ export type GoalRingProps = {
 export function GoalRing({ band, copy, value, goalText, inactive = false, onPress, onGoalPress, accessibilityLabel }: GoalRingProps) {
   const theme = useTheme();
   const reduceMotion = useReducedMotion();
-  const focused = useIsFocused();
+  const focused = useIsSelectedTab();
   const [width, setWidth] = useState(BASE_W);
   const k = Math.min(1.1, width / BASE_W);
   const noReading = inactive || band.state === 'missing';

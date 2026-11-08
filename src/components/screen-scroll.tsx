@@ -1,4 +1,3 @@
-import { useIsFocused } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Children, forwardRef, isValidElement, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Platform, StyleSheet, View, useWindowDimensions, type ScrollView, type ScrollViewProps } from 'react-native';
@@ -14,6 +13,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useIsSelectedTab } from '@/hooks/use-is-selected-tab';
 import { Reveal, ScrollRevealContext } from '@/components/motion/reveal';
 import { TimingScreen } from '@/constants/motion';
 import { ScrollDefaults } from '@/constants/scroll';
@@ -58,7 +58,7 @@ export const ScreenScroll = forwardRef<ScrollView, ScreenScrollProps>(function S
   const insets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
   const reduceMotion = useReducedMotion();
-  const isFocused = useIsFocused();
+  const isFocused = useIsSelectedTab();
   const isLight = theme.tabBarBlur === 'light';
 
   const scrollY = useSharedValue(0);
