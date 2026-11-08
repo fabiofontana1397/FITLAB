@@ -1,9 +1,11 @@
 import { useIsFocused } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Children, forwardRef, isValidElement, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Children, forwardRef, isValidElement, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Platform, StyleSheet, View, useWindowDimensions, type ScrollView, type ScrollViewProps } from 'react-native';
 import Animated, {
   interpolate,
+  runOnJS,
+  useAnimatedReaction,
   useAnimatedScrollHandler,
   useAnimatedStyle,
   useReducedMotion,
@@ -85,7 +87,27 @@ export const ScreenScroll = forwardRef<ScrollView, ScreenScrollProps>(function S
     scrollY.value = e.contentOffset.y;
   });
 
-  const revealContext = useMemo(() => ({ scrollY, viewportHeight, mountedAt }), [scrollY, viewportHeight]);
+  // A short while after the scrolling stops the sections check themselves against where they really are, so one
+  // that got out of step (a missed scroll event, an interrupted animation, a stale measure) is put right.
+  const settle = useSharedValue(0);
+  const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const bumpSettle = useCallback(() => {
+    if (settleTimer.current) clearTimeout(settleTimer.current);
+    settleTimer.current = setTimeout(() => {
+      settle.value = settle.value + 1;
+    }, 220);
+  }, [settle]);
+  useEffect(() => () => {
+    if (settleTimer.current) clearTimeout(settleTimer.current);
+  }, []);
+  useAnimatedReaction(
+    () => scrollY.value,
+    (y, previous) => {
+      if (previous != null && y !== previous) runOnJS(bumpSettle)();
+    }
+  );
+
+  const revealContext = useMemo(() => ({ scrollY, viewportHeight, mountedAt, settle }), [scrollY, viewportHeight, settle]);
 
   const focusStyle = useAnimatedStyle(() => ({
     opacity: interpolate(focusProgress.value, [0, 1], [0.35, 1]),
