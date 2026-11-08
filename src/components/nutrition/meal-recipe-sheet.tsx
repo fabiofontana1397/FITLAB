@@ -35,7 +35,7 @@ export function MealRecipeSheet({ meal, onClose }: MealRecipeSheetProps) {
 
 function MealRecipeContent({ meal, onClose }: { meal: PlanMeal; onClose: () => void }) {
   const theme = useTheme();
-  const photo = dishImage(meal.recipe?.dishId);
+  const photo = dishImage(meal.recipe?.dishId, meal.items.map((i) => i.name));
   const recipe = recipeForDish(meal.recipe?.dishId);
   const title = meal.recipe?.name ?? meal.label;
 
