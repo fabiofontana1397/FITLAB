@@ -49,10 +49,13 @@ export function buildPlans(ctx: UserContext, opts: BuildPlansOptions = {}): Plan
 
   const durationMonths = existing?.diet?.durationMonths ?? existing?.training?.durationMonths ?? planDurationMonths(ctx, initialTargets(ctx, calibration));
 
+  const customTraining = existing?.training?.source === 'custom' ? existing.training : null;
   const training =
     ctx.mode === 'diet'
       ? null
-      : generateTrainingPlan({
+      : customTraining
+        ? { ...customTraining }
+        : generateTrainingPlan({
           ctx,
           durationMonths,
           strategy: strategy?.training ?? null,

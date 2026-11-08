@@ -112,6 +112,8 @@ export type TrainingPlan = {
   months: TrainingMonthPlan[];
   /** Version of the training generator that built it: an older plan is rebuilt in place (see TRAINING_ENGINE_VERSION). */
   engine?: string;
+  /** 'custom' = the person's own card, imported as written: never rebuilt by the generator or the monthly recalibration. */
+  source?: 'generated' | 'custom';
   calibration?: PlanCalibration;
   recalibrations?: RecalibrationRecord[];
   /** True if any exercise anywhere in the plan needed the safe-fallback
