@@ -25,7 +25,21 @@ export async function extractWorkoutCardText(file: WorkoutCardFile): Promise<str
   const base64 = await toBase64(file);
   if (!base64) throw new Error('Non riesco a leggere il file.');
   const { data, error } = await supabase.functions.invoke('extract-workout-card', { body: { base64, mediaType: file.mediaType } });
-  if (error) throw new Error('Non riesco a leggere la scheda in questo momento. Riprova, oppure incolla il testo.');
+  if (error) {
+    const status = (error as { context?: { status?: number } }).context?.status;
+    let detail = '';
+    try {
+      const body = await (error as { context?: Response }).context?.json?.();
+      detail = typeof body?.error === 'string' ? body.error : '';
+    } catch {
+      /* no readable body */
+    }
+    if (status === 404) throw new Error('La lettura da foto non è ancora attiva sul server (funzione extract-workout-card non pubblicata).');
+    if (status === 401) throw new Error('Sessione scaduta: esci e rientra, poi riprova.');
+    if (/ANTHROPIC_API_KEY/i.test(detail)) throw new Error('Sul server manca la chiave ANTHROPIC_API_KEY per leggere la scheda.');
+    if (detail) throw new Error(`Non riesco a leggere la scheda: ${detail}`);
+    throw new Error(`Non riesco a leggere la scheda${status ? ` (errore ${status})` : ''}. Riprova, oppure incolla il testo.`);
+  }
   const text = (data?.text as string | undefined)?.trim();
   if (!text) throw new Error('Non ho trovato una scheda di allenamento nel file. Prova con una foto più nitida.');
   return text;
