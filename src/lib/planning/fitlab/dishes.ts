@@ -34,6 +34,11 @@ export type Dish = {
   portable?: boolean;
   /** Takes time to prepare (oven, long-cooking grains, ragù, soups…): kept for dinner, lunch needs quick dishes. */
   slow?: boolean;
+  /** Small fixed-by-recipe ingredients (milk in a porridge, honey, a squeeze of lemon, sesame): `grams` is the amount for a
+   * `refKcal` meal (default 400), scaled with the meal's calories and rounded to `step`. The first allowed food of `foods` is used;
+   * when none is allowed (e.g. no milk for a vegan) the ingredient is left out. Always counted in the nutrition of the meal. */
+  accessories?: { foods: string[]; grams: number; step: number }[];
+  refKcal?: number;
   /** The fat is named in the dish (avocado toast, pesto): it is always in the meal, never rounded away. */
   fatRequired?: boolean;
 };
@@ -59,16 +64,16 @@ const FISH_WHITE = ['Merluzzo', 'Orata', 'Trota'];
 
 export const DISHES: Dish[] = [
   // =============================================================== COLAZIONE
-  excel({ id: 'PL001', kinds: BF, name: "Porridge d'avena, {protein} e {s1}", base: OATS, protein: ['Yogurt greco 0%', 'Skyr', 'Yogurt greco 2%'], sides: [[...BERRIES, 'Banana', 'Mela']], fat: ['Noci', 'Mandorle'], aromas: ['Cannella'] }),
-  excel({ id: 'PL003', kinds: BF, name: "Porridge d'avena e albumi con {s1}", base: OATS, protein: ["Albume d'uovo"], sides: [['Fragole', 'Mirtilli', 'Banana', 'Mela']], fat: ['Burro di arachidi 100%', 'Mandorle'], aromas: ['Cannella'] }),
-  excel({ id: 'PL004', kinds: BF, name: 'Bowl di {protein}, {base} e {s1}', base: ['Muesli', 'Cereali integrali', 'Granola con frutta secca'], protein: ['Yogurt greco 2%', 'Yogurt greco 0%', 'Skyr'], sides: [['Kiwi', 'Mela', 'Frutti di bosco']], fat: ['Semi di chia', 'Noci', 'Mandorle'], aromas: [] }),
-  excel({ id: 'PL005', kinds: BF, name: 'Toast con {protein} e marmellata', base: ['Pane integrale', 'Pane di segale'], protein: ['Ricotta magra', 'Fiocchi di latte'], spread: ['Marmellata light'], sides: [['Kiwi', 'Pesca', 'Pera']], aromas: [] }),
-  excel({ id: 'PL006', kinds: BF, name: 'Avocado toast con {protein}', base: ['Pane integrale', 'Pane di segale'], protein: ['Uova intere'], extraProtein: ["Albume d'uovo"], fat: ['Avocado'], aromas: ['Pepe nero', 'Basilico'] }),
-  excel({ id: 'PL007', kinds: BF, name: "Pancake d'avena con {s1}", base: ["Fiocchi d'avena"], protein: ['Uova intere', "Albume d'uovo"], extraProtein: ['Yogurt greco 0%', 'Skyr'], sides: [['Banana', 'Mela', 'Frutti di bosco']], aromas: ['Cannella'] }),
-  excel({ id: 'PL008', kinds: BF, name: '{base} con {protein} e marmellata', base: ['Pane di segale', 'Pane integrale'], protein: ['Fiocchi di latte', 'Ricotta magra'], spread: ['Marmellata light'], sides: [['Pesca', 'Mela', 'Pera']], aromas: [] }),
-  excel({ id: 'PL009', kinds: BF, name: 'Fette biscottate con {protein} e marmellata', base: ['Fette biscottate integrali'], protein: ['Yogurt greco 0%', 'Skyr', 'Yogurt proteico'], spread: ['Marmellata light', 'Miele'], aromas: [] }),
-  excel({ id: 'PL010', kinds: BF, name: 'Kefir con avena e {s1}', base: ["Fiocchi d'avena"], protein: ['Kefir', 'Yogurt magro', 'Yogurt greco 0%'], extraProtein: ['Skyr', 'Yogurt proteico', 'Fiocchi di latte'], sides: [['Mela', 'Pera', 'Banana']], fat: ['Nocciole', 'Mandorle', 'Noci'], aromas: ['Cannella'] }),
-  excel({ id: 'PL011', kinds: BF, name: 'Toast con {protein} e {s1}', base: ['Pane integrale', 'Pane di segale'], protein: ['Fesa di tacchino affettata', 'Mozzarella light', 'Mozzarella'], sides: [['Mela', 'Pera', 'Kiwi']], aromas: ['Origano', 'Pepe nero'] }),
+  excel({ id: 'PL001', kinds: BF, name: "Porridge d'avena, {protein} e {s1}", base: OATS, protein: ['Yogurt greco 0%', 'Yogurt greco 2%'], sides: [BERRIES], accessories: [{ foods: ['Latte vaccino', 'Latte senza lattosio', 'Bevanda di soia non zuccherata'], grams: 150, step: 10 }, { foods: ['Miele'], grams: 5, step: 1 }], aromas: [] }),
+  excel({ id: 'PL003', kinds: BF, name: "Porridge di avena e albumi d'uovo", base: OATS, protein: ["Albume d'uovo"], fat: ['Burro di arachidi 100%'], accessories: [{ foods: ['Latte vaccino', 'Latte senza lattosio', 'Bevanda di soia non zuccherata'], grams: 100, step: 10 }], aromas: ['Cannella'] }),
+  excel({ id: 'PL004', kinds: BF, name: 'Bowl di {protein}, muesli e {s1}', base: ['Muesli'], protein: ['Yogurt greco 0%', 'Yogurt greco 2%'], sides: [['Kiwi']], fat: ['Mandorle'], aromas: [] }),
+  excel({ id: 'PL005', kinds: BF, name: 'Toast integrale con {protein} e marmellata', base: ['Pane integrale'], protein: ['Ricotta magra'], spread: ['Marmellata light'], aromas: [] }),
+  excel({ id: 'PL006', kinds: BF, name: 'Avocado toast', base: ['Pane integrale'], protein: [], sides: [['Pomodori']], fat: ['Avocado'], accessories: [{ foods: ['Limone'], grams: 5, step: 5 }, { foods: ['Semi di sesamo'], grams: 3, step: 1 }], aromas: ['Pepe nero'] }),
+  excel({ id: 'PL007', kinds: BF, name: "Pancake d'avena con yogurt e {s1}", base: ["Fiocchi d'avena"], protein: ['Uova intere', "Albume d'uovo"], sides: [['Banana']], accessories: [{ foods: ['Latte vaccino', 'Latte senza lattosio', 'Bevanda di soia non zuccherata'], grams: 50, step: 10 }, { foods: ['Yogurt greco 0%', 'Yogurt greco 2%'], grams: 100, step: 10 }], aromas: [] }),
+  excel({ id: 'PL008', kinds: BF, name: 'Pane di segale con {protein} e marmellata', base: ['Pane di segale'], protein: ['Fiocchi di latte'], spread: ['Marmellata light'], aromas: [] }),
+  excel({ id: 'PL009', kinds: BF, name: 'Fette biscottate con {protein} e marmellata', base: ['Fette biscottate integrali'], protein: ['Yogurt greco 0%', 'Yogurt greco 2%'], spread: ['Marmellata light'], aromas: [] }),
+  excel({ id: 'PL010', kinds: BF, name: 'Kefir con avena e {s1}', base: ["Fiocchi d'avena"], protein: ['Kefir'], extraProtein: ['Skyr', 'Yogurt proteico', 'Fiocchi di latte'], sides: [['Mela']], fat: ['Noci'], aromas: ['Cannella'] }),
+  excel({ id: 'PL011', kinds: BF, name: 'Toast con {protein} e {s1}', base: ['Pane integrale'], protein: ['Fesa di tacchino affettata'], sides: [['Mela']], accessories: [{ foods: ['Ricotta magra'], grams: 20, step: 10 }], aromas: [] }),
   extra({ id: 'X101', kinds: BF, name: '{protein} con {base} e {s1}', base: ['Cereali integrali', 'Cereali da colazione senza zuccheri aggiunti', 'Muesli'], protein: ['Latte vaccino', 'Latte senza lattosio', 'Bevanda di soia non zuccherata'], extraProtein: ['Yogurt greco 0%', 'Skyr', 'Yogurt proteico'], sides: [['Banana', 'Mela', 'Pera', 'Frutti di bosco']], fat: ['Mandorle', 'Noci'], aromas: [] }),
   extra({ id: 'X102', kinds: BFSN, name: '{base} con {protein} e {s1}', base: ['Gallette di riso', 'Gallette di farro', 'Gallette di mais'], protein: ['Ricotta magra', 'Fiocchi di latte', 'Yogurt greco 0%'], sides: [FRUIT_BF], fat: ['Burro di mandorle 100%', 'Burro di arachidi 100%', 'Nocciole'], aromas: [] }),
   extra({ id: 'X103', kinds: BF, name: 'Uova strapazzate con {base} e {s1}', base: ['Pane integrale', 'Pane di segale'], protein: ['Uova intere'], extraProtein: ["Albume d'uovo"], sides: [['Arancia', 'Kiwi', 'Mela']], aromas: ['Pepe nero', 'Prezzemolo'] }),
@@ -81,8 +86,8 @@ export const DISHES: Dish[] = [
   excel({ id: 'PL013', kinds: SN, name: '{protein} con {s1} e {fat}', protein: ['Skyr', 'Yogurt greco 0%'], sides: [['Banana', 'Mela', 'Pera']], fat: ['Semi di chia', 'Semi di lino'], aromas: [] }),
   excel({ id: 'PL014', kinds: SN, name: '{base} con {protein}', base: ['Pane integrale', 'Pane di segale'], protein: ['Ricotta magra', 'Fiocchi di latte'], aromas: ['Origano', 'Pepe nero'] }),
   excel({ id: 'PL015', kinds: SN, name: '{protein} con pane e rucola', base: ['Pane integrale', 'Pane di segale'], protein: ['Bresaola', 'Fesa di tacchino affettata', 'Prosciutto crudo'], sides: [['Rucola']], aromas: ['Limone', 'Pepe nero'] }),
-  excel({ id: 'PL016', kinds: SN, name: 'Fette biscottate con {protein} e marmellata', base: ['Fette biscottate integrali'], protein: ['Yogurt greco 0%', 'Skyr', 'Yogurt proteico'], spread: ['Marmellata light', 'Miele'], aromas: [] }),
-  excel({ id: 'PL017', kinds: SN, name: 'Bowl di {protein}, {base} e {s1}', base: ['Muesli', 'Cereali integrali', 'Granola con frutta secca'], protein: ['Yogurt greco 2%', 'Yogurt greco 0%', 'Skyr'], sides: [['Kiwi', 'Mela', 'Frutti di bosco']], fat: ['Semi di chia', 'Noci', 'Mandorle'], aromas: [] }),
+  excel({ id: 'PL016', kinds: SN, name: 'Fette biscottate con {protein} e marmellata', base: ['Fette biscottate integrali'], protein: ['Yogurt greco 0%', 'Yogurt greco 2%'], spread: ['Marmellata light'], aromas: [] }),
+  excel({ id: 'PL017', kinds: SN, name: 'Bowl di {protein}, muesli e {s1}', base: ['Muesli'], protein: ['Yogurt greco 0%', 'Yogurt greco 2%'], sides: [['Kiwi']], fat: ['Mandorle'], aromas: [] }),
   excel({ id: 'PL018', kinds: SN, name: 'Hummus di ceci con {s1} e crackers', base: ['Crackers integrali'], protein: ['Ceci'], sides: [['Carote', 'Cetrioli', 'Sedano', 'Finocchi']], oil: true, aromas: ['Limone', 'Aglio', 'Paprika'], portable: true }),
   excel({ id: 'PL019', kinds: SN, name: 'Frutta fresca e frutta secca', protein: [], sides: [FRUIT_SN], fat: ['Noci', 'Mandorle', 'Pistacchi', 'Nocciole'], aromas: [], portable: true }),
   excel({ id: 'PL020', kinds: SN, name: '{protein} con {s1} e {fat}', protein: ['Kefir', 'Yogurt magro', 'Yogurt greco 0%'], sides: [BERRIES], fat: ['Semi di lino', 'Semi di chia'], aromas: [] }),
@@ -161,10 +166,10 @@ const SLOW = new Set([
   'X301', 'X302', 'X308', 'X309', 'X310', 'X311', 'X312', 'X314', 'X315', 'X316', 'X319', 'X320', 'X325', 'X327',
 ]);
 for (const d of DISHES) d.slow = SLOW.has(d.id);
-const FAT_REQUIRED = new Set(['PL006', 'PL021', 'X205', 'X303']);
+const FAT_REQUIRED = new Set(['PL003', 'PL004', 'PL006', 'PL017', 'PL021', 'X205', 'X303']);
 for (const d of DISHES) d.fatRequired = FAT_REQUIRED.has(d.id);
 
 // Every food named in a dish must exist in the catalog (a typo fails loudly at load, not silently at plan time).
 for (const d of DISHES) {
-  for (const name of [...(d.base ?? []), ...d.protein, ...(d.extraProtein ?? []), ...(d.sides ?? []).flat(), ...(d.spread ?? []), ...(d.fat ?? []), ...d.aromas]) foodByName(name);
+  for (const name of [...(d.base ?? []), ...d.protein, ...(d.extraProtein ?? []), ...(d.sides ?? []).flat(), ...(d.spread ?? []), ...(d.fat ?? []), ...d.aromas, ...(d.accessories ?? []).flatMap((a) => a.foods)]) foodByName(name);
 }
