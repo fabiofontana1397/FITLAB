@@ -31,7 +31,7 @@ const BY_ID = new Map(MEAL_IMAGES.map((m) => [m.id, m]));
 /** Dish id (dishes.ts) → photo id. Only dishes the photo honestly depicts:
  * the same plate look (base, main ingredients), even when a garnish differs. */
 export const DISH_IMAGE_IDS: Record<string, string> = {
-  // foto dedicate PL001–PL032 (PL002, PL016 e PL017 hanno la foto ma non ancora la ricetta)
+  // foto dedicate PL001–PL032 (PL002 non è nel catalogo ricette)
   PL001: 'pl001',
   PL003: 'pl003',
   PL004: 'pl004',
@@ -46,6 +46,8 @@ export const DISH_IMAGE_IDS: Record<string, string> = {
   PL013: 'pl013',
   PL014: 'pl014',
   PL015: 'pl015',
+  PL016: 'pl016',
+  PL017: 'pl017',
   PL018: 'pl018',
   PL019: 'pl019',
   PL020: 'pl020',
