@@ -77,6 +77,13 @@ const ICONS = {
   swimming: { set: 'mci', name: 'swim' },
   tennis: { set: 'mci', name: 'tennis' },
   cycling: { set: 'mci', name: 'bike' },
+  soccer: { set: 'mci', name: 'soccer' },
+  basketball: { set: 'mci', name: 'basketball' },
+  volleyball: { set: 'mci', name: 'volleyball' },
+  boxing: { set: 'mci', name: 'boxing-glove' },
+  yoga: { set: 'mci', name: 'yoga' },
+  skiing: { set: 'mci', name: 'ski' },
+  hiking: { set: 'mci', name: 'hiking' },
   otherSport: { set: 'mci', name: 'dots-horizontal-circle-outline' },
 
   flame: { set: 'ion', name: 'flame' },
