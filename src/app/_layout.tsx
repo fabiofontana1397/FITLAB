@@ -165,6 +165,7 @@ export default function RootLayout() {
           <Stack.Screen name="energy-guide" options={{ presentation: 'transparentModal', animation: 'none' }} />
           <Stack.Screen name="diet-plan" options={{ presentation: 'transparentModal', animation: 'none' }} />
           <Stack.Screen name="training-plan" options={{ presentation: 'transparentModal', animation: 'none' }} />
+          <Stack.Screen name="custom-workout" options={{ presentation: 'transparentModal', animation: 'none' }} />
           <Stack.Screen name="monthly-checkin" options={{ presentation: 'modal' }} />
           <Stack.Screen name="training-progress" options={{ presentation: 'modal' }} />
         </Stack>

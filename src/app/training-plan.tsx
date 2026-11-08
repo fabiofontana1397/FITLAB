@@ -123,8 +123,9 @@ export default function TrainingPlanScreen() {
           <ThemedText style={styles.cardTitle}>Nessun programma generato</ThemedText>
           <ThemedText type="caption" themeColor="textSecondary">
             Hai completato il questionario in modalità “solo dieta”, oppure non hai selezionato sala pesi o corsa tra
-            le attività. Rifai il questionario per generare qui il tuo programma.
+            le attività. Rifai il questionario per generare qui il tuo programma, oppure inserisci la scheda che già hai.
           </ThemedText>
+          <PrimaryButton label="Inserisci la tua scheda" icon="plus" onPress={() => router.push('/custom-workout')} style={{ marginTop: Spacing.two }} />
         </GlassSurface>
       ) : (
         <>
@@ -139,6 +140,13 @@ export default function TrainingPlanScreen() {
               </ThemedText>
             </GlassSurface>
           ) : null}
+
+          <PrimaryButton
+            label={plan.source === 'custom' ? 'Cambia la tua scheda' : 'Inserisci la tua scheda'}
+            icon="plus"
+            variant="outline"
+            onPress={() => router.push('/custom-workout')}
+          />
 
           <PlanMonthStepper
             months={plan.months}

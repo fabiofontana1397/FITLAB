@@ -8,9 +8,11 @@ import { buildUserContext } from '@/domain/user-context';
 import { deleteDietPlan, deleteTrainingPlan, fetchDietPlan, fetchTrainingPlan, insertPlanVersion, type PlanVersionTrigger, upsertDietPlan, upsertTrainingPlan } from '@/lib/api/plans';
 import { fetchPlanStrategy } from '@/lib/api/plan-strategy';
 import { DIET_ENGINE_VERSION } from '@/lib/planning/diet-planner';
+import { buildCustomTrainingPlan } from '@/lib/planning/custom-workout';
 import { TRAINING_ENGINE_VERSION } from '@/lib/planning/training-planner';
+import { currentMonthIndex } from '@/lib/planning/plan-progress';
 import { daysAgoISO } from '@/lib/mock/dates';
-import type { DietPlan, TrainingPlan } from '@/lib/planning/types';
+import type { DietPlan, TrainingDayPlan, TrainingPlan } from '@/lib/planning/types';
 import { withAuthRetry } from '@/lib/supabase/retry';
 import { useAuthStore } from '@/store/auth-store';
 import { appJsonStorage } from '@/store/storage';
@@ -58,6 +60,13 @@ type PlanState = {
    * month on. Months already lived are never touched.
    */
   recalibrateMonth: (input: RecalibrateMonthInput) => Promise<RecalibrationResult>;
+  /**
+   * Puts the person's own card in place of the training plan (even when a plan already exists). The diet is rebuilt
+   * around it, since calories follow the training. Returns false when there is no questionnaire/plan to anchor it to.
+   */
+  importCustomTraining: (answers: Record<string, unknown>, week: TrainingDayPlan[], currentWeightKg?: number) => void;
+  /** Drops the custom card and builds the app's own plan again. */
+  restoreGeneratedTraining: (answers: Record<string, unknown>, currentWeightKg?: number) => Promise<void>;
   syncFromServer: () => Promise<void>;
   /** Local-only reset on logout — see user-store.ts's clearLocal for why. */
   clearLocal: () => void;
@@ -109,7 +118,11 @@ export const usePlanStore = create<PlanState>()(
           const base = buildUserContext(answers);
           const ctx = currentWeightKg ? { ...base, weightKg: currentWeightKg } : base;
           const { dietPlan: currentDiet, trainingPlan: currentTraining } = get();
-          const carry = keepProgress ? { calibration: currentDiet?.calibration ?? currentTraining?.calibration, existing: { diet: currentDiet, training: currentTraining }, preserveMonthsBefore: fromMonth } : {};
+          // A custom card is the person's choice: only they replace it (restoreGeneratedTraining), never a rebuild.
+          const custom = currentTraining?.source === 'custom' && trigger !== 'onboarding' ? currentTraining : null;
+          const carry = custom && !keepProgress
+            ? { calibration: currentDiet?.calibration ?? custom.calibration, existing: { diet: null, training: custom } }
+            : keepProgress ? { calibration: currentDiet?.calibration ?? currentTraining?.calibration, existing: { diet: currentDiet, training: currentTraining }, preserveMonthsBefore: fromMonth } : {};
           const deterministic = buildPlans(ctx, carry);
           const first = deterministic.monthTargets[0];
           const strategy = skipAi ? null : await fetchPlanStrategy(answers, first.calories, first.macros, deterministic.durationMonths);
@@ -124,6 +137,27 @@ export const usePlanStore = create<PlanState>()(
         } finally {
           set({ isGenerating: false });
         }
+      },
+      importCustomTraining: (answers, week, currentWeightKg) => {
+        const { dietPlan, trainingPlan } = get();
+        const training = buildCustomTrainingPlan(week, trainingPlan ?? dietPlan);
+        const base = buildUserContext(answers);
+        const ctx = currentWeightKg ? { ...base, weightKg: currentWeightKg } : base;
+        // The diet (if the person has one) follows the new training week; months already lived stay as they were.
+        const wantsDiet = answers.mode !== 'training';
+        const bundle = buildPlans(ctx, {
+          calibration: dietPlan?.calibration ?? training.calibration,
+          existing: { diet: wantsDiet ? dietPlan : null, training },
+          preserveMonthsBefore: dietPlan ? currentMonthIndex(dietPlan) : undefined,
+        });
+        const nextTraining = bundle.training ?? training;
+        const nextDiet = wantsDiet ? bundle.diet ?? dietPlan : dietPlan;
+        set({ trainingPlan: nextTraining, dietPlan: nextDiet });
+        persistPlans(wantsDiet ? nextDiet : null, nextTraining, 'regenerate', false);
+      },
+      restoreGeneratedTraining: async (answers, currentWeightKg) => {
+        set({ trainingPlan: null });
+        await get().generatePlans(answers, { only: 'training', skipAi: true, currentWeightKg });
       },
       recalibrateMonth: async (input) => {
         const { dietPlan, trainingPlan } = get();
@@ -207,7 +241,7 @@ export const usePlanStore = create<PlanState>()(
  */
 export function isValidTrainingPlan(plan: TrainingPlan | null): boolean {
   if (!plan || !plan.calibration) return false;
-  if (plan.engine !== TRAINING_ENGINE_VERSION) return false; // built by an older generator (e.g. one scheme for every exercise)
+  if (plan.source !== 'custom' && plan.engine !== TRAINING_ENGINE_VERSION) return false; // built by an older generator (e.g. one scheme for every exercise)
   return plan.months.every((month) =>
     month.weeklySplit.every(
       (day) =>
