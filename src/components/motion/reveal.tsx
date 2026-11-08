@@ -39,13 +39,12 @@ export function useRevealProgress() {
   return useContext(RevealProgressContext);
 }
 
-// A section reveals once about half of it is on screen (so the motion happens where the eye is rather than
-// under the very edge), and is hidden again, ready to enter next time, when less than a third is left. Both are shares
-// of its own height (capped), so a tall card and a small button behave alike.
-const SHOW_FRACTION = 0.5;
-const SHOW_MAX_PX = 260;
-const HIDE_FRACTION = 0.3;
-const HIDE_MAX_PX = 150;
+// A section is hidden again (ready to enter next time) only once a sliver of it is left on screen, and shows the
+// moment more than that appears. The two are only a few px apart so that no box is ever left blank while a real
+// part of it is in view, whatever the scroll position it stops at.
+const HIDE_MAX_PX = 20;
+const HIDE_FRACTION = 0.2;
+const SHOW_MARGIN_PX = 6;
 const STAGGER_WINDOW_MS = 700;
 const RISE = 26;
 /** How blurred a section starts (web only: React Native has no blur on iOS). */
@@ -115,20 +114,18 @@ export function Reveal({ index = 0, style, children }: RevealProps) {
 
   useAnimatedReaction(
     () => {
-      // How much of the section is on screen decides it, not whether it is wholly gone: a tall card never leaves the
-      // screen entirely on a normal scroll. 1 = enough is showing to enter, 2 = nearly gone (hide it, ready to enter
-      // again), 0 = in between (leave it as it is); the page switch counter rides along.
+      // How much of the section is on screen: 1 = enough to be shown, 2 = only a sliver (hide it, ready to enter
+      // again), 0 = right on the edge (leave it as it is); the page switch counter rides along.
       const measured = top.value >= 0;
       const visible = Math.min(top.value + height.value, scrollY.value + viewportHeight.value) - Math.max(top.value, scrollY.value);
-      const showAt = Math.min(SHOW_MAX_PX, height.value * SHOW_FRACTION);
       const hideAt = Math.min(HIDE_MAX_PX, height.value * HIDE_FRACTION);
-      return (!measured ? 0 : visible > showAt ? 1 : visible < hideAt ? 2 : 0) + replay.value * 3;
+      return (!measured ? 0 : visible > hideAt + SHOW_MARGIN_PX ? 1 : visible < hideAt ? 2 : 0) + replay.value * 3;
     },
     (state) => {
       const kind = state % 3;
       if (reduceMotion) return;
       if (kind === 2) {
-        // Nearly gone from the screen: hide it again (a quick fade) so it can enter next time.
+        // Only a sliver left on screen: hide it again (a quick fade) so it can enter next time.
         if (triggered.get()) {
           triggered.set(false);
           cancelAnimation(progress);
