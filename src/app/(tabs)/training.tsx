@@ -3,6 +3,7 @@ import { useMemo, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 
 import { PressableScale } from '@/components/motion/pressable-scale';
+import { Reveal } from '@/components/motion/reveal';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { DayCalendarModal } from '@/components/ui/day-calendar-modal';
@@ -182,6 +183,7 @@ export default function TrainingScreen() {
         testID="training-list"
         contentContainerStyle={styles.list}
         header={<TabHeader title="Allenamento" onCalendarPress={() => setCalendarOpen(true)} />}>
+        <Reveal index={0}>
         <TrainingWeekCard
           weekDates={viewedWeekDates}
           selectedDate={selectedDate}
@@ -190,7 +192,9 @@ export default function TrainingScreen() {
           onToggleDayComplete={toggleDayComplete}
           dayType={(date) => (trainingPlan ? dayPlanOf(date)?.type : undefined)}
         />
+        </Reveal>
 
+        <Reveal index={1}>
         <PressableScale
           onPress={() => setLogActivityVisible(true)}
           accessibilityRole="button"
@@ -203,6 +207,7 @@ export default function TrainingScreen() {
           <ThemedText style={styles.registerLabel}>Registra allenamento</ThemedText>
           <Icon name="chevronRight" size={16} color={OnBrand.text} />
         </PressableScale>
+        </Reveal>
 
         {viewingPast ? null : (
         <MissedWorkoutsCard
@@ -212,7 +217,7 @@ export default function TrainingScreen() {
         />
         )}
 
-        {sectionDates.map((date) => {
+        {sectionDates.map((date, sectionIndex) => {
           const day = dayPlanOf(date);
           // Today's section (or the day picked in the week) is the main thing on the page; the days after it keep quiet.
           const emphasized = date === today || date === selectedDate;
@@ -221,8 +226,8 @@ export default function TrainingScreen() {
           const statusLabel = done ? 'Completato' : inProgress ? 'In corso' : date < today ? 'Non completato' : 'In programma';
           const statusColor = done ? theme.brandGreen : inProgress ? theme.accent : date < today ? theme.danger : theme.accent;
           return (
+            <Reveal key={date} index={2 + sectionIndex}>
             <View
-              key={date}
               testID={`training-day-${date}`}
               style={styles.daySection}
               onLayout={(e: LayoutChangeEvent) => {
@@ -302,6 +307,7 @@ export default function TrainingScreen() {
               </View>
               </SwapSlide>
             </View>
+            </Reveal>
           );
         })}
 

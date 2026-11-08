@@ -25,9 +25,9 @@ export const TimingSlow: WithTimingConfig = {
 /** Sections settling into place (mount stagger, scroll-in): just under
  * critical damping, so they glide and land with no visible bounce. */
 export const SpringReveal: WithSpringConfig = {
-  damping: 24,
+  damping: 22,
   mass: 1,
-  stiffness: 170,
+  stiffness: 115,
 };
 
 /** Finger down: fast and firm, so the press registers instantly. */
@@ -68,7 +68,7 @@ export const TimingFill: WithTimingConfig = {
 
 /** How far apart (ms) consecutive sections start on a screen's first paint,
  * and after how many the stagger stops growing (later ones are off-screen). */
-export const STAGGER_STEP = 55;
+export const STAGGER_STEP = 85;
 export const STAGGER_MAX_STEPS = 7;
 
 /** Icon snapping back after a tab press: loose enough to overshoot visibly. */
