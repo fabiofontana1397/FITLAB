@@ -1,6 +1,7 @@
 import * as FileSystem from 'expo-file-system';
 import { Platform } from 'react-native';
 
+import { readCardLocally } from '@/lib/planning/card-ocr';
 import { supabase } from '@/lib/supabase/client';
 
 export type WorkoutCardFile = { uri: string; mediaType: string; base64?: string | null };
@@ -21,7 +22,11 @@ async function toBase64(file: WorkoutCardFile): Promise<string> {
 
 /** Sends a photo or PDF of a workout card to the extract-workout-card Edge Function and returns its transcription
  * (one exercise per line), or throws an Error whose message is shown to the person. */
-export async function extractWorkoutCardText(file: WorkoutCardFile): Promise<string> {
+export async function extractWorkoutCardText(file: WorkoutCardFile, onProgress?: (label: string) => void): Promise<string> {
+  // Free first: on the web the file is read in the browser. Only when that finds nothing (or elsewhere) does the server (Claude) step in.
+  const local = await readCardLocally(file, onProgress);
+  if (local) return local;
+  onProgress?.('Leggo la scheda…');
   const base64 = await toBase64(file);
   if (!base64) throw new Error('Non riesco a leggere il file.');
   const { data, error } = await supabase.functions.invoke('extract-workout-card', { body: { base64, mediaType: file.mediaType } });

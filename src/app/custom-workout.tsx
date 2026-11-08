@@ -39,6 +39,7 @@ export default function CustomWorkoutScreen() {
   const [text, setText] = useState('');
   const [touched, setTouched] = useState(false);
   const [reading, setReading] = useState(false);
+  const [readingLabel, setReadingLabel] = useState('Leggo la scheda…');
   const [readError, setReadError] = useState<string | null>(null);
 
   // Photo or PDF → the app reads it and fills the text box, so the person can check and fix it before saving.
@@ -48,7 +49,7 @@ export default function CustomWorkoutScreen() {
       const file = await load();
       if (!file) return;
       setReading(true);
-      const extracted = await extractWorkoutCardText(file);
+      const extracted = await extractWorkoutCardText(file, setReadingLabel);
       setText(extracted);
       setTouched(true);
     } catch (err) {
@@ -146,7 +147,7 @@ export default function CustomWorkoutScreen() {
             <View style={styles.readingRow}>
               <ActivityIndicator color={theme.accent} />
               <ThemedText type="caption" themeColor="textSecondary">
-                Leggo la scheda…
+                {readingLabel}
               </ThemedText>
             </View>
           ) : null}
