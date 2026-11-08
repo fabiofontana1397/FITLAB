@@ -223,7 +223,7 @@ export default function DietPlanScreen() {
 
 function MealCard({ meal }: { meal: PlanMeal }) {
   const theme = useTheme();
-  const photo = dishImage(meal.recipe?.dishId);
+  const photo = dishImage(meal.recipe?.dishId, meal.items.map((i) => i.name));
   const preparation = recipeForDish(meal.recipe?.dishId);
   const [detailOpen, setDetailOpen] = useState(false);
   return (
