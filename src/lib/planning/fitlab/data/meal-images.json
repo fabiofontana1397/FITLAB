@@ -306,5 +306,145 @@
     "category": "lunch",
     "image": "/images/meals/pl032.webp",
     "alt": "Pasta al ragù leggero con contorno di insalata"
+  },
+  {
+    "id": "pl034",
+    "name": "Riso venere con tonno e zucchine",
+    "category": "dinner",
+    "image": "/images/meals/pl034.webp",
+    "alt": "Riso venere con tonno e zucchine"
+  },
+  {
+    "id": "pl035",
+    "name": "Pasta con ricotta e spinaci, carciofi di contorno",
+    "category": "lunch",
+    "image": "/images/meals/pl035.webp",
+    "alt": "Pasta con ricotta e spinaci, carciofi di contorno"
+  },
+  {
+    "id": "pl036",
+    "name": "Patate dolci con hamburger di pollo e insalata",
+    "category": "dinner",
+    "image": "/images/meals/pl036.webp",
+    "alt": "Patate dolci con hamburger di pollo e insalata"
+  },
+  {
+    "id": "pl037",
+    "name": "Orzo con fagioli borlotti e zucchine",
+    "category": "lunch",
+    "image": "/images/meals/pl037.webp",
+    "alt": "Orzo con fagioli borlotti e zucchine"
+  },
+  {
+    "id": "pl038",
+    "name": "Salmone al forno con riso e asparagi",
+    "category": "dinner",
+    "image": "/images/meals/pl038.webp",
+    "alt": "Salmone al forno con riso e asparagi"
+  },
+  {
+    "id": "pl039",
+    "name": "Gnocchi al pomodoro con mozzarella e melanzane",
+    "category": "lunch",
+    "image": "/images/meals/pl039.webp",
+    "alt": "Gnocchi al pomodoro con mozzarella e melanzane"
+  },
+  {
+    "id": "pl040",
+    "name": "Lenticchie in umido con pane integrale e cavolfiore",
+    "category": "dinner",
+    "image": "/images/meals/pl040.webp",
+    "alt": "Lenticchie in umido con pane integrale e cavolfiore"
+  },
+  {
+    "id": "pl041",
+    "name": "Riso rosso con tacchino e carote",
+    "category": "lunch",
+    "image": "/images/meals/pl041.webp",
+    "alt": "Riso rosso con tacchino e carote"
+  },
+  {
+    "id": "pl042",
+    "name": "Quinoa con ceci, zucca e spinaci",
+    "category": "lunch",
+    "image": "/images/meals/pl042.webp",
+    "alt": "Quinoa con ceci, zucca e spinaci"
+  },
+  {
+    "id": "pl043",
+    "name": "Lonza magra con patate e cavolini di Bruxelles",
+    "category": "dinner",
+    "image": "/images/meals/pl043.webp",
+    "alt": "Lonza magra con patate e cavolini di Bruxelles"
+  },
+  {
+    "id": "pl044",
+    "name": "Pasta di legumi con pomodoro e contorno di zucchine",
+    "category": "lunch",
+    "image": "/images/meals/pl044.webp",
+    "alt": "Pasta di legumi con pomodoro e contorno di zucchine"
+  },
+  {
+    "id": "pl045",
+    "name": "Merluzzo al forno con cous cous e peperoni",
+    "category": "dinner",
+    "image": "/images/meals/pl045.webp",
+    "alt": "Merluzzo al forno con cous cous e peperoni"
+  },
+  {
+    "id": "pl046",
+    "name": "Farro con fagioli cannellini e carciofi",
+    "category": "lunch",
+    "image": "/images/meals/pl046.webp",
+    "alt": "Farro con fagioli cannellini e carciofi"
+  },
+  {
+    "id": "pl048",
+    "name": "Pasta al tonno con pomodori e contorno di lattuga",
+    "category": "lunch",
+    "image": "/images/meals/pl048.webp",
+    "alt": "Pasta al tonno con pomodori e contorno di lattuga"
+  },
+  {
+    "id": "pl034-sgombro",
+    "name": "Riso venere con tonno e zucchine (con sgombro)",
+    "category": "dinner",
+    "image": "/images/meals/pl034-sgombro.webp",
+    "alt": "Riso venere con tonno e zucchine (con sgombro)"
+  },
+  {
+    "id": "pl036-tacchino",
+    "name": "Patate dolci con hamburger di pollo e insalata (con hamburger di tacchino)",
+    "category": "dinner",
+    "image": "/images/meals/pl036-tacchino.webp",
+    "alt": "Patate dolci con hamburger di pollo e insalata (con hamburger di tacchino)"
+  },
+  {
+    "id": "pl038-trota",
+    "name": "Salmone al forno con riso e asparagi (con trota)",
+    "category": "dinner",
+    "image": "/images/meals/pl038-trota.webp",
+    "alt": "Salmone al forno con riso e asparagi (con trota)"
+  },
+  {
+    "id": "pl043-tacchino",
+    "name": "Lonza magra con patate e cavolini di Bruxelles (con tacchino)",
+    "category": "dinner",
+    "image": "/images/meals/pl043-tacchino.webp",
+    "alt": "Lonza magra con patate e cavolini di Bruxelles (con tacchino)"
+  },
+  {
+    "id": "pl045-orata",
+    "name": "Merluzzo al forno con cous cous e peperoni (con orata)",
+    "category": "dinner",
+    "image": "/images/meals/pl045-orata.webp",
+    "alt": "Merluzzo al forno con cous cous e peperoni (con orata)"
+  },
+  {
+    "id": "pl048-sgombro",
+    "name": "Pasta al tonno con pomodori e contorno di lattuga (con sgombro)",
+    "category": "lunch",
+    "image": "/images/meals/pl048-sgombro.webp",
+    "alt": "Pasta al tonno con pomodori e contorno di lattuga (con sgombro)"
   }
 ]

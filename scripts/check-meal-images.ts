@@ -10,7 +10,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { DISHES } from '@/lib/planning/fitlab/dishes';
-import { DISH_IMAGE_IDS, MEAL_IMAGES } from '@/lib/planning/fitlab/dish-images';
+import { DISH_IMAGE_IDS, DISH_IMAGE_VARIANTS, MEAL_IMAGES } from '@/lib/planning/fitlab/dish-images';
 
 const PUBLIC_DIR = join(__dirname, '..', 'public');
 const LIBRARY_DIR = join(PUBLIC_DIR, 'images', 'meals');
@@ -45,11 +45,16 @@ for (const [dishId, imageId] of Object.entries(DISH_IMAGE_IDS)) {
   if (!seen.has(imageId)) problems.push(`mapping: ${dishId} → unknown image ${imageId}`);
 }
 
+for (const [dishId, ids] of Object.entries(DISH_IMAGE_VARIANTS)) {
+  if (!DISH_IMAGE_IDS[dishId]) problems.push(`variants: ${dishId} has no main photo`);
+  for (const imageId of ids) if (!seen.has(imageId)) problems.push(`variants: ${dishId} → unknown image ${imageId}`);
+}
+
 if (problems.length) {
   console.error(`Meal image library: ${problems.length} problem(s)\n- ${problems.join('\n- ')}`);
   process.exit(1);
 }
-const mapped = new Set(Object.values(DISH_IMAGE_IDS));
+const mapped = new Set([...Object.values(DISH_IMAGE_IDS), ...Object.values(DISH_IMAGE_VARIANTS).flat()]);
 console.log(
   `Meal image library OK: ${MEAL_IMAGES.length} images, ${Object.keys(DISH_IMAGE_IDS).length} dishes mapped, ` +
     `${MEAL_IMAGES.filter((m) => !mapped.has(m.id)).length} image(s) not yet used by a dish.`

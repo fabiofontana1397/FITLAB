@@ -39,11 +39,10 @@ function MealRecipeContent({ meal, onClose }: { meal: PlanMeal; onClose: () => v
   const recipe = recipeForDish(meal.recipe?.dishId);
   const title = meal.recipe?.name ?? meal.label;
 
+  // one time only: the whole preparation, from start to plate
   const facts: { label: string; value: string }[] = recipe
     ? [
-        { label: 'Preparazione', value: `${recipe.prepMinutes} min` },
-        { label: 'Cottura', value: recipe.cookMinutes > 0 ? `${recipe.cookMinutes} min` : 'Nessuna' },
-        { label: 'Totale', value: `${recipe.totalMinutes} min` },
+        { label: 'Tempo totale', value: `${recipe.totalMinutes} min` },
         { label: 'Difficoltà', value: recipe.difficulty },
       ]
     : [];
