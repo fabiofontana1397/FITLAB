@@ -51,6 +51,13 @@
       ],
       "react-native-health-connect",
       [
+        "expo-camera",
+        {
+          "cameraPermission": "FITLAB usa la fotocamera per leggere il codice a barre degli alimenti confezionati.",
+          "recordAudioAndroid": false
+        }
+      ],
+      [
         "expo-build-properties",
         {
           "android": {

@@ -12,6 +12,10 @@ export type FoodItem = {
   /** Fit Lab catalog foods: fibre per 100 g and how the grams are weighed (dry / raw). */
   fiber100?: number;
   basis?: 'secco' | 'crudo';
+  /** Foods from FatSecret (search / barcode): the brand, the scanned EAN and where it comes from. */
+  brand?: string | null;
+  barcode?: string | null;
+  source?: 'fitlab' | 'fatsecret';
 };
 
 const LEGACY_FOODS: FoodItem[] = [
@@ -439,8 +443,15 @@ export const FOOD_DATABASE: FoodItem[] = [...LEGACY_FOODS, ...FITLAB_FOODS.map(f
 
 const FOOD_BY_ID = new Map(FOOD_DATABASE.map((f) => [f.id, f]));
 
+/** Foods fetched at runtime from FatSecret (see store/external-foods-store.ts): looked up after the bundled catalogue. */
+const EXTERNAL_BY_ID = new Map<string, FoodItem>();
+
+export function registerExternalFoods(foods: FoodItem[]): void {
+  for (const f of foods) if (!FOOD_BY_ID.has(f.id)) EXTERNAL_BY_ID.set(f.id, f);
+}
+
 export function findFood(id: string): FoodItem | undefined {
-  return FOOD_BY_ID.get(id);
+  return FOOD_BY_ID.get(id) ?? EXTERNAL_BY_ID.get(id);
 }
 
 export function searchFood(query: string): FoodItem[] {
