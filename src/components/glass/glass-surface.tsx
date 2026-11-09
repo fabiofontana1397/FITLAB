@@ -50,6 +50,8 @@ export type GlassSurfaceProps = {
    * the top and slides away when dragged down, then calls this. Give it the
    * popup's close handler. Ignored when `nativeGlass` renders the OS material. */
   swipeToDismiss?: () => void;
+  /** False leaves out the surface's own BlurView: for a surface that sits over something already blurred (a popup over its blurred backdrop), where a second backdrop filter only costs frames. */
+  blur?: boolean;
 };
 
 // Properties that arrange *children* (as opposed to sizing/positioning the
@@ -75,6 +77,7 @@ export function GlassSurface({
   onLayout,
   nativeGlass = false,
   swipeToDismiss,
+  blur = true,
 }: GlassSurfaceProps) {
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
@@ -132,12 +135,14 @@ export function GlassSurface({
         outerStyle,
         swipeToDismiss ? swipe.animatedStyle : null,
       ]}>
-      <BlurView
-        intensity={intensity ?? LEVEL_INTENSITY[level]}
-        tint={isDark ? 'dark' : 'light'}
-        blurMethod="dimezisBlurViewSdk31Plus"
-        style={StyleSheet.absoluteFill}
-      />
+      {blur ? (
+        <BlurView
+          intensity={intensity ?? LEVEL_INTENSITY[level]}
+          tint={isDark ? 'dark' : 'light'}
+          blurMethod="dimezisBlurViewSdk31Plus"
+          style={StyleSheet.absoluteFill}
+        />
+      ) : null}
       <LinearGradient
         colors={gradientColors}
         locations={gradientLocations}

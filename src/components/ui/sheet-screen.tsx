@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { type Href } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { startTransition, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   BackHandler,
   PanResponder,
@@ -49,6 +49,8 @@ const EDGE_FADE_HEIGHT = 28;
 /** Drag past this (or flick faster than this) and the sheet goes away. */
 const DRAG_CLOSE_DISTANCE = 120;
 const DRAG_CLOSE_VELOCITY = 0.8;
+/** How long after opening the sheet's content is built (the sheet takes about this long to rise). */
+const BODY_DELAY_MS = 220;
 
 export type SheetScreenProps = {
   title: string;
@@ -185,7 +187,20 @@ export function SheetScreen({ title, eyebrow, leading, children, fallbackHref = 
     transform: [{ translateY: translateY.value }],
   }));
 
-  const body = typeof children === 'function' ? children(close) : children;
+  // The content mounts once the sheet has risen: building a long page while the sheet springs up cost frames at
+  // the start of the movement. It then fades in.
+  const [bodyReady, setBodyReady] = useState(false);
+  const bodyOpacity = useSharedValue(0);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      // As a transition the content is built in small slices between frames instead of one long task.
+      startTransition(() => setBodyReady(true));
+      bodyOpacity.value = withTiming(1, { duration: 180 });
+    }, BODY_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [bodyOpacity]);
+  const bodyStyle = useAnimatedStyle(() => ({ opacity: bodyOpacity.value }));
+  const body = bodyReady ? (typeof children === 'function' ? children(close) : children) : null;
   const top = Math.max(insets.top + TOP_GAP_MIN, Math.round(height * TOP_GAP_SHARE));
 
   return (
@@ -222,7 +237,7 @@ export function SheetScreen({ title, eyebrow, leading, children, fallbackHref = 
           </Pressable>
 
           {scroll ? (
-            <View style={styles.scroll}>
+            <Animated.View style={[styles.scroll, bodyStyle]}>
               <ScrollView
                 {...ScrollDefaults}
                 style={styles.scroll}
@@ -239,9 +254,9 @@ export function SheetScreen({ title, eyebrow, leading, children, fallbackHref = 
               <Animated.View pointerEvents="none" style={[styles.edgeFade, edgeFadeStyle]}>
                 <LinearGradient colors={[theme.surfacePopup, `${theme.surfacePopup}00`]} style={StyleSheet.absoluteFill} />
               </Animated.View>
-            </View>
+            </Animated.View>
           ) : (
-            <View style={[styles.scroll, styles.scrollContent, { paddingBottom: insets.bottom + Spacing.three }, contentContainerStyle]}>{body}</View>
+            <Animated.View style={[styles.scroll, styles.scrollContent, { paddingBottom: insets.bottom + Spacing.three }, contentContainerStyle, bodyStyle]}>{body}</Animated.View>
           )}
         </Animated.View>
       </View>
