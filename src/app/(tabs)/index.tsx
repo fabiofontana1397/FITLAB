@@ -1,4 +1,5 @@
 import { LinearGradient } from 'expo-linear-gradient';
+import { openPopup } from '@/lib/open-popup';
 import { planIndexFor, useTrainingSwapStore } from '@/store/training-swap-store';
 import { router, type Href } from 'expo-router';
 import { useState } from 'react';
@@ -233,7 +234,7 @@ export default function HomeScreen() {
   const weekPill = weeklyProgress >= 1 ? 'Obiettivo raggiunto! 🎯' : weeklyProgress >= 0.6 ? 'Ci sei quasi!' : weeklyProgress >= 0.25 ? 'Stai andando bene' : 'Ogni giorno conta';
 
   return (
-    <ScreenScroll reveal header={<TabHeader title={`Ciao ${currentUser.name}`} subtitle={viewDateLabel} onCalendarPress={() => setCalendarOpen(true)} />} contentContainerStyle={styles.page}>
+    <ScreenScroll reveal header={<TabHeader title={`Ciao ${currentUser.name}`} subtitle={viewDateLabel} onCalendarPress={() => openPopup(() => setCalendarOpen(true))} />} contentContainerStyle={styles.page}>
       <View style={styles.weekStrip}>
         <WeekStrip days={stripDays} selectedDate={viewDate} onSelect={setViewDate} />
       </View>
@@ -283,7 +284,7 @@ export default function HomeScreen() {
           icon="utensils"
           iconColor={Brand.accentGlow}
           label={'Registra\npasto'}
-          onPress={() => setRegisterMealOpen(true)}
+          onPress={() => openPopup(() => setRegisterMealOpen(true))}
         />
         <ActionTile
           colors={Brand.successGradient}
@@ -291,7 +292,7 @@ export default function HomeScreen() {
           icon="barbell"
           iconColor={Brand.successGradient[1]}
           label={'Registra\nallenamento'}
-          onPress={() => setLogActivityOpen(true)}
+          onPress={() => openPopup(() => setLogActivityOpen(true))}
         />
       </View>
 

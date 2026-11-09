@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useMemo, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 
+import { openPopup } from '@/lib/open-popup';
 import { PressableScale } from '@/components/motion/pressable-scale';
 import { Reveal } from '@/components/motion/reveal';
 import { ScreenScroll } from '@/components/screen-scroll';
@@ -182,7 +183,7 @@ export default function TrainingScreen() {
         ref={scrollRef}
         testID="training-list"
         contentContainerStyle={styles.list}
-        header={<TabHeader title="Allenamento" onCalendarPress={() => setCalendarOpen(true)} />}>
+        header={<TabHeader title="Allenamento" onCalendarPress={() => openPopup(() => setCalendarOpen(true))} />}>
         <Reveal index={0}>
         <TrainingWeekCard
           weekDates={viewedWeekDates}
@@ -196,7 +197,7 @@ export default function TrainingScreen() {
 
         <Reveal index={1}>
         <PressableScale
-          onPress={() => setLogActivityVisible(true)}
+          onPress={() => openPopup(() => setLogActivityVisible(true))}
           accessibilityRole="button"
           haptic="press"
           scaleTo={0.97}

@@ -48,13 +48,6 @@ const HIDE_FRACTION = 0.2;
 const SHOW_MARGIN_PX = 6;
 const STAGGER_WINDOW_MS = 700;
 const RISE = 26;
-/** How blurred a section starts. Desktop browsers only: React Native has no blur on iOS, and Safari on iPhone/iPad can
- * leave a layer with a filter unpainted while it scrolls, so there the entrance is fade, rise and grow alone. */
-const BLUR_PX = 8;
-const IS_APPLE_TOUCH_WEB =
-  Platform.OS === 'web' && typeof navigator !== 'undefined' && (/iPhone|iPad|iPod/i.test(navigator.userAgent) || (/Mac/i.test(navigator.platform ?? '') && (navigator.maxTouchPoints ?? 0) > 1));
-const BLUR_ENABLED = Platform.OS === 'web' && !IS_APPLE_TOUCH_WEB;
-
 export type RevealProps = {
   /** Position in the screen's stack; drives the opening stagger. */
   index?: number;
@@ -64,8 +57,8 @@ export type RevealProps = {
 
 /**
  * One section of a screen entering the way the reference animation does: it
- * fades in out of a blur, rising and growing a little into place, one section
- * after another from the top.
+ * fades in, rising and growing a little into place, one section after another
+ * from the top.
  *
  * It plays every time, not once:
  *  - each time the page is switched to, the sections that are in view replay
@@ -171,14 +164,11 @@ export function Reveal({ index = 0, style, children }: RevealProps) {
     }
   );
 
-  const animatedStyle = useAnimatedStyle(() => {
-    const p = progress.value;
-    const base = {
-      opacity: interpolate(p, [0, 0.55], [0, 1], 'clamp'),
-      transform: [{ translateY: (1 - p) * RISE }, { scale: interpolate(p, [0, 1], [0.96, 1]) }],
-    };
-    return BLUR_ENABLED ? { ...base, filter: p >= 0.995 ? 'none' : `blur(${Math.max(0, (1 - p) * BLUR_PX)}px)` } : base;
-  });
+  // Fade, rise and grow only: all cheap, compositor-friendly properties. (A blur here repainted a whole card every frame.)
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(progress.value, [0, 0.55], [0, 1], 'clamp'),
+    transform: [{ translateY: (1 - progress.value) * RISE }, { scale: interpolate(progress.value, [0, 1], [0.96, 1]) }],
+  }));
 
   return (
     <RevealProgressContext.Provider value={progress}>

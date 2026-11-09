@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { openPopup } from '@/lib/open-popup';
 import { FoodSearchModal } from '@/components/nutrition/food-search-modal';
 import { MealCard } from '@/components/nutrition/meal-card';
 import { mealSlotColor } from '@/components/nutrition/meal-picker-modal';
@@ -131,7 +132,7 @@ export default function NutritionScreen() {
   ];
 
   return (
-    <ScreenScroll reveal header={<TabHeader title="Nutrizione" onCalendarPress={() => setCalendarOpen(true)} />} contentContainerStyle={styles.page}>
+    <ScreenScroll reveal header={<TabHeader title="Nutrizione" onCalendarPress={() => openPopup(() => setCalendarOpen(true))} />} contentContainerStyle={styles.page}>
       <FlatCard radius={CARD_RADIUS} style={styles.calorieCard}>
         <View style={styles.cardTitleRow}>
           <Icon name="flame" size={16} color={theme.accent} />
