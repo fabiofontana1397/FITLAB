@@ -28,6 +28,10 @@ export type WeekEnergyDay = {
   stepsProgress: number;
   estimatedExpenditureKcal: number;
   eatenKcal: number;
+  /** That day's calorie target (what intake fills towards). */
+  targetKcal: number;
+  /** The day lived to its end with the planned session done (what burned fills towards). */
+  fullDayExpenditureKcal: number;
 };
 
 export function sumActivityKcalForDate(entries: LoggedActivity[], date: string): number {
@@ -111,6 +115,8 @@ export function useWeeklyEnergy(referenceDate?: string): {
           stepsProgress: 0,
           estimatedExpenditureKcal: 0,
           eatenKcal: 0,
+          targetKcal: 0,
+          fullDayExpenditureKcal: 0,
         };
       }
 
@@ -142,6 +148,8 @@ export function useWeeklyEnergy(referenceDate?: string): {
         stepsProgress: dayStepsProgress,
         estimatedExpenditureKcal,
         eatenKcal: dayTotals.kcal,
+        targetKcal: dayTarget,
+        fullDayExpenditureKcal: dayEnergy(ctx, dayPlan, 1, 0, { calibration, measured: measuredFor(date) }).total,
       };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -153,6 +161,7 @@ export function useWeeklyEnergy(referenceDate?: string): {
   const weekDaysWithActivity = weekDays.map((d) => ({
     ...d,
     estimatedExpenditureKcal: d.estimatedExpenditureKcal + sumActivityKcalForDate(activityLogEntries, d.date),
+    fullDayExpenditureKcal: d.fullDayExpenditureKcal + sumActivityKcalForDate(activityLogEntries, d.date),
   }));
 
   const todayExpenditure = weekDaysWithActivity.find((d) => d.isToday);

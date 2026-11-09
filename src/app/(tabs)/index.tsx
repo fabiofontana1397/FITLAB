@@ -212,6 +212,8 @@ export default function HomeScreen() {
     hasHappened: d.date <= today,
     burnedKcal: d.estimatedExpenditureKcal,
     eatenKcal: d.eatenKcal,
+    targetKcal: d.targetKcal,
+    fullDayBurnedKcal: d.fullDayExpenditureKcal,
   }));
   const dailyGoalKcal = weeklyGoalKcal / 7;
   // The gauge's semi-ring reads today's balance against the same daily goal the "Obiettivo" column shows.
