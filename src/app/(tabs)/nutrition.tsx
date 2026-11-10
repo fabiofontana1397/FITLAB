@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { openPopup } from '@/lib/open-popup';
@@ -112,7 +112,6 @@ export default function NutritionScreen() {
       ? 'Pasti di oggi'
       : `Pasti del ${new Date(selectedDate).toLocaleDateString('it-IT', { day: 'numeric', month: 'long' })}`;
 
-  const loggedDates = useMemo(() => new Set(entries.map((e) => e.date)), [entries]);
 
   const dayEntries = entries.filter((e) => e.date === selectedDate);
   const totals = sumMacros(dayEntries);
@@ -232,7 +231,7 @@ export default function NutritionScreen() {
       <DayCalendarModal
         visible={calendarOpen}
         selectedDate={selectedDate}
-        isDayMarked={(date) => loggedDates.has(date)}
+        showGoalStatus
         onSelectDate={setSelectedDate}
         onClose={() => setCalendarOpen(false)}
       />
