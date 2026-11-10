@@ -146,6 +146,9 @@ export default function TrainingScreen() {
       )
     : [selectedDate];
 
+  // Mounted (inside a Reveal) only when there is something to catch up on, so an empty card never leaves a gap in the stack.
+  const showMissed = !viewingPast && missedWorkouts.length > 0;
+
   // Picking a day starts the list at that day: back to the top, where the week is.
   const scrollRef = useRef<ScrollView>(null);
   const selectDate = (date: string) => {
@@ -210,13 +213,15 @@ export default function TrainingScreen() {
         </PressableScale>
         </Reveal>
 
-        {viewingPast ? null : (
-        <MissedWorkoutsCard
-          workouts={missedWorkouts}
-          onRecover={setSessionDate}
-          onOpen={(date) => router.push({ pathname: '/workout-detail', params: { date } })}
-        />
-        )}
+        {showMissed ? (
+          <Reveal index={2}>
+            <MissedWorkoutsCard
+              workouts={missedWorkouts}
+              onRecover={setSessionDate}
+              onOpen={(date) => router.push({ pathname: '/workout-detail', params: { date } })}
+            />
+          </Reveal>
+        ) : null}
 
         {sectionDates.map((date, sectionIndex) => {
           const day = dayPlanOf(date);
@@ -227,7 +232,7 @@ export default function TrainingScreen() {
           const statusLabel = done ? 'Completato' : inProgress ? 'In corso' : date < today ? 'Non completato' : 'In programma';
           const statusColor = done ? theme.brandGreen : inProgress ? theme.accent : date < today ? theme.danger : theme.accent;
           return (
-            <Reveal key={date} index={2 + sectionIndex}>
+            <Reveal key={date} index={(showMissed ? 3 : 2) + sectionIndex}>
             <View
               testID={`training-day-${date}`}
               style={styles.daySection}

@@ -1,8 +1,9 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { FlatList, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 
+import { BarcodeScanner } from '@/components/nutrition/barcode-scanner';
 import { FoodThumb } from '@/components/nutrition/food-thumb';
 import { ThemedText } from '@/components/themed-text';
 import { AppTextInput } from '@/components/ui/app-text';
@@ -12,6 +13,7 @@ import { SheetScreen } from '@/components/ui/sheet-screen';
 import { HorizontalScrollDefaults, ListDefaults, ScrollDefaults } from '@/constants/scroll';
 import { Layout } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { lookupBarcode, searchFatSecret } from '@/lib/api/fatsecret';
 import { hapticSelection, hapticSuccess, hapticToggle } from '@/lib/haptics';
 import { FOOD_DATABASE, findFood, searchFood, type FoodItem } from '@/lib/mock/food-database';
 import { useFavoriteFoodsStore } from '@/store/favorite-foods-store';
@@ -101,6 +103,10 @@ function FoodSearchForm({ slot, date, editEntry, onClose, onSaved }: Omit<FoodSe
   const [query, setQuery] = useState('');
   const [view, setView] = useState<View_>(() => ({ kind: 'tab', id: favoriteIds.length > 0 ? 'preferiti' : 'recenti' }));
   const [hint, setHint] = useState<string | null>(null);
+  const [scanning, setScanning] = useState(false);
+  const [lookingUp, setLookingUp] = useState(false);
+  /** FatSecret results for the current search (the bundled catalogue answers instantly, these follow). */
+  const [online, setOnline] = useState<{ query: string; foods: FoodItem[] } | null>(null);
   const [selected, setSelected] = useState<FoodItem | null>(() => (editEntry ? (findFood(editEntry.foodId) ?? null) : null));
   const [grams, setGrams] = useState(() => (editEntry ? String(editEntry.grams) : String(FOOD_DATABASE[0].defaultPortionG)));
 
@@ -117,8 +123,29 @@ function FoodSearchForm({ slot, date, editEntry, onClose, onSaved }: Omit<FoodSe
   const toFoods = (ids: string[]) => ids.map((id) => findFood(id)).filter((f): f is FoodItem => !!f);
   /** True when Recenti has nothing to show yet and a starter set stands in for it. */
   const suggesting = !searching && view.kind === 'tab' && view.id === 'recenti' && history.recent.length === 0;
+  // Debounced FatSecret search; failures (offline, not configured) just leave the local results.
+  useEffect(() => {
+    const q = query.trim();
+    if (q.length < 2) return;
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      searchFatSecret(q)
+        .then((foods) => !cancelled && setOnline({ query: q, foods }))
+        .catch((err) => console.warn('FatSecret search unavailable', err));
+    }, 400);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [query]);
+
   const list = useMemo(() => {
-    if (searching) return searchFood(query).slice(0, 40);
+    if (searching) {
+      const local = searchFood(query).slice(0, 40);
+      const seen = new Set(local.map((f) => f.id));
+      const remote = online && online.query === query.trim() ? online.foods.filter((f) => !seen.has(f.id)) : [];
+      return [...local, ...remote];
+    }
     if (view.kind === 'tab') {
       if (view.id === 'preferiti') return toFoods(favoriteIds);
       return toFoods(history.recent.length > 0 ? history.recent.slice(0, 30) : DEFAULT_FAVORITE_IDS);
@@ -129,7 +156,7 @@ function FoodSearchForm({ slot, date, editEntry, onClose, onSaved }: Omit<FoodSe
       .sort((a, b) => (history.counts.get(b.food.id) ?? 0) - (history.counts.get(a.food.id) ?? 0) || a.index - b.index)
       .map(({ food }) => food)
       .slice(0, 60);
-  }, [searching, query, view, history, favoriteIds]);
+  }, [searching, query, view, history, favoriteIds, online]);
 
   const gramsNum = parseFloat(grams.replace(',', '.'));
   const validGrams = Number.isFinite(gramsNum) && gramsNum > 0;
@@ -139,6 +166,27 @@ function FoodSearchForm({ slot, date, editEntry, onClose, onSaved }: Omit<FoodSe
     hapticSelection();
     setSelected(food);
     setGrams(String(food.defaultPortionG));
+  };
+
+  const handleScanned = async (code: string) => {
+    setLookingUp(true);
+    try {
+      const food = await lookupBarcode(code);
+      if (food) {
+        hapticSuccess();
+        setScanning(false);
+        openDetail(food);
+      } else {
+        setHint(`Prodotto non trovato (${code}). Prova a cercarlo per nome.`);
+        setScanning(false);
+      }
+    } catch (err) {
+      console.warn('barcode lookup failed', err);
+      setHint('Non riesco a leggere il database alimenti. Riprova tra poco.');
+      setScanning(false);
+    } finally {
+      setLookingUp(false);
+    }
   };
 
   const bump = (delta: number) => {
@@ -292,6 +340,23 @@ function FoodSearchForm({ slot, date, editEntry, onClose, onSaved }: Omit<FoodSe
     );
   }
 
+  // ── Barcode scanner ──────────────────────────────────────────────────────
+  if (scanning) {
+    return (
+      <SheetScreen title="Scansiona codice a barre" {...sheetProps}>
+        <View style={styles.scanWrap}>
+          <BarcodeScanner busy={lookingUp} onScanned={handleScanned} />
+          <ThemedText style={styles.hint} themeColor="textTertiary">
+            {lookingUp ? 'Cerco il prodotto...' : 'Inquadra il codice a barre sulla confezione.'}
+          </ThemedText>
+          <Pressable onPress={() => setScanning(false)} accessibilityRole="button" style={styles.deleteLink}>
+            <ThemedText>Annulla</ThemedText>
+          </Pressable>
+        </View>
+      </SheetScreen>
+    );
+  }
+
   // ── Step 1: the list ─────────────────────────────────────────────────────
   const emptyText = searching
     ? 'Nessun alimento trovato'
@@ -324,7 +389,10 @@ function FoodSearchForm({ slot, date, editEntry, onClose, onSaved }: Omit<FoodSe
         </View>
         {searching ? null : (
           <Pressable
-            onPress={() => setHint('La scansione del codice a barre non è ancora disponibile.')}
+            onPress={() => {
+              setHint(null);
+              setScanning(true);
+            }}
             accessibilityRole="button"
             accessibilityLabel="Scansiona il codice a barre"
             style={[styles.barcodeButton, { backgroundColor: theme.backgroundElement }]}>
@@ -432,6 +500,7 @@ function FoodRow({ food, favorite, onOpen, onToggleFavorite }: { food: FoodItem;
             {food.name}
           </ThemedText>
           <ThemedText style={styles.rowSub} themeColor="textTertiary">
+            {food.brand ? `${food.brand} · ` : ''}
             {Math.round(food.kcal100)} kcal / 100 g
           </ThemedText>
         </View>
@@ -511,6 +580,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  scanWrap: { flex: 1, paddingHorizontal: PAGE_PADDING, paddingBottom: 24, gap: 12 },
   barcodeButton: {
     width: 48,
     height: 48,
