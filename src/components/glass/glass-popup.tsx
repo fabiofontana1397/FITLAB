@@ -12,6 +12,8 @@ import { hapticSoft } from '@/lib/haptics';
 
 const POPUP_MAX_WIDTH = 380;
 const BLUR_INTENSITY = 55;
+/** The blur is at full strength when the card is this far in (it is fully opaque at 0.5): the backdrop is there as the card shows. */
+const BLUR_FULL_AT = 0.4;
 const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
 /** The web draws the backdrop blur with `backdrop-filter`, which is costly to repaint while anything moves: there it
  * comes in only once the popup has landed, and goes first when it leaves. */
@@ -72,11 +74,11 @@ export function GlassPopup({ visible, onClose, children, style, maxWidth = POPUP
     };
   }, [visible, reduceMotion, progress, blur, unmount]);
 
-  const scrimStyle = useAnimatedStyle(() => ({ opacity: interpolate(progress.value, [0, 1], [0, 1], 'clamp') }));
+  const scrimStyle = useAnimatedStyle(() => ({ opacity: interpolate(progress.value, [0, BLUR_FULL_AT], [0, 1], 'clamp') }));
   // Web: the backdrop blur fades in once the card has landed. Native: its intensity follows the card's own progress
   // (animated props, no opacity layer over a live blur), so scrim, blur and card all arrive and leave as one motion.
   const blurStyle = useAnimatedStyle(() => ({ opacity: WEB ? blur.value : 1 }));
-  const blurProps = useAnimatedProps(() => ({ intensity: WEB ? 40 : Math.max(1, Math.min(1, progress.value) * BLUR_INTENSITY) }));
+  const blurProps = useAnimatedProps(() => ({ intensity: WEB ? 40 : Math.max(1, Math.min(1, progress.value / BLUR_FULL_AT) * BLUR_INTENSITY) }));
 
   return (
     <Modal visible={mounted} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
