@@ -1,7 +1,7 @@
 import { BlurView } from 'expo-blur';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Modal, Platform, Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
-import Animated, { Easing, interpolate, runOnJS, useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, withTiming, type SharedValue } from 'react-native-reanimated';
+import Animated, { Easing, interpolate, runOnJS, useAnimatedProps, useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, withTiming, type SharedValue } from 'react-native-reanimated';
 
 import { GlassSurface } from '@/components/glass/glass-surface';
 import { SpringPopup } from '@/constants/motion';
@@ -11,6 +11,8 @@ import { useTheme } from '@/hooks/use-theme';
 import { hapticSoft } from '@/lib/haptics';
 
 const POPUP_MAX_WIDTH = 380;
+const BLUR_INTENSITY = 55;
+const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
 /** The web draws the backdrop blur with `backdrop-filter`, which is costly to repaint while anything moves: there it
  * comes in only once the popup has landed, and goes first when it leaves. */
 const WEB = Platform.OS === 'web';
@@ -48,7 +50,7 @@ export function GlassPopup({ visible, onClose, children, style, maxWidth = POPUP
   // Opening while unmounted: mount in this very render (adjusting state from a changed prop, the way React asks for it).
   if (visible && !mounted) setMounted(true);
   const progress = useSharedValue(0);
-  const blur = useSharedValue(WEB ? 0 : 1);
+  const blur = useSharedValue(0);
   const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const unmount = useCallback(() => setMounted(false), []);
 
@@ -58,7 +60,6 @@ export function GlassPopup({ visible, onClose, children, style, maxWidth = POPUP
       hapticSoft();
       progress.value = reduceMotion ? 1 : withSpring(1, SpringPopup);
       if (WEB) blurTimer.current = setTimeout(() => (blur.value = reduceMotion ? 1 : withTiming(1, { duration: BLUR_FADE_MS })), reduceMotion ? 0 : BLUR_IN_DELAY_MS);
-      else blur.value = 1;
       return;
     }
     // Leaving: the blur first (fast), the card and scrim alongside, then the Modal.
@@ -72,7 +73,10 @@ export function GlassPopup({ visible, onClose, children, style, maxWidth = POPUP
   }, [visible, reduceMotion, progress, blur, unmount]);
 
   const scrimStyle = useAnimatedStyle(() => ({ opacity: interpolate(progress.value, [0, 1], [0, 1], 'clamp') }));
-  const blurStyle = useAnimatedStyle(() => ({ opacity: blur.value }));
+  // Web: the backdrop blur fades in once the card has landed. Native: its intensity follows the card's own progress
+  // (animated props, no opacity layer over a live blur), so scrim, blur and card all arrive and leave as one motion.
+  const blurStyle = useAnimatedStyle(() => ({ opacity: WEB ? blur.value : 1 }));
+  const blurProps = useAnimatedProps(() => ({ intensity: WEB ? 40 : Math.max(1, Math.min(1, progress.value) * BLUR_INTENSITY) }));
 
   return (
     <Modal visible={mounted} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
@@ -80,7 +84,7 @@ export function GlassPopup({ visible, onClose, children, style, maxWidth = POPUP
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose}>
           <Animated.View style={[StyleSheet.absoluteFill, scrimStyle, { backgroundColor: theme.scrimSoft }]} />
           <Animated.View style={[StyleSheet.absoluteFill, blurStyle]} pointerEvents="none">
-            <BlurView intensity={WEB ? 40 : 55} tint={isDark ? 'dark' : 'light'} blurMethod="dimezisBlurViewSdk31Plus" style={StyleSheet.absoluteFill} />
+            <AnimatedBlurView animatedProps={blurProps} intensity={WEB ? 40 : 1} tint={isDark ? 'dark' : 'light'} blurMethod="dimezisBlurViewSdk31Plus" style={StyleSheet.absoluteFill} />
           </Animated.View>
         </Pressable>
         <PopupCard progress={progress} style={[styles.cardWrap, { maxWidth }]}>
