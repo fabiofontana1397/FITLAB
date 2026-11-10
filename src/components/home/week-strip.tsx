@@ -1,7 +1,9 @@
 import { Pressable, StyleSheet, View } from 'react-native';
-import Svg, { Circle, Path } from 'react-native-svg';
+import Svg, { Circle, G, Path } from 'react-native-svg';
 
+import { goalStripColors } from '@/components/home/goal-strip-colors';
 import { ThemedText } from '@/components/themed-text';
+import { goalBand, readBalance } from '@/domain/calorie-balance';
 import { useTheme } from '@/hooks/use-theme';
 import { hapticSelection } from '@/lib/haptics';
 
@@ -19,44 +21,52 @@ export type WeekStripDay = {
   fullDayBurnedKcal: number;
 };
 
-const SIZE = 38;
-const STROKE = 3;
-const GAP = 2;
-const C = SIZE / 2;
-const R_OUT = (SIZE - STROKE) / 2;
-const R_IN = R_OUT - STROKE - GAP;
+const W = 40;
+const H = 29;
+const STROKE = 4.5;
+const CX = W / 2;
+/** The arc's centre sits low in the box so the number fits under its curve. */
+const CY = H - 6;
+const R = 16;
+const STRIPS = 13;
+const MID = (STRIPS - 1) / 2;
+const STEP = 180 / STRIPS;
 
-/** A full ring from 12 o'clock, filled clockwise to `progress` (0..1). */
-function Ring({ r, progress, color, track }: { r: number; progress: number; color: string; track: string }) {
-  const circumference = 2 * Math.PI * r;
-  const p = Math.min(Math.max(progress, 0), 1);
-  return (
-    <>
-      <Circle cx={C} cy={C} r={r} fill="none" stroke={track} strokeWidth={STROKE} />
-      {p > 0 ? <Circle cx={C} cy={C} r={r} fill="none" stroke={color} strokeWidth={STROKE} strokeLinecap="round" strokeDasharray={`${circumference * p} ${circumference}`} transform={`rotate(-90 ${C} ${C})`} /> : null}
-    </>
-  );
-}
+const px = (deg: number, r = R) => CX + r * Math.sin((deg * Math.PI) / 180);
+const py = (deg: number, r = R) => CY - r * Math.cos((deg * Math.PI) / 180);
 
 /**
- * The same two measures as Home's bars: the outer orange ring is intake
- * towards the day's calorie target ("Assunte"), the inner green ring is what
- * was burned towards the day's expected burn ("Bruciate").
+ * One day's balance on a small semi-ring, the same gradient as Home's big gauge
+ * (deep green on the day's goal, fading through champagne to orange at both
+ * ends of the day's range) with a marker where the day actually landed: surplus
+ * to the left, deficit to the right, the goal at the top. A day with nothing to
+ * read (not yet lived, no meal logged) keeps the gradient faint and has no marker.
  */
-function MiniGauge({ day, eatenColor, burnedColor, track }: { day: WeekStripDay; eatenColor: string; burnedColor: string; track: string }) {
-  const tracked = day.hasHappened && (day.eatenKcal > 0 || day.burnedKcal > 0);
-  const eaten = tracked && day.targetKcal > 0 ? day.eatenKcal / day.targetKcal : 0;
-  const burnedDay = Math.max(day.fullDayBurnedKcal, day.burnedKcal, 1);
-  const burned = tracked ? day.burnedKcal / burnedDay : 0;
+function MiniGauge({ day, goalKcal, marker, markerRing }: { day: WeekStripDay; goalKcal: number; marker: string; markerRing: string }) {
+  const theme = useTheme();
+  const reading = readBalance({
+    eatenKcal: day.hasHappened ? day.eatenKcal : 0,
+    burnedKcal: day.hasHappened ? day.burnedKcal : 0,
+    goalKcal,
+  });
+  const band = goalBand({ reading, eatenKcal: day.eatenKcal, burnedKcal: day.burnedKcal, plannedEatenKcal: day.targetKcal, dayComplete: day.hasHappened && !day.isToday });
+  const colors = goalStripColors(STRIPS, band, theme);
+  const tracked = band.state !== 'missing';
+  const markerDeg = band.position * 90;
   return (
     <>
-      <Ring r={R_OUT} progress={eaten} color={eatenColor} track={track} />
-      <Ring r={R_IN} progress={burned} color={burnedColor} track={track} />
+      <G opacity={tracked ? 1 : 0.38}>
+        {colors.map((color, i) => {
+          const deg = ((i - MID) / MID) * (90 - STEP / 2);
+          return <Path key={i} d={`M ${px(deg - STEP / 2 - 0.4)} ${py(deg - STEP / 2 - 0.4)} A ${R} ${R} 0 0 1 ${px(deg + STEP / 2 + 0.4)} ${py(deg + STEP / 2 + 0.4)}`} stroke={color} strokeWidth={STROKE} fill="none" />;
+        })}
+      </G>
+      {tracked ? <Circle cx={px(markerDeg)} cy={py(markerDeg)} r={3.9} fill={marker} stroke={markerRing} strokeWidth={1.6} /> : null}
     </>
   );
 }
 
-export function WeekStrip({ days, selectedDate, onSelect }: { days: WeekStripDay[]; selectedDate: string; onSelect: (date: string) => void }) {
+export function WeekStrip({ days, selectedDate, goalKcal, onSelect }: { days: WeekStripDay[]; selectedDate: string; /** The daily balance goal (negative = deficit) every day's range is centred on. */ goalKcal: number; onSelect: (date: string) => void }) {
   const theme = useTheme();
   return (
     <View style={styles.row} accessibilityRole="tablist">
@@ -75,8 +85,8 @@ export function WeekStrip({ days, selectedDate, onSelect }: { days: WeekStripDay
             style={[styles.cell, selected && { backgroundColor: theme.backgroundElevated }]}>
             <ThemedText style={[styles.letter, { color: selected ? theme.text : theme.textTertiary }]}>{d.label}</ThemedText>
             <View style={styles.ring}>
-              <Svg width={SIZE} height={SIZE} style={StyleSheet.absoluteFill}>
-                <MiniGauge day={d} eatenColor={theme.accent} burnedColor={theme.brandGreen} track={theme.backgroundSelected} />
+              <Svg width={W} height={H} style={StyleSheet.absoluteFill}>
+                <MiniGauge day={d} goalKcal={goalKcal} marker={theme.text} markerRing={selected ? theme.backgroundElevated : theme.background} />
               </Svg>
               <ThemedText style={[styles.num, { color: d.hasHappened || d.isToday ? theme.text : theme.textTertiary }, d.isToday && styles.numToday]}>{d.dayOfMonth}</ThemedText>
             </View>
@@ -91,7 +101,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', justifyContent: 'space-between' },
   cell: { flex: 1, alignItems: 'center', gap: 6, paddingVertical: 8, borderRadius: 16, borderCurve: 'continuous' },
   letter: { fontSize: 12, lineHeight: 16, fontWeight: '600' },
-  ring: { width: SIZE, height: SIZE, alignItems: 'center', justifyContent: 'center' },
-  num: { fontSize: 12, lineHeight: 16, fontWeight: '600' },
+  ring: { width: W, height: H, alignItems: 'center', justifyContent: 'flex-end' },
+  num: { fontSize: 12, lineHeight: 15, fontWeight: '600', marginBottom: 1 },
   numToday: { fontWeight: '800' },
 });

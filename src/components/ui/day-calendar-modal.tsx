@@ -1,201 +1,268 @@
-import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { Modal, PanResponder, Pressable, StyleSheet, View } from 'react-native';
 
-import { GlassPopup } from '@/components/glass/glass-popup';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
-import { Radius, Spacing } from '@/constants/theme';
+import { SheetScreen } from '@/components/ui/sheet-screen';
+import { Layout } from '@/constants/theme';
+import type { GoalBandState } from '@/domain/calorie-balance';
+import { useDayGoalStatus } from '@/hooks/use-day-goal-status';
 import { useTheme } from '@/hooks/use-theme';
 import { hapticSelection } from '@/lib/haptics';
-import { isToday, mondayIndex } from '@/lib/mock/dates';
+import { daysAgoISO, mondayIndex } from '@/lib/mock/dates';
 
 const WEEKDAY_LETTERS = ['L', 'M', 'M', 'G', 'V', 'S', 'D'];
+const CIRCLE = 40;
+const SWIPE_DISTANCE = 40;
 
 function daysInMonth(year: number, month0: number): number {
   return new Date(year, month0 + 1, 0).getDate();
 }
 
+/** Local calendar date, not the UTC one `toISOString` would give. */
 function isoDate(year: number, month0: number, day: number): string {
-  const d = new Date(year, month0, day, 12, 0, 0);
-  return d.toISOString().slice(0, 10);
+  return `${year}-${String(month0 + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
 function monthLabel(year: number, month0: number): string {
-  const label = new Date(year, month0, 1).toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
+  const label = new Date(year, month0, 1).toLocaleDateString('it-IT', { month: 'long' });
   return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+/** What a day's circle shows about the calorie goal: reached (✓), close, or off. */
+type GoalLevel = 'reached' | 'close' | 'off';
+function levelOf(state: GoalBandState): GoalLevel | null {
+  if (state === 'missing') return null;
+  if (state === 'reached') return 'reached';
+  return state === 'deficitShort' || state === 'surplusShort' ? 'close' : 'off';
 }
 
 export type DayCalendarModalProps = {
   visible: boolean;
   selectedDate: string;
-  /** Whether a given date gets the small dot marker — e.g. "has logged
-   * food" for Nutrition, "workout done" for Training. A plain predicate
-   * (rather than a precomputed Set) so callers can answer for any date
-   * the popup happens to page to, not just a pre-enumerated range. */
-  isDayMarked: (date: string) => boolean;
+  /** Whether a given date gets the small dot marker — e.g. "workout done" for Training. A plain predicate so callers can answer for any month the sheet pages to. Ignored when `showGoalStatus` is on. */
+  isDayMarked?: (date: string) => boolean;
+  /** Colours every day by how its calorie balance stands against its goal (✓ reached, close, off), with a legend. */
+  showGoalStatus?: boolean;
   onSelectDate: (date: string) => void;
   onClose: () => void;
 };
 
-/** A full month-grid popup opened from a screen's header calendar icon —
- * lets the user jump straight to any day across months (unlike the
- * always-visible week strip, which only pages a week at a time), with a
- * dot marker on days that satisfy `isDayMarked`. */
-export function DayCalendarModal({ visible, selectedDate, isDayMarked, onSelectDate, onClose }: DayCalendarModalProps) {
+/**
+ * The calendar: a bottom sheet like Profilo and Promemoria (same rise, same close
+ * gestures), holding an iOS-style month — the month in large type with its arrows,
+ * round day numbers, today in the accent colour, the picked day ringed. Swipe the
+ * grid sideways (or use the arrows) to change month.
+ */
+export function DayCalendarModal({ visible, selectedDate, isDayMarked, showGoalStatus = false, onSelectDate, onClose }: DayCalendarModalProps) {
+  return (
+    <Modal visible={visible} transparent animationType="none" statusBarTranslucent onRequestClose={onClose}>
+      {visible ? <CalendarSheet selectedDate={selectedDate} isDayMarked={isDayMarked} showGoalStatus={showGoalStatus} onSelectDate={onSelectDate} onClose={onClose} /> : null}
+    </Modal>
+  );
+}
+
+type SheetProps = Omit<DayCalendarModalProps, 'visible'>;
+
+function CalendarSheet(props: SheetProps) {
+  return props.showGoalStatus ? <WithGoalStatus {...props} /> : <Calendar {...props} statusOf={null} />;
+}
+
+/** Split out so the stores behind the goal reading are only read when the legend is shown. */
+function WithGoalStatus(props: SheetProps) {
+  const statusOf = useDayGoalStatus();
+  return <Calendar {...props} statusOf={statusOf} />;
+}
+
+function Calendar({ selectedDate, isDayMarked, statusOf, onSelectDate, onClose }: SheetProps & { statusOf: ((date: string) => GoalBandState) | null }) {
   const theme = useTheme();
+  const today = daysAgoISO(0);
   const selected = new Date(selectedDate);
   const [viewedYear, setViewedYear] = useState(selected.getFullYear());
   const [viewedMonth0, setViewedMonth0] = useState(selected.getMonth());
 
-  // Reset the viewed month to selectedDate's whenever the popup reopens —
-  // "adjust state during render" (React's own recommended replacement for
-  // an effect here) rather than an effect, since this only needs to run
-  // in response to a prop change, not to synchronize with anything external.
-  const [wasVisible, setWasVisible] = useState(visible);
-  if (visible !== wasVisible) {
-    setWasVisible(visible);
-    if (visible) {
-      setViewedYear(selected.getFullYear());
-      setViewedMonth0(selected.getMonth());
-    }
-  }
-
-  const goToAdjacentMonth = (delta: number) => {
-    let month0 = viewedMonth0 + delta;
-    let year = viewedYear;
-    if (month0 < 0) {
-      month0 = 11;
-      year -= 1;
-    } else if (month0 > 11) {
-      month0 = 0;
-      year += 1;
-    }
-    setViewedMonth0(month0);
-    setViewedYear(year);
+  const goToMonth = (delta: number) => {
+    hapticSelection();
+    const d = new Date(viewedYear, viewedMonth0 + delta, 1);
+    setViewedYear(d.getFullYear());
+    setViewedMonth0(d.getMonth());
+  };
+  const goToToday = () => {
+    hapticSelection();
+    const d = new Date(today);
+    setViewedYear(d.getFullYear());
+    setViewedMonth0(d.getMonth());
   };
 
+  // Sideways swipe on the grid changes month; a mostly-vertical drag is left to the sheet (it closes on a pull down).
+  const swipe = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 14 && Math.abs(g.dx) > Math.abs(g.dy) * 1.5,
+        onPanResponderRelease: (_, g) => {
+          if (g.dx <= -SWIPE_DISTANCE) goToMonth(1);
+          else if (g.dx >= SWIPE_DISTANCE) goToMonth(-1);
+        },
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [viewedYear, viewedMonth0]
+  );
+
   const leadingBlanks = mondayIndex(new Date(viewedYear, viewedMonth0, 1));
-  const totalDays = daysInMonth(viewedYear, viewedMonth0);
   const cells: (string | null)[] = [
     ...Array.from({ length: leadingBlanks }, () => null),
-    ...Array.from({ length: totalDays }, (_, i) => isoDate(viewedYear, viewedMonth0, i + 1)),
+    ...Array.from({ length: daysInMonth(viewedYear, viewedMonth0) }, (_, i) => isoDate(viewedYear, viewedMonth0, i + 1)),
   ];
+  while (cells.length % 7 !== 0) cells.push(null);
+  const weeks = Array.from({ length: cells.length / 7 }, (_, w) => cells.slice(w * 7, w * 7 + 7));
+
+  const levelColor: Record<GoalLevel, string> = { reached: theme.balanceGoalScale[2], close: theme.brandYellow, off: theme.accent };
+  const viewingOtherMonth = new Date(today).getMonth() !== viewedMonth0 || new Date(today).getFullYear() !== viewedYear;
 
   return (
-    <GlassPopup visible={visible} onClose={onClose}>
-          <View style={styles.header}>
-            <ThemedText type="subtitle" style={{ flex: 1 }}>
-              Calendario
-            </ThemedText>
-            <Pressable onPress={onClose} hitSlop={11} accessibilityRole="button" accessibilityLabel="Chiudi">
-              <Icon name="close" size={22} color={theme.text} />
+    <SheetScreen title="Calendario" onClose={onClose} scroll={false}>
+      {(close) => (
+        <View style={styles.body}>
+          <View style={styles.monthRow}>
+            <View style={styles.monthTitle}>
+              <ThemedText style={styles.month} accessibilityRole="header">
+                {monthLabel(viewedYear, viewedMonth0)}
+              </ThemedText>
+              <ThemedText style={styles.year} themeColor="textSecondary">
+                {viewedYear}
+              </ThemedText>
+            </View>
+            {viewingOtherMonth ? (
+              <Pressable onPress={goToToday} hitSlop={8} accessibilityRole="button" style={[styles.todayPill, { backgroundColor: theme.accentSoft }]}>
+                <ThemedText style={[styles.todayPillLabel, { color: theme.accent }]}>Oggi</ThemedText>
+              </Pressable>
+            ) : null}
+            <Pressable onPress={() => goToMonth(-1)} hitSlop={10} accessibilityRole="button" accessibilityLabel="Mese precedente" style={styles.arrow}>
+              <Icon name="arrowBack" size={24} color={theme.accent} />
             </Pressable>
-          </View>
-
-          <View style={styles.monthNavRow}>
-            <Pressable onPress={() => (hapticSelection(), goToAdjacentMonth(-1))} hitSlop={8} style={styles.navButton}>
-              <Icon name="arrowBack" size={18} color={theme.textSecondary} />
-            </Pressable>
-            <ThemedText type="smallBold">{monthLabel(viewedYear, viewedMonth0)}</ThemedText>
-            <Pressable onPress={() => (hapticSelection(), goToAdjacentMonth(1))} hitSlop={8} style={styles.navButton}>
-              <Icon name="chevronRight" size={18} color={theme.textSecondary} />
+            <Pressable onPress={() => goToMonth(1)} hitSlop={10} accessibilityRole="button" accessibilityLabel="Mese successivo" style={styles.arrow}>
+              <Icon name="chevronRight" size={24} color={theme.accent} />
             </Pressable>
           </View>
 
           <View style={styles.weekdayRow}>
             {WEEKDAY_LETTERS.map((letter, i) => (
               <View key={i} style={styles.cell}>
-                <ThemedText type="caption" themeColor="textTertiary" style={{ fontWeight: '700' }}>
+                <ThemedText style={styles.weekday} themeColor="textTertiary">
                   {letter}
                 </ThemedText>
               </View>
             ))}
           </View>
+          <View style={[styles.rule, { backgroundColor: theme.border }]} />
 
-          <View style={styles.grid}>
-            {cells.map((date, i) => {
-              if (!date) return <View key={`blank-${i}`} style={styles.cell} />;
-              const marked = isDayMarked(date);
-              const isSelected = date === selectedDate;
-              const today = isToday(date);
-              return (
-                <View key={date} style={styles.cell}>
-                  <Pressable
-                    onPress={() => {
-                      hapticSelection();
-                      onSelectDate(date);
-                      onClose();
-                    }}
-                    style={[
-                      styles.dayCircle,
-                      isSelected ? { backgroundColor: theme.accent, borderColor: theme.accent } : { borderColor: 'transparent' },
-                      !isSelected && today ? { borderColor: theme.accent } : null,
-                    ]}>
-                    <ThemedText
-                      type="small"
-                      style={{ fontWeight: '700', color: isSelected ? theme.onAccent : theme.text }}>
-                      {new Date(date).getDate()}
-                    </ThemedText>
-                    {marked ? (
-                      <View
+          <View {...swipe.panHandlers}>
+            {weeks.map((week, w) => (
+              <View key={w} style={styles.weekRow}>
+                {week.map((date, i) => {
+                  if (!date) return <View key={`blank-${i}`} style={styles.cell} />;
+                  const level = statusOf ? levelOf(statusOf(date)) : null;
+                  const marked = !statusOf && isDayMarked?.(date);
+                  const isSelected = date === selectedDate;
+                  const isToday = date === today;
+                  const color = level ? levelColor[level] : null;
+                  return (
+                    <View key={date} style={styles.cell}>
+                      <Pressable
+                        onPress={() => {
+                          hapticSelection();
+                          onSelectDate(date);
+                          close();
+                        }}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: isSelected }}
+                        accessibilityLabel={`${new Date(date).getDate()} ${monthLabel(viewedYear, viewedMonth0)}${isToday ? ', oggi' : ''}${level === 'reached' ? ', obiettivo raggiunto' : level === 'close' ? ', vicino all’obiettivo' : level === 'off' ? ', fuori obiettivo' : ''}`}
                         style={[
-                          styles.markedDot,
-                          { backgroundColor: isSelected ? theme.onAccent : theme.success },
-                        ]}
-                      />
-                    ) : null}
-                  </Pressable>
-                </View>
-              );
-            })}
+                          styles.circle,
+                          color ? { backgroundColor: withAlpha(color, level === 'reached' ? 0.22 : 0.26) } : null,
+                          isSelected ? { borderColor: theme.accent } : { borderColor: 'transparent' },
+                        ]}>
+                        <ThemedText style={[styles.dayNumber, { color: isToday ? theme.accent : theme.text }, (isToday || isSelected) && styles.dayNumberStrong]}>{new Date(date).getDate()}</ThemedText>
+                        {level === 'reached' ? (
+                          <View style={[styles.check, { backgroundColor: levelColor.reached, borderColor: theme.surfacePopup }]}>
+                            <Icon name="check" size={9} color="#FFFFFF" />
+                          </View>
+                        ) : null}
+                        {marked ? <View style={[styles.dot, { backgroundColor: theme.success }]} /> : null}
+                      </Pressable>
+                    </View>
+                  );
+                })}
+              </View>
+            ))}
           </View>
-    </GlassPopup>
+
+          {statusOf ? (
+            <View style={[styles.legend, { backgroundColor: theme.backgroundElement }]}>
+              <ThemedText style={styles.legendTitle} themeColor="textSecondary">
+                Obiettivo calorico del giorno
+              </ThemedText>
+              <LegendItem color={levelColor.reached} check label="Raggiunto" hint="deficit o surplus come da piano" />
+              <LegendItem color={levelColor.close} label="Vicino" hint="nella direzione giusta, ma non ancora l’obiettivo" />
+              <LegendItem color={levelColor.off} label="Fuori obiettivo" hint="troppe o troppo poche calorie rispetto al piano" />
+              <ThemedText style={styles.legendFootnote} themeColor="textTertiary">
+                I giorni senza colore non hanno pasti registrati.
+              </ThemedText>
+            </View>
+          ) : null}
+        </View>
+      )}
+    </SheetScreen>
   );
 }
 
+function LegendItem({ color, label, hint, check = false }: { color: string; label: string; hint: string; check?: boolean }) {
+  return (
+    <View style={styles.legendRow}>
+      <View style={[styles.legendSwatch, { backgroundColor: withAlpha(color, check ? 0.22 : 0.26) }]}>
+        {check ? <Icon name="check" size={13} color={color} /> : <View style={[styles.legendDot, { backgroundColor: color }]} />}
+      </View>
+      <View style={styles.legendText}>
+        <ThemedText style={styles.legendLabel}>{label}</ThemedText>
+        <ThemedText style={styles.legendHint} themeColor="textSecondary">
+          {hint}
+        </ThemedText>
+      </View>
+    </View>
+  );
+}
+
+function withAlpha(hex: string, alpha: number): string {
+  if (!/^#([0-9a-f]{6})$/i.test(hex)) return hex;
+  return `${hex}${Math.round(Math.min(Math.max(alpha, 0), 1) * 255).toString(16).padStart(2, '0')}`;
+}
+
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: Spacing.three,
-  },
-  monthNavRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: Spacing.three,
-  },
-  navButton: {
-    padding: 4,
-  },
-  weekdayRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  cell: {
-    width: `${100 / 7}%`,
-    aspectRatio: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dayCircle: {
-    width: '78%',
-    aspectRatio: 1,
-    maxWidth: 40,
-    borderRadius: Radius.pill,
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  markedDot: {
-    position: 'absolute',
-    bottom: 4,
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-  },
+  body: { flex: 1, paddingHorizontal: Layout.screenGutter, paddingTop: 8, paddingBottom: 24 },
+  monthRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },
+  monthTitle: { flex: 1, flexDirection: 'row', alignItems: 'baseline', gap: 8 },
+  month: { fontSize: 28, lineHeight: 34, fontWeight: '800', letterSpacing: -0.5 },
+  year: { fontSize: 20, lineHeight: 26, fontWeight: '500' },
+  arrow: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  todayPill: { height: 30, paddingHorizontal: 12, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  todayPillLabel: { fontSize: 13, fontWeight: '700' },
+  weekdayRow: { flexDirection: 'row' },
+  weekday: { fontSize: 12, fontWeight: '700' },
+  rule: { height: StyleSheet.hairlineWidth, marginTop: 6, marginBottom: 4 },
+  weekRow: { flexDirection: 'row' },
+  cell: { width: `${100 / 7}%`, height: 52, alignItems: 'center', justifyContent: 'center' },
+  circle: { width: CIRCLE, height: CIRCLE, borderRadius: CIRCLE / 2, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
+  dayNumber: { fontSize: 17, lineHeight: 22, fontWeight: '500' },
+  dayNumberStrong: { fontWeight: '800' },
+  check: { position: 'absolute', right: -3, bottom: -3, width: 16, height: 16, borderRadius: 8, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
+  dot: { position: 'absolute', bottom: 3, width: 5, height: 5, borderRadius: 2.5 },
+  legend: { marginTop: 18, borderRadius: 20, padding: 16, gap: 10 },
+  legendTitle: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4 },
+  legendRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  legendSwatch: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  legendDot: { width: 10, height: 10, borderRadius: 5 },
+  legendText: { flex: 1 },
+  legendLabel: { fontSize: 14, lineHeight: 18, fontWeight: '700' },
+  legendHint: { fontSize: 12, lineHeight: 16 },
+  legendFootnote: { fontSize: 12, lineHeight: 16 },
 });

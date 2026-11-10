@@ -5,6 +5,7 @@ import Svg, { Circle, Line, Path } from 'react-native-svg';
 
 import { useIsSelectedTab } from '@/hooks/use-is-selected-tab';
 import type { GoalBandCopy } from '@/components/home/goal-band-copy';
+import { goalStripColors, rgbOf } from '@/components/home/goal-strip-colors';
 import { ThemedText } from '@/components/themed-text';
 import { balancePosition, type GoalBand } from '@/domain/calorie-balance';
 import { useTheme } from '@/hooks/use-theme';
@@ -39,17 +40,6 @@ const GROW_OUT = 6;
 const GROW_STROKE = 3.5;
 /** How far the swelling reaches either side of the marker position, in degrees (the strips are 6° apart). */
 const REACH = 6;
-const CHAMPAGNE: Rgb = [248, 220, 149];
-
-type Rgb = [number, number, number];
-function rgbOf(color: string): Rgb | null {
-  const hex = /^#([0-9a-f]{6})/i.exec(color);
-  if (!hex) return null;
-  const n = parseInt(hex[1], 16);
-  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
-}
-const mix = (a: Rgb, b: Rgb, t: number): Rgb => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
-const css = (c: Rgb) => `rgb(${Math.round(c[0])},${Math.round(c[1])},${Math.round(c[2])})`;
 const px = (r: number, deg: number) => CX + r * Math.sin((deg * Math.PI) / 180);
 const py = (r: number, deg: number) => CY - r * Math.cos((deg * Math.PI) / 180);
 const arc = (r: number, from: number, to: number) => `M ${px(r, from)} ${py(r, from)} A ${r} ${r} 0 0 1 ${px(r, to)} ${py(r, to)}`;
@@ -109,22 +99,11 @@ export function GoalRing({ band, copy, value, goalText, inactive = false, onPres
   const k = Math.min(1.1, width / BASE_W);
   const noReading = inactive || band.state === 'missing';
 
-  const colors = useMemo(() => {
-    const [pale, soft, , deep] = theme.balanceGoalScale.map((c) => rgbOf(c) as Rgb);
-    const orange = rgbOf(theme.accent) as Rgb;
-    const track = rgbOf(theme.backgroundElement) ?? pale;
-    return Array.from({ length: STRIPS }, (_, i) => {
-      const d = (Math.abs(i - MID) / MID) * band.halfRangeKcal;
-      if (inactive) return css(mix(track, pale, i === MID ? 0.4 : 0));
-      let c: Rgb;
-      if (d <= band.toleranceKcal) c = mix(deep, soft, Math.pow(d / band.toleranceKcal, 1.1) * 0.9);
-      else {
-        const u = (d - band.toleranceKcal) / Math.max(1, band.halfRangeKcal - band.toleranceKcal);
-        c = u < 0.25 ? mix(soft, CHAMPAGNE, u / 0.25) : mix(CHAMPAGNE, orange, Math.min(1, Math.pow((u - 0.25) / 0.75, 0.9)));
-      }
-      return css(c);
-    });
-  }, [theme.balanceGoalScale, theme.accent, theme.backgroundElement, band.halfRangeKcal, band.toleranceKcal, inactive]);
+  const colors = useMemo(
+    () => goalStripColors(STRIPS, band, theme, inactive),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [theme.balanceGoalScale, theme.accent, theme.backgroundElement, band.halfRangeKcal, band.toleranceKcal, inactive]
+  );
 
   // Where a balance of `v` kcal sits on the ring, in degrees (surplus left, deficit right).
   const degOf = (v: number) => balancePosition(v - band.goalKcal, band.halfRangeKcal).position * SPAN;

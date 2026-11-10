@@ -238,7 +238,7 @@ export default function HomeScreen() {
   return (
     <ScreenScroll reveal header={<TabHeader title={`Ciao ${currentUser.name}`} subtitle={viewDateLabel} onCalendarPress={() => openPopup(() => setCalendarOpen(true))} />} contentContainerStyle={styles.page}>
       <View style={styles.weekStrip}>
-        <WeekStrip days={stripDays} selectedDate={viewDate} onSelect={setViewDate} />
+        <WeekStrip days={stripDays} selectedDate={viewDate} goalKcal={dailyGoalKcal} onSelect={setViewDate} />
       </View>
 
       <FlatCard radius={CARD_RADIUS} style={styles.oggiCard}>
@@ -452,7 +452,7 @@ export default function HomeScreen() {
       <DayCalendarModal
         visible={calendarOpen}
         selectedDate={viewDate}
-        isDayMarked={(date) => nutritionEntries.some((e) => e.date === date)}
+        showGoalStatus
         onSelectDate={setViewDate}
         onClose={() => setCalendarOpen(false)}
       />
