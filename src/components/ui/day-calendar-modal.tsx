@@ -156,7 +156,7 @@ function Calendar({ selectedDate, isDayMarked, statusOf, onSelectDate, onClose }
           </View>
           <View style={[styles.rule, { backgroundColor: theme.border }]} />
 
-          <View {...swipe.panHandlers}>
+          <View {...swipe.panHandlers} style={styles.grid}>
             {weeks.map((week, w) => (
               <View key={w} style={styles.weekRow}>
                 {week.map((date, i) => {
@@ -199,14 +199,13 @@ function Calendar({ selectedDate, isDayMarked, statusOf, onSelectDate, onClose }
 
           {statusOf ? (
             <View style={[styles.legend, { backgroundColor: theme.backgroundElement }]}>
-              <ThemedText style={styles.legendTitle} themeColor="textSecondary">
-                Obiettivo calorico del giorno
-              </ThemedText>
-              <LegendItem color={levelColor.reached} check label="Raggiunto" hint="deficit o surplus come da piano" />
-              <LegendItem color={levelColor.close} label="Vicino" hint="nella direzione giusta, ma non ancora l’obiettivo" />
-              <LegendItem color={levelColor.off} label="Fuori obiettivo" hint="troppe o troppo poche calorie rispetto al piano" />
+              <View style={styles.legendRow}>
+                <LegendItem color={levelColor.reached} check label="Raggiunto" />
+                <LegendItem color={levelColor.close} label="Vicino" />
+                <LegendItem color={levelColor.off} label="Fuori obiettivo" />
+              </View>
               <ThemedText style={styles.legendFootnote} themeColor="textTertiary">
-                I giorni senza colore non hanno pasti registrati.
+                Obiettivo calorico del giorno. Senza colore: nessun pasto registrato.
               </ThemedText>
             </View>
           ) : null}
@@ -216,18 +215,15 @@ function Calendar({ selectedDate, isDayMarked, statusOf, onSelectDate, onClose }
   );
 }
 
-function LegendItem({ color, label, hint, check = false }: { color: string; label: string; hint: string; check?: boolean }) {
+function LegendItem({ color, label, check = false }: { color: string; label: string; check?: boolean }) {
   return (
-    <View style={styles.legendRow}>
+    <View style={styles.legendItem}>
       <View style={[styles.legendSwatch, { backgroundColor: withAlpha(color, check ? 0.22 : 0.26) }]}>
-        {check ? <Icon name="check" size={13} color={color} /> : <View style={[styles.legendDot, { backgroundColor: color }]} />}
+        {check ? <Icon name="check" size={12} color={color} /> : <View style={[styles.legendDot, { backgroundColor: color }]} />}
       </View>
-      <View style={styles.legendText}>
-        <ThemedText style={styles.legendLabel}>{label}</ThemedText>
-        <ThemedText style={styles.legendHint} themeColor="textSecondary">
-          {hint}
-        </ThemedText>
-      </View>
+      <ThemedText style={styles.legendLabel}>
+        {label}
+      </ThemedText>
     </View>
   );
 }
@@ -249,20 +245,20 @@ const styles = StyleSheet.create({
   weekdayRow: { flexDirection: 'row' },
   weekday: { fontSize: 12, fontWeight: '700' },
   rule: { height: StyleSheet.hairlineWidth, marginTop: 6, marginBottom: 4 },
-  weekRow: { flexDirection: 'row' },
-  cell: { width: `${100 / 7}%`, height: 52, alignItems: 'center', justifyContent: 'center' },
-  circle: { width: CIRCLE, height: CIRCLE, borderRadius: CIRCLE / 2, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
+  // The month's rows share whatever height the sheet has, so the page never needs to scroll (4 to 6 rows).
+  grid: { flex: 1, minHeight: 0 },
+  weekRow: { flex: 1, flexDirection: 'row', maxHeight: 58 },
+  cell: { width: `${100 / 7}%`, alignItems: 'center', justifyContent: 'center' },
+  circle: { height: '86%', maxHeight: CIRCLE, aspectRatio: 1, borderRadius: CIRCLE, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
   dayNumber: { fontSize: 17, lineHeight: 22, fontWeight: '500' },
   dayNumberStrong: { fontWeight: '800' },
   check: { position: 'absolute', right: -3, bottom: -3, width: 16, height: 16, borderRadius: 8, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   dot: { position: 'absolute', bottom: 3, width: 5, height: 5, borderRadius: 2.5 },
-  legend: { marginTop: 18, borderRadius: 20, padding: 16, gap: 10 },
-  legendTitle: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4 },
-  legendRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  legendSwatch: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
-  legendDot: { width: 10, height: 10, borderRadius: 5 },
-  legendText: { flex: 1 },
-  legendLabel: { fontSize: 14, lineHeight: 18, fontWeight: '700' },
-  legendHint: { fontSize: 12, lineHeight: 16 },
+  legend: { marginTop: 12, borderRadius: 18, paddingVertical: 12, paddingHorizontal: 14, gap: 8 },
+  legendRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', columnGap: 10, rowGap: 6 },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  legendSwatch: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  legendDot: { width: 9, height: 9, borderRadius: 4.5 },
+  legendLabel: { fontSize: 13, lineHeight: 17, fontWeight: '700' },
   legendFootnote: { fontSize: 12, lineHeight: 16 },
 });
