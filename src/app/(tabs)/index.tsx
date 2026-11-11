@@ -231,7 +231,6 @@ export default function HomeScreen() {
     : balanceReading.status === 'missing'
       ? `Nessun pasto registrato. Bruciate ${formatKcal(burnedKcal)} kcal. Obiettivo ${formatSignedKcal(dailyGoalKcal)} kcal.`
       : `Bilancio ${formatSignedKcal(balanceKcal)} kcal, ${balanceCaption}. Obiettivo ${formatSignedKcal(dailyGoalKcal)} kcal. Bruciate ${formatKcal(burnedKcal)}, assunte ${formatKcal(eatenKcal)} kcal.`;
-  const weekPill = weeklyProgress >= 1 ? 'Obiettivo raggiunto! 🎯' : weeklyProgress >= 0.6 ? 'Ci sei quasi!' : weeklyProgress >= 0.25 ? 'Stai andando bene' : 'Ogni giorno conta';
 
   return (
     <ScreenScroll reveal header={<TabHeader title={`Ciao ${currentUser.name}`} subtitle={viewDateLabel} onCalendarPress={() => openPopup(() => setCalendarOpen(true))} />} contentContainerStyle={styles.page}>
@@ -261,8 +260,10 @@ export default function HomeScreen() {
           accessibilityLabel={balanceA11y}
         />
 
-        <View style={[styles.oggiDivider, { backgroundColor: theme.border }]} />
+      </FlatCard>
 
+      {/* Assunte and bruciate: their own widget, apart from the balance gauge above. */}
+      <FlatCard radius={CARD_RADIUS} style={styles.barsCard}>
         <EnergyBars
           eatenKcal={isFutureDay ? 0 : eatenKcal}
           eatenTargetKcal={calorieTarget > 0 ? calorieTarget : fullDay.total}
@@ -297,32 +298,33 @@ export default function HomeScreen() {
       </View>
 
       <View style={{ marginTop: 24 }}>
-        <SectionHeader title="Questa settimana" action="Riepilogo" onActionPress={() => router.push('/weekly-summary' as Href)} />
+        <SectionHeader title="Questa settimana" />
       </View>
       <FlatCard radius={CARD_RADIUS} style={styles.weekCard}>
         <View style={styles.weekTitleRow}>
           <View style={styles.weekTitleLeft}>
             <Icon name="target" size={22} color={theme.accent} />
-            <ThemedText style={styles.weekTitle}>{weeklyGoalKcal >= 0 ? 'Surplus' : 'Deficit'} settimanale</ThemedText>
+            <ThemedText style={styles.weekTitle}>Obiettivo {weeklyGoalKcal >= 0 ? 'surplus' : 'deficit'} settimanale</ThemedText>
           </View>
           <Pressable onPress={() => setDetailsFocus('week')} hitSlop={8} style={styles.linkRow}>
             <ThemedText style={[styles.linkText, { color: theme.accent }]}>Dettagli</ThemedText>
             <Icon name="chevronRight" size={13} color={theme.accent} />
           </Pressable>
         </View>
-        <View style={styles.weekValueRow}>
-          <View style={styles.weekValueLeft}>
-            <ThemedText style={styles.weekValue}>{formatSignedKcal(weeklySoFarKcal)}</ThemedText>
-            <ThemedText style={styles.weekGoal} themeColor="textTertiary">
-              /{formatSignedKcal(weeklyGoalKcal)} kcal
+        {/* The weekly goal is the headline; what has been done so far sits under it. */}
+        <View style={styles.weekHero}>
+          <View style={styles.weekGoalRow}>
+            <ThemedText style={styles.weekGoalValue}>{formatSignedKcal(weeklyGoalKcal)}</ThemedText>
+            <ThemedText style={styles.weekGoalUnit} themeColor="textSecondary">
+              kcal
             </ThemedText>
           </View>
-          <View style={[styles.weekPill, { backgroundColor: withAlpha(theme.brandGreen, 0.14) }]}>
-            <ThemedText style={[styles.weekPillText, { color: theme.brandGreen }]}>{weekPill}</ThemedText>
+          <View style={styles.weekSoFarRow}>
+            <ThemedText style={styles.weekSoFarLabel} themeColor="textSecondary">
+              Finora
+            </ThemedText>
+            <ThemedText style={[styles.weekSoFarValue, { color: theme.accent }]}>{formatSignedKcal(weeklySoFarKcal)} kcal</ThemedText>
           </View>
-        </View>
-        <View style={[styles.weekTrack, { backgroundColor: theme.accentSoft }]}>
-          <AnimatedFill progress={weeklyProgress} delay={120} style={[styles.weekFill, { backgroundColor: theme.accent }]} />
         </View>
 
         <View style={styles.chartRow}>
@@ -613,10 +615,10 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     fontWeight: '700',
   },
-  oggiDivider: {
-    height: StyleSheet.hairlineWidth,
-    marginTop: 18,
-    marginBottom: 18,
+  barsCard: {
+    marginTop: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
   },
   actionsRow: {
     flexDirection: 'row',
@@ -672,49 +674,43 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     fontWeight: '700',
   },
-  weekValueRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 8,
-    gap: 8,
+  weekHero: {
+    marginTop: 10,
+    marginBottom: 6,
+    gap: 2,
   },
-  weekValueLeft: {
+  weekGoalRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    gap: 4,
-    flexShrink: 1,
+    gap: 6,
   },
-  weekValue: {
-    fontSize: 26,
-    lineHeight: 32,
+  weekGoalValue: {
+    fontSize: 40,
+    lineHeight: 46,
     fontWeight: '800',
-    letterSpacing: -0.6,
+    letterSpacing: -1.2,
+    fontVariant: ['tabular-nums'],
   },
-  weekGoal: {
-    fontSize: 12,
-    lineHeight: 16,
+  weekGoalUnit: {
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: '600',
+  },
+  weekSoFarRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 6,
+  },
+  weekSoFarLabel: {
+    fontSize: 13,
+    lineHeight: 18,
     fontWeight: '500',
   },
-  weekPill: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
-  },
-  weekPillText: {
-    fontSize: 12,
-    lineHeight: 16,
+  weekSoFarValue: {
+    fontSize: 15,
+    lineHeight: 20,
     fontWeight: '700',
-  },
-  weekTrack: {
-    marginTop: 12,
-    height: 14,
-    borderRadius: 7,
-    overflow: 'hidden',
-  },
-  weekFill: {
-    height: '100%',
-    borderRadius: 7,
+    fontVariant: ['tabular-nums'],
   },
   chartRow: {
     flexDirection: 'row',
