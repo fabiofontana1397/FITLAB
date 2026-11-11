@@ -21,19 +21,19 @@ export type WeekStripDay = {
   fullDayBurnedKcal: number;
 };
 
-const W = 40;
-const H = 29;
-const STROKE = 4;
+const W = 48;
+const H = 38;
+const STROKE = 5;
 const CX = W / 2;
 /** The arc's centre sits low in the box so the number fits under its curve. */
-const CY = H - 6;
-const R = 13;
+const CY = H - 9;
+const R = 18;
 const STRIPS = 13;
 const MID = (STRIPS - 1) / 2;
 const STEP = 180 / STRIPS;
-const MARKER_W = 3.2;
+const MARKER_W = 3.4;
 /** Half the marker's length across the arc; with R and its rounded ends it stays inside the box even at the far ends of the range. */
-const MARKER_HALF = 3.5;
+const MARKER_HALF = 3.2;
 
 const px = (deg: number, r = R) => CX + r * Math.sin((deg * Math.PI) / 180);
 const py = (deg: number, r = R) => CY - r * Math.cos((deg * Math.PI) / 180);
@@ -114,6 +114,6 @@ const styles = StyleSheet.create({
   cell: { flex: 1, alignItems: 'center', gap: 6, paddingVertical: 8, borderRadius: 16, borderCurve: 'continuous' },
   letter: { fontSize: 12, lineHeight: 16, fontWeight: '600' },
   ring: { width: W, height: H, alignItems: 'center', justifyContent: 'flex-end' },
-  num: { fontSize: 12, lineHeight: 15, fontWeight: '600', marginBottom: 1 },
+  num: { fontSize: 13, lineHeight: 16, fontWeight: '600', marginBottom: 1 },
   numToday: { fontWeight: '800' },
 });
