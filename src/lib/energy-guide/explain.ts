@@ -8,13 +8,13 @@ import { formatKcal, formatSignedKcal } from '@/lib/format-kcal';
 /** Which colour a line's bullet takes (mapped to theme colours by the view). */
 export type ExplainTone = 'burned' | 'neutral' | 'goal' | 'surplus' | 'deficit';
 
-/** The descriptive lines under the gauge, rewritten from the example's current reading. */
+/** The descriptive lines under the ring and bars, rewritten from the example's current reading. */
 export function explain(day: DemoDay): { key: string; text: string; tone: ExplainTone }[] {
   const { reading, balanceKcal, goalKcal } = day;
   const kcal = formatKcal(balanceKcal);
   const side =
     reading.status === 'even'
-      ? 'in cima, al centro: assunte e consumate si equivalgono'
+      ? 'al centro: assunte e consumate si equivalgono'
       : reading.status === 'deficit'
         ? `a destra del centro: consumi ${kcal} kcal più di quante ne assumi`
         : `a sinistra del centro: assumi ${kcal} kcal più di quante ne consumi`;
@@ -23,18 +23,23 @@ export function explain(day: DemoDay): { key: string; text: string; tone: Explai
   const goal = formatSignedKcal(goalKcal);
   const goalText = reading.reached
     ? reading.goalKind === 'maintenance'
-      ? 'Il triangolo è nella zona verde: sei in linea con il mantenimento.'
-      : `Il triangolo è nella zona verde dell’obiettivo (${goal} kcal): obiettivo raggiunto.`
+      ? 'La listarella ingrandita è nella zona verde: sei in linea con il mantenimento.'
+      : `La listarella ingrandita è nella zona verde dell’obiettivo (${goal} kcal): obiettivo raggiunto.`
     : reading.towardGoal
-      ? `Il triangolo si avvicina alla zona verde dell’obiettivo (${goal} kcal): mancano ${formatKcal(toGoal)} kcal.`
-      : `Il triangolo è dal lato opposto alla zona verde dell’obiettivo (${goal} kcal): ti allontani.`;
+      ? `La listarella si avvicina alla zona verde dell’obiettivo (${goal} kcal): mancano ${formatKcal(toGoal)} kcal.`
+      : `La listarella è dal lato opposto alla zona verde dell’obiettivo (${goal} kcal): ti allontani.`;
 
   return [
     {
-      key: 'arcs',
-      text: `Arancione: consumate. Verde: assunte. Il pallino dove si incontrano è ${side}.`,
-      tone: 'burned',
+      key: 'ring',
+      text: `Le listarelle sono il bilancio: a destra il deficit, a sinistra il surplus. Quella ingrandita è ${side}.`,
+      tone: 'neutral',
     },
     { key: 'goal', text: goalText, tone: 'goal' },
+    {
+      key: 'bars',
+      text: 'Sotto: arancione le assunte rispetto al piano; verde le bruciate, chiaro il metabolismo e scuro l’attività.',
+      tone: 'burned',
+    },
   ];
 }

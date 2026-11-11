@@ -33,13 +33,13 @@ const PAGES: Page[] = [
     id: 'expenditure',
     title: 'Da dove arrivano le calorie consumate?',
     body: () =>
-      'Il consumo ha due parti e il totale è la loro somma: l’allenamento è già dentro il movimento, non viene contato due volte.',
-    chart: (day, play) => <EnergyExpenditureChart basalKcal={day.basalKcal} movementKcal={day.movementKcal} trainingKcal={day.trainingKcal} play={play} />,
+      'Come nella barra “Bruciate” della Home: il consumo ha due parti, metabolismo (chiaro) e attività (scuro), e il totale è la loro somma.',
+    chart: (day, play) => <EnergyExpenditureChart basalKcal={day.energy.resting + day.energy.everyday} movementKcal={day.energy.exercise} play={play} />,
   },
   {
     id: 'fitlab',
     title: 'Come leggere il grafico di FitLab',
-    body: () => 'Il grafico della Home, con i numeri dell’esempio.',
+    body: () => 'L’anello e le barre della Home, con i numeri dell’esempio.',
     skipBodyWhenCompact: true,
     chart: (day, play, compact, overflowPx) => <FitLabChartDemo day={day} play={play} compact={compact} overflowPx={overflowPx} />,
   },

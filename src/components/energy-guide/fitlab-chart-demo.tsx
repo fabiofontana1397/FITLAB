@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { useCountUp } from '@/components/energy-guide/use-play-value';
-import { GAUGE_ASPECT, GAUGE_MAX_WIDTH, OggiGauge } from '@/components/home/oggi-gauge';
+import { EnergyBars } from '@/components/home/energy-bars';
+import { goalBandCopy } from '@/components/home/goal-band-copy';
+import { GOAL_RING_ASPECT, GOAL_RING_WIDTH, GoalRing } from '@/components/home/goal-ring';
 import { ThemedText } from '@/components/themed-text';
-import { Icon, type IconName } from '@/components/ui/icon';
-import { balanceSideLabel, readBalance } from '@/domain/calorie-balance';
+import { balanceCaption, goalBand } from '@/domain/calorie-balance';
 import { useTheme } from '@/hooks/use-theme';
 import type { DemoDay } from '@/lib/energy-guide/demo-example';
 import { explain, type ExplainTone } from '@/lib/energy-guide/explain';
@@ -14,22 +14,22 @@ import { formatKcal, formatSignedKcal } from '@/lib/format-kcal';
 export type FitLabChartDemoProps = {
   day: DemoDay;
   play: boolean;
-  /** Short screens: the three Home columns are left out (the gauge says the same). */
+  /** Short screens: the two Home bars are left out (the notes say the same). */
   compact?: boolean;
-  /** How many px the page is taller than the room it has (0 when it fits): the gauge shrinks by what that takes, so every note stays in view. */
+  /** How many px the page is taller than the room it has (0 when it fits): the ring shrinks by what that takes, so every note stays in view. */
   overflowPx?: number;
 };
 
-/** The gauge is never drawn smaller than this wide. */
-const MIN_GAUGE_WIDTH = 170;
+/** The ring is never drawn smaller than this wide. */
+const MIN_RING_WIDTH = 190;
 
 /**
- * Last page: Home's own gauge (OggiGauge, unchanged) fed with the example's
- * numbers, under the same three columns Home shows, plus a running
- * explanation of what the arcs and the markers are saying right now.
+ * Last page: Home's own "Calorie di oggi" card (GoalRing and EnergyBars,
+ * unchanged) fed with the example's numbers, plus a running explanation of
+ * what the strips, the green zone and the bars are saying right now.
  *
- * Until the page is first shown the gauge gets an empty day, so its own
- * glide — the one it does on Home — starts when it comes into view.
+ * Until the page is first shown the ring and bars are empty, so their own
+ * entrance — the one they do on Home — starts when it comes into view.
  */
 export function FitLabChartDemo({ day, play, compact = false, overflowPx = 0 }: FitLabChartDemoProps) {
   const theme = useTheme();
@@ -41,54 +41,58 @@ export function FitLabChartDemo({ day, play, compact = false, overflowPx = 0 }: 
     // Adjusting state while rendering, from a changed prop: the way React asks for it.
     setSeenOverflow(overflowPx);
     if (overflowPx > 1 && available > 0) {
-      const drawn = Math.min(cap ?? Infinity, available, GAUGE_MAX_WIDTH);
-      setCap(Math.max(MIN_GAUGE_WIDTH, drawn - overflowPx / GAUGE_ASPECT - 1));
+      const drawn = Math.min(cap ?? Infinity, available, GOAL_RING_WIDTH);
+      setCap(Math.max(MIN_RING_WIDTH, drawn - overflowPx / GOAL_RING_ASPECT - 1));
     }
   }
-  const burnedKcal = play ? day.burnedKcal : 0;
-  const eatenKcal = play ? day.eatenKcal : 0;
-  const reading = play ? day.reading : readBalance({ eatenKcal: 0, burnedKcal: 0, goalKcal: day.goalKcal, toleranceKcal: day.toleranceKcal });
-  const shownBalance = useCountUp(day.balanceKcal, play);
+
+  // The same reading Home builds: the balance against the goal, and the gap split into intake and burned.
+  const band = useMemo(
+    () => goalBand({ reading: day.reading, eatenKcal: day.eatenKcal, burnedKcal: day.burnedKcal, plannedEatenKcal: day.plannedEatenKcal, dayComplete: true }),
+    [day]
+  );
+  const copy = goalBandCopy(band, { hasMeals: true, future: false });
+  const { resting, everyday, exercise } = day.energy;
+  const basalKcal = resting + everyday;
 
   return (
     <View style={styles.root}>
       <View
         style={cap != null ? { width: '100%', maxWidth: cap, alignSelf: 'center' } : undefined}
-        onLayout={(e) => setAvailable(e.nativeEvent.layout.width)}
-        accessible
-        accessibilityLabel={`Esempio del grafico di FitLab: bilancio ${formatSignedKcal(day.balanceKcal)} kcal, ${day.caption}. Obiettivo ${formatSignedKcal(day.goalKcal)} kcal. Consumate ${formatKcal(day.burnedKcal)}, assunte ${formatKcal(day.eatenKcal)} kcal.`}>
-        <OggiGauge
-          burnedKcal={burnedKcal}
-          eatenKcal={eatenKcal}
-          burnedColor={theme.accent}
-          eatenColor={theme.brandGreen}
-          reading={reading}
-          value={formatSignedKcal(play ? shownBalance : 0)}
-          goalLabel={`/${formatSignedKcal(day.goalKcal)} kcal`}
-          caption={play ? balanceSideLabel(day.reading) : ''}
-          toleranceKcal={day.toleranceKcal}
+        onLayout={(e) => setAvailable(e.nativeEvent.layout.width)}>
+        <GoalRing
+          band={band}
+          copy={copy}
+          inactive={!play}
+          value={formatSignedKcal(day.balanceKcal)}
+          goalText={`${formatSignedKcal(day.goalKcal)} kcal`}
+          accessibilityLabel={`Esempio del grafico di FitLab: bilancio ${formatSignedKcal(day.balanceKcal)} kcal, ${balanceCaption(day.reading)}. Obiettivo ${formatSignedKcal(day.goalKcal)} kcal. Bruciate ${formatKcal(day.burnedKcal)}, assunte ${formatKcal(day.eatenKcal)} kcal.`}
         />
       </View>
 
       {compact ? null : (
-      <View style={styles.row}>
-        <Column icon="flame" color={theme.accent} label="Bruciate" value={`${formatKcal(day.burnedKcal)} kcal`} />
-        <View style={[styles.divider, { backgroundColor: theme.border }]} />
-        <Column icon="target" color={theme.textSecondary} label="Obiettivo" value={`${formatSignedKcal(day.goalKcal)} kcal`} />
-        <View style={[styles.divider, { backgroundColor: theme.border }]} />
-        <Column icon="utensils" color={theme.brandGreen} label="Assunte" value={`${formatKcal(day.eatenKcal)} kcal`} />
-      </View>
+        <EnergyBars
+          eatenKcal={day.eatenKcal}
+          eatenTargetKcal={day.plannedEatenKcal}
+          basalKcal={basalKcal}
+          basalDayKcal={basalKcal}
+          exerciseKcal={exercise}
+          exerciseDayKcal={exercise}
+          inactive={!play}
+        />
       )}
 
       <View style={styles.notes}>
-        {explain(day).map((line) => (
-          <View key={line.key} style={styles.note}>
-            <View style={[styles.bullet, { backgroundColor: toneColor(line.tone, theme) }]} />
-            <ThemedText style={styles.noteText} themeColor="textSecondary">
-              {line.text}
-            </ThemedText>
-          </View>
-        ))}
+        {explain(day)
+          .filter((line) => !compact || line.key !== 'bars')
+          .map((line) => (
+            <View key={line.key} style={styles.note}>
+              <View style={[styles.bullet, { backgroundColor: toneColor(line.tone, theme) }]} />
+              <ThemedText style={styles.noteText} themeColor="textSecondary">
+                {line.text}
+              </ThemedText>
+            </View>
+          ))}
       </View>
     </View>
   );
@@ -97,7 +101,7 @@ export function FitLabChartDemo({ day, play, compact = false, overflowPx = 0 }: 
 function toneColor(tone: ExplainTone, theme: ReturnType<typeof useTheme>): string {
   switch (tone) {
     case 'burned':
-      return theme.accent;
+      return theme.brandGreen;
     case 'goal':
       return theme.balanceGoalScale[2];
     case 'surplus':
@@ -109,46 +113,9 @@ function toneColor(tone: ExplainTone, theme: ReturnType<typeof useTheme>): strin
   }
 }
 
-function Column({ icon, color, label, value }: { icon: IconName; color: string; label: string; value: string }) {
-  return (
-    <View style={styles.col}>
-      <Icon name={icon} size={20} color={color} />
-      <ThemedText style={styles.colLabel} themeColor="textTertiary">
-        {label}
-      </ThemedText>
-      <ThemedText style={styles.colValue} numberOfLines={1} adjustsFontSizeToFit>
-        {value}
-      </ThemedText>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   root: {
     gap: 14,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  col: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 2,
-  },
-  divider: {
-    width: StyleSheet.hairlineWidth,
-    height: 38,
-  },
-  colLabel: {
-    fontSize: 12,
-    lineHeight: 15,
-    fontWeight: '600',
-  },
-  colValue: {
-    fontSize: 14,
-    lineHeight: 18,
-    fontWeight: '800',
   },
   notes: {
     gap: 8,

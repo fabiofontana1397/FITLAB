@@ -42,7 +42,7 @@ test('1. intake below expenditure reads as a deficit on every chart', () => {
   assert.equal(balanceSide(day.balanceKcal, day.toleranceKcal), 'deficit');
   // Deficit sits right of equilibrium, as on Home's semi-ring.
   assert.ok(balancePosition(day.balanceKcal, day.reading.halfRangeKcal).position > 0);
-  assert.match(explain(day)[0].text, /a destra del centro/);
+  assert.match(explain(day)[0].text, /a destra/);
 });
 
 test('2. intake equal to expenditure reads as equilibrium', () => {

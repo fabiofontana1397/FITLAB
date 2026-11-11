@@ -92,7 +92,7 @@ async function assertPagesFit(page: Page) {
   await swipeTo(page, PAGE_COUNT - 1);
   await pause(900);
   const bottoms = [] as string[];
-  for (const note of [/Arancione: consumate/, /Il triangolo/]) {
+  for (const note of [/Le listarelle sono il bilancio/, /La listarella/]) {
     const box = await pageEl(page, PAGE_COUNT - 1).getByText(note).boundingBox();
     if (!box || box.y + box.height > pager.y + pager.height + 1) bottoms.push(`${note} ends below the pager`);
   }

@@ -8,23 +8,27 @@ import { Icon, type IconName } from '@/components/ui/icon';
 import { useTheme } from '@/hooks/use-theme';
 import { formatKcal } from '@/lib/format-kcal';
 
+/** `#rrggbb` with an alpha, as Home's bars do. */
+function alpha(hex: string, a: number): string {
+  if (!/^#([0-9a-f]{6})$/i.test(hex)) return hex;
+  return `${hex}${Math.round(a * 255).toString(16).padStart(2, '0')}`;
+}
+
 export type EnergyExpenditureChartProps = {
-  /** Resting energy (BMR). */
+  /** Metabolism, as Home's "Bruciate" bar splits it: resting energy (BMR) plus everyday movement. */
   basalKcal: number;
-  /** Everything else burned in the day, training included. basal + movement = total. */
+  /** Activity: the session and any logged exercise. basal + activity = total. */
   movementKcal: number;
-  /** The part of movementKcal from training and logged activities (already inside it). */
-  trainingKcal: number;
   play: boolean;
 };
 
 /**
- * Page 2: where the day's expenditure comes from. One stacked bar is the
- * whole day; its two parts grow one after the other. The total is the sum of
- * the two parts and nothing else — training is shown as "di cui", a slice of
- * movement, never added on top.
+ * Page 2: where the day's expenditure comes from, split and coloured exactly
+ * like Home's "Bruciate" bar: green for the day, the lighter part metabolism
+ * (resting + everyday movement), the deeper part activity (training and
+ * logged exercise). The total is the sum of the two and nothing else.
  */
-export function EnergyExpenditureChart({ basalKcal, movementKcal, trainingKcal, play }: EnergyExpenditureChartProps) {
+export function EnergyExpenditureChart({ basalKcal, movementKcal, play }: EnergyExpenditureChartProps) {
   const theme = useTheme();
   const totalKcal = basalKcal + movementKcal;
   const basalShare = totalKcal > 0 ? basalKcal / totalKcal : 0;
@@ -34,16 +38,16 @@ export function EnergyExpenditureChart({ basalKcal, movementKcal, trainingKcal, 
   const movementWidth = usePlayValue(movementShare, play, 380);
   const basalStyle = useAnimatedStyle(() => ({ width: `${basalWidth.value * 100}%` }));
   const movementStyle = useAnimatedStyle(() => ({ width: `${movementWidth.value * 100}%` }));
-  const basalColor = theme.accent;
-  const movementColor = theme.brandYellow;
+  const basalColor = alpha(theme.brandGreen, 0.42);
+  const movementColor = theme.brandGreen;
 
   return (
     <View
       style={styles.root}
       accessible
-      accessibilityLabel={`Esempio: consumo totale ${formatKcal(totalKcal)} kcal, di cui metabolismo basale ${formatKcal(basalKcal)} (${Math.round(basalShare * 100)}%) e attività e movimento ${formatKcal(movementKcal)} (${Math.round(movementShare * 100)}%).`}>
+      accessibilityLabel={`Esempio: consumo totale ${formatKcal(totalKcal)} kcal, di cui metabolismo ${formatKcal(basalKcal)} (${Math.round(basalShare * 100)}%) e attività ${formatKcal(movementKcal)} (${Math.round(movementShare * 100)}%).`}>
       <View style={styles.totalRow}>
-        <Icon name="flame" size={22} color={theme.accent} />
+        <Icon name="flameLine" size={22} color={theme.brandGreen} />
         <ThemedText style={styles.totalLabel} themeColor="textSecondary">
           Consumo totale
         </ThemedText>
@@ -58,8 +62,8 @@ export function EnergyExpenditureChart({ basalKcal, movementKcal, trainingKcal, 
       <Part
         icon="heart"
         color={basalColor}
-        title="Metabolismo basale"
-        body="Energia per le funzioni vitali a riposo."
+        title="Metabolismo"
+        body="Funzioni vitali a riposo e movimento di tutti i giorni."
         kcal={basalKcal}
         share={basalShare}
         play={play}
@@ -68,8 +72,8 @@ export function EnergyExpenditureChart({ basalKcal, movementKcal, trainingKcal, 
       <Part
         icon="footsteps"
         color={movementColor}
-        title="Attività fisica e movimento"
-        body={`Allenamenti, camminate e altro movimento. Di cui allenamento: ${formatKcal(trainingKcal)} kcal.`}
+        title="Attività"
+        body="Allenamento e attività che registri."
         kcal={movementKcal}
         share={movementShare}
         play={play}
