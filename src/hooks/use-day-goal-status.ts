@@ -20,7 +20,7 @@ import { useUserStore } from '@/store/user-store';
  * no meal logged. Only call it where it is needed (the calendar sheet): it reads
  * several stores.
  */
-export function useDayGoalStatus(): (date: string) => GoalBandState {
+export function useDayGoalStatus(): { statusOf: (date: string) => GoalBandState; dailyGoalKcal: number } {
   const today = daysAgoISO(0);
   const ctx = useUserContext();
   const currentUser = useUserStore();
@@ -40,7 +40,7 @@ export function useDayGoalStatus(): (date: string) => GoalBandState {
   const dietMonth = dietPlan?.months.find((m) => m.monthIndex === currentMonthIndex(dietPlan));
   const eatenByDate = new Map<string, number>();
   for (const e of nutritionEntries) eatenByDate.set(e.date, (eatenByDate.get(e.date) ?? 0) + macrosForEntry(e).kcal);
-  return (date: string): GoalBandState => {
+  const statusOf = (date: string): GoalBandState => {
     if (date > today) return 'missing';
     const eaten = eatenByDate.get(date) ?? 0;
     if (eaten <= 0) return 'missing';
@@ -57,4 +57,5 @@ export function useDayGoalStatus(): (date: string) => GoalBandState {
     const target = dietMonth?.weeklySplit[isoMondayIndex(date)]?.calorieTarget ?? dietMonth?.calorieTarget ?? currentUser.dailyCalorieTarget;
     return goalBand({ reading, eatenKcal: eaten, burnedKcal: burned, plannedEatenKcal: target, dayComplete: date < today }).state;
   };
+  return { statusOf, dailyGoalKcal: goalKcal };
 }
