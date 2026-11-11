@@ -23,15 +23,17 @@ export type WeekStripDay = {
 
 const W = 40;
 const H = 29;
-const STROKE = 4.5;
+const STROKE = 4;
 const CX = W / 2;
 /** The arc's centre sits low in the box so the number fits under its curve. */
 const CY = H - 6;
-const R = 16;
+const R = 13;
 const STRIPS = 13;
 const MID = (STRIPS - 1) / 2;
 const STEP = 180 / STRIPS;
-const MARKER_W = 4.4;
+const MARKER_W = 3.2;
+/** Half the marker's length across the arc; with R and its rounded ends it stays inside the box even at the far ends of the range. */
+const MARKER_HALF = 3.5;
 
 const px = (deg: number, r = R) => CX + r * Math.sin((deg * Math.PI) / 180);
 const py = (deg: number, r = R) => CY - r * Math.cos((deg * Math.PI) / 180);
@@ -68,8 +70,8 @@ function MiniGauge({ day, goalKcal, markerRing }: { day: WeekStripDay; goalKcal:
       </G>
       {tracked ? (
         <>
-          <Line x1={px(markerDeg, R - 6.5)} y1={py(markerDeg, R - 6.5)} x2={px(markerDeg, R + 6.5)} y2={py(markerDeg, R + 6.5)} stroke={markerRing} strokeWidth={MARKER_W + 2.4} strokeLinecap="round" />
-          <Line x1={px(markerDeg, R - 6.5)} y1={py(markerDeg, R - 6.5)} x2={px(markerDeg, R + 6.5)} y2={py(markerDeg, R + 6.5)} stroke={markerColor} strokeWidth={MARKER_W} strokeLinecap="round" />
+          <Line x1={px(markerDeg, R - MARKER_HALF)} y1={py(markerDeg, R - MARKER_HALF)} x2={px(markerDeg, R + MARKER_HALF)} y2={py(markerDeg, R + MARKER_HALF)} stroke={markerRing} strokeWidth={MARKER_W + 2} strokeLinecap="round" />
+          <Line x1={px(markerDeg, R - MARKER_HALF)} y1={py(markerDeg, R - MARKER_HALF)} x2={px(markerDeg, R + MARKER_HALF)} y2={py(markerDeg, R + MARKER_HALF)} stroke={markerColor} strokeWidth={MARKER_W} strokeLinecap="round" />
         </>
       ) : null}
     </>
