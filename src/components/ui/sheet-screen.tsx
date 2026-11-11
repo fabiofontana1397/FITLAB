@@ -23,6 +23,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { RevealBoundary } from '@/components/motion/reveal';
 import { ScrollDefaults } from '@/constants/scroll';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
@@ -204,6 +205,7 @@ export function SheetScreen({ title, eyebrow, leading, children, fallbackHref = 
   const top = Math.max(insets.top + TOP_GAP_MIN, Math.round(height * TOP_GAP_SHARE));
 
   return (
+    <RevealBoundary>
     <View style={styles.overlay}>
       <Animated.View style={[StyleSheet.absoluteFill, styles.backdrop, { backgroundColor: dark ? 'rgba(0,0,0,0.55)' : 'rgba(0,0,0,0.22)' }, backdropStyle]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={close} accessibilityLabel="Chiudi" />
@@ -261,6 +263,7 @@ export function SheetScreen({ title, eyebrow, leading, children, fallbackHref = 
         </Animated.View>
       </View>
     </View>
+    </RevealBoundary>
   );
 }
 

@@ -4,6 +4,7 @@ import { Modal, Platform, Pressable, StyleSheet, View, type StyleProp, type View
 import Animated, { Easing, interpolate, runOnJS, useAnimatedProps, useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, withTiming, type SharedValue } from 'react-native-reanimated';
 
 import { GlassSurface } from '@/components/glass/glass-surface';
+import { RevealBoundary } from '@/components/motion/reveal';
 import { SpringPopup } from '@/constants/motion';
 import { Radius, Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -82,6 +83,7 @@ export function GlassPopup({ visible, onClose, children, style, maxWidth = POPUP
 
   return (
     <Modal visible={mounted} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
+      <RevealBoundary>
       <View style={styles.root}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose}>
           <Animated.View style={[StyleSheet.absoluteFill, scrimStyle, { backgroundColor: theme.scrimSoft }]} />
@@ -101,6 +103,7 @@ export function GlassPopup({ visible, onClose, children, style, maxWidth = POPUP
           </GlassSurface>
         </PopupCard>
       </View>
+      </RevealBoundary>
     </Modal>
   );
 }

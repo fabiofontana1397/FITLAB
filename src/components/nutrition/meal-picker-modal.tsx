@@ -135,7 +135,7 @@ function MealPickerForm({ date, onClose, onPick }: Omit<MealPickerModalProps, 'v
                   accessibilityLabel={`${slot.label}, aggiungi un alimento`}
                   style={({ pressed }) => [
                     styles.box,
-                    { backgroundColor: theme.backgroundElevated, borderColor: done ? withAlpha(color, 0.45) : theme.boxEdge, opacity: pressed ? 0.8 : 1 },
+                    { backgroundColor: theme.backgroundElevated, opacity: pressed ? 0.8 : 1 },
                   ]}>
                   <View style={[styles.boxIcon, { backgroundColor: withAlpha(color, 0.14) }]}>
                     <Icon name={slot.icon} size={22} color={color} />
@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
   macroLabel: { fontSize: 11, lineHeight: 14, fontWeight: '500' },
   sectionTitle: { fontSize: 17, lineHeight: 22, fontWeight: '800', letterSpacing: -0.2 },
   list: { gap: 10 },
-  box: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 20, borderWidth: 1.5, paddingHorizontal: 14, paddingVertical: 12 },
+  box: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 12 },
   boxIcon: { width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center' },
   boxBody: { flex: 1, minWidth: 0, gap: 3 },
   boxTitleRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 },

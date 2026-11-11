@@ -35,6 +35,15 @@ export const ScrollRevealContext = createContext<ScrollRevealContextValue | null
 const ALWAYS_REVEALED = makeMutable(1);
 const RevealProgressContext = createContext<SharedValue<number>>(ALWAYS_REVEALED);
 
+/**
+ * Marks the start of a layer that lives above the page — a Modal, a sheet, a popup. Those are rendered from inside the
+ * screen's own tree, so without this they would inherit the progress of the Reveal wrapped around them (which has no
+ * size, is never "in view" and stays at 0), and every FlatCard in them would fade out and stay invisible.
+ */
+export function RevealBoundary({ children }: { children: React.ReactNode }) {
+  return <RevealProgressContext.Provider value={ALWAYS_REVEALED}>{children}</RevealProgressContext.Provider>;
+}
+
 /** The enclosing Reveal's 0→1 entrance progress (1 outside any Reveal). */
 export function useRevealProgress() {
   return useContext(RevealProgressContext);
