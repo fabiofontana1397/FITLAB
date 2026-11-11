@@ -8,6 +8,7 @@ import { CountUpText } from '@/components/energy-guide/count-up-text';
 import { usePlayValue } from '@/components/energy-guide/use-play-value';
 import { ThemedText } from '@/components/themed-text';
 import { CheckinInfoPopup } from '@/components/training/checkin-info-popup';
+import { PrimaryButton } from '@/components/ui/primary-button';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { OnBrand } from '@/constants/theme';
@@ -260,6 +261,14 @@ function PlanHeroCard({
           </View>
         </View>
 
+        <GoalBlock icon="flag" label="Obiettivo del piano" text={planGoal} />
+      </Pressable>
+
+      <PrimaryButton label="Visualizza piano" icon="calendar" variant="outline" onPress={onPress} />
+
+      <View style={[styles.divider, { backgroundColor: theme.borderStrong }]} />
+
+      <View style={styles.body}>
         {/* The running month: a ring through its 30 days, and what it is for. */}
         <View style={styles.monthRow}>
           <View style={{ width: ringSize, height: ringSize, alignItems: 'center', justifyContent: 'center' }} accessibilityLabel={`Giorno ${dayInMonth} di 30 del Mese ${monthIndex}`}>
@@ -313,12 +322,7 @@ function PlanHeroCard({
           </View>
         </View>
 
-        {/* What this month is for, then what the whole plan is for. */}
-        <View style={styles.goals}>
-          <GoalBlock icon="target" label="Obiettivo del mese" text={monthGoal} />
-          <GoalBlock icon="flag" label="Obiettivo del piano" text={planGoal} />
-        </View>
-
+        <GoalBlock icon="target" label="Obiettivo del mese" text={monthGoal} />
         <View style={[styles.statsPanel, { backgroundColor: theme.backgroundElevated }]}>
           {stats.map((st, i) => (
             <View key={st.label} style={[styles.stat, i > 0 && { borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: theme.borderStrong }]}>
@@ -332,7 +336,7 @@ function PlanHeroCard({
             </View>
           ))}
         </View>
-      </Pressable>
+      </View>
 
       {pending ? (
         <>
@@ -435,7 +439,7 @@ const styles = StyleSheet.create({
   chip: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 14, marginTop: 2 },
   chipText: { fontSize: 13, lineHeight: 17, fontWeight: '600' },
   monthEnd: { fontSize: 12, lineHeight: 16 },
-  goals: { gap: 10 },
+  divider: { height: StyleSheet.hairlineWidth, marginVertical: 2 },
   goalBlock: { borderRadius: 18, padding: 14, gap: 6, boxShadow: '0px 4px 16px rgba(20,20,25,0.06)' },
   goalHead: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   goalText: { fontSize: 15, lineHeight: 21 },
