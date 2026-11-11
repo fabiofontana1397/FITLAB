@@ -37,6 +37,7 @@ const TABS = [
   { name: 'Allenamento', path: '/training', scrollId: 'training-list', storage: { 'fitlab/plans': { state: { dietPlan: null, trainingPlan: TRAINING_PLAN }, version: 0 } } },
   { name: 'Nutrizione', path: '/nutrition', scrollId: 'screen-scroll' },
   { name: 'Progressi', path: '/progress', scrollId: 'screen-scroll' },
+  { name: 'Piani', path: '/plans', scrollId: 'screen-scroll' },
 ];
 
 async function main() {

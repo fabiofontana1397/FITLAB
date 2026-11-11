@@ -20,7 +20,6 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { WeekStrip, type WeekStripDay } from '@/components/home/week-strip';
 import { TabHeader } from '@/components/tab-header';
 import { LogActivityModal } from '@/components/training/log-activity-modal';
-import { DietPlanSummaryCard, PlanSummaryCard } from '@/components/training/plan-summary-card';
 import { InfoPopover } from '@/components/ui/info-popover';
 import { FoodSearchModal } from '@/components/nutrition/food-search-modal';
 import { MealPickerModal } from '@/components/nutrition/meal-picker-modal';
@@ -76,11 +75,10 @@ export default function HomeScreen() {
   const [logActivityOpen, setLogActivityOpen] = useState(false);
   const [registerMealOpen, setRegisterMealOpen] = useState(false);
   const [mealSlot, setMealSlot] = useState<MealSlot | null>(null);
-  // Home shows both plan cards, so it builds a missing or outdated plan itself instead of waiting for the
-  // person to open Allenamento or Nutrizione. Meanwhile any diet plan the overview can render keeps its card.
+  // Home's energy figures read both plans, so it builds a missing or outdated plan itself instead of waiting
+  // for the person to open Allenamento, Nutrizione or Piani.
   useEnsurePlan('training');
   useEnsurePlan('diet');
-  const shownDietPlan = dietPlan && dietPlan.months.length > 0 && dietPlan.months.every((m) => Array.isArray(m.weeklySplit)) ? dietPlan : null;
 
   // On iOS a Modal can't present (or navigation run) while another is still dismissing.
   const afterModal = (fn: () => void) => (Platform.OS === 'ios' ? setTimeout(fn, 350) : fn());
@@ -297,14 +295,6 @@ export default function HomeScreen() {
           onPress={() => openPopup(() => setLogActivityOpen(true))}
         />
       </View>
-
-      {/* The two programs' spec cards: each opens its plan (from the months down) in a sheet. */}
-      {trainingPlan || shownDietPlan ? (
-        <View style={styles.journeys}>
-          {trainingPlan ? <PlanSummaryCard plan={trainingPlan} goal={currentUser.goal} onPress={() => router.push('/training-plan')} /> : null}
-          {shownDietPlan ? <DietPlanSummaryCard plan={shownDietPlan} goal={currentUser.goal} onPress={() => router.push('/diet-plan')} /> : null}
-        </View>
-      ) : null}
 
       <View style={{ marginTop: 24 }}>
         <SectionHeader title="Questa settimana" action="Riepilogo" onActionPress={() => router.push('/weekly-summary' as Href)} />
@@ -661,10 +651,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 15,
     fontWeight: '700',
-  },
-  journeys: {
-    marginTop: 18,
-    gap: 12,
   },
   weekCard: {
     paddingHorizontal: 14,

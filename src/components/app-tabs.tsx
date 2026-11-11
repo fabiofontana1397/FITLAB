@@ -58,6 +58,7 @@ const TAB_ITEMS: { name: string; href: Href; label: string; icon: IconName }[] =
   { name: 'training', href: '/training', label: 'Training', icon: 'training' },
   { name: 'nutrition', href: '/nutrition', label: 'Nutrizione', icon: 'nutrition' },
   { name: 'progress', href: '/progress', label: 'Progressi', icon: 'progress' },
+  { name: 'plans', href: '/plans', label: 'Piani', icon: 'plans' },
 ];
 
 export default function AppTabs() {
