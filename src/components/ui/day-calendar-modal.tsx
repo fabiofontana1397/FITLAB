@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Modal, PanResponder, Pressable, StyleSheet, View } from 'react-native';
+import { Modal, PanResponder, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
@@ -8,6 +8,7 @@ import { Layout } from '@/constants/theme';
 import type { GoalBandState } from '@/domain/calorie-balance';
 import { useDayGoalStatus } from '@/hooks/use-day-goal-status';
 import { useTheme } from '@/hooks/use-theme';
+import { formatKcal } from '@/lib/format-kcal';
 import { hapticSelection } from '@/lib/haptics';
 import { daysAgoISO, mondayIndex } from '@/lib/mock/dates';
 
@@ -65,17 +66,19 @@ export function DayCalendarModal({ visible, selectedDate, isDayMarked, showGoalS
 type SheetProps = Omit<DayCalendarModalProps, 'visible'>;
 
 function CalendarSheet(props: SheetProps) {
-  return props.showGoalStatus ? <WithGoalStatus {...props} /> : <Calendar {...props} statusOf={null} />;
+  return props.showGoalStatus ? <WithGoalStatus {...props} /> : <Calendar {...props} statusOf={null} goalKcal={0} />;
 }
 
 /** Split out so the stores behind the goal reading are only read when the legend is shown. */
 function WithGoalStatus(props: SheetProps) {
-  const statusOf = useDayGoalStatus();
-  return <Calendar {...props} statusOf={statusOf} />;
+  const { statusOf, dailyGoalKcal } = useDayGoalStatus();
+  return <Calendar {...props} statusOf={statusOf} goalKcal={dailyGoalKcal} />;
 }
 
-function Calendar({ selectedDate, isDayMarked, statusOf, onSelectDate, onClose }: SheetProps & { statusOf: ((date: string) => GoalBandState) | null }) {
+function Calendar({ selectedDate, isDayMarked, statusOf, goalKcal, onSelectDate, onClose }: SheetProps & { statusOf: ((date: string) => GoalBandState) | null; goalKcal: number }) {
   const theme = useTheme();
+  // On a tall screen the legend explains each colour; on a short one it shrinks to a single line so the month keeps its room.
+  const roomy = useWindowDimensions().height >= 780;
   const today = daysAgoISO(0);
   const selected = new Date(selectedDate);
   const [viewedYear, setViewedYear] = useState(selected.getFullYear());
@@ -199,14 +202,21 @@ function Calendar({ selectedDate, isDayMarked, statusOf, onSelectDate, onClose }
 
           {statusOf ? (
             <View style={[styles.legend, { backgroundColor: theme.backgroundElement }]}>
-              <View style={styles.legendRow}>
-                <LegendItem color={levelColor.reached} check label="Raggiunto" />
-                <LegendItem color={levelColor.close} label="Vicino" />
-                <LegendItem color={levelColor.off} label="Fuori obiettivo" />
-              </View>
-              <ThemedText style={styles.legendFootnote} themeColor="textTertiary">
-                Obiettivo calorico del giorno. Senza colore: nessun pasto registrato.
-              </ThemedText>
+              <ThemedText style={styles.legendTitle}>{goalSentence(goalKcal)}</ThemedText>
+              {roomy ? (
+                <>
+                  <LegendRow color={levelColor.reached} check label="Raggiunto" hint="Il bilancio del giorno è in linea con il tuo obiettivo." />
+                  <LegendRow color={levelColor.close} label="Vicino" hint="Vai nella direzione giusta, ma non hai ancora raggiunto l’obiettivo." />
+                  <LegendRow color={levelColor.off} label="Fuori obiettivo" hint="Lontano dall’obiettivo: troppe o troppo poche calorie rispetto al piano." />
+                  <LegendRow color={null} label="Senza colore" hint="Nessun pasto registrato, oppure giorno non ancora arrivato." />
+                </>
+              ) : (
+                <View style={styles.legendCompact}>
+                  <LegendRow color={levelColor.reached} check label="Raggiunto" />
+                  <LegendRow color={levelColor.close} label="Vicino" />
+                  <LegendRow color={levelColor.off} label="Fuori obiettivo" />
+                </View>
+              )}
             </View>
           ) : null}
         </View>
@@ -215,15 +225,34 @@ function Calendar({ selectedDate, isDayMarked, statusOf, onSelectDate, onClose }
   );
 }
 
-function LegendItem({ color, label, check = false }: { color: string; label: string; check?: boolean }) {
+/** "Il tuo obiettivo: deficit di 151 kcal al giorno" — what the colours below are measured against. */
+function goalSentence(goalKcal: number): string {
+  if (Math.abs(goalKcal) < 50) return 'Il tuo obiettivo: pareggio, nessun deficit né surplus';
+  return `Il tuo obiettivo: ${goalKcal < 0 ? 'deficit' : 'surplus'} di ${formatKcal(goalKcal)} kcal al giorno`;
+}
+
+/** A sample drawn like a day of the month (a tinted circle, with the check badge for "reached"), then what it means. */
+function LegendRow({ color, label, hint, check = false }: { color: string | null; label: string; hint?: string; check?: boolean }) {
+  const theme = useTheme();
   return (
-    <View style={styles.legendItem}>
-      <View style={[styles.legendSwatch, { backgroundColor: withAlpha(color, check ? 0.22 : 0.26) }]}>
-        {check ? <Icon name="check" size={12} color={color} /> : <View style={[styles.legendDot, { backgroundColor: color }]} />}
+    <View style={styles.legendRow}>
+      <View style={[styles.legendSwatch, color ? { backgroundColor: withAlpha(color, check ? 0.22 : 0.26) } : { borderWidth: 1.5, borderColor: theme.border }]}>
+        {check && color ? (
+          <View style={[styles.legendCheck, { backgroundColor: color }]}>
+            <Icon name="check" size={11} color="#FFFFFF" />
+          </View>
+        ) : color ? (
+          <View style={[styles.legendDot, { backgroundColor: color }]} />
+        ) : null}
       </View>
-      <ThemedText style={styles.legendLabel}>
-        {label}
-      </ThemedText>
+      <View style={styles.legendText}>
+        <ThemedText style={styles.legendLabel}>{label}</ThemedText>
+        {hint ? (
+          <ThemedText style={styles.legendHint} themeColor="textSecondary">
+            {hint}
+          </ThemedText>
+        ) : null}
+      </View>
     </View>
   );
 }
@@ -254,11 +283,14 @@ const styles = StyleSheet.create({
   dayNumberStrong: { fontWeight: '800' },
   check: { position: 'absolute', right: -3, bottom: -3, width: 16, height: 16, borderRadius: 8, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   dot: { position: 'absolute', bottom: 3, width: 5, height: 5, borderRadius: 2.5 },
-  legend: { marginTop: 12, borderRadius: 18, paddingVertical: 12, paddingHorizontal: 14, gap: 8 },
-  legendRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', columnGap: 10, rowGap: 6 },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  legendSwatch: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
-  legendDot: { width: 9, height: 9, borderRadius: 4.5 },
-  legendLabel: { fontSize: 13, lineHeight: 17, fontWeight: '700' },
-  legendFootnote: { fontSize: 12, lineHeight: 16 },
+  legend: { marginTop: 12, borderRadius: 20, paddingVertical: 14, paddingHorizontal: 16, gap: 12 },
+  legendTitle: { fontSize: 14, lineHeight: 19, fontWeight: '800' },
+  legendCompact: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 14, rowGap: 6 },
+  legendRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  legendSwatch: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
+  legendDot: { width: 11, height: 11, borderRadius: 5.5 },
+  legendCheck: { width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  legendText: { flexShrink: 1 },
+  legendLabel: { fontSize: 14, lineHeight: 18, fontWeight: '700' },
+  legendHint: { fontSize: 12, lineHeight: 16 },
 });
