@@ -69,6 +69,8 @@ const ICONS = {
   training: { set: 'mci', name: 'dumbbell' },
   body: { set: 'mci', name: 'human' },
   progress: { set: 'mci', name: 'chart-line' },
+  plans: { set: 'ion', name: 'clipboard-outline' },
+  flag: { set: 'ion', name: 'flag-outline' },
   profile: { set: 'ion', name: 'person-circle-outline' },
 
   gym: { set: 'mci', name: 'weight-lifter' },
