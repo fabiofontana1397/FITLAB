@@ -167,7 +167,9 @@ function PlanHeroCard({
   const { dayInMonth, fraction: monthFraction } = currentMonthProgress(plan);
   const start = new Date(plan.generatedAt);
   const end = new Date(start.getTime() + total * 30 * DAY_MS);
-  const planFraction = clamp01((Date.now() - start.getTime()) / (total * 30 * DAY_MS));
+  // Read once on mount: `Date.now()` is impure, so it cannot be called while rendering.
+  const [now] = useState(() => Date.now());
+  const planFraction = clamp01((now - start.getTime()) / (total * 30 * DAY_MS));
   const { end: monthEnd, daysLeft } = monthEndInfo(plan, monthIndex);
   const monthEndLabel = monthEnd.toLocaleDateString('it-IT', { day: 'numeric', month: 'long' });
 
