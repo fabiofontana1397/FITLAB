@@ -219,54 +219,7 @@ function PlanHeroCard({
             ) : null}
           </View>
         </View>
-
-        {/* The plan's whole span: one segment per month, filling left to right up to today. */}
-        <View style={[styles.panel, { backgroundColor: theme.backgroundElevated }]}>
-          <View style={styles.spanDates}>
-            <View>
-              <ThemedText style={styles.dateCaption} themeColor="textSecondary">
-                INIZIO
-              </ThemedText>
-              <ThemedText style={styles.dateValue}>{fmtDate(start)}</ThemedText>
-            </View>
-            <View style={{ alignItems: 'flex-end' }}>
-              <ThemedText style={styles.dateCaption} themeColor="textSecondary">
-                FINE
-              </ThemedText>
-              <ThemedText style={styles.dateValue}>{fmtDate(end)}</ThemedText>
-            </View>
-          </View>
-
-          <View style={styles.segments}>
-            {Array.from({ length: total }, (_, i) => (
-              <MonthSegment key={i} index={i} total={total} planFraction={planFraction} intro={intro} current={i + 1 === monthIndex} />
-            ))}
-          </View>
-          <View style={styles.segmentLabels}>
-            {Array.from({ length: total }, (_, i) => (
-              <ThemedText
-                key={i}
-                style={[styles.segmentLabel, { color: i + 1 === monthIndex ? theme.accent : theme.textTertiary }, i + 1 === monthIndex && { fontWeight: '800' }]}
-              >
-                {i + 1}
-              </ThemedText>
-            ))}
-          </View>
-
-          <View style={styles.spanFoot}>
-            <ThemedText type="small" themeColor="textSecondary">
-              Mese {monthIndex} di {total}
-            </ThemedText>
-            <CountUpText value={Math.round(planFraction * 100)} play format={(n) => `${Math.round(n)}%`} suffix=" del piano" style={styles.spanPercent} />
-          </View>
-        </View>
-
-        <GoalBlock icon="flag" label="Obiettivo del piano" text={planGoal} />
       </Pressable>
-
-      <PrimaryButton label="Visualizza piano" icon="calendar" variant="outline" onPress={onPress} />
-
-      <View style={[styles.divider, { backgroundColor: theme.borderStrong }]} />
 
       <View style={styles.body}>
         {/* The running month: a ring through its 30 days, and what it is for. */}
@@ -323,19 +276,6 @@ function PlanHeroCard({
         </View>
 
         <GoalBlock icon="target" label="Obiettivo del mese" text={monthGoal} />
-        <View style={[styles.statsPanel, { backgroundColor: theme.backgroundElevated }]}>
-          {stats.map((st, i) => (
-            <View key={st.label} style={[styles.stat, i > 0 && { borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: theme.borderStrong }]}>
-              <Icon name={st.icon} size={17} color={theme.accent} />
-              <ThemedText style={styles.statValue} numberOfLines={1}>
-                {st.value}
-              </ThemedText>
-              <ThemedText style={styles.statLabel} themeColor="textSecondary" numberOfLines={1} adjustsFontSizeToFit>
-                {st.label}
-              </ThemedText>
-            </View>
-          ))}
-        </View>
       </View>
 
       {pending ? (
@@ -367,6 +307,68 @@ function PlanHeroCard({
       )}
 
       <CheckinInfoPopup visible={infoOpen} onClose={() => setInfoOpen(false)} monthIndex={monthIndex} daysLeft={daysLeft} endDate={monthEndLabel} />
+
+      <PrimaryButton label="Visualizza piano" icon="calendar" variant="outline" onPress={onPress} />
+
+      <View style={[styles.divider, { backgroundColor: theme.borderStrong }]} />
+
+      <View style={styles.body}>
+        {/* The plan's whole span: one segment per month, filling left to right up to today. */}
+        <View style={[styles.panel, { backgroundColor: theme.backgroundElevated }]}>
+          <View style={styles.spanDates}>
+            <View>
+              <ThemedText style={styles.dateCaption} themeColor="textSecondary">
+                INIZIO
+              </ThemedText>
+              <ThemedText style={styles.dateValue}>{fmtDate(start)}</ThemedText>
+            </View>
+            <View style={{ alignItems: 'flex-end' }}>
+              <ThemedText style={styles.dateCaption} themeColor="textSecondary">
+                FINE
+              </ThemedText>
+              <ThemedText style={styles.dateValue}>{fmtDate(end)}</ThemedText>
+            </View>
+          </View>
+
+          <View style={styles.segments}>
+            {Array.from({ length: total }, (_, i) => (
+              <MonthSegment key={i} index={i} total={total} planFraction={planFraction} intro={intro} current={i + 1 === monthIndex} />
+            ))}
+          </View>
+          <View style={styles.segmentLabels}>
+            {Array.from({ length: total }, (_, i) => (
+              <ThemedText
+                key={i}
+                style={[styles.segmentLabel, { color: i + 1 === monthIndex ? theme.accent : theme.textTertiary }, i + 1 === monthIndex && { fontWeight: '800' }]}
+              >
+                {i + 1}
+              </ThemedText>
+            ))}
+          </View>
+
+          <View style={styles.spanFoot}>
+            <ThemedText type="small" themeColor="textSecondary">
+              Mese {monthIndex} di {total}
+            </ThemedText>
+            <CountUpText value={Math.round(planFraction * 100)} play format={(n) => `${Math.round(n)}%`} suffix=" del piano" style={styles.spanPercent} />
+          </View>
+        </View>
+
+        <GoalBlock icon="flag" label="Obiettivo del piano" text={planGoal} />
+        <View style={[styles.statsPanel, { backgroundColor: theme.backgroundElevated }]}>
+          {stats.map((st, i) => (
+            <View key={st.label} style={[styles.stat, i > 0 && { borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: theme.borderStrong }]}>
+              <Icon name={st.icon} size={17} color={theme.accent} />
+              <ThemedText style={styles.statValue} numberOfLines={1}>
+                {st.value}
+              </ThemedText>
+              <ThemedText style={styles.statLabel} themeColor="textSecondary" numberOfLines={1} adjustsFontSizeToFit>
+                {st.label}
+              </ThemedText>
+            </View>
+          ))}
+        </View>
+      </View>
     </FlatCard>
   );
 }
