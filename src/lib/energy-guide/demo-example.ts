@@ -69,6 +69,8 @@ export type DemoDay = {
   trainingKcal: number;
   balanceKcal: number;
   goalKcal: number;
+  /** What the example's plan would have the person eat: the burned day minus the goal (a deficit goal eats less than it burns). */
+  plannedEatenKcal: number;
   toleranceKcal: number;
   reading: BalanceReading;
   caption: string;
@@ -102,6 +104,7 @@ export function buildDemoDay(values: DemoValues, toleranceKcal: number = DEMO_CO
     trainingKcal: energy.exercise,
     balanceKcal: calorieBalance(eatenKcal, burnedKcal),
     goalKcal,
+    plannedEatenKcal: Math.max(0, Math.round(burnedKcal + goalKcal)),
     toleranceKcal,
     reading,
     caption: balanceCaption(reading),

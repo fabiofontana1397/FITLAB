@@ -44,6 +44,10 @@ const px = (r: number, deg: number) => CX + r * Math.sin((deg * Math.PI) / 180);
 const py = (r: number, deg: number) => CY - r * Math.cos((deg * Math.PI) / 180);
 const arc = (r: number, from: number, to: number) => `M ${px(r, from)} ${py(r, from)} A ${r} ${r} 0 0 1 ${px(r, to)} ${py(r, to)}`;
 
+/** Height over width of the ring (without its message), and the width it is drawn at on a normal phone: the carousel scales it down to fit. */
+export const GOAL_RING_ASPECT = BASE_H / BASE_W;
+export const GOAL_RING_WIDTH = BASE_W;
+
 const AnimatedLine = Animated.createAnimatedComponent(Line);
 
 /**

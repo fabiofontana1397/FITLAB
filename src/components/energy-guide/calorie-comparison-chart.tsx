@@ -18,8 +18,8 @@ export type CalorieComparisonChartProps = {
 
 /**
  * Page 1: intake against expenditure, as two bars on one shared scale — the
- * same two quantities, colours and icons as the two arcs of Home's gauge
- * (burned orange with the flame, intake green with the plate).
+ * same two quantities, colours and icons as Home's bars under the ring
+ * (intake orange with the plate, burned green with the flame).
  */
 export function CalorieComparisonChart({ eatenKcal, burnedKcal, play }: CalorieComparisonChartProps) {
   const theme = useTheme();
@@ -32,8 +32,8 @@ export function CalorieComparisonChart({ eatenKcal, burnedKcal, play }: CalorieC
       style={styles.root}
       accessible
       accessibilityLabel={`Esempio: calorie assunte ${formatKcal(eatenKcal)}, calorie consumate ${formatKcal(burnedKcal)}. Differenza ${formatSignedKcal(balance)} kcal.`}>
-      <BarRow icon="utensils" label="Assunte" sub="cibi e bevande" color={theme.brandGreen} kcal={eatenKcal} share={eatenKcal / scaleMax} play={play} delay={0} />
-      <BarRow icon="flame" label="Consumate" sub="tutta la giornata" color={theme.accent} kcal={burnedKcal} share={burnedKcal / scaleMax} play={play} delay={140} />
+      <BarRow icon="utensils" label="Assunte" sub="cibi e bevande" color={theme.accent} kcal={eatenKcal} share={eatenKcal / scaleMax} play={play} delay={0} />
+      <BarRow icon="flameLine" label="Consumate" sub="tutta la giornata" color={theme.brandGreen} kcal={burnedKcal} share={burnedKcal / scaleMax} play={play} delay={140} />
       <View style={[styles.diffRow, { borderTopColor: theme.border }]}>
         <ThemedText style={styles.diffLabel} themeColor="textSecondary">
           Assunte − consumate
