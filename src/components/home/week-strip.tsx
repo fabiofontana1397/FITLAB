@@ -1,5 +1,5 @@
 import { Pressable, StyleSheet, View } from 'react-native';
-import Svg, { Circle, G, Path } from 'react-native-svg';
+import Svg, { G, Line, Path } from 'react-native-svg';
 
 import { goalStripColors } from '@/components/home/goal-strip-colors';
 import { ThemedText } from '@/components/themed-text';
@@ -31,6 +31,7 @@ const R = 16;
 const STRIPS = 13;
 const MID = (STRIPS - 1) / 2;
 const STEP = 180 / STRIPS;
+const MARKER_W = 4.4;
 
 const px = (deg: number, r = R) => CX + r * Math.sin((deg * Math.PI) / 180);
 const py = (deg: number, r = R) => CY - r * Math.cos((deg * Math.PI) / 180);
@@ -42,7 +43,7 @@ const py = (deg: number, r = R) => CY - r * Math.cos((deg * Math.PI) / 180);
  * to the left, deficit to the right, the goal at the top. A day with nothing to
  * read (not yet lived, no meal logged) keeps the gradient faint and has no marker.
  */
-function MiniGauge({ day, goalKcal, marker, markerRing }: { day: WeekStripDay; goalKcal: number; marker: string; markerRing: string }) {
+function MiniGauge({ day, goalKcal, markerRing }: { day: WeekStripDay; goalKcal: number; markerRing: string }) {
   const theme = useTheme();
   const reading = readBalance({
     eatenKcal: day.hasHappened ? day.eatenKcal : 0,
@@ -50,18 +51,27 @@ function MiniGauge({ day, goalKcal, marker, markerRing }: { day: WeekStripDay; g
     goalKcal,
   });
   const band = goalBand({ reading, eatenKcal: day.eatenKcal, burnedKcal: day.burnedKcal, plannedEatenKcal: day.targetKcal, dayComplete: day.hasHappened && !day.isToday });
-  const colors = goalStripColors(STRIPS, band, theme);
+  // A day that has not come yet is plain grey; a day gone by (or today) shows the goal gradient.
+  const future = !day.hasHappened;
+  const colors = future ? Array.from({ length: STRIPS }, () => theme.textTertiary) : goalStripColors(STRIPS, band, theme);
   const tracked = band.state !== 'missing';
   const markerDeg = band.position * 90;
+  // The marker is a strip like the ones of the ring, in the colour of the ring at the place the day landed.
+  const markerColor = colors[Math.round(((band.position + 1) / 2) * (STRIPS - 1))];
   return (
     <>
-      <G opacity={tracked ? 1 : 0.38}>
+      <G opacity={future ? 0.4 : tracked ? 1 : 0.38}>
         {colors.map((color, i) => {
           const deg = ((i - MID) / MID) * (90 - STEP / 2);
           return <Path key={i} d={`M ${px(deg - STEP / 2 - 0.4)} ${py(deg - STEP / 2 - 0.4)} A ${R} ${R} 0 0 1 ${px(deg + STEP / 2 + 0.4)} ${py(deg + STEP / 2 + 0.4)}`} stroke={color} strokeWidth={STROKE} fill="none" />;
         })}
       </G>
-      {tracked ? <Circle cx={px(markerDeg)} cy={py(markerDeg)} r={3.9} fill={marker} stroke={markerRing} strokeWidth={1.6} /> : null}
+      {tracked ? (
+        <>
+          <Line x1={px(markerDeg, R - 6.5)} y1={py(markerDeg, R - 6.5)} x2={px(markerDeg, R + 6.5)} y2={py(markerDeg, R + 6.5)} stroke={markerRing} strokeWidth={MARKER_W + 2.4} strokeLinecap="round" />
+          <Line x1={px(markerDeg, R - 6.5)} y1={py(markerDeg, R - 6.5)} x2={px(markerDeg, R + 6.5)} y2={py(markerDeg, R + 6.5)} stroke={markerColor} strokeWidth={MARKER_W} strokeLinecap="round" />
+        </>
+      ) : null}
     </>
   );
 }
@@ -86,7 +96,7 @@ export function WeekStrip({ days, selectedDate, goalKcal, onSelect }: { days: We
             <ThemedText style={[styles.letter, { color: selected ? theme.text : theme.textTertiary }]}>{d.label}</ThemedText>
             <View style={styles.ring}>
               <Svg width={W} height={H} style={StyleSheet.absoluteFill}>
-                <MiniGauge day={d} goalKcal={goalKcal} marker={theme.text} markerRing={selected ? theme.backgroundElevated : theme.background} />
+                <MiniGauge day={d} goalKcal={goalKcal} markerRing={selected ? theme.backgroundElevated : theme.background} />
               </Svg>
               <ThemedText style={[styles.num, { color: d.hasHappened || d.isToday ? theme.text : theme.textTertiary }, d.isToday && styles.numToday]}>{d.dayOfMonth}</ThemedText>
             </View>
