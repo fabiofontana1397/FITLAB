@@ -36,11 +36,6 @@ const SCREEN_PADDING = Layout.screenGutter;
 const CARD_RADIUS = Radius.large;
 const CARD_PADDING = 14;
 
-function withAlpha(hex: string, alpha: number): string {
-  if (!/^#([0-9a-f]{6})$/i.test(hex)) return hex;
-  return `${hex}${Math.round(Math.min(Math.max(alpha, 0), 1) * 255).toString(16).padStart(2, '0')}`;
-}
-
 /** Italian thousands-separated magnitude ("2.254"), hand-rolled for the
  * same reason as Home's: toLocaleString('it-IT') doesn't reliably group on
  * Hermes / minimal-ICU web builds. */
@@ -48,20 +43,6 @@ function formatKcal(n: number): string {
   return Math.round(Math.abs(n))
     .toString()
     .replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-}
-
-/** The calorie card's nudge, driven by how many of the day's meals have at
- * least one food logged: invite to start, push to finish, praise when done. */
-function trackingMessage(
-  meals: { label: string; logged: boolean }[],
-  ratio: number,
-): { text: string; tone: 'start' | 'progress' | 'done' | 'over' } {
-  const missing = meals.filter((m) => !m.logged);
-  if (ratio > 1.05) return { text: "Hai superato l'obiettivo", tone: 'over' };
-  if (missing.length === 0) return { text: 'Tutto tracciato, complimenti!', tone: 'done' };
-  if (missing.length === meals.length) return { text: 'Registra il primo pasto', tone: 'start' };
-  if (missing.length === 1) return { text: `Manca solo ${missing[0].label.toLowerCase()}`, tone: 'progress' };
-  return { text: `Ancora ${missing.length} pasti, dai!`, tone: 'progress' };
 }
 
 export default function NutritionScreen() {
@@ -116,13 +97,6 @@ export default function NutritionScreen() {
   const dayEntries = entries.filter((e) => e.date === selectedDate);
   const totals = sumMacros(dayEntries);
   const calorieRatio = calorieTarget > 0 ? totals.kcal / calorieTarget : 0;
-  const message = trackingMessage(
-    mealSlots.map((m) => ({ label: m.label, logged: dayEntries.some((e) => e.slot === m.id) })),
-    calorieRatio,
-  );
-  const messageColor =
-    message.tone === 'over' ? theme.accent : message.tone === 'done' ? theme.brandGreen : message.tone === 'start' ? theme.accent : theme.brandYellow;
-  const messageIcon = message.tone === 'done' ? 'trophy' : message.tone === 'over' ? 'alert' : message.tone === 'start' ? 'plus' : 'flame';
 
   const macroRings = [
     { key: 'protein' as const, label: 'Proteine', color: theme.accent, target: macroTargets.protein },
@@ -134,14 +108,8 @@ export default function NutritionScreen() {
     <ScreenScroll reveal header={<TabHeader title="Nutrizione" onCalendarPress={() => openPopup(() => setCalendarOpen(true))} />} contentContainerStyle={styles.page}>
       <FlatCard radius={CARD_RADIUS} style={styles.calorieCard}>
         <View style={styles.cardTitleRow}>
-          <Icon name="flame" size={16} color={theme.accent} />
-          <ThemedText style={styles.cardTitle}>{selectedDate === today ? 'Calorie di oggi' : 'Calorie del giorno'}</ThemedText>
-          <View style={[styles.statusPill, { backgroundColor: withAlpha(messageColor, 0.14) }]}>
-            <Icon name={messageIcon} size={12} color={messageColor} />
-            <ThemedText style={[styles.statusText, { color: messageColor }]} numberOfLines={1}>
-              {message.text}
-            </ThemedText>
-          </View>
+          <Icon name="flame" size={20} color={theme.accent} />
+          <ThemedText style={styles.calorieTitle}>{selectedDate === today ? 'Calorie di oggi' : 'Calorie del giorno'}</ThemedText>
         </View>
 
         <View style={styles.bigNumberRow}>
@@ -275,22 +243,17 @@ const styles = StyleSheet.create({
   cardTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
+  },
+  calorieTitle: {
+    fontSize: 19,
+    lineHeight: 24,
+    fontWeight: '700',
   },
   cardTitle: {
     fontSize: 15,
     lineHeight: 20,
     fontWeight: '700',
-  },
-  statusPill: {
-    marginLeft: 'auto',
-    flexShrink: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-    borderRadius: 999,
   },
   bigNumberRow: {
     flexDirection: 'row',
@@ -308,12 +271,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 17,
     fontWeight: '500',
-  },
-  statusText: {
-    flexShrink: 1,
-    fontSize: 13,
-    lineHeight: 17,
-    fontWeight: '700',
   },
   calorieBar: {
     marginTop: 11,

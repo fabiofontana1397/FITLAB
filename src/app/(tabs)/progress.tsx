@@ -310,7 +310,7 @@ export default function ProgressScreen() {
           const hasTrend = series.length >= 2;
           return (
             <FlatCard key={m.zone} radius={16} style={styles.measureRow}>
-              <BodySilhouette zone={m.zone} color={theme.accent} outlineColor={theme.textTertiary} width={22} height={34} />
+              <BodySilhouette zone={m.zone} width={48} radius={10} />
               <View style={{ flex: 1, gap: 2 }}>
                 <ThemedText style={styles.measureLabel}>{m.label}</ThemedText>
                 <ThemedText style={styles.measureValue}>{hasValue ? `${latestValue} cm` : 'Non ancora misurato'}</ThemedText>

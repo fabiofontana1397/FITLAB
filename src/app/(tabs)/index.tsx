@@ -10,13 +10,14 @@ import { EnergyBars } from '@/components/home/energy-bars';
 import { goalBandCopy } from '@/components/home/goal-band-copy';
 import { GoalRing } from '@/components/home/goal-ring';
 import { DayCalendarModal } from '@/components/ui/day-calendar-modal';
-import { AnimatedFill, GrowBar } from '@/components/motion/animated-fill';
+import { GrowBar } from '@/components/motion/animated-fill';
 import { PressableScale } from '@/components/motion/pressable-scale';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { SectionHeader } from '@/components/ui/section-header';
+import { WeekProgressCard } from '@/components/home/week-progress-card';
 import { WeekStrip, type WeekStripDay } from '@/components/home/week-strip';
 import { TabHeader } from '@/components/tab-header';
 import { LogActivityModal } from '@/components/training/log-activity-modal';
@@ -31,6 +32,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { currentWeekDates, dayOfMonth, daysAgoISO, isoMondayIndex } from '@/lib/mock/dates';
 import { balanceCaption as captionFor, calorieBalance, goalBand, readBalance } from '@/domain/calorie-balance';
 import { dayEnergy } from '@/domain/energy';
+import { trackingStreak } from '@/domain/week-progress';
 import { Brand, Layout, OnBrand, Radius } from '@/constants/theme';
 import { useUserContext } from '@/hooks/use-user-context';
 import { formatKcal, formatSignedKcal } from '@/lib/format-kcal';
@@ -185,6 +187,20 @@ export default function HomeScreen() {
   const trackedMealDays = weekDates.filter((date) => nutritionEntries.some((e) => e.date === date)).length;
   const trackedBalances = dayBalances.filter((d) => d.balance != null).map((d) => d.balance as number);
   const averageBalance = trackedBalances.length > 0 ? trackedBalances.reduce((a, b) => a + b, 0) / trackedBalances.length : 0;
+  // Motivation: days in a row with meals logged, and whether today's balance already sits on the day's goal.
+  const loggedDates = new Set(nutritionEntries.map((e) => e.date));
+  const streakDays = trackingStreak(loggedDates, today);
+  const todayTracked = loggedDates.has(today);
+  const todayWeek = weekDaysWithActivity.find((d) => d.isToday);
+  const todayOnGoal = todayWeek
+    ? goalBand({
+        reading: readBalance({ eatenKcal: todayWeek.eatenKcal, burnedKcal: todayWeek.estimatedExpenditureKcal, goalKcal: weeklyGoalKcal / 7 }),
+        eatenKcal: todayWeek.eatenKcal,
+        burnedKcal: todayWeek.estimatedExpenditureKcal,
+        plannedEatenKcal: todayWeek.targetKcal,
+        dayComplete: false,
+      }).state === 'reached'
+    : false;
 
   const infoContent: Record<InfoTopic, { icon: IconName; title: string; body: string }> = {
     burned: {
@@ -362,36 +378,18 @@ export default function HomeScreen() {
         </ThemedText>
       </FlatCard>
 
-      <FlatCard radius={CARD_RADIUS} style={styles.statsCard}>
-        <StatColumn
-          icon="barbell"
-          iconColor={theme.brandGreen}
-          label="Allenamenti"
-          value={`${workoutsDone}/${workoutsPlanned}`}
-          valueColor={theme.brandGreen}
-          progress={workoutsPlanned > 0 ? workoutsDone / workoutsPlanned : 0}
-          barColor={theme.brandGreen}
-        />
-        <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
-        <StatColumn
-          icon="utensils"
-          iconColor={theme.accent}
-          label="Pasti tracciati"
-          value={`${trackedMealDays}/7`}
-          valueColor={theme.accent}
-          progress={trackedMealDays / 7}
-          barColor={theme.accent}
-        />
-        <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
-        <StatColumn
-          icon="barChart"
-          iconColor={theme.text}
-          label={weeklyGoalKcal >= 0 ? 'Surplus medio' : 'Deficit medio'}
-          value={`${formatSignedKcal(averageBalance)} kcal`}
-          valueColor={theme.text}
-          target={{ goal: dailyGoalKcal, actual: averageBalance }}
-        />
-      </FlatCard>
+      <WeekProgressCard
+        workoutsDone={workoutsDone}
+        workoutsPlanned={workoutsPlanned}
+        trackedMealDays={trackedMealDays}
+        streakDays={streakDays}
+        todayTracked={todayTracked}
+        todayOnGoal={todayOnGoal}
+        averageBalanceKcal={averageBalance}
+        trackedBalanceDays={trackedBalances.length}
+        dailyGoalKcal={dailyGoalKcal}
+        weeklyGoalKcal={weeklyGoalKcal}
+      />
 
       <LogActivityModal
         visible={logActivityOpen}
@@ -494,53 +492,6 @@ function ActionTile({
  * progress (workouts, tracked meals) or, for the average deficit, a track
  * with the plan's daily target at its centre and a marker for where the
  * actual average sits relative to it. */
-function StatColumn({
-  icon,
-  iconColor,
-  label,
-  value,
-  valueColor,
-  progress,
-  barColor,
-  target,
-}: {
-  icon: IconName;
-  iconColor: string;
-  label: string;
-  value: string;
-  valueColor: string;
-  progress?: number;
-  barColor?: string;
-  target?: { goal: number; actual: number };
-}) {
-  const theme = useTheme();
-  // Half the track spans ±max(|goal|, 300) kcal around the target.
-  const markerPct = target ? 50 + Math.min(Math.max((target.actual - target.goal) / Math.max(Math.abs(target.goal), 300), -1), 1) * 50 : 50;
-  return (
-    <View style={styles.statCol}>
-      <View style={styles.statIconBox}>
-        <Icon name={icon} size={20} color={iconColor} />
-      </View>
-      <ThemedText style={styles.statLabel} themeColor="textTertiary" numberOfLines={1}>
-        {label}
-      </ThemedText>
-      <ThemedText style={[styles.statValue, { color: valueColor }, value.length > 7 && { fontSize: 15 }]} numberOfLines={1}>
-        {value}
-      </ThemedText>
-      <View style={[styles.statTrack, { backgroundColor: theme.backgroundElement }]}>
-        {target ? (
-          <>
-            <View style={[styles.targetTick, { backgroundColor: theme.textTertiary }]} />
-            <View style={[styles.actualMarker, { left: `${markerPct}%`, backgroundColor: theme.accent }]} />
-          </>
-        ) : (
-          <AnimatedFill progress={progress ?? 0} delay={160} style={[styles.statFill, { backgroundColor: barColor }]} />
-        )}
-      </View>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   page: {
     paddingHorizontal: SCREEN_PADDING,
@@ -750,65 +701,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 17,
     fontWeight: '500',
-  },
-  statsCard: {
-    marginTop: 12,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    paddingVertical: 16,
-    paddingHorizontal: 6,
-  },
-  statCol: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 8,
-  },
-  statDivider: {
-    width: 1,
-    alignSelf: 'stretch',
-    marginVertical: 4,
-  },
-  statIconBox: {
-    height: 24,
-    justifyContent: 'center',
-  },
-  statLabel: {
-    fontSize: 13,
-    lineHeight: 17,
-    fontWeight: '500',
-  },
-  statValue: {
-    fontSize: 18,
-    lineHeight: 23,
-    fontWeight: '800',
-    letterSpacing: -0.3,
-  },
-  statTrack: {
-    alignSelf: 'stretch',
-    height: 5,
-    borderRadius: 3,
-    overflow: 'hidden',
-    marginTop: 3,
-  },
-  statFill: {
-    height: '100%',
-    borderRadius: 3,
-  },
-  targetTick: {
-    position: 'absolute',
-    left: '50%',
-    top: 0,
-    bottom: 0,
-    width: 2,
-    marginLeft: -1,
-  },
-  actualMarker: {
-    position: 'absolute',
-    top: -1,
-    bottom: -1,
-    width: 5,
-    marginLeft: -2.5,
-    borderRadius: 3,
   },
 });
