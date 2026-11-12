@@ -232,14 +232,17 @@ export default function TrainingScreen() {
           const statusLabel = done ? 'Completato' : inProgress ? 'In corso' : date < today ? 'Non completato' : 'In programma';
           const statusColor = done ? theme.brandGreen : inProgress ? theme.accent : date < today ? theme.danger : theme.accent;
           return (
-            <Reveal key={date} index={(showMissed ? 3 : 2) + sectionIndex}>
-            <View
-              testID={`training-day-${date}`}
-              style={styles.daySection}
+            <Reveal
+              key={date}
+              index={(showMissed ? 3 : 2) + sectionIndex}
+              // The two exchanged sections cross over, so they must paint above their neighbours while they move.
+              style={slide.dates?.includes(date) ? { zIndex: 1 } : undefined}
+              // Measured here, not on the inner View: inside the Reveal its own y is always 0.
               onLayout={(e: LayoutChangeEvent) => {
                 const y = e.nativeEvent.layout.y;
                 setSectionY((m) => (m[date] === y ? m : { ...m, [date]: y }));
               }}>
+            <View testID={`training-day-${date}`} style={styles.daySection}>
               <View style={styles.dayHeadingRow}>
                 <ThemedText style={emphasized ? styles.sectionTitle : [styles.sectionTitleQuiet, { color: theme.text }]} accessibilityRole="header">
                   {headingOf(date)}
