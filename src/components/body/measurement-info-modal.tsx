@@ -64,7 +64,7 @@ export function MeasurementInfoModal({ zone, onClose }: MeasurementInfoModalProp
               </Pressable>
             </View>
             <View style={styles.silhouetteWrap}>
-              <BodySilhouette zone={zone} color={theme.accent} outlineColor={theme.textTertiary} />
+              <BodySilhouette zone={zone} width={200} radius={16} />
             </View>
             <ThemedText type="small" themeColor="textSecondary">
               {copy.instructions}
