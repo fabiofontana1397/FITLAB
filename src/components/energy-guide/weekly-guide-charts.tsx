@@ -4,10 +4,10 @@ import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { CountUpText } from '@/components/energy-guide/count-up-text';
 import { usePlayValue } from '@/components/energy-guide/use-play-value';
 import { ThemedText } from '@/components/themed-text';
-import { Icon, type IconName } from '@/components/ui/icon';
+import { Icon } from '@/components/ui/icon';
 import { useTheme } from '@/hooks/use-theme';
-import { BAD_DAY_INDEX, WEEKDAY_LETTERS, type WeeklyExample } from '@/lib/energy-guide/weekly-example';
-import { formatKcal, formatSignedKcal } from '@/lib/format-kcal';
+import { WEEKDAY_LETTERS, type WeeklyExample } from '@/lib/energy-guide/weekly-example';
+import { formatSignedKcal } from '@/lib/format-kcal';
 
 const DASH_COUNT = 34;
 const LABEL_ROOM = 6;
@@ -61,6 +61,8 @@ function Bar({ px, color, play, delay, up }: { px: number; color: string; play: 
 
 export type WeekBarsChartProps = {
   example: WeeklyExample;
+  /** The balance of each of the seven days (kcal): the calm week or the rough one. */
+  days: number[];
   play: boolean;
   compact: boolean;
   /** Days drawn at full strength; the others fade back. */
@@ -76,11 +78,12 @@ export type WeekBarsChartProps = {
  * above it, deficit below — with the day's goal as a dashed line. A day on the
  * goal's side is green, a day that went the other way is orange.
  */
-export function WeekBarsChart({ example, play, compact, highlight, showGoalLine = true, showSides = true }: WeekBarsChartProps) {
+export function WeekBarsChart({ example, days, play, compact, highlight, showGoalLine = true, showSides = true }: WeekBarsChartProps) {
   const theme = useTheme();
-  const barMax = compact ? 52 : 74;
+  const barMax = compact ? 34 : 74;
   const half = barMax + LABEL_ROOM;
-  const maxAbs = Math.max(...example.days.map(Math.abs), Math.abs(example.dailyGoalKcal), 1);
+  // A little headroom, so the tallest bar (and the goal line) stay clear of the 'Surplus' / 'Deficit' captions.
+  const maxAbs = Math.max(...days.map(Math.abs), Math.abs(example.dailyGoalKcal), 1) * 1.3;
   const goalSign = Math.sign(example.dailyGoalKcal);
   const good = theme.balanceGoalScale[2];
   const goalPx = (Math.abs(example.dailyGoalKcal) / maxAbs) * barMax;
@@ -89,7 +92,7 @@ export function WeekBarsChart({ example, play, compact, highlight, showGoalLine 
   return (
     <View
       accessible
-      accessibilityLabel={`Esempio di settimana: ${example.days.map((d, i) => `${WEEKDAY_LETTERS[i]} ${formatSignedKcal(d)} kcal`).join(', ')}.`}
+      accessibilityLabel={`Esempio di settimana: ${days.map((d, i) => `${WEEKDAY_LETTERS[i]} ${formatSignedKcal(d)} kcal`).join(', ')}.`}
       style={styles.root}>
       <View style={{ height: half * 2 }}>
         {showSides ? (
@@ -101,7 +104,7 @@ export function WeekBarsChart({ example, play, compact, highlight, showGoalLine 
         <View pointerEvents="none" style={[styles.zeroLine, { top: half, backgroundColor: theme.border }]} />
         {showGoalLine ? <DashedLine color={withAlpha(good, 0.9)} top={goalY - 0.75} /> : null}
         <View style={styles.colsRow}>
-          {example.days.map((kcal, i) => {
+          {days.map((kcal, i) => {
             const up = kcal > 0;
             const wrongSide = Math.sign(kcal) !== goalSign;
             const color = wrongSide ? theme.accent : good;
@@ -120,8 +123,8 @@ export function WeekBarsChart({ example, play, compact, highlight, showGoalLine 
           })}
         </View>
       </View>
-      <DayLetters highlight={highlight} values={example.days} wrong={example.days.map((d, i) => (Math.sign(d) !== goalSign ? i : -1)).filter((i) => i >= 0)} />
-      {showGoalLine ? (
+      <DayLetters highlight={highlight} values={days} wrong={days.map((d, i) => (Math.sign(d) !== goalSign ? i : -1)).filter((i) => i >= 0)} />
+      {showGoalLine && !compact ? (
         <View style={styles.legend}>
           <View style={styles.legendItem}>
             <View style={[styles.legendBar, { backgroundColor: good }]} />
@@ -142,94 +145,41 @@ export function WeekBarsChart({ example, play, compact, highlight, showGoalLine 
 }
 
 /**
- * Page 3: the running total of the week, day after day, against the weekly
- * goal. A wrong day makes the total fall back; the days after it bring it up
- * again, and what counts is where it ends.
+ * The week's total against its goal: the seven days added up, as a bar that
+ * fills to the goal. This is the number that counts — a day far off the mark
+ * is only a part of it.
  */
-export function WeekTotalChart({ example, play, compact }: { example: WeeklyExample; play: boolean; compact: boolean }) {
+export function WeekTotalBar({ days, goalKcal, play, compact = false }: { days: number[]; goalKcal: number; play: boolean; compact?: boolean }) {
   const theme = useTheme();
-  const barMax = compact ? 76 : 112;
-  const goalSign = Math.sign(example.weeklyGoalKcal) || 1;
-  // The total is drawn as "how far towards the goal": positive when it is on the goal's side.
-  const progress = example.cumulative.map((c) => c * goalSign);
-  const goalMag = Math.abs(example.weeklyGoalKcal);
-  const maxAbs = Math.max(...progress.map(Math.abs), goalMag, 1);
-  const goalPx = (goalMag / maxAbs) * barMax;
+  const total = days.reduce((a, b) => a + b, 0);
   const good = theme.balanceGoalScale[2];
-  const last = example.cumulative.length - 1;
-
+  const fraction = goalKcal !== 0 ? Math.min(Math.max(total / goalKcal, 0), 1) : 0;
+  const fill = usePlayValue(fraction, play, 500);
+  const fillStyle = useAnimatedStyle(() => ({ width: `${fill.value * 100}%` }));
+  const reached = Math.abs(total - goalKcal) < 1;
   return (
-    <View
-      accessible
-      accessibilityLabel={`Totale della settimana giorno dopo giorno: ${example.cumulative.map((c, i) => `${WEEKDAY_LETTERS[i]} ${formatSignedKcal(c)}`).join(', ')}. Obiettivo ${formatSignedKcal(example.weeklyGoalKcal)} kcal.`}
-      style={styles.root}>
+    <View style={[styles.totalBox, { backgroundColor: withAlpha(good, 0.12) }]} accessible accessibilityLabel={`Totale della settimana ${formatSignedKcal(total)} kcal, obiettivo ${formatSignedKcal(goalKcal)} kcal.`}>
       <View style={styles.totalHead}>
         <ThemedText style={styles.totalLabel} themeColor="textSecondary">
-          Totale della settimana
+          {compact ? `Totale (obiettivo ${formatSignedKcal(goalKcal)})` : 'Totale della settimana'}
         </ThemedText>
-        <CountUpText value={example.cumulative[last]} play={play} delay={500} format={formatSignedKcal} suffix=" kcal" style={[styles.totalValue, { color: good }]} />
-      </View>
-      <View style={{ height: barMax + LABEL_ROOM + 6 }}>
-        <DashedLine color={withAlpha(good, 0.9)} top={LABEL_ROOM + 6 + barMax - goalPx - 0.75} />
-        <View style={styles.colsRow}>
-          {progress.map((p, i) => {
-            const isLast = i === last;
-            const dip = i > 0 && p < progress[i - 1];
-            const color = isLast ? good : dip ? theme.accent : withAlpha(theme.accent, 0.35);
-            const px = Math.max(4, (Math.max(p, 0) / maxAbs) * barMax);
-            return (
-              <View key={i} style={styles.col}>
-                <View style={[styles.half, { height: barMax + LABEL_ROOM + 6, justifyContent: 'flex-end' }]}>
-                  <Bar px={px} color={color} play={play} delay={i * 70} up />
-                </View>
-              </View>
-            );
-          })}
+        <View style={styles.totalValueRow}>
+          <CountUpText value={total} play={play} delay={500} format={formatSignedKcal} suffix=" kcal" style={[styles.totalValue, { color: good }]} />
+          {reached ? (
+            <View style={[styles.totalCheck, { backgroundColor: good }]}>
+              <Icon name="check" size={12} color="#FFFFFF" />
+            </View>
+          ) : null}
         </View>
       </View>
-      <DayLetters highlight={[BAD_DAY_INDEX, last]} values={example.cumulative} wrong={example.cumulative.map((_, i) => (i > 0 && progress[i] < progress[i - 1] ? i : -1)).filter((i) => i >= 0)} />
-      <View style={styles.goalRow}>
-        <View style={[styles.legendBar, { backgroundColor: good }]} />
-        <ThemedText style={styles.legendText} themeColor="textSecondary">
-          Obiettivo della settimana: {formatSignedKcal(example.weeklyGoalKcal)} kcal
-        </ThemedText>
+      <View style={[styles.totalTrack, { backgroundColor: withAlpha(good, 0.2) }]}>
+        <Animated.View style={[styles.totalFill, { backgroundColor: good }, fillStyle]} />
       </View>
-    </View>
-  );
-}
-
-/** Page 4: the person's own weekly goal, and the three things to remember. */
-export function WeekRules({ example, play, compact }: { example: WeeklyExample; play: boolean; compact: boolean }) {
-  const theme = useTheme();
-  const rules: { icon: IconName; title: string; text: string }[] = [
-    { icon: 'target', title: 'Guarda il totale della settimana', text: 'È il numero grande nel box “Questa settimana” della Home.' },
-    { icon: 'refresh', title: 'Un giorno storto si recupera', text: `Se un giorno va dalla parte opposta, riequilibra nei giorni dopo, un po’ alla volta e senza saltare i pasti.` },
-    { icon: 'check', title: 'Conta dove arrivi', text: 'A fine settimana l’obiettivo è raggiunto se il totale arriva vicino a quello fissato.' },
-  ];
-  return (
-    <View style={styles.root} accessible accessibilityLabel={`Il tuo obiettivo settimanale: ${example.goalWord} di ${formatKcal(example.weeklyGoalKcal)} kcal.`}>
-      <View style={[styles.goalCard, { backgroundColor: theme.accentSoft }]}>
-        <ThemedText style={[styles.goalEyebrow, { color: theme.accent }]}>Il tuo obiettivo settimanale</ThemedText>
-        <CountUpText value={example.weeklyGoalKcal} play={play} format={formatSignedKcal} suffix=" kcal" style={[styles.goalValue, { color: theme.text }, compact && styles.goalValueCompact]} />
-        <ThemedText style={styles.goalSub} themeColor="textSecondary">
-          {example.goalWord} totale, circa {formatKcal(example.dailyGoalKcal)} kcal al giorno
+      {compact ? null : (
+        <ThemedText style={styles.totalGoal} themeColor="textSecondary">
+          Obiettivo: {formatSignedKcal(goalKcal)} kcal
         </ThemedText>
-      </View>
-      {rules.map((r) => (
-        <View key={r.title} style={styles.ruleRow}>
-          <View style={[styles.ruleIcon, { backgroundColor: theme.backgroundElement }]}>
-            <Icon name={r.icon} size={18} color={theme.accent} />
-          </View>
-          <View style={styles.ruleText}>
-            <ThemedText style={styles.ruleTitle}>{r.title}</ThemedText>
-            {compact ? null : (
-              <ThemedText style={styles.ruleBody} themeColor="textSecondary">
-                {r.text}
-              </ThemedText>
-            )}
-          </View>
-        </View>
-      ))}
+      )}
     </View>
   );
 }
@@ -245,6 +195,15 @@ const styles = StyleSheet.create({
   barDown: { borderBottomLeftRadius: 8, borderBottomRightRadius: 8, borderTopLeftRadius: 2, borderTopRightRadius: 2 },
   value: { fontSize: 12, lineHeight: 15, fontWeight: '700', fontVariant: ['tabular-nums'] },
   lettersBlock: { gap: 0 },
+  totalBox: { borderRadius: 16, padding: 12, gap: 8 },
+  totalHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  totalLabel: { fontSize: 13, lineHeight: 17, fontWeight: '600' },
+  totalValueRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  totalValue: { fontSize: 20, lineHeight: 26, fontWeight: '800' },
+  totalCheck: { width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  totalTrack: { height: 10, borderRadius: 5, overflow: 'hidden' },
+  totalFill: { height: '100%', borderRadius: 5 },
+  totalGoal: { fontSize: 13, lineHeight: 17, fontWeight: '500' },
   zeroLine: { position: 'absolute', left: 0, right: 0, height: StyleSheet.hairlineWidth * 2 },
   dashRow: { position: 'absolute', left: 0, right: 0, height: 1.5, flexDirection: 'row', justifyContent: 'space-between' },
   dash: { width: 4, height: 1.5, borderRadius: 1 },
@@ -256,18 +215,4 @@ const styles = StyleSheet.create({
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   legendBar: { width: 14, height: 6, borderRadius: 3 },
   legendText: { fontSize: 13, lineHeight: 17, fontWeight: '500' },
-  totalHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
-  totalLabel: { fontSize: 13, lineHeight: 17, fontWeight: '600' },
-  totalValue: { fontSize: 22, lineHeight: 28, fontWeight: '800' },
-  goalRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  goalCard: { borderRadius: 18, paddingVertical: 14, paddingHorizontal: 16, gap: 2 },
-  goalEyebrow: { fontSize: 13, lineHeight: 17, fontWeight: '700' },
-  goalValue: { fontSize: 38, lineHeight: 44, fontWeight: '800', letterSpacing: -1 },
-  goalValueCompact: { fontSize: 30, lineHeight: 36 },
-  goalSub: { fontSize: 13, lineHeight: 17, fontWeight: '500' },
-  ruleRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  ruleIcon: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  ruleText: { flex: 1, gap: 1 },
-  ruleTitle: { fontSize: 14, lineHeight: 18, fontWeight: '700' },
-  ruleBody: { fontSize: 13, lineHeight: 17, fontWeight: '500' },
 });

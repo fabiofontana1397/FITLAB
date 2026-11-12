@@ -1,47 +1,43 @@
-import { WeekBarsChart, WeekRules, WeekTotalChart } from '@/components/energy-guide/weekly-guide-charts';
+import { View } from 'react-native';
+
+import { WeekBarsChart, WeekTotalBar } from '@/components/energy-guide/weekly-guide-charts';
 import type { GuidePage } from '@/components/energy-guide/energy-guide-carousel';
-import { BAD_DAY_INDEX, RECOVERY_DAY_INDEX, WEEKDAY_NAMES, type WeeklyExample } from '@/lib/energy-guide/weekly-example';
-import { formatKcal, formatSignedKcal } from '@/lib/format-kcal';
+import { BAD_DAY_INDEX, WEEKDAY_NAMES, type WeeklyExample } from '@/lib/energy-guide/weekly-example';
+import { formatSignedKcal } from '@/lib/format-kcal';
 
 /**
- * The four pages of "Il grafico della settimana": how the chart reads, why one
- * wrong day is not a problem, what the running total shows, and what to
- * remember. They all derive from the same example week (built on the person's
- * weekly goal), so swiping back and forth always lands on agreeing numbers.
+ * The two pages of "Il grafico della settimana": how the chart reads — a week
+ * where the days are all close to their share of the goal, adding up to the
+ * weekly goal — and what happens when one day goes far off: nothing, because
+ * the total of the week is what counts. Both weeks are built on the person's
+ * own weekly goal and add up to it exactly.
  */
 export function buildWeeklyPages(example: WeeklyExample): GuidePage[] {
-  const bad = example.days[BAD_DAY_INDEX];
-  const recovery = example.days[RECOVERY_DAY_INDEX];
+  const bad = example.rough[BAD_DAY_INDEX];
   return [
     {
       id: 'week-chart',
-      title: 'Il grafico della settimana',
+      title: 'Come leggere il grafico',
       body: () =>
-        `Ogni colonna è un giorno: calorie assunte meno calorie bruciate. Sotto la linea dello zero sei in deficit, sopra in surplus. La linea tratteggiata è l’obiettivo di un giorno: ${formatSignedKcal(example.dailyGoalKcal)} kcal.`,
-      chart: (_day, play, compact) => <WeekBarsChart example={example} play={play} compact={compact} />,
+        `Ogni colonna è un giorno (calorie assunte meno bruciate): sopra lo zero è surplus, sotto è deficit. La linea tratteggiata è la quota di un giorno. Contano i 7 giorni insieme: il tuo obiettivo è ${formatSignedKcal(example.weeklyGoalKcal)} kcal a settimana.`,
+      chart: (_day, play, compact) => (
+        <View style={{ gap: 12 }}>
+          <WeekBarsChart example={example} days={example.calm} play={play} compact={compact} />
+          <WeekTotalBar days={example.calm} goalKcal={example.weeklyGoalKcal} play={play} compact={compact} />
+        </View>
+      ),
     },
     {
       id: 'week-bad-day',
-      title: 'Un giorno storto non rovina la settimana',
+      title: 'Se sgarri un giorno, non fa niente',
       body: () =>
-        `${WEEKDAY_NAMES[BAD_DAY_INDEX]} è andato dalla parte opposta (${formatSignedKcal(bad)} kcal, ${example.oppositeWord}): succede. ${WEEKDAY_NAMES[RECOVERY_DAY_INDEX]} si riequilibra con ${formatSignedKcal(recovery)} kcal.`,
-      chart: (_day, play, compact) => <WeekBarsChart example={example} play={play} compact={compact} highlight={[BAD_DAY_INDEX, RECOVERY_DAY_INDEX]} showSides={false} />,
-    },
-    {
-      id: 'week-total',
-      title: 'Conta il totale della settimana',
-      body: () =>
-        `L’obiettivo principale è quello della settimana: ${formatSignedKcal(example.weeklyGoalKcal)} kcal. Il totale si accumula giorno dopo giorno: un giorno storto lo fa scendere, i giorni dopo lo riportano su.`,
-      skipBodyWhenCompact: true,
-      chart: (_day, play, compact) => <WeekTotalChart example={example} play={play} compact={compact} />,
-    },
-    {
-      id: 'week-rules',
-      title: 'Cosa tenere a mente',
-      body: () =>
-        `Il tuo ${example.goalWord} della settimana è ${formatKcal(example.weeklyGoalKcal)} kcal. Se un giorno non rispetti il suo, l’importante è che lo rispetti la settimana.`,
-      skipBodyWhenCompact: true,
-      chart: (_day, play, compact) => <WeekRules example={example} play={play} compact={compact} />,
+        `${WEEKDAY_NAMES[BAD_DAY_INDEX]} è andato molto fuori obiettivo (${formatSignedKcal(bad)} kcal): non è un problema. Nei giorni dopo riequilibri un po’ alla volta, senza saltare i pasti, e la settimana arriva comunque al suo obiettivo.`,
+      chart: (_day, play, compact) => (
+        <View style={{ gap: 12 }}>
+          <WeekBarsChart example={example} days={example.rough} play={play} compact={compact} showSides={false} />
+          <WeekTotalBar days={example.rough} goalKcal={example.weeklyGoalKcal} play={play} compact={compact} />
+        </View>
+      ),
     },
   ];
 }
