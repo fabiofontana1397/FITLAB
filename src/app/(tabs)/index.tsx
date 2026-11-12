@@ -306,7 +306,7 @@ export default function HomeScreen() {
             <Icon name="target" size={22} color={theme.accent} />
             <ThemedText style={styles.weekTitle}>Obiettivo {weeklyGoalKcal >= 0 ? 'surplus' : 'deficit'} settimanale</ThemedText>
           </View>
-          <Pressable onPress={() => setDetailsFocus('week')} hitSlop={8} style={styles.linkRow}>
+          <Pressable onPress={() => router.push('/weekly-guide' as Href)} hitSlop={8} style={styles.linkRow} accessibilityRole="button" accessibilityLabel="Dettagli: come leggere il grafico della settimana">
             <ThemedText style={[styles.linkText, { color: theme.accent }]}>Dettagli</ThemedText>
             <Icon name="chevronRight" size={13} color={theme.accent} />
           </Pressable>

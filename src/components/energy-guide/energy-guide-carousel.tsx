@@ -12,7 +12,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { buildDemoDay, DEMO_CONFIG, type DemoDay, type DemoValues } from '@/lib/energy-guide/demo-example';
 import { hapticSelection, hapticSuccess } from '@/lib/haptics';
 
-type Page = {
+export type GuidePage = {
   id: string;
   title: string;
   body: (day: DemoDay) => string;
@@ -21,7 +21,7 @@ type Page = {
   chart: (day: DemoDay, play: boolean, compact: boolean, overflowPx: number) => React.ReactNode;
 };
 
-const PAGES: Page[] = [
+const PAGES: GuidePage[] = [
   {
     id: 'compare',
     title: 'Calorie assunte e consumate',
@@ -60,30 +60,41 @@ const COMPACT_BELOW = 520;
  * swiping back and forth always lands on agreeing charts. A page's animation
  * plays the first time it is shown and is not replayed when swiping back.
  */
-export function EnergyGuideCarousel({ onDone, values = DEMO_CONFIG.initial }: { onDone: () => void; values?: DemoValues }) {
+export function EnergyGuideCarousel({
+  onDone,
+  values = DEMO_CONFIG.initial,
+  pages = PAGES,
+  footnote = 'Valori dimostrativi, non sono i tuoi dati. Le calorie consumate sono una stima.',
+}: {
+  onDone: () => void;
+  values?: DemoValues;
+  /** The pages to swipe through (Home's day chart guide by default). */
+  pages?: GuidePage[];
+  footnote?: string;
+}) {
   const theme = useTheme();
   const reduceMotion = useReducedMotion();
   // How much room the pages have (below the sheet's title, above the buttons). Short ones — small phones, or a tall phone's insets —
   // give up the footnote and the Home columns, and the gauge shrinks to what is left, so the page stays on one screen.
   const [pagerHeight, setPagerHeight] = useState(0);
-  const [pageHeights, setPageHeights] = useState<number[]>(() => PAGES.map(() => 0));
+  const [pageHeights, setPageHeights] = useState<number[]>(() => pages.map(() => 0));
   const compact = pagerHeight > 0 && pagerHeight < COMPACT_BELOW;
   const scrollRef = useRef<ScrollView>(null);
   const [width, setWidth] = useState(0);
   const [index, setIndex] = useState(0);
-  const [visited, setVisited] = useState<boolean[]>(() => PAGES.map((_, i) => i === 0));
+  const [visited, setVisited] = useState<boolean[]>(() => pages.map((_, i) => i === 0));
   const day = useMemo(() => buildDemoDay(values), [values]);
-  const isLast = index === PAGES.length - 1;
+  const isLast = index === pages.length - 1;
 
   const show = (next: number) => {
-    const clamped = Math.max(0, Math.min(next, PAGES.length - 1));
+    const clamped = Math.max(0, Math.min(next, pages.length - 1));
     if (clamped !== index) hapticSelection();
     setIndex(clamped);
     setVisited((v) => (v[clamped] ? v : v.map((seen, i) => seen || i === clamped)));
   };
 
   const goTo = (next: number) => {
-    const clamped = Math.max(0, Math.min(next, PAGES.length - 1));
+    const clamped = Math.max(0, Math.min(next, pages.length - 1));
     scrollRef.current?.scrollTo({ x: clamped * width, animated: !reduceMotion });
     show(clamped);
   };
@@ -116,7 +127,7 @@ export function EnergyGuideCarousel({ onDone, values = DEMO_CONFIG.initial }: { 
             scrollEventThrottle={32}
             onScroll={onScroll}
             onMomentumScrollEnd={onScroll}>
-            {PAGES.map((page, i) => (
+            {pages.map((page, i) => (
               <View
                 key={page.id}
                 testID={`energy-guide-page-${i}`}
@@ -129,7 +140,7 @@ export function EnergyGuideCarousel({ onDone, values = DEMO_CONFIG.initial }: { 
                 importantForAccessibility={i === index ? 'auto' : 'no-hide-descendants'}>
                 <View style={styles.kickerRow}>
                   <ThemedText type="label" themeColor="textSecondary">
-                    {i + 1} di {PAGES.length}
+                    {i + 1} di {pages.length}
                   </ThemedText>
                   <View style={[styles.badge, { backgroundColor: theme.accentSoft }]}>
                     <ThemedText style={[styles.badgeText, { color: theme.accent }]}>Esempio</ThemedText>
@@ -146,7 +157,7 @@ export function EnergyGuideCarousel({ onDone, values = DEMO_CONFIG.initial }: { 
                 <FlatCard style={[styles.card, compact && styles.cardCompact]}>{page.chart(day, visited[i], compact, pagerHeight > 0 ? Math.max(0, pageHeights[i] - pagerHeight) : 0)}</FlatCard>
                 {compact ? null : (
                   <ThemedText style={styles.footnote} themeColor="textTertiary">
-                    Valori dimostrativi, non sono i tuoi dati. Le calorie consumate sono una stima.
+                    {footnote}
                   </ThemedText>
                 )}
               </View>
@@ -156,7 +167,7 @@ export function EnergyGuideCarousel({ onDone, values = DEMO_CONFIG.initial }: { 
       </View>
 
       <View style={styles.dots}>
-        {PAGES.map((page, i) => (
+        {pages.map((page, i) => (
           <View key={page.id} style={[styles.dot, i === index ? { backgroundColor: theme.accent, width: 18 } : { backgroundColor: theme.textTertiary, opacity: 0.35, width: 7 }]} />
         ))}
       </View>
