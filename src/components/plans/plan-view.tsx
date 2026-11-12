@@ -17,6 +17,7 @@ import { HorizontalScrollDefaults } from '@/constants/scroll';
 import { OnBrand, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { hapticSelection, hapticSuccess } from '@/lib/haptics';
+import { mondayIndex } from '@/lib/mock/dates';
 import { WEEKDAY_LABELS } from '@/lib/planning/exercise-library';
 import { currentMonthIndex, monthEndInfo, monthProgress } from '@/lib/planning/plan-progress';
 import type { PlanPhaseKind } from '@/lib/planning/types';
@@ -28,7 +29,7 @@ const WEEKDAY_OPTIONS = WEEKDAY_LABELS.map((weekday) => ({ value: weekday, label
 
 const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
 /** Monday-first weekday label of today, so the week opens on the day the person is living. */
-const todayLabel = () => WEEKDAY_LABELS[(new Date().getDay() + 6) % 7];
+const todayLabel = () => WEEKDAY_LABELS[mondayIndex(new Date())];
 
 export type PlanStat = { icon: IconName; label: string; value: number; unit?: string };
 
