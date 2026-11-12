@@ -5,7 +5,6 @@ import { GlassSurface } from '@/components/glass/glass-surface';
 import { ExerciseSummaryCard, MealCard } from '@/components/plans/plan-day-cards';
 import { PlanView } from '@/components/plans/plan-view';
 import { ThemedText } from '@/components/themed-text';
-import { PHASE_SHORT_LABEL } from '@/components/training/plan-month-stepper';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon } from '@/components/ui/icon';
 import { InsightCard } from '@/components/ui/insight-card';
@@ -17,7 +16,6 @@ import {
   DIET_GOAL_COPY,
   DIET_GOAL_TEXT,
   DIET_PHASE_DETAIL,
-  DIET_PHASE_SHORT_LABEL,
   DIET_STRATEGY,
   GOAL_NAME,
   TRAINING_GOAL_COPY,
@@ -86,12 +84,10 @@ export function TrainingPlanView({ plan, goal, checkinPendingMonth, onCheckin }:
     <PlanView
       kind="training"
       plan={plan}
-      tag="IL TUO PROGRAMMA"
       title={GOAL_NAME[goal]}
       subtitle={subtitle}
       description={TRAINING_GOAL_COPY[goal].why}
       objective={TRAINING_GOAL_TEXT[goal]}
-      phaseLabels={PHASE_SHORT_LABEL}
       phaseDetail={TRAINING_PHASE_DETAIL}
       monthStats={(monthIndex) => {
         const split = monthOf(monthIndex).weeklySplit;
@@ -198,12 +194,10 @@ export function DietPlanView({ plan, goal, checkinPendingMonth, onCheckin }: Pla
     <PlanView
       kind="diet"
       plan={plan}
-      tag="IL TUO PIANO ALIMENTARE"
       title={DIET_STRATEGY[goal]}
       subtitle={`~${kcal} kcal al giorno${meals > 0 ? ` · ${meals} pasti` : ''}`}
       description={DIET_GOAL_COPY[goal].why}
       objective={DIET_GOAL_TEXT[goal]}
-      phaseLabels={DIET_PHASE_SHORT_LABEL}
       phaseDetail={DIET_PHASE_DETAIL}
       monthStats={(monthIndex) => {
         const m = monthOf(monthIndex);
