@@ -119,7 +119,7 @@ export default function CustomWorkoutScreen() {
   };
 
   return (
-    <SheetScreen title="La tua scheda" eyebrow="Inseriscila e l’app la mette nel programma" fallbackHref="/training-plan">
+    <SheetScreen title="La tua scheda" eyebrow="Inseriscila e l’app la mette nel programma" fallbackHref="/plans">
       {(close) => (
         <>
           <ThemedText type="caption" themeColor="textSecondary">
