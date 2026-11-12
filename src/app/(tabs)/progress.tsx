@@ -184,12 +184,29 @@ export default function ProgressScreen() {
         </View>
         ) : null}
 
+        <View style={styles.chartBlock}>
+          <ThemedText style={styles.chartTitle}>Andamento peso</ThemedText>
+          <ThemedText style={styles.chartSubtitle} themeColor="textTertiary">
+            Ultimi 30 giorni tracciati
+          </ThemedText>
+          <GoalTrendChart
+            points={weightSeries}
+            target={hasGoal ? currentUser.targetWeightKg : null}
+            dateGranularity="day"
+            height={280}
+            color={theme.accent}
+            targetColor={theme.brandGreen}
+            axisColor={theme.textTertiary}
+            gridColor={theme.backgroundElement}
+          />
+        </View>
+
         <View style={styles.miniRow}>
           <View style={[styles.miniBox, { backgroundColor: theme.backgroundElement }]}>
             <View style={[styles.miniIcon, { backgroundColor: deltaColor(sinceStart) + '22' }]}>
               <Icon name={sinceStart <= 0 ? 'trendDown' : 'trendUp'} size={20} color={deltaColor(sinceStart)} />
             </View>
-            <View>
+            <View style={{ flex: 1 }}>
               <ThemedText style={[styles.miniValue, { color: deltaColor(sinceStart) }]}>{signedKg(sinceStart)} kg</ThemedText>
               <ThemedText style={styles.miniLabel} themeColor="textTertiary">
                 da inizio piano
@@ -200,7 +217,7 @@ export default function ProgressScreen() {
             <View style={[styles.miniIcon, { backgroundColor: theme.brandGreen + '22' }]}>
               <Icon name="target" size={20} color={theme.brandGreen} />
             </View>
-            <View>
+            <View style={{ flex: 1 }}>
               <ThemedText style={styles.miniValue}>{hasGoal ? `${currentUser.targetWeightKg} kg` : '—'}</ThemedText>
               <ThemedText style={styles.miniLabel} themeColor="textTertiary">
                 {hasGoal ? 'obiettivo' : 'nessun peso obiettivo'}
@@ -208,23 +225,6 @@ export default function ProgressScreen() {
             </View>
           </View>
         </View>
-      </FlatCard>
-
-      <FlatCard radius={CARD_RADIUS} style={styles.chartCard}>
-        <ThemedText style={styles.chartTitle}>Andamento peso</ThemedText>
-        <ThemedText style={styles.chartSubtitle} themeColor="textTertiary">
-          Ultimi 30 giorni tracciati
-        </ThemedText>
-        <GoalTrendChart
-          points={weightSeries}
-          target={hasGoal ? currentUser.targetWeightKg : null}
-          dateGranularity="day"
-          height={200}
-          color={theme.accent}
-          targetColor={theme.brandGreen}
-          axisColor={theme.textTertiary}
-          gridColor={theme.backgroundElement}
-        />
       </FlatCard>
 
       <View style={styles.logHeader}>
@@ -451,8 +451,8 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
   },
   weightCard: {
-    padding: 16,
-    gap: 14,
+    padding: 18,
+    gap: 16,
   },
   weightTop: {
     flexDirection: 'row',
@@ -471,19 +471,20 @@ const styles = StyleSheet.create({
     letterSpacing: -0.8,
   },
   bigUnit: {
-    fontSize: 16,
-    lineHeight: 22,
+    fontSize: 20,
+    lineHeight: 26,
     fontWeight: '500',
   },
   deltaRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     gap: 4,
     marginTop: 2,
   },
   deltaText: {
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 14,
+    lineHeight: 18,
     fontWeight: '600',
   },
   addWeight: {
@@ -494,13 +495,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   chartTitle: {
-    fontSize: 14,
-    lineHeight: 18,
+    fontSize: 17,
+    lineHeight: 22,
     fontWeight: '700',
   },
   chartSubtitle: {
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 13,
+    lineHeight: 18,
     fontWeight: '500',
   },
   tabs: {
@@ -534,19 +535,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   miniValue: {
-    fontSize: 16,
-    lineHeight: 20,
+    fontSize: 17,
+    lineHeight: 22,
     fontWeight: '800',
   },
   miniLabel: {
-    fontSize: 13,
-    lineHeight: 17,
+    fontSize: 14,
+    lineHeight: 18,
     fontWeight: '500',
   },
-  chartCard: {
-    marginTop: 14,
-    padding: 16,
-    gap: 14,
+  chartBlock: {
+    gap: 4,
+    marginHorizontal: -6,
   },
   logHeader: {
     marginTop: 22,
@@ -556,8 +556,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   logAdd: {
-    fontSize: 14,
-    lineHeight: 18,
+    fontSize: 17,
+    lineHeight: 22,
     fontWeight: '700',
   },
   logCard: {
@@ -577,13 +577,13 @@ const styles = StyleSheet.create({
   },
   logDate: {
     flex: 1,
-    fontSize: 13,
-    lineHeight: 17,
+    fontSize: 15,
+    lineHeight: 20,
     fontWeight: '500',
   },
   logWeight: {
-    fontSize: 14,
-    lineHeight: 18,
+    fontSize: 17,
+    lineHeight: 22,
     fontWeight: '700',
   },
   goalCard: {
@@ -634,13 +634,13 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   measureLabel: {
-    fontSize: 13,
-    lineHeight: 17,
+    fontSize: 15,
+    lineHeight: 20,
     fontWeight: '700',
   },
   measureValue: {
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 14,
+    lineHeight: 18,
     fontWeight: '600',
   },
   roundButton: {
@@ -661,8 +661,8 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
   },
   addPhotoLabel: {
-    fontSize: 13,
-    lineHeight: 17,
+    fontSize: 15,
+    lineHeight: 20,
     fontWeight: '700',
   },
   emptyHint: {
@@ -671,8 +671,8 @@ const styles = StyleSheet.create({
   },
   hint: {
     textAlign: 'center',
-    fontSize: 13,
-    lineHeight: 17,
+    fontSize: 14,
+    lineHeight: 19,
     fontWeight: '500',
   },
   photoDayCard: {
@@ -688,7 +688,7 @@ const styles = StyleSheet.create({
     width: 84,
     textAlign: 'center',
     marginTop: 4,
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 13,
+    lineHeight: 18,
   },
 });

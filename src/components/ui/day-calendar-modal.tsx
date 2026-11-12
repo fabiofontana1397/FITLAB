@@ -235,13 +235,13 @@ const styles = StyleSheet.create({
   body: { flex: 1, paddingHorizontal: Layout.screenGutter, paddingTop: 8, paddingBottom: 24 },
   monthRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },
   monthTitle: { flex: 1, flexDirection: 'row', alignItems: 'baseline', gap: 8 },
-  month: { fontSize: 28, lineHeight: 34, fontWeight: '800', letterSpacing: -0.5 },
+  month: { fontSize: 28, lineHeight: 36, fontWeight: '800', letterSpacing: -0.5 },
   year: { fontSize: 20, lineHeight: 26, fontWeight: '500' },
   arrow: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   todayPill: { height: 30, paddingHorizontal: 12, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
   todayPillLabel: { fontSize: 13, fontWeight: '700' },
   weekdayRow: { flexDirection: 'row' },
-  weekday: { fontSize: 12, fontWeight: '700' },
+  weekday: { fontSize: 13, fontWeight: '700' },
   rule: { height: StyleSheet.hairlineWidth, marginTop: 6, marginBottom: 4 },
   // Rows keep their usual 52 pt (only a very short screen squeezes them), so the month stays as roomy as it was.
   grid: { flexShrink: 1, minHeight: 0 },
@@ -257,5 +257,5 @@ const styles = StyleSheet.create({
   legendSwatch: { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
   legendDot: { width: 8, height: 8, borderRadius: 4 },
   legendCheck: { width: 14, height: 14, borderRadius: 7, alignItems: 'center', justifyContent: 'center' },
-  legendLabel: { fontSize: 12, lineHeight: 16, fontWeight: '600' },
+  legendLabel: { fontSize: 13, lineHeight: 17, fontWeight: '600' },
 });

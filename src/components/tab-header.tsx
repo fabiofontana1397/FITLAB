@@ -61,10 +61,10 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 },
   rowNarrow: { gap: 8 },
   text: { flex: 1, minWidth: 0 },
-  title: { fontSize: 20, lineHeight: 25, fontWeight: '700', letterSpacing: -0.4 },
-  titleNarrow: { fontSize: 16, lineHeight: 20 },
+  title: { fontSize: 20, lineHeight: 26, fontWeight: '700', letterSpacing: -0.4 },
+  titleNarrow: { fontSize: 16, lineHeight: 21 },
   subtitle: { fontSize: 13, lineHeight: 17, fontWeight: '400' },
-  subtitleNarrow: { fontSize: 12, lineHeight: 16 },
+  subtitleNarrow: { fontSize: 13, lineHeight: 17 },
   actions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   actionsNarrow: { gap: 6 },
 });

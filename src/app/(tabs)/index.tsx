@@ -482,7 +482,7 @@ function ActionTile({
         <View style={styles.actionIcon}>
           <Icon name={icon} size={20} color={iconColor} />
         </View>
-        <ThemedText style={[styles.actionLabel, narrow && { fontSize: 11 }]}>{label}</ThemedText>
+        <ThemedText style={[styles.actionLabel, narrow && { fontSize: 12 }]}>{label}</ThemedText>
         {narrow ? null : <Icon name="chevronRight" size={15} color={OnBrand.text} />}
       </LinearGradient>
     </PressableScale>
@@ -573,7 +573,7 @@ const styles = StyleSheet.create({
   subtitle: {
     marginTop: 1,
     fontSize: 14,
-    lineHeight: 17,
+    lineHeight: 18,
     fontWeight: '500',
   },
   sectionRow: {
@@ -585,7 +585,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 22,
-    lineHeight: 28,
+    lineHeight: 29,
     fontWeight: '800',
     letterSpacing: -0.4,
   },
@@ -650,8 +650,8 @@ const styles = StyleSheet.create({
   actionLabel: {
     flex: 1,
     color: OnBrand.text,
-    fontSize: 12,
-    lineHeight: 15,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '700',
   },
   weekCard: {
@@ -686,7 +686,7 @@ const styles = StyleSheet.create({
   },
   weekGoalValue: {
     fontSize: 40,
-    lineHeight: 46,
+    lineHeight: 52,
     fontWeight: '800',
     letterSpacing: -1.2,
     fontVariant: ['tabular-nums'],
@@ -725,8 +725,8 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   barValue: {
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '700',
   },
   bar: {
@@ -740,15 +740,15 @@ const styles = StyleSheet.create({
   dayLabel: {
     flex: 1,
     textAlign: 'center',
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '500',
   },
   chartMonth: {
     marginTop: 6,
     textAlign: 'center',
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '500',
   },
   statsCard: {
@@ -774,8 +774,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   statLabel: {
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '500',
   },
   statValue: {

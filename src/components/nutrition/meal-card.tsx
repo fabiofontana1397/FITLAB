@@ -253,8 +253,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   foodMacros: {
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '500',
     letterSpacing: 0.4,
   },

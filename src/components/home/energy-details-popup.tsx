@@ -277,8 +277,8 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   note: {
-    fontSize: 12,
-    lineHeight: 15,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '500',
   },
 });

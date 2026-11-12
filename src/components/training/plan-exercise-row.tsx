@@ -95,7 +95,7 @@ export function PlanExerciseRow({
           onPress={() => setLoadModalOpen(true)}
           style={[styles.newLoadButton, { backgroundColor: theme.accent }]}>
           <Icon name="addCircle" size={13} color={theme.onAccent} />
-          <ThemedText style={{ color: theme.onAccent, fontSize: 12, fontWeight: '700' }} numberOfLines={1}>
+          <ThemedText style={{ color: theme.onAccent, fontSize: 13, fontWeight: '700' }} numberOfLines={1}>
             Nuovo carico
           </ThemedText>
         </Pressable>

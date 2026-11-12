@@ -667,7 +667,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 19,
-    lineHeight: 24,
+    lineHeight: 25,
     fontWeight: '700',
     letterSpacing: -0.2,
     marginBottom: 6,
@@ -729,7 +729,7 @@ const styles = StyleSheet.create({
   detailName: {
     marginTop: 10,
     fontSize: 28,
-    lineHeight: 34,
+    lineHeight: 36,
     fontWeight: '800',
     letterSpacing: -0.5,
     textAlign: 'center',
@@ -810,7 +810,7 @@ const styles = StyleSheet.create({
   },
   summaryKcalValue: {
     fontSize: 20,
-    lineHeight: 25,
+    lineHeight: 26,
     fontWeight: '800',
     letterSpacing: -0.4,
   },
@@ -825,8 +825,8 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   summaryMacroLabel: {
-    fontSize: 12,
-    lineHeight: 15,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '500',
   },
   summaryMacroValue: {

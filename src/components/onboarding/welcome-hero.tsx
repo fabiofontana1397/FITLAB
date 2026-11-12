@@ -99,6 +99,6 @@ const styles = StyleSheet.create({
   },
   chipIcon: { width: 24, height: 24 },
   chipText: { flex: 1, minWidth: 0 },
-  chipName: { fontSize: 12.5, lineHeight: 16, fontWeight: '800' },
-  chipKcal: { fontSize: 12, lineHeight: 15, fontWeight: '500' },
+  chipName: { fontSize: 13, lineHeight: 17, fontWeight: '800' },
+  chipKcal: { fontSize: 13, lineHeight: 17, fontWeight: '500' },
 });

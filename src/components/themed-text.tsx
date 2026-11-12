@@ -41,23 +41,23 @@ export function ThemedText({ style, type = 'default', themeColor, ...rest }: The
 // tracking as Apple's type specimen lists them. display ≈ Large Title,
 // title ≈ Title 2, subtitle ≈ Headline, default ≈ Body, small ≈ Subheadline,
 // caption ≈ Footnote, label ≈ Caption 1. Nothing informational goes below
-// 12 pt.
+// 12 pt (13 pt for body-adjacent copy).
 const styles = StyleSheet.create({
   hero: {
     fontSize: 46,
-    lineHeight: 52,
+    lineHeight: 60,
     fontWeight: '700',
     letterSpacing: -1,
   },
   display: {
     fontSize: 34,
-    lineHeight: 41,
+    lineHeight: 44,
     fontWeight: '700',
     letterSpacing: 0.37,
   },
   title: {
     fontSize: 22,
-    lineHeight: 28,
+    lineHeight: 29,
     fontWeight: '600',
     letterSpacing: -0.26,
   },
@@ -74,8 +74,8 @@ const styles = StyleSheet.create({
     letterSpacing: -0.41,
   },
   label: {
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '600',
     letterSpacing: 0.5,
     textTransform: 'uppercase',
