@@ -840,7 +840,7 @@ const styles = StyleSheet.create({
   watchTime: {
     color: C.clock,
     fontSize: 46,
-    lineHeight: 52,
+    lineHeight: 60,
     fontWeight: '700',
     letterSpacing: -1,
     fontVariant: ['tabular-nums'],
@@ -858,15 +858,15 @@ const styles = StyleSheet.create({
   kcalValue: {
     color: C.text,
     fontSize: 34,
-    lineHeight: 40,
+    lineHeight: 44,
     fontWeight: '500',
     letterSpacing: -1,
     fontVariant: ['tabular-nums'],
   },
   kcalLabel: {
     color: C.text,
-    fontSize: 12,
-    lineHeight: 14,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '700',
   },
   controls: {
@@ -903,13 +903,13 @@ const styles = StyleSheet.create({
   counter: {
     color: C.muted,
     fontSize: 13,
-    lineHeight: 16,
+    lineHeight: 17,
     fontWeight: '600',
   },
   exerciseName: {
     color: C.text,
     fontSize: 22,
-    lineHeight: 27,
+    lineHeight: 29,
     fontWeight: '800',
     letterSpacing: -0.5,
     textAlign: 'center',
@@ -982,7 +982,7 @@ const styles = StyleSheet.create({
   loadValue: {
     color: C.green,
     fontSize: 18,
-    lineHeight: 22,
+    lineHeight: 23,
     fontWeight: '800',
     minWidth: 80,
     textAlign: 'center',
@@ -995,13 +995,13 @@ const styles = StyleSheet.create({
   ringLabel: {
     color: C.muted,
     fontSize: 15,
-    lineHeight: 19,
+    lineHeight: 20,
     fontWeight: '600',
   },
   ringTime: {
     color: C.text,
     fontSize: 56,
-    lineHeight: 64,
+    lineHeight: 73,
     fontWeight: '800',
     letterSpacing: -1,
     fontVariant: ['tabular-nums'],
@@ -1028,7 +1028,7 @@ const styles = StyleSheet.create({
   panelTitle: {
     color: C.text,
     fontSize: 22,
-    lineHeight: 27,
+    lineHeight: 29,
     fontWeight: '800',
   },
   panelTitleSmall: {
@@ -1045,7 +1045,7 @@ const styles = StyleSheet.create({
   restTime: {
     color: C.text,
     fontSize: 34,
-    lineHeight: 40,
+    lineHeight: 44,
     fontWeight: '800',
     fontVariant: ['tabular-nums'],
   },
@@ -1076,8 +1076,8 @@ const styles = StyleSheet.create({
   },
   ringHint: {
     color: C.muted,
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '500',
   },
   doneBadge: {
@@ -1091,8 +1091,8 @@ const styles = StyleSheet.create({
   },
   doneBadgeText: {
     color: C.green,
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '700',
   },
   primary: {
@@ -1113,7 +1113,7 @@ const styles = StyleSheet.create({
   },
   countNumber: {
     fontSize: 120,
-    lineHeight: 130,
+    lineHeight: 156,
     fontWeight: '800',
     fontVariant: ['tabular-nums'],
   },
@@ -1126,7 +1126,7 @@ const styles = StyleSheet.create({
   doneTitle: {
     color: C.text,
     fontSize: 28,
-    lineHeight: 34,
+    lineHeight: 36,
     fontWeight: '800',
     letterSpacing: -0.5,
     textAlign: 'center',

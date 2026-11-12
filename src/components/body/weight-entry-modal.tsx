@@ -239,7 +239,7 @@ const styles = StyleSheet.create({
   },
   value: {
     fontSize: 52,
-    lineHeight: 60,
+    lineHeight: 68,
     fontWeight: '800',
     letterSpacing: -1.5,
   },
@@ -286,8 +286,8 @@ const styles = StyleSheet.create({
     top: 50,
     width: 44,
     textAlign: 'center',
-    fontSize: 12,
-    lineHeight: 14,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '500',
   },
   indicator: {

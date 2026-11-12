@@ -111,7 +111,7 @@ export function MeasurementTrendModal({ zone, label, entries, color, onClose }: 
                 {chart.yTicks.map((tick, i) => (
                   <Text
                     key={i}
-                    style={{ position: 'absolute', left: 0, width: PADDING_LEFT - 6, top: tick.y - 7, fontSize: 11, color: theme.textTertiary, textAlign: 'right' }}>
+                    style={{ position: 'absolute', left: 0, width: PADDING_LEFT - 6, top: tick.y - 7, fontSize: 12, color: theme.textTertiary, textAlign: 'right' }}>
                     {tick.label}
                   </Text>
                 ))}
@@ -124,7 +124,7 @@ export function MeasurementTrendModal({ zone, label, entries, color, onClose }: 
                       left: chart.xy[i].x - 22,
                       width: 44,
                       top: CHART_HEIGHT - PADDING_BOTTOM + 6,
-                      fontSize: 11,
+                      fontSize: 12,
                       color: theme.textTertiary,
                       textAlign: 'center',
                     }}>
@@ -138,7 +138,7 @@ export function MeasurementTrendModal({ zone, label, entries, color, onClose }: 
                     left: chart.xy[chart.xy.length - 1].x - 22,
                     width: 44,
                     top: chart.xy[chart.xy.length - 1].y - 20,
-                    fontSize: 11,
+                    fontSize: 12,
                     fontWeight: '700',
                     textAlign: 'center',
                     color,

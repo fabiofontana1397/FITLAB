@@ -218,7 +218,7 @@ export function OggiGauge({ burnedKcal, eatenKcal, burnedColor, eatenColor, valu
           <ThemedText style={[styles.value, { fontSize: (value.length > 6 ? 28 : 34) * k, lineHeight: 38 * k }]} numberOfLines={1}>
             {value}
           </ThemedText>
-          <ThemedText style={[styles.unit, { fontSize: 12 * k, lineHeight: 16 * k }]} themeColor="textSecondary">
+          <ThemedText style={[styles.unit, { fontSize: 13 * k, lineHeight: 18 * k }]} themeColor="textSecondary">
             kcal di bilancio
           </ThemedText>
         </View>
@@ -228,12 +228,12 @@ export function OggiGauge({ burnedKcal, eatenKcal, burnedColor, eatenColor, valu
           {badge ? (
             <View style={[styles.badge, { backgroundColor: tint(toneColor, 0.14), paddingHorizontal: 10 * k, height: 22 * k, borderRadius: 11 * k }]}>
               <View style={[styles.dot, { backgroundColor: toneColor }]} />
-              <ThemedText style={[styles.badgeText, { color: toneColor, fontSize: 12 * k, lineHeight: 16 * k }]} numberOfLines={1}>
+              <ThemedText style={[styles.badgeText, { color: toneColor, fontSize: 13 * k, lineHeight: 18 * k }]} numberOfLines={1}>
                 {badge.label}
               </ThemedText>
             </View>
           ) : caption ? (
-            <ThemedText style={{ color: theme.textTertiary, fontSize: 12 * k, lineHeight: 16 * k, fontWeight: '600' }}>{caption}</ThemedText>
+            <ThemedText style={{ color: theme.textTertiary, fontSize: 13 * k, lineHeight: 18 * k, fontWeight: '600' }}>{caption}</ThemedText>
           ) : null}
         </View>
       </View>

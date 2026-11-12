@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
   },
   nodeNumber: {
     fontSize: 20,
-    lineHeight: 24,
+    lineHeight: 26,
     fontWeight: '700',
   },
   monthLabel: {
@@ -156,8 +156,8 @@ const styles = StyleSheet.create({
   },
   phaseLabel: {
     marginTop: 2,
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '500',
     textAlign: 'center',
   },

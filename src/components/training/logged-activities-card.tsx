@@ -95,13 +95,13 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 20,
-    lineHeight: 25,
+    lineHeight: 26,
     fontWeight: '700',
     letterSpacing: -0.3,
   },
   total: {
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '600',
   },
   card: {
@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
   },
   name: {
     fontSize: 15,
-    lineHeight: 19,
+    lineHeight: 20,
     fontWeight: '700',
   },
   metaRow: {
@@ -142,8 +142,8 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   meta: {
-    fontSize: 12,
-    lineHeight: 15,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '500',
   },
   kcalCol: {
@@ -152,7 +152,7 @@ const styles = StyleSheet.create({
   },
   kcal: {
     fontSize: 15,
-    lineHeight: 19,
+    lineHeight: 20,
     fontWeight: '700',
   },
   trash: {

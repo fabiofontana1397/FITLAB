@@ -120,13 +120,13 @@ const styles = StyleSheet.create({
   },
   sessionTitle: {
     fontSize: 17,
-    lineHeight: 21,
+    lineHeight: 22,
     fontWeight: '700',
   },
   sessionSub: {
     marginTop: 3,
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '500',
   },
   statsRow: {
@@ -141,12 +141,12 @@ const styles = StyleSheet.create({
   },
   statText: {
     fontSize: 13,
-    lineHeight: 16,
+    lineHeight: 17,
     fontWeight: '700',
   },
   statLabel: {
-    fontSize: 12,
-    lineHeight: 15,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '500',
   },
   listHeader: {
@@ -162,8 +162,8 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
   },
   listCount: {
-    fontSize: 12,
-    lineHeight: 15,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '500',
   },
   list: {

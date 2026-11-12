@@ -262,22 +262,6 @@ export default function HomeScreen() {
 
       </FlatCard>
 
-      {/* Assunte and bruciate: their own widget, apart from the balance gauge above. */}
-      <FlatCard radius={CARD_RADIUS} style={styles.barsCard}>
-        <EnergyBars
-          eatenKcal={isFutureDay ? 0 : eatenKcal}
-          eatenTargetKcal={calorieTarget > 0 ? calorieTarget : fullDay.total}
-          basalKcal={isFutureDay ? 0 : basalKcal}
-          basalDayKcal={fullDay.resting + fullDay.everyday}
-          exerciseKcal={isFutureDay ? 0 : trainingBurnKcal}
-          exerciseDayKcal={fullDay.exercise}
-          inactive={isFutureDay}
-          running={viewDate === today}
-          onEatenPress={() => setInfoTopic('eaten')}
-          onBurnedPress={() => setInfoTopic('burned')}
-        />
-      </FlatCard>
-
       <View style={styles.actionsRow}>
         <ActionTile
           colors={Brand.accentGradientSoft}
@@ -297,6 +281,22 @@ export default function HomeScreen() {
         />
       </View>
 
+      {/* Assunte and bruciate: their own widget, below the two register buttons, apart from the balance gauge. */}
+      <FlatCard radius={CARD_RADIUS} style={styles.barsCard}>
+        <EnergyBars
+          eatenKcal={isFutureDay ? 0 : eatenKcal}
+          eatenTargetKcal={calorieTarget > 0 ? calorieTarget : fullDay.total}
+          basalKcal={isFutureDay ? 0 : basalKcal}
+          basalDayKcal={fullDay.resting + fullDay.everyday}
+          exerciseKcal={isFutureDay ? 0 : trainingBurnKcal}
+          exerciseDayKcal={fullDay.exercise}
+          inactive={isFutureDay}
+          running={viewDate === today}
+          onEatenPress={() => setInfoTopic('eaten')}
+          onBurnedPress={() => setInfoTopic('burned')}
+        />
+      </FlatCard>
+
       <View style={{ marginTop: 24 }}>
         <SectionHeader title="Questa settimana" />
       </View>
@@ -306,7 +306,7 @@ export default function HomeScreen() {
             <Icon name="target" size={22} color={theme.accent} />
             <ThemedText style={styles.weekTitle}>Obiettivo {weeklyGoalKcal >= 0 ? 'surplus' : 'deficit'} settimanale</ThemedText>
           </View>
-          <Pressable onPress={() => setDetailsFocus('week')} hitSlop={8} style={styles.linkRow}>
+          <Pressable onPress={() => router.push('/weekly-guide' as Href)} hitSlop={8} style={styles.linkRow} accessibilityRole="button" accessibilityLabel="Dettagli: come leggere il grafico della settimana">
             <ThemedText style={[styles.linkText, { color: theme.accent }]}>Dettagli</ThemedText>
             <Icon name="chevronRight" size={13} color={theme.accent} />
           </Pressable>
@@ -482,7 +482,7 @@ function ActionTile({
         <View style={styles.actionIcon}>
           <Icon name={icon} size={20} color={iconColor} />
         </View>
-        <ThemedText style={[styles.actionLabel, narrow && { fontSize: 11 }]}>{label}</ThemedText>
+        <ThemedText style={[styles.actionLabel, narrow && { fontSize: 12 }]}>{label}</ThemedText>
         {narrow ? null : <Icon name="chevronRight" size={15} color={OnBrand.text} />}
       </LinearGradient>
     </PressableScale>
@@ -573,7 +573,7 @@ const styles = StyleSheet.create({
   subtitle: {
     marginTop: 1,
     fontSize: 14,
-    lineHeight: 17,
+    lineHeight: 18,
     fontWeight: '500',
   },
   sectionRow: {
@@ -585,7 +585,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 22,
-    lineHeight: 28,
+    lineHeight: 29,
     fontWeight: '800',
     letterSpacing: -0.4,
   },
@@ -616,7 +616,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   barsCard: {
-    marginTop: 14,
+    marginTop: 18,
     paddingVertical: 14,
     paddingHorizontal: 14,
   },
@@ -650,8 +650,8 @@ const styles = StyleSheet.create({
   actionLabel: {
     flex: 1,
     color: OnBrand.text,
-    fontSize: 12,
-    lineHeight: 15,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '700',
   },
   weekCard: {
@@ -686,7 +686,7 @@ const styles = StyleSheet.create({
   },
   weekGoalValue: {
     fontSize: 40,
-    lineHeight: 46,
+    lineHeight: 52,
     fontWeight: '800',
     letterSpacing: -1.2,
     fontVariant: ['tabular-nums'],
@@ -725,8 +725,8 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   barValue: {
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '700',
   },
   bar: {
@@ -740,15 +740,15 @@ const styles = StyleSheet.create({
   dayLabel: {
     flex: 1,
     textAlign: 'center',
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '500',
   },
   chartMonth: {
     marginTop: 6,
     textAlign: 'center',
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '500',
   },
   statsCard: {
@@ -774,8 +774,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   statLabel: {
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '500',
   },
   statValue: {
