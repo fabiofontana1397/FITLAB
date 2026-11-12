@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useRef, type RefObject } from 'react';
-import { Dimensions, Platform, type StyleProp, type ViewStyle } from 'react-native';
+import { Dimensions, Platform, type LayoutChangeEvent, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, {
   interpolate,
   makeMutable,
@@ -61,6 +61,8 @@ export type RevealProps = {
   /** Position in the screen's stack; drives the opening stagger. */
   index?: number;
   style?: StyleProp<ViewStyle>;
+  /** Also told where the section sits in its parent (a child's own onLayout would only report 0 inside it). */
+  onLayout?: (e: LayoutChangeEvent) => void;
   children?: React.ReactNode;
 };
 
@@ -76,7 +78,7 @@ export type RevealProps = {
  *    screen entirely, above or below), it enters again.
  * With the system's "reduce motion" on, content is simply there.
  */
-export function Reveal({ index = 0, style, children }: RevealProps) {
+export function Reveal({ index = 0, style, onLayout, children }: RevealProps) {
   const ctx = useContext(ScrollRevealContext);
   const reduceMotion = useReducedMotion();
   const focused = useIsSelectedTab();
@@ -187,6 +189,7 @@ export function Reveal({ index = 0, style, children }: RevealProps) {
         onLayout={(e) => {
           top.set(e.nativeEvent.layout.y);
           height.set(e.nativeEvent.layout.height);
+          onLayout?.(e);
         }}>
         {children}
       </Animated.View>
