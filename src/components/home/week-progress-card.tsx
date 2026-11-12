@@ -17,6 +17,7 @@ import { useRevealedValue } from '@/components/motion/reveal';
 import { ThemedText } from '@/components/themed-text';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon, type IconName } from '@/components/ui/icon';
+import { acceptableRange, balanceHalfRange } from '@/domain/calorie-balance';
 import { pickMotivation, weekAverageState, type MotivationKind, type WeekAverageState } from '@/domain/week-progress';
 import { useTheme } from '@/hooks/use-theme';
 import { formatSignedKcal } from '@/lib/format-kcal';
@@ -63,6 +64,43 @@ function Ring({ fraction, color, delay, children }: { fraction: number; color: s
         {fraction > 0 ? <AnimatedCircle cx={RING / 2} cy={RING / 2} r={r} fill="none" stroke={color} strokeWidth={STROKE} strokeLinecap="round" animatedProps={props} transform={`rotate(-90 ${RING / 2} ${RING / 2})`} /> : null}
       </Svg>
       <View style={styles.ringCenter}>{children}</View>
+    </View>
+  );
+}
+
+const BAR_W = 88;
+const BAR_H = 10;
+const DOT = 18;
+
+/**
+ * The average daily balance on a short horizontal scale centred on the daily goal: the acceptable range is the
+ * green band, the goal a tick in the middle, and a dot glides from the goal to where the week really sits
+ * (deficit to the right, surplus to the left, like the day's gauge). The value stays above it.
+ */
+function AverageGauge({ average, goalKcal, state, color, hasData }: { average: number; goalKcal: number; state: WeekAverageState; color: string; hasData: boolean }) {
+  const theme = useTheme();
+  const half = balanceHalfRange(goalKcal);
+  const tolerance = acceptableRange(goalKcal);
+  const pos = clamp01(0.5 - (average - goalKcal) / (2 * half));
+  const t = useRevealedValue(hasData ? 1 : 0, 320);
+  const dotStyle = useAnimatedStyle(() => ({ transform: [{ translateX: (0.5 + (pos - 0.5) * t.value) * BAR_W - DOT / 2 }], opacity: t.value }));
+  const zoneW = Math.min(1, tolerance / half) * BAR_W;
+  const zoneColor = withAlpha(theme.balanceGoalScale[2], 0.35);
+  return (
+    <View style={styles.gauge}>
+      <View style={styles.gaugeValue}>
+        <RevealCount value={average} delay={320} format={formatSignedKcal} style={styles.gaugeNumber} />
+        <ThemedText style={styles.centerUnit} themeColor="textTertiary">
+          kcal al giorno
+        </ThemedText>
+      </View>
+      <View style={[styles.track, { backgroundColor: theme.backgroundElement }]}>
+        <View style={[styles.zone, { width: zoneW, left: (BAR_W - zoneW) / 2, backgroundColor: zoneColor }]} />
+        <View style={[styles.goalTick, { backgroundColor: theme.textSecondary }]} />
+        {hasData ? (
+          <Animated.View style={[styles.dot, { backgroundColor: state === 'onTrack' ? theme.balanceGoalScale[2] : color, borderColor: theme.background }, dotStyle]} />
+        ) : null}
+      </View>
     </View>
   );
 }
@@ -145,8 +183,8 @@ const AVERAGE_STATUS: Record<WeekAverageState, string> = {
  * "I tuoi progressi": how the week is going, told encouragingly. A message on
  * top picks the best news of the moment (today on goal, a tracking streak, a
  * week on track, workouts done); under it three rings — workouts, days with
- * meals logged (with the streak), and the average deficit/surplus against the
- * goal. Rings sweep and numbers count up every time Home is shown.
+ * meals logged (with the streak) — and, in place of a third ring, a scale for the
+ * average deficit/surplus against the goal. Rings sweep and numbers count up every time Home is shown.
  */
 export function WeekProgressCard(p: WeekProgressCardProps) {
   const theme = useTheme();
@@ -201,14 +239,7 @@ export function WeekProgressCard(p: WeekProgressCardProps) {
         </Tile>
 
         <Tile label={p.weeklyGoalKcal >= 0 ? 'Surplus medio' : 'Deficit medio'} status={AVERAGE_STATUS[average.state]} statusColor={averageColor} statusIcon={average.state === 'onTrack' ? 'check' : undefined}>
-          <Ring fraction={average.closeness} color={average.state === 'onTrack' ? good : theme.accent} delay={320}>
-            <View style={styles.centerCol}>
-              <RevealCount value={p.averageBalanceKcal} delay={320} format={formatSignedKcal} style={styles.centerValueSmall} />
-              <ThemedText style={styles.centerUnit} themeColor="textTertiary">
-                kcal
-              </ThemedText>
-            </View>
-          </Ring>
+          <AverageGauge average={p.averageBalanceKcal} goalKcal={p.dailyGoalKcal} state={average.state} color={averageColor} hasData={p.trackedBalanceDays > 0} />
         </Tile>
       </View>
     </FlatCard>
@@ -230,7 +261,13 @@ const styles = StyleSheet.create({
   centerRow: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 1 },
   centerCol: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10 },
   centerValue: { fontSize: 24, lineHeight: 28, fontWeight: '800', letterSpacing: -0.5 },
-  centerValueSmall: { fontSize: 16, lineHeight: 19, fontWeight: '800', letterSpacing: -0.3 },
+  gauge: { width: RING + 20, height: RING, alignItems: 'center', justifyContent: 'center', gap: 10 },
+  gaugeValue: { alignItems: 'center', gap: 1 },
+  gaugeNumber: { fontSize: 20, lineHeight: 24, fontWeight: '800', letterSpacing: -0.4 },
+  track: { width: BAR_W, height: BAR_H, borderRadius: BAR_H / 2, justifyContent: 'center' },
+  zone: { position: 'absolute', top: 0, bottom: 0, borderRadius: BAR_H / 2 },
+  goalTick: { position: 'absolute', left: BAR_W / 2 - 1, top: -3, width: 2, height: BAR_H + 6, borderRadius: 1 },
+  dot: { position: 'absolute', left: 0, width: DOT, height: DOT, borderRadius: DOT / 2, borderWidth: 3 },
   centerOf: { fontSize: 13, lineHeight: 17, fontWeight: '600' },
   centerUnit: { fontSize: 11, lineHeight: 12, fontWeight: '600' },
   tileLabel: { fontSize: 13, lineHeight: 17, fontWeight: '500' },
