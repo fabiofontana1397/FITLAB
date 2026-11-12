@@ -262,22 +262,6 @@ export default function HomeScreen() {
 
       </FlatCard>
 
-      {/* Assunte and bruciate: their own widget, apart from the balance gauge above. */}
-      <FlatCard radius={CARD_RADIUS} style={styles.barsCard}>
-        <EnergyBars
-          eatenKcal={isFutureDay ? 0 : eatenKcal}
-          eatenTargetKcal={calorieTarget > 0 ? calorieTarget : fullDay.total}
-          basalKcal={isFutureDay ? 0 : basalKcal}
-          basalDayKcal={fullDay.resting + fullDay.everyday}
-          exerciseKcal={isFutureDay ? 0 : trainingBurnKcal}
-          exerciseDayKcal={fullDay.exercise}
-          inactive={isFutureDay}
-          running={viewDate === today}
-          onEatenPress={() => setInfoTopic('eaten')}
-          onBurnedPress={() => setInfoTopic('burned')}
-        />
-      </FlatCard>
-
       <View style={styles.actionsRow}>
         <ActionTile
           colors={Brand.accentGradientSoft}
@@ -297,6 +281,22 @@ export default function HomeScreen() {
         />
       </View>
 
+      {/* Assunte and bruciate: their own widget, below the two register buttons, apart from the balance gauge. */}
+      <FlatCard radius={CARD_RADIUS} style={styles.barsCard}>
+        <EnergyBars
+          eatenKcal={isFutureDay ? 0 : eatenKcal}
+          eatenTargetKcal={calorieTarget > 0 ? calorieTarget : fullDay.total}
+          basalKcal={isFutureDay ? 0 : basalKcal}
+          basalDayKcal={fullDay.resting + fullDay.everyday}
+          exerciseKcal={isFutureDay ? 0 : trainingBurnKcal}
+          exerciseDayKcal={fullDay.exercise}
+          inactive={isFutureDay}
+          running={viewDate === today}
+          onEatenPress={() => setInfoTopic('eaten')}
+          onBurnedPress={() => setInfoTopic('burned')}
+        />
+      </FlatCard>
+
       <View style={{ marginTop: 24 }}>
         <SectionHeader title="Questa settimana" />
       </View>
@@ -306,7 +306,7 @@ export default function HomeScreen() {
             <Icon name="target" size={22} color={theme.accent} />
             <ThemedText style={styles.weekTitle}>Obiettivo {weeklyGoalKcal >= 0 ? 'surplus' : 'deficit'} settimanale</ThemedText>
           </View>
-          <Pressable onPress={() => setDetailsFocus('week')} hitSlop={8} style={styles.linkRow}>
+          <Pressable onPress={() => router.push('/weekly-guide' as Href)} hitSlop={8} style={styles.linkRow} accessibilityRole="button" accessibilityLabel="Dettagli: come leggere il grafico della settimana">
             <ThemedText style={[styles.linkText, { color: theme.accent }]}>Dettagli</ThemedText>
             <Icon name="chevronRight" size={13} color={theme.accent} />
           </Pressable>
@@ -616,7 +616,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   barsCard: {
-    marginTop: 14,
+    marginTop: 18,
     paddingVertical: 14,
     paddingHorizontal: 14,
   },
