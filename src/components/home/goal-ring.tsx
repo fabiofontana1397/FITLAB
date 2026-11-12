@@ -346,8 +346,8 @@ const styles = StyleSheet.create({
   },
   cause: {
     marginTop: 2,
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '500',
     textAlign: 'center',
   },

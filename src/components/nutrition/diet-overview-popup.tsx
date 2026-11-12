@@ -229,7 +229,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     flex: 1,
     fontSize: 15,
-    lineHeight: 19,
+    lineHeight: 20,
     fontWeight: '700',
   },
   body: {
@@ -254,8 +254,8 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   monthDotText: {
-    fontSize: 12,
-    lineHeight: 15,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '700',
   },
   monthTitle: {

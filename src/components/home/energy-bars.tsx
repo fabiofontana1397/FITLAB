@@ -215,7 +215,7 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
   },
   legendOf: {
-    fontSize: 12,
+    fontSize: 13,
     lineHeight: 18,
     fontWeight: '500',
     fontVariant: ['tabular-nums'],

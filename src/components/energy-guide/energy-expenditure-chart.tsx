@@ -138,7 +138,7 @@ const styles = StyleSheet.create({
   },
   totalValue: {
     fontSize: 22,
-    lineHeight: 27,
+    lineHeight: 29,
     fontWeight: '800',
     letterSpacing: -0.4,
   },
@@ -172,22 +172,22 @@ const styles = StyleSheet.create({
   partTitle: {
     flexShrink: 1,
     fontSize: 15,
-    lineHeight: 19,
+    lineHeight: 20,
     fontWeight: '700',
   },
   partValue: {
     fontSize: 15,
-    lineHeight: 19,
+    lineHeight: 20,
     fontWeight: '800',
   },
   partBody: {
-    fontSize: 12,
+    fontSize: 13,
     lineHeight: 17,
     fontWeight: '500',
   },
   partShare: {
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '700',
   },
 });

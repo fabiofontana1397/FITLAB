@@ -264,7 +264,7 @@ const styles = StyleSheet.create({
   // Type scale: page title 28 > section title 19 > card title 15.
   pageTitle: {
     fontSize: 28,
-    lineHeight: 34,
+    lineHeight: 36,
     fontWeight: '800',
     letterSpacing: -0.5,
   },
@@ -300,13 +300,13 @@ const styles = StyleSheet.create({
   },
   bigNumber: {
     fontSize: 32,
-    lineHeight: 38,
+    lineHeight: 42,
     fontWeight: '800',
     letterSpacing: -0.8,
   },
   bigNumberSuffix: {
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '500',
   },
   statusText: {
@@ -332,7 +332,7 @@ const styles = StyleSheet.create({
   },
   ringValue: {
     fontSize: 16,
-    lineHeight: 20,
+    lineHeight: 21,
     fontWeight: '800',
   },
   ringLabel: {
@@ -356,7 +356,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 20,
-    lineHeight: 24,
+    lineHeight: 26,
     fontWeight: '700',
     letterSpacing: -0.2,
   },

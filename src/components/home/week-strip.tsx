@@ -112,8 +112,8 @@ export function WeekStrip({ days, selectedDate, goalKcal, onSelect }: { days: We
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', justifyContent: 'space-between' },
   cell: { flex: 1, alignItems: 'center', gap: 6, paddingVertical: 8, borderRadius: 16, borderCurve: 'continuous' },
-  letter: { fontSize: 12, lineHeight: 16, fontWeight: '600' },
+  letter: { fontSize: 13, lineHeight: 17, fontWeight: '600' },
   ring: { width: W, height: H, alignItems: 'center', justifyContent: 'flex-end' },
-  num: { fontSize: 13, lineHeight: 16, fontWeight: '600', marginBottom: 1 },
+  num: { fontSize: 13, lineHeight: 17, fontWeight: '600', marginBottom: 1 },
   numToday: { fontWeight: '800' },
 });

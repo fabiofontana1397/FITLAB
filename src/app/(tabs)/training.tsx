@@ -378,7 +378,7 @@ const styles = StyleSheet.create({
   // Type scale shared with the training plan: page title > section title > card title.
   pageTitle: {
     fontSize: 28,
-    lineHeight: 34,
+    lineHeight: 36,
     fontWeight: '800',
     letterSpacing: -0.5,
   },
@@ -433,8 +433,8 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
   statusText: {
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '700',
   },
   trendButton: {
@@ -452,11 +452,11 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: 15,
-    lineHeight: 19,
+    lineHeight: 20,
     fontWeight: '700',
   },
   cardBody: {
-    fontSize: 12,
+    fontSize: 13,
     lineHeight: 17,
     fontWeight: '500',
   },

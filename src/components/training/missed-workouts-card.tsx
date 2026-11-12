@@ -136,12 +136,12 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 15,
-    lineHeight: 19,
+    lineHeight: 20,
     fontWeight: '700',
   },
   meta: {
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '500',
   },
   recover: {

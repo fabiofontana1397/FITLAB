@@ -100,12 +100,12 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 15,
-    lineHeight: 19,
+    lineHeight: 20,
     fontWeight: '700',
   },
   sub: {
-    fontSize: 12,
-    lineHeight: 15,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '500',
   },
   value: {
@@ -136,7 +136,7 @@ const styles = StyleSheet.create({
   },
   diffValue: {
     fontSize: 15,
-    lineHeight: 19,
+    lineHeight: 20,
     fontWeight: '800',
   },
 });

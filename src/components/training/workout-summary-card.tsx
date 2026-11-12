@@ -193,13 +193,13 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 17,
-    lineHeight: 21,
+    lineHeight: 22,
     fontWeight: '800',
   },
   subtitle: {
     marginTop: 3,
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '500',
   },
   statsRow: {
@@ -243,8 +243,8 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   statText: {
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '500',
   },
 });

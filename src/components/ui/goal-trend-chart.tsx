@@ -246,7 +246,7 @@ export function GoalTrendChart({ points, target, dateGranularity, width, height 
                     left: 0,
                     width: GUTTER_WIDTH - 6,
                     top: tick.y - 7,
-                    fontSize: 11,
+                    fontSize: 12,
                     color: axisColor,
                     textAlign: 'right',
                   }}
@@ -344,7 +344,7 @@ export function GoalTrendChart({ points, target, dateGranularity, width, height 
                       left: tick.x - 20,
                       width: 40,
                       top: height - PADDING_BOTTOM + 6,
-                      fontSize: 11,
+                      fontSize: 12,
                       color: axisColor,
                       textAlign: 'center',
                     }}
@@ -363,7 +363,7 @@ export function GoalTrendChart({ points, target, dateGranularity, width, height 
                       left: p.x - 20,
                       width: 40,
                       top: p.y - 20,
-                      fontSize: 11,
+                      fontSize: 12,
                       fontWeight: '700',
                       textAlign: 'center',
                       color,
@@ -403,8 +403,8 @@ export function GoalTrendChart({ points, target, dateGranularity, width, height 
                     </Text>
                     <Text
                       style={{
-                        fontSize: 11,
-                        lineHeight: 14,
+                        fontSize: 12,
+                        lineHeight: 16,
                         fontWeight: '500',
                         color: theme.textSecondary,
                       }}
@@ -425,7 +425,7 @@ export function GoalTrendChart({ points, target, dateGranularity, width, height 
                   position: 'absolute',
                   right: 4,
                   top: Math.max(targetY - 16, 0),
-                  fontSize: 11,
+                  fontSize: 12,
                   fontWeight: '700',
                   color: targetColor,
                 }}
@@ -441,7 +441,7 @@ export function GoalTrendChart({ points, target, dateGranularity, width, height 
           <Text
             style={{
               textAlign: 'center',
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: '600',
               color: axisColor,
               height: PERIOD_LABEL_HEIGHT,

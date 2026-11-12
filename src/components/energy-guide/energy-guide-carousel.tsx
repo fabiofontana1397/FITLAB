@@ -193,13 +193,13 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   badgeText: {
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '700',
   },
   title: {
     fontSize: 22,
-    lineHeight: 26,
+    lineHeight: 29,
     fontWeight: '700',
     letterSpacing: -0.4,
   },
@@ -216,8 +216,8 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   footnote: {
-    fontSize: 12,
-    lineHeight: 15,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '500',
   },
   dots: {
