@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { DietPlanHeroCard, TrainingPlanHeroCard } from '@/components/plans/plan-hero-card';
+import { DietPlanView, TrainingPlanView } from '@/components/plans/plan-kinds';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { TabHeader } from '@/components/tab-header';
 import { ThemedText } from '@/components/themed-text';
@@ -18,8 +18,9 @@ import { useUserStore } from '@/store/user-store';
 
 type PlanKind = 'training' | 'diet';
 
-/** Piani: the training and the nutrition plan, one at a time behind a switch, each as a big card with its
- * months, the running month, its goal and the plan's goal. The card replays its entrance every time the page opens. */
+/** Piani: the training and the nutrition plan, one at a time behind a switch. Each shows the macro plan (name,
+ * description, objective, the month path), then the chosen month with its week of workouts or meals, and the check-in.
+ * The page replays its entrance every time it opens. */
 export default function PlansScreen() {
   const goal = useUserStore((s) => s.goal);
   const trainingPlan = usePlanStore((s) => s.trainingPlan);
@@ -47,7 +48,7 @@ export default function PlansScreen() {
   const cardKey = `${kind}-${replay}`;
 
   return (
-    <ScreenScroll reveal header={<TabHeader title="Piani" />} contentContainerStyle={styles.page}>
+    <ScreenScroll header={<TabHeader title="Piani" />} contentContainerStyle={styles.page}>
       <View style={styles.switcher}>
         <SegmentedControl
           options={[
@@ -60,21 +61,19 @@ export default function PlansScreen() {
       </View>
 
       {kind === 'training' && trainingPlan ? (
-        <TrainingPlanHeroCard
+        <TrainingPlanView
           key={cardKey}
           plan={trainingPlan}
           goal={goal}
           checkinPendingMonth={checkinPendingMonth}
-          onPress={() => router.push('/training-plan')}
           onCheckin={() => router.push('/monthly-checkin')}
         />
       ) : kind === 'diet' && shownDietPlan ? (
-        <DietPlanHeroCard
+        <DietPlanView
           key={cardKey}
           plan={shownDietPlan}
           goal={goal}
           checkinPendingMonth={checkinPendingMonth}
-          onPress={() => router.push('/diet-plan')}
           onCheckin={() => router.push('/monthly-checkin')}
         />
       ) : (
