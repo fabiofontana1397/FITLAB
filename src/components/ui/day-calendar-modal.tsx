@@ -8,7 +8,6 @@ import { Layout } from '@/constants/theme';
 import type { GoalBandState } from '@/domain/calorie-balance';
 import { useDayGoalStatus } from '@/hooks/use-day-goal-status';
 import { useTheme } from '@/hooks/use-theme';
-import { formatKcal } from '@/lib/format-kcal';
 import { hapticSelection } from '@/lib/haptics';
 import { daysAgoISO, mondayIndex } from '@/lib/mock/dates';
 
@@ -30,12 +29,11 @@ function monthLabel(year: number, month0: number): string {
   return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
-/** What a day's circle shows about the calorie goal: reached (✓), close, or off. */
-type GoalLevel = 'reached' | 'close' | 'off';
+/** What a day's circle shows about the calorie goal: reached (✓) or off it. A day with nothing logged has no colour. */
+type GoalLevel = 'reached' | 'off';
 function levelOf(state: GoalBandState): GoalLevel | null {
   if (state === 'missing') return null;
-  if (state === 'reached') return 'reached';
-  return state === 'deficitShort' || state === 'surplusShort' ? 'close' : 'off';
+  return state === 'reached' ? 'reached' : 'off';
 }
 
 export type DayCalendarModalProps = {
@@ -66,16 +64,16 @@ export function DayCalendarModal({ visible, selectedDate, isDayMarked, showGoalS
 type SheetProps = Omit<DayCalendarModalProps, 'visible'>;
 
 function CalendarSheet(props: SheetProps) {
-  return props.showGoalStatus ? <WithGoalStatus {...props} /> : <Calendar {...props} statusOf={null} goalKcal={0} />;
+  return props.showGoalStatus ? <WithGoalStatus {...props} /> : <Calendar {...props} statusOf={null} />;
 }
 
 /** Split out so the stores behind the goal reading are only read when the legend is shown. */
 function WithGoalStatus(props: SheetProps) {
-  const { statusOf, dailyGoalKcal } = useDayGoalStatus();
-  return <Calendar {...props} statusOf={statusOf} goalKcal={dailyGoalKcal} />;
+  const statusOf = useDayGoalStatus();
+  return <Calendar {...props} statusOf={statusOf} />;
 }
 
-function Calendar({ selectedDate, isDayMarked, statusOf, goalKcal, onSelectDate, onClose }: SheetProps & { statusOf: ((date: string) => GoalBandState) | null; goalKcal: number }) {
+function Calendar({ selectedDate, isDayMarked, statusOf, onSelectDate, onClose }: SheetProps & { statusOf: ((date: string) => GoalBandState) | null }) {
   const theme = useTheme();
   const today = daysAgoISO(0);
   const selected = new Date(selectedDate);
@@ -117,7 +115,7 @@ function Calendar({ selectedDate, isDayMarked, statusOf, goalKcal, onSelectDate,
   while (cells.length % 7 !== 0) cells.push(null);
   const weeks = Array.from({ length: cells.length / 7 }, (_, w) => cells.slice(w * 7, w * 7 + 7));
 
-  const levelColor: Record<GoalLevel, string> = { reached: theme.balanceGoalScale[2], close: theme.brandYellow, off: theme.accent };
+  const levelColor: Record<GoalLevel, string> = { reached: theme.balanceGoalScale[2], off: theme.accent };
   const viewingOtherMonth = new Date(today).getMonth() !== viewedMonth0 || new Date(today).getFullYear() !== viewedYear;
 
   return (
@@ -177,7 +175,7 @@ function Calendar({ selectedDate, isDayMarked, statusOf, goalKcal, onSelectDate,
                         }}
                         accessibilityRole="button"
                         accessibilityState={{ selected: isSelected }}
-                        accessibilityLabel={`${new Date(date).getDate()} ${monthLabel(viewedYear, viewedMonth0)}${isToday ? ', oggi' : ''}${level === 'reached' ? ', obiettivo raggiunto' : level === 'close' ? ', vicino all’obiettivo' : level === 'off' ? ', fuori obiettivo' : ''}`}
+                        accessibilityLabel={`${new Date(date).getDate()} ${monthLabel(viewedYear, viewedMonth0)}${isToday ? ', oggi' : ''}${level === 'reached' ? ', obiettivo raggiunto' : level === 'off' ? ', fuori obiettivo' : ''}`}
                         style={[
                           styles.circle,
                           color ? { backgroundColor: withAlpha(color, level === 'reached' ? 0.22 : 0.26) } : null,
@@ -200,12 +198,8 @@ function Calendar({ selectedDate, isDayMarked, statusOf, goalKcal, onSelectDate,
 
           {statusOf ? (
             <View style={[styles.legend, { backgroundColor: theme.backgroundElement }]}>
-              <ThemedText style={styles.legendTitle}>{goalSentence(goalKcal)}</ThemedText>
-              <View style={styles.legendCompact}>
-                <LegendRow color={levelColor.reached} check label="Raggiunto" />
-                <LegendRow color={levelColor.off} label="Fuori obiettivo" />
-                <LegendRow color={null} label="Senza colore" />
-              </View>
+              <LegendRow color={levelColor.reached} check label="Raggiunto" />
+              <LegendRow color={levelColor.off} label="Fuori obiettivo" />
             </View>
           ) : null}
         </View>
@@ -214,25 +208,18 @@ function Calendar({ selectedDate, isDayMarked, statusOf, goalKcal, onSelectDate,
   );
 }
 
-/** "Il tuo obiettivo: deficit di 151 kcal al giorno" — what the colours below are measured against. */
-function goalSentence(goalKcal: number): string {
-  if (Math.abs(goalKcal) < 50) return 'Il tuo obiettivo: pareggio, nessun deficit né surplus';
-  return `Il tuo obiettivo: ${goalKcal < 0 ? 'deficit' : 'surplus'} di ${formatKcal(goalKcal)} kcal al giorno`;
-}
-
 /** A small sample drawn like a day of the month (a tinted circle, with the check badge for "reached"), then its name. */
-function LegendRow({ color, label, check = false }: { color: string | null; label: string; check?: boolean }) {
-  const theme = useTheme();
+function LegendRow({ color, label, check = false }: { color: string; label: string; check?: boolean }) {
   return (
     <View style={styles.legendRow}>
-      <View style={[styles.legendSwatch, color ? { backgroundColor: withAlpha(color, check ? 0.22 : 0.26) } : { borderWidth: 1.5, borderColor: theme.border }]}>
-        {check && color ? (
+      <View style={[styles.legendSwatch, { backgroundColor: withAlpha(color, check ? 0.22 : 0.26) }]}>
+        {check ? (
           <View style={[styles.legendCheck, { backgroundColor: color }]}>
             <Icon name="check" size={9} color="#FFFFFF" />
           </View>
-        ) : color ? (
+        ) : (
           <View style={[styles.legendDot, { backgroundColor: color }]} />
-        ) : null}
+        )}
       </View>
       <ThemedText style={styles.legendLabel}>{label}</ThemedText>
     </View>
@@ -265,9 +252,7 @@ const styles = StyleSheet.create({
   dayNumberStrong: { fontWeight: '800' },
   check: { position: 'absolute', right: -3, bottom: -3, width: 16, height: 16, borderRadius: 8, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   dot: { position: 'absolute', bottom: 3, width: 5, height: 5, borderRadius: 2.5 },
-  legend: { marginTop: 10, borderRadius: 16, paddingVertical: 8, paddingHorizontal: 12, gap: 6 },
-  legendTitle: { fontSize: 12, lineHeight: 16, fontWeight: '700' },
-  legendCompact: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', columnGap: 10, rowGap: 4 },
+  legend: { marginTop: 10, borderRadius: 16, paddingVertical: 10, paddingHorizontal: 12, flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-around', columnGap: 16, rowGap: 6 },
   legendRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   legendSwatch: { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
   legendDot: { width: 8, height: 8, borderRadius: 4 },
