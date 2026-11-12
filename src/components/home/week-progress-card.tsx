@@ -231,9 +231,9 @@ const styles = StyleSheet.create({
   centerCol: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10 },
   centerValue: { fontSize: 24, lineHeight: 28, fontWeight: '800', letterSpacing: -0.5 },
   centerValueSmall: { fontSize: 16, lineHeight: 19, fontWeight: '800', letterSpacing: -0.3 },
-  centerOf: { fontSize: 12, lineHeight: 16, fontWeight: '600' },
-  centerUnit: { fontSize: 10, lineHeight: 12, fontWeight: '600' },
-  tileLabel: { fontSize: 12, lineHeight: 16, fontWeight: '500' },
+  centerOf: { fontSize: 13, lineHeight: 17, fontWeight: '600' },
+  centerUnit: { fontSize: 11, lineHeight: 12, fontWeight: '600' },
+  tileLabel: { fontSize: 13, lineHeight: 17, fontWeight: '500' },
   statusRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 3, minHeight: 30 },
-  status: { fontSize: 11, lineHeight: 15, fontWeight: '700', textAlign: 'center', flexShrink: 1 },
+  status: { fontSize: 12, lineHeight: 15, fontWeight: '700', textAlign: 'center', flexShrink: 1 },
 });
