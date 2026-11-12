@@ -262,22 +262,6 @@ export default function HomeScreen() {
 
       </FlatCard>
 
-      {/* Assunte and bruciate: their own widget, apart from the balance gauge above. */}
-      <FlatCard radius={CARD_RADIUS} style={styles.barsCard}>
-        <EnergyBars
-          eatenKcal={isFutureDay ? 0 : eatenKcal}
-          eatenTargetKcal={calorieTarget > 0 ? calorieTarget : fullDay.total}
-          basalKcal={isFutureDay ? 0 : basalKcal}
-          basalDayKcal={fullDay.resting + fullDay.everyday}
-          exerciseKcal={isFutureDay ? 0 : trainingBurnKcal}
-          exerciseDayKcal={fullDay.exercise}
-          inactive={isFutureDay}
-          running={viewDate === today}
-          onEatenPress={() => setInfoTopic('eaten')}
-          onBurnedPress={() => setInfoTopic('burned')}
-        />
-      </FlatCard>
-
       <View style={styles.actionsRow}>
         <ActionTile
           colors={Brand.accentGradientSoft}
@@ -296,6 +280,22 @@ export default function HomeScreen() {
           onPress={() => openPopup(() => setLogActivityOpen(true))}
         />
       </View>
+
+      {/* Assunte and bruciate: their own widget, below the two register buttons, apart from the balance gauge. */}
+      <FlatCard radius={CARD_RADIUS} style={styles.barsCard}>
+        <EnergyBars
+          eatenKcal={isFutureDay ? 0 : eatenKcal}
+          eatenTargetKcal={calorieTarget > 0 ? calorieTarget : fullDay.total}
+          basalKcal={isFutureDay ? 0 : basalKcal}
+          basalDayKcal={fullDay.resting + fullDay.everyday}
+          exerciseKcal={isFutureDay ? 0 : trainingBurnKcal}
+          exerciseDayKcal={fullDay.exercise}
+          inactive={isFutureDay}
+          running={viewDate === today}
+          onEatenPress={() => setInfoTopic('eaten')}
+          onBurnedPress={() => setInfoTopic('burned')}
+        />
+      </FlatCard>
 
       <View style={{ marginTop: 24 }}>
         <SectionHeader title="Questa settimana" />
@@ -616,7 +616,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   barsCard: {
-    marginTop: 14,
+    marginTop: 18,
     paddingVertical: 14,
     paddingHorizontal: 14,
   },
