@@ -4,7 +4,7 @@ import { persist } from 'zustand/middleware';
 import { registerExternalFoods, type FoodItem } from '@/lib/mock/food-database';
 import { appJsonStorage } from '@/store/storage';
 
-/** The FatSecret foods this device has met (searched, scanned or logged), kept so findFood() resolves them offline and synchronously. */
+/** The Open Food Facts products this device has met (searched, scanned or logged), kept so findFood() resolves them offline and synchronously. */
 type State = {
   foods: Record<string, FoodItem>;
   remember: (foods: FoodItem[]) => void;

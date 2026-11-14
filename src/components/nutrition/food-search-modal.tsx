@@ -1,5 +1,5 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { FlatList, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 
@@ -13,13 +13,15 @@ import { SheetScreen } from '@/components/ui/sheet-screen';
 import { HorizontalScrollDefaults, ListDefaults, ScrollDefaults } from '@/constants/scroll';
 import { Layout } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { lookupBarcode, searchFatSecret } from '@/lib/api/fatsecret';
+import { lookupBarcode, searchOnlineFoods } from '@/lib/api/food-search';
 import { hapticSelection, hapticSuccess, hapticToggle } from '@/lib/haptics';
 import { FOOD_DATABASE, findFood, searchFood, type FoodItem } from '@/lib/mock/food-database';
 import { useFavoriteFoodsStore } from '@/store/favorite-foods-store';
 import { useNutritionStore, type MealSlot } from '@/store/nutrition-store';
 
 const PAGE_PADDING = Layout.screenGutter;
+/** Shortest query worth sending to Open Food Facts (the function ignores shorter ones). */
+const ONLINE_MIN_CHARS = 3;
 /** The browser's black focus ring around a text field: the field's own box is the affordance. */
 const webNoOutline = (Platform.OS === 'web' ? { outlineStyle: 'none' } : {}) as object;
 /** How far the − and + buttons move the quantity. */
@@ -105,8 +107,11 @@ function FoodSearchForm({ slot, date, editEntry, onClose, onSaved }: Omit<FoodSe
   const [hint, setHint] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
   const [lookingUp, setLookingUp] = useState(false);
-  /** FatSecret results for the current search (the bundled catalogue answers instantly, these follow). */
+  /** Open Food Facts results for a search the person asked for (the bundled catalogue answers instantly, these follow). */
   const [online, setOnline] = useState<{ query: string; foods: FoodItem[] } | null>(null);
+  /** The query being looked up online right now. */
+  const [onlineLoading, setOnlineLoading] = useState<string | null>(null);
+  const onlineRequest = useRef(0);
   const [selected, setSelected] = useState<FoodItem | null>(() => (editEntry ? (findFood(editEntry.foodId) ?? null) : null));
   const [grams, setGrams] = useState(() => (editEntry ? String(editEntry.grams) : String(FOOD_DATABASE[0].defaultPortionG)));
 
@@ -123,21 +128,29 @@ function FoodSearchForm({ slot, date, editEntry, onClose, onSaved }: Omit<FoodSe
   const toFoods = (ids: string[]) => ids.map((id) => findFood(id)).filter((f): f is FoodItem => !!f);
   /** True when Recenti has nothing to show yet and a starter set stands in for it. */
   const suggesting = !searching && view.kind === 'tab' && view.id === 'recenti' && history.recent.length === 0;
-  // Debounced FatSecret search; failures (offline, not configured) just leave the local results.
-  useEffect(() => {
+  const trimmedQuery = query.trim();
+  const canSearchOnline = trimmedQuery.length >= ONLINE_MIN_CHARS;
+  const onlineDone = !!online && online.query === trimmedQuery;
+
+  // Packaged products are searched only when asked (keyboard "search" or the row under the list):
+  // Open Food Facts allows few searches per minute and forbids search-as-you-type.
+  const searchOnline = async () => {
     const q = query.trim();
-    if (q.length < 2) return;
-    let cancelled = false;
-    const timer = setTimeout(() => {
-      searchFatSecret(q)
-        .then((foods) => !cancelled && setOnline({ query: q, foods }))
-        .catch((err) => console.warn('FatSecret search unavailable', err));
-    }, 400);
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [query]);
+    if (q.length < ONLINE_MIN_CHARS || onlineLoading === q || (online && online.query === q)) return;
+    const request = ++onlineRequest.current;
+    setOnlineLoading(q);
+    try {
+      const { foods, rateLimited } = await searchOnlineFoods(q);
+      if (request !== onlineRequest.current) return;
+      if (rateLimited) setHint('Troppe ricerche in questo momento. Riprova tra un minuto.');
+      else setOnline({ query: q, foods });
+    } catch (err) {
+      console.warn('online food search unavailable', err);
+      if (request === onlineRequest.current) setHint('Non riesco a cercare tra i prodotti confezionati. Riprova tra poco.');
+    } finally {
+      if (request === onlineRequest.current) setOnlineLoading(null);
+    }
+  };
 
   const list = useMemo(() => {
     if (searching) {
@@ -171,14 +184,17 @@ function FoodSearchForm({ slot, date, editEntry, onClose, onSaved }: Omit<FoodSe
   const handleScanned = async (code: string) => {
     setLookingUp(true);
     try {
-      const food = await lookupBarcode(code);
-      if (food) {
+      const result = await lookupBarcode(code);
+      setScanning(false);
+      if (result.status === 'found') {
         hapticSuccess();
-        setScanning(false);
-        openDetail(food);
+        openDetail(result.food);
+      } else if (result.status === 'incomplete') {
+        setHint(`Prodotto trovato (${code}) ma senza valori nutrizionali. Prova a cercarlo per nome.`);
+      } else if (result.status === 'rateLimited') {
+        setHint('Troppe ricerche in questo momento. Riprova tra un minuto.');
       } else {
         setHint(`Prodotto non trovato (${code}). Prova a cercarlo per nome.`);
-        setScanning(false);
       }
     } catch (err) {
       console.warn('barcode lookup failed', err);
@@ -379,6 +395,7 @@ function FoodSearchForm({ slot, date, editEntry, onClose, onSaved }: Omit<FoodSe
             placeholderTextColor={theme.textTertiary}
             accessibilityLabel="Cerca un alimento"
             returnKeyType="search"
+            onSubmitEditing={searchOnline}
             style={[styles.searchInput, { color: theme.text }]}
           />
           {searching ? (
@@ -478,6 +495,24 @@ function FoodSearchForm({ slot, date, editEntry, onClose, onSaved }: Omit<FoodSe
             <ThemedText style={styles.empty} themeColor="textTertiary">
               {emptyText}
             </ThemedText>
+          }
+          ListFooterComponent={
+            !searching || !canSearchOnline ? null : onlineDone ? (
+              <ThemedText style={styles.onlineNote} themeColor="textTertiary">
+                {online.foods.length > 0 ? 'Prodotti confezionati: dati Open Food Facts' : 'Nessun prodotto confezionato trovato su Open Food Facts'}
+              </ThemedText>
+            ) : onlineLoading === trimmedQuery ? (
+              <ThemedText style={styles.onlineNote} themeColor="textTertiary">
+                Cerco tra i prodotti confezionati...
+              </ThemedText>
+            ) : (
+              <Pressable testID="online-search" onPress={searchOnline} accessibilityRole="button" style={[styles.onlineButton, { backgroundColor: theme.backgroundElement }]}>
+                <Icon name="barcode" size={18} color={theme.accent} />
+                <ThemedText style={[styles.onlineButtonLabel, { color: theme.accent }]} numberOfLines={1}>
+                  Cerca «{trimmedQuery}» tra i prodotti confezionati
+                </ThemedText>
+              </Pressable>
+            )
           }
         />
         {/* Under the search and the chips the foods dissolve instead of being cut by a hard edge. */}
@@ -706,6 +741,26 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 24,
     fontSize: 14,
+  },
+  onlineNote: {
+    textAlign: 'center',
+    marginTop: 16,
+    fontSize: 12,
+  },
+  onlineButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 12,
+    minHeight: 48,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+  },
+  onlineButtonLabel: {
+    flexShrink: 1,
+    fontSize: 14,
+    fontWeight: '600',
   },
 
   // Detail

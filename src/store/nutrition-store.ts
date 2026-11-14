@@ -14,7 +14,7 @@ import {
 } from '@/lib/api/nutrition';
 import type { IconName } from '@/components/ui/icon';
 import { addDaysISO, daysAgoISO } from '@/lib/mock/dates';
-import { fetchFoodsByIds } from '@/lib/api/fatsecret';
+import { fetchFoodsByIds } from '@/lib/api/food-search';
 import { findFood } from '@/lib/mock/food-database';
 import { useExternalFoodsStore } from '@/store/external-foods-store';
 import type { UserProfile } from '@/lib/mock/types';
@@ -152,7 +152,7 @@ export const useNutritionStore = create<NutritionState>()(
             withAuthRetry(() => fetchMealEntries(userId)),
             withAuthRetry(() => fetchSeededDates(userId)),
           ]);
-          // FatSecret foods logged on another device: pull them from the shared catalogue so they resolve here too.
+          // Online (Open Food Facts) foods logged on another device: pull them from the shared catalogue so they resolve here too.
           const missing = [...new Set(entries.map((e) => e.foodId))].filter((id) => !findFood(id));
           if (missing.length > 0) {
             const foods = await fetchFoodsByIds(missing).catch(() => []);
