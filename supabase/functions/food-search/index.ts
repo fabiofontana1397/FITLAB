@@ -1,118 +1,124 @@
-// FatSecret Platform API proxy: text search, barcode lookup and detail.
+// Open Food Facts proxy: text search and barcode lookup for packaged products.
 //
-// Why a function and not the app: the client id/secret must never ship in the
-// bundle, and FatSecret only accepts calls from allow-listed IPs, so every
-// call has to leave from one server. Secrets (never EXPO_PUBLIC_*):
-//   supabase secrets set FATSECRET_CLIENT_ID=... FATSECRET_CLIENT_SECRET=...
-// The barcode endpoint needs the `barcode` scope (Premier plan); search only
-// needs `basic`. Override with FATSECRET_SCOPE="basic barcode" if enabled.
+// Open Food Facts (https://world.openfoodfacts.org) is an open database (ODbL):
+// no API key, no IP allow-list, and the data may be stored. What it does ask:
+//   - a custom User-Agent on every call ("AppName/Version (contact)"). Set
+//     yours with `supabase secrets set OFF_USER_AGENT="FitLab/1.0 (you@example.com)"`;
+//   - respect of tight per-IP rate limits (10 searches/min, 15 product
+//     reads/min). All calls leave from this function, so those limits are
+//     shared by every user: that is why every answer is cached in Postgres
+//     (products in food_items, search results in food_search_cache) and why
+//     the app only searches on an explicit action, never while typing;
+//   - attribution in the UI (the app shows "Open Food Facts" under results).
 //
-// Every food returned is normalised to the app's FoodItem (values per 100 g)
-// and upserted into public.food_items so meal_entries can reference it.
+// Every product returned is normalised to the app's FoodItem (values per
+// 100 g/ml) and upserted into public.food_items so meal_entries can reference it.
 import { CORS_HEADERS, handlePreflight, jsonResponse } from '../_shared/cors.ts';
 import { createServiceRoleClient, createUserScopedClient, getAuthenticatedUser } from '../_shared/supabase-client.ts';
 
-const TOKEN_URL = 'https://oauth.fatsecret.com/connect/token';
-const API = 'https://platform.fatsecret.com/rest';
+const OFF = 'https://world.openfoodfacts.org';
+const FIELDS = 'code,product_name,product_name_it,generic_name_it,brands,nutriments,serving_quantity,categories_tags';
+const DEFAULT_USER_AGENT = 'FitLab/1.0 (https://github.com/fabiofontana1397/FITLAB)';
+const SEARCH_TTL_MS = 30 * 24 * 3600 * 1000;
+const EMPTY_SEARCH_TTL_MS = 24 * 3600 * 1000;
+const COLUMNS = 'id, name, brand, category, kcal100, protein100, carbs100, fats100, default_portion_g, source, barcode';
 
 type Body =
   | { action: 'search'; query: string; max?: number }
-  | { action: 'barcode'; barcode: string }
-  | { action: 'get'; foodId: string };
+  | { action: 'barcode'; barcode: string };
 
-type Serving = {
-  serving_description?: string;
-  metric_serving_amount?: string;
-  metric_serving_unit?: string;
-  calories?: string;
-  protein?: string;
-  carbohydrate?: string;
-  fat?: string;
-  fiber?: string;
+type OffProduct = {
+  code?: string;
+  product_name?: string;
+  product_name_it?: string;
+  generic_name_it?: string;
+  brands?: string;
+  nutriments?: Record<string, unknown>;
+  serving_quantity?: number | string;
+  categories_tags?: string[];
 };
 
-type FsFood = {
-  food_id: string;
-  food_name: string;
-  brand_name?: string;
-  servings?: { serving: Serving | Serving[] };
-};
+type Food = NonNullable<ReturnType<typeof normalise>>;
 
-let cachedToken: { value: string; expiresAt: number } | null = null;
+/** Thrown when Open Food Facts answers 429/503: the caller reports it instead of failing. */
+class RateLimited extends Error {}
 
-async function getToken(): Promise<string> {
-  if (cachedToken && cachedToken.expiresAt > Date.now() + 30_000) return cachedToken.value;
-  const id = Deno.env.get('FATSECRET_CLIENT_ID');
-  const secret = Deno.env.get('FATSECRET_CLIENT_SECRET');
-  if (!id || !secret) throw new Error('FatSecret non configurato (FATSECRET_CLIENT_ID / FATSECRET_CLIENT_SECRET)');
-  const res = await fetch(TOKEN_URL, {
-    method: 'POST',
-    headers: { Authorization: `Basic ${btoa(`${id}:${secret}`)}`, 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ grant_type: 'client_credentials', scope: Deno.env.get('FATSECRET_SCOPE') ?? 'basic barcode' }),
+async function offGet(url: string): Promise<any | null> {
+  const res = await fetch(url, {
+    headers: { 'User-Agent': Deno.env.get('OFF_USER_AGENT') ?? DEFAULT_USER_AGENT, Accept: 'application/json' },
+    signal: AbortSignal.timeout(10_000),
   });
-  if (!res.ok) throw new Error(`FatSecret token ${res.status}: ${await res.text()}`);
-  const json = await res.json();
-  cachedToken = { value: json.access_token, expiresAt: Date.now() + (json.expires_in ?? 3600) * 1000 };
-  return cachedToken.value;
+  if (res.status === 404) return null;
+  if (res.status === 429 || res.status === 503) throw new RateLimited(`Open Food Facts ${res.status}`);
+  if (!res.ok) throw new Error(`Open Food Facts ${res.status}`);
+  return await res.json();
 }
 
-async function fsGet(path: string, params: Record<string, string>): Promise<any> {
-  const url = `${API}${path}?${new URLSearchParams({ ...params, format: 'json' })}`;
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${await getToken()}` } });
-  if (!res.ok) throw new Error(`FatSecret ${res.status}: ${await res.text()}`);
-  const json = await res.json();
-  // FatSecret reports API errors with HTTP 200 and an `error` object.
-  if (json?.error) throw new Error(`FatSecret error ${json.error.code}: ${json.error.message}`);
-  return json;
-}
-
-const num = (v: unknown): number => {
+const num = (v: unknown): number | null => {
   const n = parseFloat(String(v ?? ''));
-  return Number.isFinite(n) ? n : 0;
+  return Number.isFinite(n) ? n : null;
 };
 const round1 = (n: number) => Math.round(n * 10) / 10;
-const asArray = <T>(v: T | T[] | undefined): T[] => (v === undefined ? [] : Array.isArray(v) ? v : [v]);
 
-/** Picks the serving whose numbers can be scaled to 100 g/ml, and builds the per-100 g food from it. */
-function normalise(food: FsFood, barcode?: string) {
-  const servings = asArray(food.servings?.serving);
-  const metric = servings.filter((s) => (s.metric_serving_unit === 'g' || s.metric_serving_unit === 'ml') && num(s.metric_serving_amount) > 0);
-  // Prefer the "100 g" serving (exact), else the first metric one.
-  const base = metric.find((s) => num(s.metric_serving_amount) === 100) ?? metric[0];
-  if (!base) return null;
-  const amount = num(base.metric_serving_amount);
-  const k = 100 / amount;
-  const kcal100 = Math.round(num(base.calories) * k);
-  const protein100 = round1(num(base.protein) * k);
-  const carbs100 = round1(num(base.carbohydrate) * k);
-  const fats100 = round1(num(base.fat) * k);
-  // The portion: first non-100 g serving (e.g. "1 vasetto" = 125 g), else 100 g.
-  const portion = metric.find((s) => num(s.metric_serving_amount) !== 100) ?? base;
-  const defaultPortionG = Math.round(num(portion.metric_serving_amount)) || 100;
+/** Builds the per-100 g food, or null when the product has no usable name or nutrition table. */
+function normalise(p: OffProduct, fallbackCode?: string) {
+  const code = String(p.code ?? fallbackCode ?? '').replace(/\D/g, '');
+  const name = (p.product_name_it || p.product_name || p.generic_name_it || '').trim();
+  if (!code || !name) return null;
+
+  const n = p.nutriments ?? {};
+  const protein = num(n['proteins_100g']);
+  const carbs = num(n['carbohydrates_100g']);
+  const fats = num(n['fat_100g']);
+  // Energy: kcal when declared, else from kJ, else from the macros.
+  const kj = num(n['energy_100g']);
+  let kcal = num(n['energy-kcal_100g']) ?? (kj !== null ? kj / 4.184 : null);
+  if (kcal === null && protein !== null && carbs !== null && fats !== null) kcal = protein * 4 + carbs * 4 + fats * 9;
+  // Community-entered data: drop rows without a nutrition table or with impossible values.
+  if (kcal === null || kcal < 0 || kcal > 950) return null;
+  if (protein === null && carbs === null && fats === null) return null;
+  const p100 = round1(Math.min(100, Math.max(0, protein ?? 0)));
+  const c100 = round1(Math.min(100, Math.max(0, carbs ?? 0)));
+  const f100 = round1(Math.min(100, Math.max(0, fats ?? 0)));
+
+  const serving = num(p.serving_quantity);
+  const brand = (p.brands ?? '').split(',')[0].trim();
   return {
-    id: `fs-${food.food_id}`,
-    name: food.food_name,
-    brand: food.brand_name ?? null,
-    category: category(protein100, carbs100, fats100),
-    kcal100,
-    protein100,
-    carbs100,
-    fats100,
-    defaultPortionG,
-    source: 'fatsecret',
-    barcode: barcode ?? null,
+    id: `off-${code}`,
+    name: name.slice(0, 120),
+    brand: brand || null,
+    category: category(p.categories_tags ?? [], p100, c100, f100),
+    kcal100: Math.round(kcal),
+    protein100: p100,
+    carbs100: c100,
+    fats100: f100,
+    defaultPortionG: serving !== null && serving >= 1 && serving <= 1000 ? Math.round(serving) : 100,
+    source: 'openfoodfacts',
+    barcode: code,
   };
 }
 
-/** FatSecret has no category: use the dominant macro by calories. */
-function category(p: number, c: number, f: number): string {
+/** The app's category from the Open Food Facts taxonomy when it is clear, else from the dominant macro. */
+function category(tags: string[], p: number, c: number, f: number): string {
+  const has = (...keys: string[]) => keys.some((k) => tags.includes(k));
+  if (has('en:legumes', 'en:legumes-and-their-products', 'en:pulses')) return 'legumi';
+  if (has('en:dairies', 'en:cheeses', 'en:yogurts', 'en:milks')) return 'latticini';
+  if (has('en:fruits', 'en:fruits-based-foods', 'en:fresh-fruits')) return 'frutta';
+  if (has('en:vegetables', 'en:vegetables-based-foods', 'en:fresh-vegetables')) return 'verdura';
   const kp = p * 4, kc = c * 4, kf = f * 9;
   if (kp + kc + kf < 1) return 'altro';
   if (kp >= kc && kp >= kf) return 'proteine';
   return kc >= kf ? 'carboidrati' : 'grassi';
 }
 
-async function persist(foods: NonNullable<ReturnType<typeof normalise>>[]) {
+// deno-lint-ignore no-explicit-any
+const fromRow = (r: any) => ({
+  id: r.id, name: r.name, brand: r.brand, category: r.category,
+  kcal100: Number(r.kcal100), protein100: Number(r.protein100), carbs100: Number(r.carbs100), fats100: Number(r.fats100),
+  defaultPortionG: Number(r.default_portion_g) || 100, source: r.source, barcode: r.barcode,
+});
+
+async function persist(foods: Food[]) {
   if (foods.length === 0) return;
   const db = createServiceRoleClient();
   const { error } = await db.from('food_items').upsert(
@@ -126,9 +132,56 @@ async function persist(foods: NonNullable<ReturnType<typeof normalise>>[]) {
   if (error) throw error;
 }
 
-async function getFood(foodId: string, barcode?: string) {
-  const json = await fsGet('/food/v4', { food_id: foodId, flag_default_serving: 'true', language: 'it', region: 'IT' });
-  return normalise(json.food as FsFood, barcode);
+async function search(rawQuery: string, max: number) {
+  const query = rawQuery.trim().toLowerCase().replace(/\s+/g, ' ');
+  if (query.length < 3) return { foods: [] };
+  const db = createServiceRoleClient();
+
+  // Same query asked before (by anyone): answer from Postgres, no call to Open Food Facts.
+  const { data: hit } = await db.from('food_search_cache').select('food_ids, fetched_at').eq('query', query).maybeSingle();
+  if (hit) {
+    const age = Date.now() - new Date(hit.fetched_at).getTime();
+    const ids: string[] = hit.food_ids ?? [];
+    if (age < (ids.length > 0 ? SEARCH_TTL_MS : EMPTY_SEARCH_TTL_MS)) {
+      if (ids.length === 0) return { foods: [] };
+      const { data } = await db.from('food_items').select(COLUMNS).in('id', ids);
+      const byId = new Map((data ?? []).map((r) => [r.id, fromRow(r)]));
+      return { foods: ids.map((id) => byId.get(id)).filter((f) => !!f) };
+    }
+  }
+
+  // Products sold in Italy, most scanned first, names in Italian.
+  const params = new URLSearchParams({
+    search_terms: query, search_simple: '1', action: 'process', json: '1',
+    tagtype_0: 'countries', tag_contains_0: 'contains', tag_0: 'italy',
+    sort_by: 'unique_scans_n', page_size: String(max), lc: 'it', fields: FIELDS,
+  });
+  const json = await offGet(`${OFF}/cgi/search.pl?${params}`);
+  const seen = new Set<string>();
+  const foods = ((json?.products ?? []) as OffProduct[])
+    .map((p) => normalise(p))
+    .filter((f): f is Food => !!f && !seen.has(f.id) && !!seen.add(f.id));
+  await persist(foods);
+  await db.from('food_search_cache').upsert({ query, food_ids: foods.map((f) => f.id), fetched_at: new Date().toISOString() }, { onConflict: 'query' });
+  return { foods };
+}
+
+async function barcode(raw: string) {
+  const digits = String(raw ?? '').replace(/\D/g, '');
+  if (digits.length < 8 || digits.length > 14) return null;
+  // UPC-A (12 digits) is stored as EAN-13 with a leading zero; EAN-8 stays as it is.
+  const code = digits.length === 12 ? `0${digits}` : digits;
+
+  const db = createServiceRoleClient();
+  const { data: cached } = await db.from('food_items').select(COLUMNS).in('barcode', [code, code.padStart(13, '0')]).limit(1).maybeSingle();
+  if (cached) return { food: fromRow(cached) };
+
+  const json = await offGet(`${OFF}/api/v2/product/${code}?fields=${FIELDS}&lc=it`);
+  if (!json || json.status === 0 || !json.product) return { food: null };
+  const food = normalise(json.product as OffProduct, code);
+  if (food) await persist([food]);
+  // Known product without a nutrition table: tell the app, so it can say so instead of "not found".
+  return { food, incomplete: !food };
 }
 
 Deno.serve(async (req: Request) => {
@@ -141,50 +194,19 @@ Deno.serve(async (req: Request) => {
     const body = (await req.json()) as Body;
 
     if (body.action === 'search') {
-      const query = body.query?.trim();
-      if (!query || query.length < 2) return jsonResponse({ foods: [] });
-      const json = await fsGet('/foods/search/v3', {
-        search_expression: query,
-        max_results: String(Math.min(body.max ?? 20, 50)),
-        language: 'it',
-        region: 'IT',
-        flag_default_serving: 'true',
-      });
-      const raw = asArray<FsFood>(json?.foods_search?.results?.food);
-      const foods = raw.map((f) => normalise(f)).filter((f): f is NonNullable<typeof f> => !!f);
-      await persist(foods);
-      return jsonResponse({ foods });
+      return jsonResponse(await search(String(body.query ?? ''), Math.min(Math.max(body.max ?? 20, 1), 50)));
     }
 
     if (body.action === 'barcode') {
-      // GTIN-13 (EAN-13); FatSecret wants 13 digits, so UPC-A/EAN-8 get left-padded with zeros.
-      const digits = String(body.barcode ?? '').replace(/\D/g, '');
-      if (digits.length < 8 || digits.length > 14) return jsonResponse({ error: 'Codice a barre non valido' }, { status: 400 });
-      const gtin = digits.padStart(13, '0');
-
-      const db = createServiceRoleClient();
-      const { data: cached } = await db.from('food_items').select('id').eq('barcode', gtin).maybeSingle();
-      if (cached) {
-        const { data } = await db.from('food_items').select('id, name, brand, category, kcal100, protein100, carbs100, fats100, default_portion_g').eq('id', cached.id).single();
-        if (data) return jsonResponse({ food: { ...data, defaultPortionG: data.default_portion_g, source: 'fatsecret', barcode: gtin } });
-      }
-
-      const found = await fsGet('/food/barcode/find-by-id/v1', { barcode: gtin });
-      const foodId = found?.food_id?.value ?? found?.food_id;
-      if (!foodId || String(foodId) === '0') return jsonResponse({ food: null });
-      const food = await getFood(String(foodId), gtin);
-      if (food) await persist([food]);
-      return jsonResponse({ food });
-    }
-
-    if (body.action === 'get') {
-      const food = await getFood(String(body.foodId).replace(/^fs-/, ''));
-      if (food) await persist([food]);
-      return jsonResponse({ food });
+      const result = await barcode(body.barcode);
+      if (!result) return jsonResponse({ error: 'Codice a barre non valido' }, { status: 400 });
+      return jsonResponse(result);
     }
 
     return jsonResponse({ error: 'Unknown action' }, { status: 400 });
   } catch (err) {
+    // Open Food Facts is throttling us: a normal answer the app can explain, not a failure.
+    if (err instanceof RateLimited) return jsonResponse({ foods: [], food: null, rateLimited: true });
     console.error('food-search error:', err);
     const message = err instanceof Error ? err.message : 'Unknown error';
     const status = message === 'Unauthorized' || message.includes('Authorization') ? 401 : 500;
