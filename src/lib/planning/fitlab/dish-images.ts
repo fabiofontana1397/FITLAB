@@ -103,6 +103,21 @@ export const DISH_IMAGE_IDS: Record<string, string> = {
   X330: 'x330',
   X332: 'x332',
   X333: 'x333',
+  X101: 'x101',
+  X106: 'x106',
+  X201: 'x201',
+  X206: 'x206',
+  X207: 'x207',
+  X306: 'x306',
+  X309: 'x309',
+  X310: 'x310',
+  X311: 'x311',
+  X312: 'x312',
+  X314: 'x314',
+  X315: 'x315',
+  X316: 'x316',
+  X325: 'x325',
+  X331: 'x331',
 };
 
 /** Second photos of a dish for the variant of its main ingredient (another fish, another meat): preferred over the
@@ -198,6 +213,21 @@ const PHOTO_KEYS: Record<string, string[][]> = {
   x330: [['Petto di pollo', 'Petto di tacchino']],
   x332: [['Fesa di tacchino affettata']],
   x333: [['Lenticchie']],
+  x101: [['Banana']],
+  x106: [['Banana']],
+  x201: [['Parmigiano Reggiano'], ['Pera']],
+  x206: [['Barretta proteica'], ['Mela']],
+  x207: [['Bevanda proteica'], ['Banana']],
+  x306: [['Ceci']],
+  x309: [['Manzo magro']],
+  x310: [['Merluzzo', 'Orata']],
+  x311: [['Ceci']],
+  x312: [['Fagioli borlotti', 'Fagioli cannellini']],
+  x314: [['Petto di tacchino', 'Petto di pollo']],
+  x315: [['Hamburger di tacchino magro', 'Hamburger di pollo magro'], ['Spinaci', 'Bietole']],
+  x316: [['Fagioli borlotti', 'Fagioli cannellini', 'Fagioli']],
+  x325: [['Manzo magro']],
+  x331: [['Bresaola']],
 };
 
 /** True when the meal's foods contain what the photo shows. */

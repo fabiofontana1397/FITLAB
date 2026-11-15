@@ -586,5 +586,110 @@
     "category": "lunch",
     "image": "/images/meals/x333.webp",
     "alt": "Riso con lenticchie, pomodori e spinaci"
+  },
+  {
+    "id": "x101",
+    "name": "Latte con cereali integrali, banana e mandorle",
+    "category": "breakfast",
+    "image": "/images/meals/x101.webp",
+    "alt": "Latte con cereali integrali, banana e mandorle"
+  },
+  {
+    "id": "x106",
+    "name": "Porridge d'avena con banana e burro di arachidi",
+    "category": "breakfast",
+    "image": "/images/meals/x106.webp",
+    "alt": "Porridge d'avena con banana e burro di arachidi"
+  },
+  {
+    "id": "x201",
+    "name": "Pera con scaglie di parmigiano e noci",
+    "category": "snack",
+    "image": "/images/meals/x201.webp",
+    "alt": "Pera con scaglie di parmigiano e noci"
+  },
+  {
+    "id": "x206",
+    "name": "Barretta proteica e mela",
+    "category": "snack",
+    "image": "/images/meals/x206.webp",
+    "alt": "Barretta proteica e mela"
+  },
+  {
+    "id": "x207",
+    "name": "Bevanda proteica con banana e mandorle",
+    "category": "snack",
+    "image": "/images/meals/x207.webp",
+    "alt": "Bevanda proteica con banana e mandorle"
+  },
+  {
+    "id": "x306",
+    "name": "Insalata di farro con ceci e verdure",
+    "category": "lunch",
+    "image": "/images/meals/x306.webp",
+    "alt": "Insalata di farro con ceci e verdure"
+  },
+  {
+    "id": "x309",
+    "name": "Spezzatino di manzo con patate e carote",
+    "category": "dinner",
+    "image": "/images/meals/x309.webp",
+    "alt": "Spezzatino di manzo con patate e carote"
+  },
+  {
+    "id": "x310",
+    "name": "Merluzzo alla livornese con patate",
+    "category": "dinner",
+    "image": "/images/meals/x310.webp",
+    "alt": "Merluzzo alla livornese con patate"
+  },
+  {
+    "id": "x311",
+    "name": "Zuppa di ceci e farro",
+    "category": "dinner",
+    "image": "/images/meals/x311.webp",
+    "alt": "Zuppa di ceci e farro"
+  },
+  {
+    "id": "x312",
+    "name": "Minestrone con orzo e fagioli",
+    "category": "dinner",
+    "image": "/images/meals/x312.webp",
+    "alt": "Minestrone con orzo e fagioli"
+  },
+  {
+    "id": "x314",
+    "name": "Tacchino alla pizzaiola con riso",
+    "category": "dinner",
+    "image": "/images/meals/x314.webp",
+    "alt": "Tacchino alla pizzaiola con riso"
+  },
+  {
+    "id": "x315",
+    "name": "Hamburger di tacchino al pomodoro con pane e spinaci",
+    "category": "dinner",
+    "image": "/images/meals/x315.webp",
+    "alt": "Hamburger di tacchino al pomodoro con pane e spinaci"
+  },
+  {
+    "id": "x316",
+    "name": "Pasta e fagioli con sedano e carote",
+    "category": "dinner",
+    "image": "/images/meals/x316.webp",
+    "alt": "Pasta e fagioli con sedano e carote"
+  },
+  {
+    "id": "x325",
+    "name": "Straccetti di manzo con rucola e patate",
+    "category": "dinner",
+    "image": "/images/meals/x325.webp",
+    "alt": "Straccetti di manzo con rucola e patate"
+  },
+  {
+    "id": "x331",
+    "name": "Pane integrale con bresaola, rucola e carote",
+    "category": "lunch",
+    "image": "/images/meals/x331.webp",
+    "alt": "Pane integrale con bresaola, rucola e carote"
   }
 ]

@@ -1,74 +1,5 @@
 [
   {
-    "id": "x101",
-    "dish": "X101",
-    "name": "Latte con cereali integrali, banana e mandorle",
-    "category": "breakfast",
-    "shows": [
-      [
-        "Banana"
-      ]
-    ],
-    "prompt": "ciotola bianca di latte con cereali integrali, fette di banana e mandorle"
-  },
-  {
-    "id": "x106",
-    "dish": "X106",
-    "name": "Porridge d'avena con banana e burro di arachidi",
-    "category": "breakfast",
-    "shows": [
-      [
-        "Banana"
-      ]
-    ],
-    "prompt": "ciotola di porridge d'avena cremoso con fette di banana e un cucchiaino di burro di arachidi al centro"
-  },
-  {
-    "id": "x201",
-    "dish": "X201",
-    "name": "Pera con scaglie di parmigiano e noci",
-    "category": "snack",
-    "shows": [
-      [
-        "Parmigiano Reggiano"
-      ],
-      [
-        "Pera"
-      ]
-    ],
-    "prompt": "spicchi di pera con scaglie di parmigiano e gherigli di noci"
-  },
-  {
-    "id": "x206",
-    "dish": "X206",
-    "name": "Barretta proteica e mela",
-    "category": "snack",
-    "shows": [
-      [
-        "Barretta proteica"
-      ],
-      [
-        "Mela"
-      ]
-    ],
-    "prompt": "una barretta proteica al cioccolato senza incarto e senza scritte, accanto a una mela rossa intera"
-  },
-  {
-    "id": "x207",
-    "dish": "X207",
-    "name": "Bevanda proteica con banana e mandorle",
-    "category": "snack",
-    "shows": [
-      [
-        "Bevanda proteica"
-      ],
-      [
-        "Banana"
-      ]
-    ],
-    "prompt": "un bicchiere di vetro con frullato proteico color vaniglia, una banana e alcune mandorle accanto"
-  },
-  {
     "id": "x208",
     "dish": "X208",
     "name": "Bruschetta con mozzarella e pomodori",
@@ -83,112 +14,6 @@
       ]
     ],
     "prompt": "due bruschette di pane integrale con mozzarella, pomodorini a cubetti e foglie di basilico"
-  },
-  {
-    "id": "x306",
-    "dish": "X306",
-    "name": "Insalata di farro con ceci e verdure",
-    "category": "lunch",
-    "shows": [
-      [
-        "Ceci"
-      ]
-    ],
-    "prompt": "insalata di farro con ceci, pomodorini, cetrioli e rucola"
-  },
-  {
-    "id": "x309",
-    "dish": "X309",
-    "name": "Spezzatino di manzo con patate e carote",
-    "category": "dinner",
-    "shows": [
-      [
-        "Manzo magro"
-      ]
-    ],
-    "prompt": "spezzatino di manzo in umido con patate a pezzi e carote a rondelle"
-  },
-  {
-    "id": "x310",
-    "dish": "X310",
-    "name": "Merluzzo alla livornese con patate",
-    "category": "dinner",
-    "shows": [
-      [
-        "Merluzzo",
-        "Orata"
-      ]
-    ],
-    "prompt": "filetto di merluzzo alla livornese con sugo di pomodoro e prezzemolo, accompagnato da patate lesse a pezzi"
-  },
-  {
-    "id": "x311",
-    "dish": "X311",
-    "name": "Zuppa di ceci e farro",
-    "category": "dinner",
-    "shows": [
-      [
-        "Ceci"
-      ]
-    ],
-    "prompt": "piatto fondo bianco con zuppa densa di ceci e farro, con carote e sedano a cubetti"
-  },
-  {
-    "id": "x312",
-    "dish": "X312",
-    "name": "Minestrone con orzo e fagioli",
-    "category": "dinner",
-    "shows": [
-      [
-        "Fagioli borlotti",
-        "Fagioli cannellini"
-      ]
-    ],
-    "prompt": "piatto fondo bianco con minestrone di verdure con orzo, fagioli borlotti, zucchine e carote"
-  },
-  {
-    "id": "x314",
-    "dish": "X314",
-    "name": "Tacchino alla pizzaiola con riso",
-    "category": "dinner",
-    "shows": [
-      [
-        "Petto di tacchino",
-        "Petto di pollo"
-      ]
-    ],
-    "prompt": "fettine di petto di tacchino alla pizzaiola con sugo di pomodoro e origano, accompagnate da riso bianco"
-  },
-  {
-    "id": "x315",
-    "dish": "X315",
-    "name": "Hamburger di tacchino al pomodoro con pane e spinaci",
-    "category": "dinner",
-    "shows": [
-      [
-        "Hamburger di tacchino magro",
-        "Hamburger di pollo magro"
-      ],
-      [
-        "Spinaci",
-        "Bietole"
-      ]
-    ],
-    "prompt": "hamburger di tacchino (senza panino) con salsa di pomodoro sopra, una fetta di pane integrale e spinaci saltati"
-  },
-  {
-    "id": "x316",
-    "dish": "X316",
-    "name": "Pasta e fagioli con sedano e carote",
-    "category": "dinner",
-    "shows": [
-      [
-        "Fagioli borlotti",
-        "Fagioli cannellini",
-        "Fagioli"
-      ]
-    ],
-    "prompt": "piatto fondo bianco con pasta e fagioli borlotti (ditalini), con sedano e carote"
   },
   {
     "id": "x320",
@@ -206,18 +31,6 @@
     "prompt": "frittata dorata a spicchi con patate e zucchine"
   },
   {
-    "id": "x325",
-    "dish": "X325",
-    "name": "Straccetti di manzo con rucola e patate",
-    "category": "dinner",
-    "shows": [
-      [
-        "Manzo magro"
-      ]
-    ],
-    "prompt": "straccetti di manzo scottati su letto di rucola con pomodorini e patate al forno a cubetti"
-  },
-  {
     "id": "x327",
     "dish": "X327",
     "name": "Lonza di maiale con patate e cavolo nero",
@@ -232,17 +45,5 @@
       ]
     ],
     "prompt": "fette di lonza di maiale arrosto con patate al forno e cavolo nero saltato"
-  },
-  {
-    "id": "x331",
-    "dish": "X331",
-    "name": "Pane integrale con bresaola, rucola e carote",
-    "category": "lunch",
-    "shows": [
-      [
-        "Bresaola"
-      ]
-    ],
-    "prompt": "due fette di pane integrale con bresaola e rucola sopra, con bastoncini di carota a lato"
   }
 ]
