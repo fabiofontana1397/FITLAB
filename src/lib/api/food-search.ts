@@ -46,6 +46,19 @@ async function call<T>(body: Record<string, unknown>): Promise<T> {
   return data as T;
 }
 
+/**
+ * Packaged products matching a name, from our own database (public.food_items,
+ * filled in bulk from Open Food Facts by scripts/off-import). A plain Postgres
+ * query, so it is safe to call while the person types.
+ */
+export async function searchFoodDatabase(query: string, max = 30): Promise<FoodItem[]> {
+  const { data, error } = await supabase.rpc('search_foods', { q: query, max_results: max });
+  if (error) throw error;
+  const items = ((data ?? []) as Raw[]).map(toFood);
+  useExternalFoodsStore.getState().remember(items);
+  return items;
+}
+
 export type OnlineSearchResult = {
   foods: FoodItem[];
   /** Open Food Facts is throttling the app right now: try again in a minute. */
@@ -53,8 +66,9 @@ export type OnlineSearchResult = {
 };
 
 /**
- * Packaged products matching a name. Open Food Facts allows few searches per
- * minute, so call this on an explicit action (submit / tap), never per keystroke.
+ * Packaged products matching a name, asked live to Open Food Facts: the
+ * fallback for what the bulk import does not have. They allow few searches per
+ * minute, so call this on an explicit action (submit), never per keystroke.
  * Throws on network/config errors: the caller keeps the local results.
  */
 export async function searchOnlineFoods(query: string): Promise<OnlineSearchResult> {

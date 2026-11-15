@@ -1,5 +1,5 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { FlatList, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 
@@ -13,15 +13,17 @@ import { SheetScreen } from '@/components/ui/sheet-screen';
 import { HorizontalScrollDefaults, ListDefaults, ScrollDefaults } from '@/constants/scroll';
 import { Layout } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { lookupBarcode, searchOnlineFoods } from '@/lib/api/food-search';
+import { lookupBarcode, searchFoodDatabase, searchOnlineFoods } from '@/lib/api/food-search';
 import { hapticSelection, hapticSuccess, hapticToggle } from '@/lib/haptics';
 import { FOOD_DATABASE, findFood, searchFood, type FoodItem } from '@/lib/mock/food-database';
 import { useFavoriteFoodsStore } from '@/store/favorite-foods-store';
 import { useNutritionStore, type MealSlot } from '@/store/nutrition-store';
 
 const PAGE_PADDING = Layout.screenGutter;
-/** Shortest query worth sending to Open Food Facts (the function ignores shorter ones). */
+/** Shortest query sent to the server (packaged products); shorter ones only search the bundled catalogue. */
 const ONLINE_MIN_CHARS = 3;
+/** Pause in typing before the server is asked. */
+const SEARCH_DEBOUNCE_MS = 250;
 /** The browser's black focus ring around a text field: the field's own box is the affordance. */
 const webNoOutline = (Platform.OS === 'web' ? { outlineStyle: 'none' } : {}) as object;
 /** How far the − and + buttons move the quantity. */
@@ -107,7 +109,9 @@ function FoodSearchForm({ slot, date, editEntry, onClose, onSaved }: Omit<FoodSe
   const [hint, setHint] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
   const [lookingUp, setLookingUp] = useState(false);
-  /** Open Food Facts results for a search the person asked for (the bundled catalogue answers instantly, these follow). */
+  /** Packaged products for the current search, from our database (the bundled catalogue answers instantly, these follow as the person types). */
+  const [remote, setRemote] = useState<{ query: string; foods: FoodItem[] } | null>(null);
+  /** Live Open Food Facts results, asked only with the keyboard's search key (products the database does not have yet). */
   const [online, setOnline] = useState<{ query: string; foods: FoodItem[] } | null>(null);
   /** The query being looked up online right now. */
   const [onlineLoading, setOnlineLoading] = useState<string | null>(null);
@@ -129,11 +133,26 @@ function FoodSearchForm({ slot, date, editEntry, onClose, onSaved }: Omit<FoodSe
   /** True when Recenti has nothing to show yet and a starter set stands in for it. */
   const suggesting = !searching && view.kind === 'tab' && view.id === 'recenti' && history.recent.length === 0;
   const trimmedQuery = query.trim();
-  const canSearchOnline = trimmedQuery.length >= ONLINE_MIN_CHARS;
-  const onlineDone = !!online && online.query === trimmedQuery;
 
-  // Packaged products are searched only when asked (keyboard "search" or the row under the list):
-  // Open Food Facts allows few searches per minute and forbids search-as-you-type.
+  // One list: the packaged products in our database are searched as the person types.
+  // Failures (offline, signed out) just leave the bundled catalogue's results.
+  useEffect(() => {
+    const q = query.trim();
+    if (q.length < ONLINE_MIN_CHARS) return;
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      searchFoodDatabase(q)
+        .then((foods) => !cancelled && setRemote({ query: q, foods }))
+        .catch((err) => console.warn('food database search unavailable', err));
+    }, SEARCH_DEBOUNCE_MS);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [query]);
+
+  // The keyboard's search key also asks Open Food Facts live, for products not imported yet.
+  // Never while typing: they allow few searches per minute and forbid search-as-you-type.
   const searchOnline = async () => {
     const q = query.trim();
     if (q.length < ONLINE_MIN_CHARS || onlineLoading === q || (online && online.query === q)) return;
@@ -156,8 +175,17 @@ function FoodSearchForm({ slot, date, editEntry, onClose, onSaved }: Omit<FoodSe
     if (searching) {
       const local = searchFood(query).slice(0, 40);
       const seen = new Set(local.map((f) => f.id));
-      const remote = online && online.query === query.trim() ? online.foods.filter((f) => !seen.has(f.id)) : [];
-      return [...local, ...remote];
+      const q = query.trim();
+      const extra: FoodItem[] = [];
+      for (const source of [remote, online]) {
+        if (!source || source.query !== q) continue;
+        for (const f of source.foods) {
+          if (seen.has(f.id)) continue;
+          seen.add(f.id);
+          extra.push(f);
+        }
+      }
+      return [...local, ...extra];
     }
     if (view.kind === 'tab') {
       if (view.id === 'preferiti') return toFoods(favoriteIds);
@@ -169,7 +197,7 @@ function FoodSearchForm({ slot, date, editEntry, onClose, onSaved }: Omit<FoodSe
       .sort((a, b) => (history.counts.get(b.food.id) ?? 0) - (history.counts.get(a.food.id) ?? 0) || a.index - b.index)
       .map(({ food }) => food)
       .slice(0, 60);
-  }, [searching, query, view, history, favoriteIds, online]);
+  }, [searching, query, view, history, favoriteIds, remote, online]);
 
   const gramsNum = parseFloat(grams.replace(',', '.'));
   const validGrams = Number.isFinite(gramsNum) && gramsNum > 0;
@@ -497,22 +525,15 @@ function FoodSearchForm({ slot, date, editEntry, onClose, onSaved }: Omit<FoodSe
             </ThemedText>
           }
           ListFooterComponent={
-            !searching || !canSearchOnline ? null : onlineDone ? (
+            !searching ? null : onlineLoading === trimmedQuery ? (
               <ThemedText style={styles.onlineNote} themeColor="textTertiary">
-                {online.foods.length > 0 ? 'Prodotti confezionati: dati Open Food Facts' : 'Nessun prodotto confezionato trovato su Open Food Facts'}
+                Cerco altri prodotti...
               </ThemedText>
-            ) : onlineLoading === trimmedQuery ? (
+            ) : list.some((f) => f.source === 'openfoodfacts') ? (
               <ThemedText style={styles.onlineNote} themeColor="textTertiary">
-                Cerco tra i prodotti confezionati...
+                Prodotti confezionati: dati Open Food Facts
               </ThemedText>
-            ) : (
-              <Pressable testID="online-search" onPress={searchOnline} accessibilityRole="button" style={[styles.onlineButton, { backgroundColor: theme.backgroundElement }]}>
-                <Icon name="barcode" size={18} color={theme.accent} />
-                <ThemedText style={[styles.onlineButtonLabel, { color: theme.accent }]} numberOfLines={1}>
-                  Cerca «{trimmedQuery}» tra i prodotti confezionati
-                </ThemedText>
-              </Pressable>
-            )
+            ) : null
           }
         />
         {/* Under the search and the chips the foods dissolve instead of being cut by a hard edge. */}
@@ -746,21 +767,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 16,
     fontSize: 12,
-  },
-  onlineButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    marginTop: 12,
-    minHeight: 48,
-    paddingHorizontal: 16,
-    borderRadius: 16,
-  },
-  onlineButtonLabel: {
-    flexShrink: 1,
-    fontSize: 14,
-    fontWeight: '600',
   },
 
   // Detail
