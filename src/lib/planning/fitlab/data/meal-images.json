@@ -502,5 +502,89 @@
     "category": "lunch",
     "image": "/images/meals/x323.webp",
     "alt": "Bowl di riso con tonno, cetrioli e rucola"
+  },
+  {
+    "id": "x202",
+    "name": "Yogurt greco con noci e miele",
+    "category": "snack",
+    "image": "/images/meals/x202.webp",
+    "alt": "Yogurt greco con noci e miele"
+  },
+  {
+    "id": "x204",
+    "name": "Crackers con tonno e pomodorini",
+    "category": "snack",
+    "image": "/images/meals/x204.webp",
+    "alt": "Crackers con tonno e pomodorini"
+  },
+  {
+    "id": "x205",
+    "name": "Pane integrale con fesa di tacchino e avocado",
+    "category": "snack",
+    "image": "/images/meals/x205.webp",
+    "alt": "Pane integrale con fesa di tacchino e avocado"
+  },
+  {
+    "id": "x301",
+    "name": "Risotto con zucca e gamberi",
+    "category": "lunch",
+    "image": "/images/meals/x301.webp",
+    "alt": "Risotto con zucca e gamberi"
+  },
+  {
+    "id": "x303",
+    "name": "Pasta al pesto con pollo e fagiolini",
+    "category": "lunch",
+    "image": "/images/meals/x303.webp",
+    "alt": "Pasta al pesto con pollo e fagiolini"
+  },
+  {
+    "id": "x304",
+    "name": "Pasta alla Norma leggera con ricotta",
+    "category": "lunch",
+    "image": "/images/meals/x304.webp",
+    "alt": "Pasta alla Norma leggera con ricotta"
+  },
+  {
+    "id": "x318",
+    "name": "Cous cous con pollo, zucchine e peperoni",
+    "category": "lunch",
+    "image": "/images/meals/x318.webp",
+    "alt": "Cous cous con pollo, zucchine e peperoni"
+  },
+  {
+    "id": "x319",
+    "name": "Hamburger di merluzzo con patate e insalata",
+    "category": "dinner",
+    "image": "/images/meals/x319.webp",
+    "alt": "Hamburger di merluzzo con patate e insalata"
+  },
+  {
+    "id": "x321",
+    "name": "Pasta con gamberi e zucchine",
+    "category": "lunch",
+    "image": "/images/meals/x321.webp",
+    "alt": "Pasta con gamberi e zucchine"
+  },
+  {
+    "id": "x330",
+    "name": "Insalata di riso con pollo, pomodori e rucola",
+    "category": "lunch",
+    "image": "/images/meals/x330.webp",
+    "alt": "Insalata di riso con pollo, pomodori e rucola"
+  },
+  {
+    "id": "x332",
+    "name": "Pasta fredda con fesa di tacchino, pomodori e rucola",
+    "category": "lunch",
+    "image": "/images/meals/x332.webp",
+    "alt": "Pasta fredda con fesa di tacchino, pomodori e rucola"
+  },
+  {
+    "id": "x333",
+    "name": "Riso con lenticchie, pomodori e spinaci",
+    "category": "lunch",
+    "image": "/images/meals/x333.webp",
+    "alt": "Riso con lenticchie, pomodori e spinaci"
   }
 ]

@@ -39,53 +39,6 @@
     "prompt": "spicchi di pera con scaglie di parmigiano e gherigli di noci"
   },
   {
-    "id": "x202",
-    "dish": "X202",
-    "name": "Yogurt greco con noci e miele",
-    "category": "snack",
-    "shows": [
-      [
-        "Yogurt greco 0%",
-        "Yogurt greco 2%",
-        "Skyr"
-      ],
-      [
-        "Noci"
-      ]
-    ],
-    "prompt": "ciotola bianca di yogurt greco con gherigli di noci e un filo di miele"
-  },
-  {
-    "id": "x204",
-    "dish": "X204",
-    "name": "Crackers con tonno e pomodorini",
-    "category": "snack",
-    "shows": [
-      [
-        "Tonno al naturale"
-      ],
-      [
-        "Pomodori"
-      ]
-    ],
-    "prompt": "crackers integrali quadrati con tonno al naturale sopra e pomodorini tagliati a metà"
-  },
-  {
-    "id": "x205",
-    "dish": "X205",
-    "name": "Pane integrale con fesa di tacchino e avocado",
-    "category": "snack",
-    "shows": [
-      [
-        "Fesa di tacchino affettata"
-      ],
-      [
-        "Avocado"
-      ]
-    ],
-    "prompt": "due fette di pane integrale con fesa di tacchino e fette di avocado sopra"
-  },
-  {
     "id": "x206",
     "dish": "X206",
     "name": "Barretta proteica e mela",
@@ -130,52 +83,6 @@
       ]
     ],
     "prompt": "due bruschette di pane integrale con mozzarella, pomodorini a cubetti e foglie di basilico"
-  },
-  {
-    "id": "x301",
-    "dish": "X301",
-    "name": "Risotto con zucca e gamberi",
-    "category": "lunch",
-    "shows": [
-      [
-        "Gamberi"
-      ],
-      [
-        "Zucca"
-      ]
-    ],
-    "prompt": "risotto cremoso alla zucca arancione con gamberi sgusciati e prezzemolo"
-  },
-  {
-    "id": "x303",
-    "dish": "X303",
-    "name": "Pasta al pesto con pollo e fagiolini",
-    "category": "lunch",
-    "shows": [
-      [
-        "Petto di pollo",
-        "Petto di tacchino"
-      ],
-      [
-        "Fagiolini"
-      ]
-    ],
-    "prompt": "penne al pesto verde con straccetti di petto di pollo e fagiolini"
-  },
-  {
-    "id": "x304",
-    "dish": "X304",
-    "name": "Pasta alla Norma leggera con ricotta",
-    "category": "lunch",
-    "shows": [
-      [
-        "Ricotta magra"
-      ],
-      [
-        "Melanzane"
-      ]
-    ],
-    "prompt": "penne alla Norma: sugo di pomodoro, cubetti di melanzane, ricotta sbriciolata e basilico"
   },
   {
     "id": "x306",
@@ -284,31 +191,6 @@
     "prompt": "piatto fondo bianco con pasta e fagioli borlotti (ditalini), con sedano e carote"
   },
   {
-    "id": "x318",
-    "dish": "X318",
-    "name": "Cous cous con pollo, zucchine e peperoni",
-    "category": "lunch",
-    "shows": [
-      [
-        "Petto di pollo",
-        "Petto di tacchino"
-      ]
-    ],
-    "prompt": "cous cous con bocconcini di petto di pollo, zucchine e peperoni a cubetti"
-  },
-  {
-    "id": "x319",
-    "dish": "X319",
-    "name": "Hamburger di merluzzo con patate e insalata",
-    "category": "dinner",
-    "shows": [
-      [
-        "Hamburger di merluzzo"
-      ]
-    ],
-    "prompt": "hamburger di merluzzo dorato (senza pane) con patate al forno a spicchi, lattuga e pomodorini"
-  },
-  {
     "id": "x320",
     "dish": "X320",
     "name": "Frittata con patate e zucchine",
@@ -322,21 +204,6 @@
       ]
     ],
     "prompt": "frittata dorata a spicchi con patate e zucchine"
-  },
-  {
-    "id": "x321",
-    "dish": "X321",
-    "name": "Pasta con gamberi e zucchine",
-    "category": "lunch",
-    "shows": [
-      [
-        "Gamberi"
-      ],
-      [
-        "Zucchine"
-      ]
-    ],
-    "prompt": "spaghetti con gamberi sgusciati e zucchine a rondelle, prezzemolo"
   },
   {
     "id": "x325",
@@ -367,19 +234,6 @@
     "prompt": "fette di lonza di maiale arrosto con patate al forno e cavolo nero saltato"
   },
   {
-    "id": "x330",
-    "dish": "X330",
-    "name": "Insalata di riso con pollo, pomodori e rucola",
-    "category": "lunch",
-    "shows": [
-      [
-        "Petto di pollo",
-        "Petto di tacchino"
-      ]
-    ],
-    "prompt": "insalata di riso fredda con cubetti di petto di pollo, pomodorini e rucola"
-  },
-  {
     "id": "x331",
     "dish": "X331",
     "name": "Pane integrale con bresaola, rucola e carote",
@@ -390,29 +244,5 @@
       ]
     ],
     "prompt": "due fette di pane integrale con bresaola e rucola sopra, con bastoncini di carota a lato"
-  },
-  {
-    "id": "x332",
-    "dish": "X332",
-    "name": "Pasta fredda con fesa di tacchino, pomodori e rucola",
-    "category": "lunch",
-    "shows": [
-      [
-        "Fesa di tacchino affettata"
-      ]
-    ],
-    "prompt": "pasta fredda (farfalle) con striscioline di fesa di tacchino, pomodorini e rucola"
-  },
-  {
-    "id": "x333",
-    "dish": "X333",
-    "name": "Riso con lenticchie, pomodori e spinaci",
-    "category": "lunch",
-    "shows": [
-      [
-        "Lenticchie"
-      ]
-    ],
-    "prompt": "riso bianco con lenticchie, pomodorini e spinaci freschi"
   }
 ]
