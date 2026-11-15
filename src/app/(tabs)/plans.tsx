@@ -18,8 +18,8 @@ import { useUserStore } from '@/store/user-store';
 
 type PlanKind = 'training' | 'diet';
 
-/** Piani: the training and the nutrition plan, one at a time behind a switch. Each shows the macro plan (name,
- * description, objective, the month path), then the chosen month with its week of workouts or meals, and the check-in.
+/** Piani: the training and the nutrition plan, one at a time behind a switch. Each opens with a small box for the macro
+ * plan (name, progress, month selector, the chosen month), then the week of workouts or meals, and the check-in.
  * The page replays its entrance every time it opens. */
 export default function PlansScreen() {
   const goal = useUserStore((s) => s.goal);
@@ -90,6 +90,6 @@ export default function PlansScreen() {
 
 const styles = StyleSheet.create({
   page: { paddingHorizontal: Layout.screenGutter, gap: 0 },
-  switcher: { marginTop: 16, marginBottom: 14 },
+  switcher: { marginTop: 12, marginBottom: 12 },
   empty: { padding: 20, gap: 6 },
 });

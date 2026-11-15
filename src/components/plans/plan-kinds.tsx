@@ -24,7 +24,6 @@ import {
 } from '@/lib/planning/plan-copy';
 import { exportDietPlanPdf, exportTrainingPlanPdf, type TrainingPlanPdfRow } from '@/lib/planning/pdf-export';
 import { inMealOrder } from '@/lib/planning/meal-slots';
-import { currentMonthIndex } from '@/lib/planning/plan-progress';
 import type { DietPlan, TrainingPlan } from '@/lib/planning/types';
 import { findQuestion, labelFor } from '@/lib/questionnaire/schema';
 import { useOnboardingStore } from '@/store/onboarding-store';
@@ -46,13 +45,6 @@ export function TrainingPlanView({ plan, goal, checkinPendingMonth, onCheckin }:
   const userName = useUserStore((s) => s.name);
   const progressSets = useTrainingProgressStore((s) => s.sets);
   const monthOf = (monthIndex: number) => plan.months.find((m) => m.monthIndex === monthIndex) ?? plan.months[0];
-
-  // "Upper A" / "Upper B" are the same split: show each pattern once.
-  const current = monthOf(currentMonthIndex(plan));
-  const workoutsNow = current.weeklySplit.filter((d) => d.type === 'workout');
-  const runsNow = current.weeklySplit.filter((d) => d.type === 'cardio').length;
-  const splits = [...new Set(workoutsNow.map((d) => d.title.replace(/ [AB]$/, '')))];
-  const subtitle = [splits.length > 0 ? splits.join(' · ') : null, runsNow > 0 ? `${runsNow} ${runsNow === 1 ? 'corsa' : 'corse'}` : null].filter(Boolean).join(' + ');
 
   const exportPdf = async (monthIndex: number) => {
     const month = monthOf(monthIndex);
@@ -85,7 +77,6 @@ export function TrainingPlanView({ plan, goal, checkinPendingMonth, onCheckin }:
       kind="training"
       plan={plan}
       title={GOAL_NAME[goal]}
-      subtitle={subtitle}
       description={TRAINING_GOAL_COPY[goal].why}
       objective={TRAINING_GOAL_TEXT[goal]}
       phaseDetail={TRAINING_PHASE_DETAIL}
@@ -172,10 +163,6 @@ export function DietPlanView({ plan, goal, checkinPendingMonth, onCheckin }: Pla
   const userName = useUserStore((s) => s.name);
   const monthOf = (monthIndex: number) => plan.months.find((m) => m.monthIndex === monthIndex) ?? plan.months[0];
 
-  const current = monthOf(currentMonthIndex(plan));
-  const meals = current.weeklySplit[0]?.meals.length ?? 0;
-  const kcal = Math.round(current.calorieTarget).toLocaleString('it-IT');
-
   const exportPdf = async (monthIndex: number) => {
     const month = monthOf(monthIndex);
     await exportDietPlanPdf({
@@ -195,7 +182,6 @@ export function DietPlanView({ plan, goal, checkinPendingMonth, onCheckin }: Pla
       kind="diet"
       plan={plan}
       title={DIET_STRATEGY[goal]}
-      subtitle={`~${kcal} kcal al giorno${meals > 0 ? ` · ${meals} pasti` : ''}`}
       description={DIET_GOAL_COPY[goal].why}
       objective={DIET_GOAL_TEXT[goal]}
       phaseDetail={DIET_PHASE_DETAIL}
