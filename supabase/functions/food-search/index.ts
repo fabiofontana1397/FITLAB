@@ -17,11 +17,13 @@ import { CORS_HEADERS, handlePreflight, jsonResponse } from '../_shared/cors.ts'
 import { createServiceRoleClient, createUserScopedClient, getAuthenticatedUser } from '../_shared/supabase-client.ts';
 
 const OFF = 'https://world.openfoodfacts.org';
-const FIELDS = 'code,product_name,product_name_it,generic_name_it,brands,nutriments,serving_quantity,categories_tags';
+const FIELDS = 'code,product_name,product_name_it,generic_name_it,brands,nutriments,serving_quantity,categories_tags,image_front_small_url,image_front_url';
+/** Products cached before photos were stored are fetched once more to pick up their picture. */
+const PHOTOS_SINCE = Date.parse('2026-11-15T12:00:00Z');
 const DEFAULT_USER_AGENT = 'FitLab/1.0 (https://github.com/fabiofontana1397/FITLAB)';
 const SEARCH_TTL_MS = 30 * 24 * 3600 * 1000;
 const EMPTY_SEARCH_TTL_MS = 24 * 3600 * 1000;
-const COLUMNS = 'id, name, brand, category, kcal100, protein100, carbs100, fats100, default_portion_g, source, barcode';
+const COLUMNS = 'id, name, brand, category, kcal100, protein100, carbs100, fats100, default_portion_g, source, barcode, image_url, fetched_at';
 
 type Body =
   | { action: 'search'; query: string; max?: number }
@@ -36,6 +38,8 @@ type OffProduct = {
   nutriments?: Record<string, unknown>;
   serving_quantity?: number | string;
   categories_tags?: string[];
+  image_front_small_url?: string;
+  image_front_url?: string;
 };
 
 type Food = NonNullable<ReturnType<typeof normalise>>;
@@ -83,6 +87,8 @@ function normalise(p: OffProduct, fallbackCode?: string) {
 
   const serving = num(p.serving_quantity);
   const brand = (p.brands ?? '').split(',')[0].trim();
+  // The front-of-pack photo (small rendition first: it is shown as a thumbnail).
+  const image = [p.image_front_small_url, p.image_front_url].find((u) => typeof u === 'string' && u.startsWith('https://'));
   return {
     id: `off-${code}`,
     name: name.slice(0, 120),
@@ -95,6 +101,7 @@ function normalise(p: OffProduct, fallbackCode?: string) {
     defaultPortionG: serving !== null && serving >= 1 && serving <= 1000 ? Math.round(serving) : 100,
     source: 'openfoodfacts',
     barcode: code,
+    imageUrl: image ?? null,
   };
 }
 
@@ -115,7 +122,7 @@ function category(tags: string[], p: number, c: number, f: number): string {
 const fromRow = (r: any) => ({
   id: r.id, name: r.name, brand: r.brand, category: r.category,
   kcal100: Number(r.kcal100), protein100: Number(r.protein100), carbs100: Number(r.carbs100), fats100: Number(r.fats100),
-  defaultPortionG: Number(r.default_portion_g) || 100, source: r.source, barcode: r.barcode,
+  defaultPortionG: Number(r.default_portion_g) || 100, source: r.source, barcode: r.barcode, imageUrl: r.image_url ?? null,
 });
 
 async function persist(foods: Food[]) {
@@ -125,7 +132,7 @@ async function persist(foods: Food[]) {
     foods.map((f) => ({
       id: f.id, name: f.name, brand: f.brand, category: f.category,
       kcal100: f.kcal100, protein100: f.protein100, carbs100: f.carbs100, fats100: f.fats100,
-      default_portion_g: f.defaultPortionG, source: f.source, barcode: f.barcode, fetched_at: new Date().toISOString(),
+      default_portion_g: f.defaultPortionG, source: f.source, barcode: f.barcode, image_url: f.imageUrl, fetched_at: new Date().toISOString(),
     })),
     { onConflict: 'id' },
   );
@@ -174,7 +181,8 @@ async function barcode(raw: string) {
 
   const db = createServiceRoleClient();
   const { data: cached } = await db.from('food_items').select(COLUMNS).in('barcode', [code, code.padStart(13, '0')]).limit(1).maybeSingle();
-  if (cached) return { food: fromRow(cached) };
+  const stale = cached && !cached.image_url && cached.source === 'openfoodfacts' && new Date(cached.fetched_at ?? 0).getTime() < PHOTOS_SINCE;
+  if (cached && !stale) return { food: fromRow(cached) };
 
   const json = await offGet(`${OFF}/api/v2/product/${code}?fields=${FIELDS}&lc=it`);
   if (!json || json.status === 0 || !json.product) return { food: null };

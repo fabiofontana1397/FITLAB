@@ -19,6 +19,8 @@ type Raw = {
   default_portion_g?: number | string;
   barcode?: string | null;
   source?: string | null;
+  imageUrl?: string | null;
+  image_url?: string | null;
 };
 
 function toFood(r: Raw): FoodItem {
@@ -33,6 +35,7 @@ function toFood(r: Raw): FoodItem {
     fats100: Number(r.fats100),
     defaultPortionG: Number(r.defaultPortionG ?? r.default_portion_g) || 100,
     barcode: r.barcode ?? null,
+    imageUrl: r.imageUrl ?? r.image_url ?? null,
     source: r.source === 'fatsecret' ? 'fatsecret' : 'openfoodfacts',
   };
 }
@@ -81,7 +84,7 @@ export async function fetchFoodsByIds(ids: string[]): Promise<FoodItem[]> {
   if (ids.length === 0) return [];
   const { data, error } = await supabase
     .from('food_items')
-    .select('id, name, brand, category, kcal100, protein100, carbs100, fats100, default_portion_g, barcode, source')
+    .select('id, name, brand, category, kcal100, protein100, carbs100, fats100, default_portion_g, barcode, source, image_url')
     .in('id', ids);
   if (error) throw error;
   return (data ?? []).map((r) => toFood(r as Raw));
