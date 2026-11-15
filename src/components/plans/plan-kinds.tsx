@@ -1,4 +1,3 @@
-import { router } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
 import { GlassSurface } from '@/components/glass/glass-surface';
@@ -8,7 +7,6 @@ import { ThemedText } from '@/components/themed-text';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon } from '@/components/ui/icon';
 import { InsightCard } from '@/components/ui/insight-card';
-import { PrimaryButton } from '@/components/ui/primary-button';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { Goal } from '@/lib/mock/types';
@@ -76,8 +74,8 @@ export function TrainingPlanView({ plan, goal, checkinPendingMonth, onCheckin }:
     <PlanView
       kind="training"
       plan={plan}
-      title={GOAL_NAME[goal]}
-      description={TRAINING_GOAL_COPY[goal].why}
+      title={plan.source === 'custom' ? 'La tua scheda' : GOAL_NAME[goal]}
+      description={plan.source === 'custom' ? 'La scheda che hai caricato: l’app la segue così com’è e adatta dieta e calorie ai tuoi allenamenti.' : TRAINING_GOAL_COPY[goal].why}
       objective={TRAINING_GOAL_TEXT[goal]}
       phaseDetail={TRAINING_PHASE_DETAIL}
       monthStats={(monthIndex) => {
@@ -143,14 +141,6 @@ export function TrainingPlanView({ plan, goal, checkinPendingMonth, onCheckin }:
           </GlassSurface>
         ) : null
       }
-      footer={
-        <PrimaryButton
-          label={plan.source === 'custom' ? 'Cambia la tua scheda' : 'Inserisci la tua scheda'}
-          icon="plus"
-          variant="outline"
-          onPress={() => router.push('/custom-workout')}
-        />
-      }
       checkinPendingMonth={checkinPendingMonth}
       onCheckin={onCheckin}
     />
@@ -181,8 +171,8 @@ export function DietPlanView({ plan, goal, checkinPendingMonth, onCheckin }: Pla
     <PlanView
       kind="diet"
       plan={plan}
-      title={DIET_STRATEGY[goal]}
-      description={DIET_GOAL_COPY[goal].why}
+      title={plan.source === 'custom' ? 'La tua dieta' : DIET_STRATEGY[goal]}
+      description={plan.source === 'custom' ? 'La dieta che hai caricato: l’app la segue così com’è, senza modificarla.' : DIET_GOAL_COPY[goal].why}
       objective={DIET_GOAL_TEXT[goal]}
       phaseDetail={DIET_PHASE_DETAIL}
       monthStats={(monthIndex) => {
@@ -200,7 +190,7 @@ export function DietPlanView({ plan, goal, checkinPendingMonth, onCheckin }: Pla
         return (
           <>
             <ThemedText style={styles.dayTitle}>
-              {day.isTrainingDay ? 'Giorno di allenamento' : 'Giorno di riposo'}
+              {day.isTrainingDay == null ? 'Menù del giorno' : day.isTrainingDay ? 'Giorno di allenamento' : 'Giorno di riposo'}
               {day.calorieTarget ? <ThemedText style={[styles.dayTitle, { color: theme.accent }]}>{` · ${day.calorieTarget} kcal`}</ThemedText> : null}
             </ThemedText>
             {inMealOrder(day.meals).map((meal) => (
@@ -211,6 +201,8 @@ export function DietPlanView({ plan, goal, checkinPendingMonth, onCheckin }: Pla
       }}
       exportPdf={exportPdf}
       footer={
+        // The app's own advice (swaps, free meals) belongs to its plan, not to a diet written by someone else.
+        plan.source === 'custom' ? undefined : (
         <View style={{ gap: Spacing.two }}>
           <ThemedText style={styles.sectionTitle}>Consigli</ThemedText>
           <InsightCard
@@ -232,6 +224,7 @@ export function DietPlanView({ plan, goal, checkinPendingMonth, onCheckin }: Pla
             body="Digiuni prolungati per compensare uno sgarro, bevande zuccherate quotidiane e fritture frequenti: rallentano i risultati più di un pasto occasionale fuori piano."
           />
         </View>
+        )
       }
       checkinPendingMonth={checkinPendingMonth}
       onCheckin={onCheckin}

@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import Animated, { FadeIn, FadeInDown, FadeOut, LinearTransition, useAnimatedProps, useAnimatedStyle } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInDown, useAnimatedProps, useAnimatedStyle } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle } from 'react-native-svg';
 
@@ -10,6 +10,7 @@ import { GlassPopup } from '@/components/glass/glass-popup';
 import { Reveal } from '@/components/motion/reveal';
 import { ThemedText } from '@/components/themed-text';
 import { CheckinInfoPopup } from '@/components/training/checkin-info-popup';
+import { Collapsible } from '@/components/ui/collapsible';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { PrimaryButton } from '@/components/ui/primary-button';
@@ -64,8 +65,8 @@ export type PlanViewProps = {
 
 /**
  * The Piani page for one plan. A small white box sums up the macro plan (name, overall progress, a pill per month)
- * and the chosen month (ring, name, download); descriptions, objectives and numbers sit behind a tap. Right under it
- * comes the week of workouts or meals, which is what the page is for. The check-in closes the page.
+ * and the chosen month (ring, name, download, check-in); descriptions, objectives and numbers sit behind a tap and
+ * open by growing in place. Right under it comes the week of workouts or meals, which is what the page is for.
  */
 export function PlanView({ kind, plan, title, description, objective, phaseDetail, monthStats, renderDay, exportPdf, notice, footer, checkinPendingMonth, onCheckin }: PlanViewProps) {
   const theme = useTheme();
@@ -134,7 +135,8 @@ export function PlanView({ kind, plan, title, description, objective, phaseDetai
     <>
       {/* The macro plan, in one small box: where the plan stands, the month selector, the chosen month. */}
       <Reveal index={0}>
-        <FlatCard radius={Radius.medium} layout={LinearTransition.duration(260)} style={styles.box}>
+        <FlatCard radius={Radius.medium} style={styles.box}>
+          <View>
           <View style={styles.headRow}>
             <View style={styles.flex}>
               <ThemedText style={styles.title} numberOfLines={1}>
@@ -167,8 +169,7 @@ export function PlanView({ kind, plan, title, description, objective, phaseDetai
             </Animated.View>
           </View>
 
-          {planInfoOpen ? (
-            <Animated.View entering={FadeInDown.duration(260)} exiting={FadeOut.duration(120)} style={styles.info}>
+            <Collapsible open={planInfoOpen} contentStyle={styles.info}>
               <ThemedText style={styles.infoText} themeColor="textSecondary">
                 {description}
               </ThemedText>
@@ -176,14 +177,15 @@ export function PlanView({ kind, plan, title, description, objective, phaseDetai
                 <ThemedText style={[styles.infoText, { color: theme.accent, fontWeight: '700' }]}>Obiettivo · </ThemedText>
                 {objective}
               </ThemedText>
-            </Animated.View>
-          ) : null}
+            </Collapsible>
+          </View>
 
           <MonthPills months={plan.months.map((m) => m.monthIndex)} current={currentMonth} selected={selectedMonth} onSelect={(m) => setSelectedMonth(m)} />
 
           <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
           {/* The chosen month, on one line. */}
+          <View>
           <Animated.View key={`month-${selectedMonth}`} entering={FadeIn.duration(300)} style={styles.monthRow}>
             <Pressable
               onPress={() => {
@@ -217,7 +219,7 @@ export function PlanView({ kind, plan, title, description, objective, phaseDetai
                 )}
               </View>
               <View style={styles.flex}>
-                <ThemedText style={styles.monthTitle} numberOfLines={1}>
+                <ThemedText style={styles.monthTitle} numberOfLines={2}>
                   {month.title}
                 </ThemedText>
                 <ThemedText style={styles.caption} themeColor="textSecondary" numberOfLines={1}>
@@ -239,8 +241,7 @@ export function PlanView({ kind, plan, title, description, objective, phaseDetai
             </Pressable>
           </Animated.View>
 
-          {monthInfoOpen ? (
-            <Animated.View entering={FadeInDown.duration(260)} exiting={FadeOut.duration(120)} style={styles.info}>
+            <Collapsible open={monthInfoOpen} contentStyle={styles.info}>
               <ThemedText style={styles.infoText} themeColor="textSecondary">
                 {phaseDetail[month.phase]}
               </ThemedText>
@@ -252,13 +253,7 @@ export function PlanView({ kind, plan, title, description, objective, phaseDetai
                 <View style={[styles.stats, { backgroundColor: theme.backgroundElement }]}>
                   {stats.map((st) => (
                     <View key={st.label} style={styles.stat}>
-                      <CountUpText
-                        value={st.value}
-                        play
-                        format={(n) => Math.round(n).toLocaleString('it-IT')}
-                        suffix={st.unit ? ` ${st.unit}` : ''}
-                        style={styles.statValue}
-                      />
+                      <CountUpText value={st.value} play={monthInfoOpen} format={(n) => Math.round(n).toLocaleString('it-IT')} suffix={st.unit ? ` ${st.unit}` : ''} style={styles.statValue} />
                       <ThemedText style={styles.statLabel} themeColor="textSecondary" numberOfLines={1}>
                         {st.label}
                       </ThemedText>
@@ -266,8 +261,38 @@ export function PlanView({ kind, plan, title, description, objective, phaseDetai
                   ))}
                 </View>
               ) : null}
-            </Animated.View>
-          ) : null}
+            </Collapsible>
+          </View>
+
+          {/* The month's check-in: done, due now, or still to come. */}
+          {checkinDone ? (
+            <View style={[styles.checkin, { backgroundColor: theme.backgroundElement }]} accessibilityLabel={`Check-in del Mese ${selectedMonth} completato`}>
+              <Icon name="checkCircle" size={18} color={theme.brandGreen} />
+              <ThemedText style={styles.checkinText}>Check-in completato</ThemedText>
+            </View>
+          ) : checkinDue ? (
+            <Pressable
+              onPress={onCheckin}
+              accessibilityRole="button"
+              accessibilityLabel={`Fai il check-in del Mese ${selectedMonth}`}
+              style={({ pressed }) => [styles.checkin, { backgroundColor: theme.accent, opacity: pressed ? 0.85 : 1 }]}
+            >
+              <Icon name="checkCircle" size={18} color={OnBrand.text} />
+              <ThemedText style={[styles.checkinText, { color: OnBrand.text }]}>Fai il check-in · Mese {selectedMonth}</ThemedText>
+            </Pressable>
+          ) : (
+            <Pressable
+              onPress={() => setCheckinInfoOpen(true)}
+              accessibilityRole="button"
+              accessibilityLabel={`Check-in del Mese ${selectedMonth}: disponibile a fine mese`}
+              style={({ pressed }) => [styles.checkin, { backgroundColor: theme.backgroundElement, opacity: pressed ? 0.6 : 1 }]}
+            >
+              <Icon name="lock" size={16} color={theme.textSecondary} />
+              <ThemedText style={[styles.checkinText, { color: theme.textSecondary }]}>
+                Check-in · {timeElapsed && isCurrent ? (daysLeft <= 1 ? 'da domani' : `tra ${daysLeft} giorni`) : `Mese ${selectedMonth}`}
+              </ThemedText>
+            </Pressable>
+          )}
         </FlatCard>
       </Reveal>
 
@@ -295,34 +320,6 @@ export function PlanView({ kind, plan, title, description, objective, phaseDetai
             {needsCheckin ? <PrimaryButton label="Fai il check-in" onPress={onCheckin} style={{ marginTop: Spacing.two }} /> : null}
           </Animated.View>
         )}
-      </Reveal>
-
-      {/* Check-in, at the end of the month. */}
-      <Reveal index={2} style={styles.checkinSection}>
-        <Animated.View key={`checkin-${selectedMonth}-${checkinDone}-${checkinDue}`} entering={FadeIn.duration(300)}>
-          {checkinDone ? (
-            <View style={[styles.checkin, { backgroundColor: theme.backgroundElement }]} accessibilityLabel={`Check-in del Mese ${selectedMonth} completato`}>
-              <Icon name="checkCircle" size={18} color={theme.brandGreen} />
-              <ThemedText style={styles.checkinText}>Check-in completato</ThemedText>
-            </View>
-          ) : checkinDue ? (
-            <Pressable onPress={onCheckin} accessibilityRole="button" accessibilityLabel={`Fai il check-in del Mese ${selectedMonth}`} style={[styles.checkin, { backgroundColor: theme.accent }]}>
-              <Icon name="checkCircle" size={18} color={OnBrand.text} />
-              <ThemedText style={[styles.checkinText, { color: OnBrand.text }]}>Fai il check-in · Mese {selectedMonth}</ThemedText>
-            </Pressable>
-          ) : (
-            <Pressable
-              onPress={() => setCheckinInfoOpen(true)}
-              accessibilityRole="button"
-              accessibilityLabel={`Check-in del Mese ${selectedMonth} bloccato fino alla fine del mese`}
-              accessibilityState={{ disabled: true }}
-              style={[styles.checkin, { backgroundColor: theme.backgroundElement }]}
-            >
-              <Icon name="lock" size={16} color={theme.textTertiary} />
-              <ThemedText style={[styles.checkinText, { color: theme.textSecondary }]}>Check-in · Mese {selectedMonth}</ThemedText>
-            </Pressable>
-          )}
-        </Animated.View>
       </Reveal>
 
       <CheckinInfoPopup visible={checkinInfoOpen} onClose={() => setCheckinInfoOpen(false)} monthIndex={selectedMonth} daysLeft={daysLeft} endDate={monthEndLabel} />
@@ -389,7 +386,6 @@ const styles = StyleSheet.create({
   flex: { flex: 1, minWidth: 0 },
   stack: { gap: 12 },
   section: { marginTop: 16 },
-  checkinSection: { marginTop: 24 },
   center: { textAlign: 'center' },
   box: { padding: 14, gap: 12 },
   headRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
@@ -397,10 +393,10 @@ const styles = StyleSheet.create({
   caption: { fontSize: 13, lineHeight: 18 },
   captionStrong: { fontWeight: '700' },
   iconButton: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  track: { height: 4, borderRadius: 2, overflow: 'hidden' },
+  track: { height: 4, borderRadius: 2, overflow: 'hidden', marginTop: 12 },
   trackFill: { height: '100%', borderRadius: 2, overflow: 'hidden' },
   divider: { height: StyleSheet.hairlineWidth },
-  info: { gap: 8 },
+  info: { gap: 8, paddingTop: 12 },
   infoText: { fontSize: 14, lineHeight: 20 },
   pills: { flexDirection: 'row', gap: 6 },
   pill: { height: 36, borderRadius: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 3 },
@@ -418,7 +414,7 @@ const styles = StyleSheet.create({
   locked: { alignItems: 'center', gap: 6, paddingVertical: 40, paddingHorizontal: 12 },
   lockedIcon: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
   lockedTitle: { fontSize: 16, lineHeight: 21, fontWeight: '700', textAlign: 'center' },
-  checkin: { minHeight: 46, borderRadius: 23, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 16 },
+  checkin: { minHeight: 44, borderRadius: 14, borderCurve: 'continuous', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 16 },
   checkinText: { fontSize: 15, lineHeight: 20, fontWeight: '600' },
   popup: { padding: Spacing.four, gap: Spacing.three, alignItems: 'stretch' },
 });

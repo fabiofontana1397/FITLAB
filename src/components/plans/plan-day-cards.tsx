@@ -6,9 +6,12 @@ import { DishPhoto, DishPlaceholder } from '@/components/nutrition/dish-photo';
 import { MealRecipeSheet } from '@/components/nutrition/meal-recipe-sheet';
 import { ThemedText } from '@/components/themed-text';
 import { ExerciseInfoModal } from '@/components/training/exercise-info-modal';
+import { Collapsible } from '@/components/ui/collapsible';
+import { FlatCard } from '@/components/ui/flat-card';
 import { Icon } from '@/components/ui/icon';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { hapticTap } from '@/lib/haptics';
 import { getExerciseMedia } from '@/lib/exercise-media/exercise-media';
 import { dishImage } from '@/lib/planning/fitlab/dish-images';
 import { recipeForDish } from '@/lib/planning/fitlab/recipes';
@@ -65,152 +68,187 @@ export function ExerciseSummaryCard({ item }: { item: ExerciseCardItem }) {
   );
 }
 
+const round = (n: number) => Math.round(n).toLocaleString('it-IT');
+
+/**
+ * One meal of the day, as a quiet white card: the dish with its photo and numbers on top, the foods and their
+ * quantities as plain rows, and a single button for the recipe. Substitutions open under the food they belong to.
+ */
 export function MealCard({ meal }: { meal: PlanMeal }) {
   const theme = useTheme();
   const photo = dishImage(meal.recipe?.dishId, meal.items.map((i) => i.name));
   const preparation = recipeForDish(meal.recipe?.dishId);
   const [detailOpen, setDetailOpen] = useState(false);
-  return (
-    <GlassSurface level="card" radius={Radius.large} style={styles.mealCard}>
-      <View style={styles.mealHeader}>
-        <ThemedText type="smallBold" style={{ flex: 1 }}>
-          {meal.label}
+
+  const title = meal.isFreeMeal ? 'Pasto libero' : (meal.recipe?.name ?? meal.label);
+  const overline = meal.isFreeMeal || meal.recipe ? `${meal.label} · ${meal.time}` : meal.time;
+  const numbers = meal.isFreeMeal
+    ? `Circa ${round(meal.totalKcal)} kcal`
+    : [meal.totalKcal > 0 ? `${round(meal.totalKcal)} kcal` : null, meal.macros ? `P ${round(meal.macros.protein)} · C ${round(meal.macros.carbs)} · G ${round(meal.macros.fats)}` : null].filter(Boolean).join('  ·  ');
+  const hasRecipe = !meal.isFreeMeal && meal.recipe != null;
+
+  const header = (
+    <>
+      {hasRecipe ? photo ? <DishPhoto image={photo} size={64} radius={16} /> : <DishPlaceholder size={64} radius={16} /> : null}
+      <View style={styles.mealTexts}>
+        <ThemedText style={styles.overline} themeColor="textSecondary" numberOfLines={1}>
+          {overline}
         </ThemedText>
-        <ThemedText type="caption" themeColor="textSecondary">
-          {meal.time}
+        <ThemedText style={styles.mealTitle} numberOfLines={2}>
+          {title}
         </ThemedText>
+        {numbers ? (
+          <ThemedText style={styles.mealNumbers} themeColor="textSecondary" numberOfLines={1}>
+            {numbers}
+          </ThemedText>
+        ) : null}
       </View>
+    </>
+  );
+
+  return (
+    <FlatCard radius={Radius.medium}>
+      {hasRecipe ? (
+        <Pressable
+          onPress={() => setDetailOpen(true)}
+          accessibilityRole="button"
+          accessibilityLabel={`${meal.label}, ${title}. Apri la ricetta`}
+          style={({ pressed }) => [styles.mealHeader, { opacity: pressed ? 0.6 : 1 }]}
+        >
+          {header}
+        </Pressable>
+      ) : (
+        <View style={styles.mealHeader}>{header}</View>
+      )}
 
       {meal.isFreeMeal ? (
-        <View style={{ gap: 2 }}>
-          <ThemedText type="small" style={{ color: theme.accent, fontWeight: '600' }}>
-            Pasto libero
-          </ThemedText>
-          <ThemedText type="caption" themeColor="textSecondary">
-            Scegli tu cosa mangiare, restando indicativamente entro ~{meal.totalKcal} kcal e senza eccessi — vedi le
-            note del piano per qualche indicazione.
-          </ThemedText>
-        </View>
+        <ThemedText style={styles.freeMeal} themeColor="textSecondary">
+          Scegli tu cosa mangiare, senza eccessi e restando vicino alle calorie indicate. Nelle note del piano trovi qualche indicazione.
+        </ThemedText>
       ) : (
         <>
-          {meal.recipe ? (
-            <Pressable onPress={() => setDetailOpen(true)} style={styles.recipeRow} accessibilityRole="button" accessibilityLabel={`Apri la ricetta: ${meal.recipe.name}`}>
-              {photo ? <DishPhoto image={photo} size={72} radius={Radius.medium} /> : <DishPlaceholder size={72} radius={Radius.medium} />}
-              <View style={styles.recipeText}>
-                <ThemedText type="smallBold">{meal.recipe.name}</ThemedText>
-                {meal.recipe.flavorings.length > 0 ? (
-                  <ThemedText type="caption" themeColor="textSecondary">
-                    Per insaporire: {meal.recipe.flavorings.join(', ')}
-                  </ThemedText>
-                ) : null}
-              </View>
-              <Icon name="chevronRight" size={16} color={theme.textTertiary} />
-            </Pressable>
-          ) : null}
-          <View style={{ gap: 6 }}>
+          <View style={[styles.hairline, { backgroundColor: theme.border }]} />
+          <View style={styles.mealItems}>
             {meal.items.map((item, index) => (
               <MealItemRow key={index} item={item} />
             ))}
           </View>
+          {meal.recipe && meal.recipe.flavorings.length > 0 ? (
+            <ThemedText style={styles.flavorings} themeColor="textSecondary">
+              Per insaporire: {meal.recipe.flavorings.join(', ')}
+            </ThemedText>
+          ) : null}
 
-          {preparation ? (
-            <Pressable onPress={() => setDetailOpen(true)} hitSlop={8} style={styles.substituteToggle} accessibilityRole="button">
-              <ThemedText type="caption" style={{ color: theme.accent, fontWeight: '600' }}>
-                Ricetta e preparazione · {preparation.totalMinutes} min
-              </ThemedText>
-              <Icon name="chevronRight" size={14} color={theme.accent} />
+          {hasRecipe ? (
+            <Pressable
+              onPress={() => {
+                hapticTap();
+                setDetailOpen(true);
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={`Vedi ricetta: ${title}`}
+              style={({ pressed }) => [styles.recipeButton, { backgroundColor: theme.accentSoft, opacity: pressed ? 0.6 : 1 }]}
+            >
+              <Icon name="utensils" size={16} color={theme.accent} />
+              <ThemedText style={[styles.recipeButtonLabel, { color: theme.accent }]}>Vedi ricetta</ThemedText>
+              {preparation ? <ThemedText style={[styles.recipeButtonMeta, { color: theme.accent }]}>· {preparation.totalMinutes} min</ThemedText> : null}
             </Pressable>
           ) : null}
           <MealRecipeSheet meal={detailOpen ? meal : null} onClose={() => setDetailOpen(false)} />
-
-          <View style={[styles.mealFooterDivider, { borderTopColor: theme.border }]}>
-            <ThemedText type="caption" themeColor="textSecondary">
-              Totale {meal.totalKcal} kcal
-            </ThemedText>
-          </View>
         </>
       )}
-    </GlassSurface>
+    </FlatCard>
   );
 }
 
-/** Substitutions are collapsed behind a tap by default (spec request: "un
- * tasto per le sostituzioni") — a long list of alternatives for every item
- * used to always be visible as a caption line, cluttering the meal even
- * when the user never asked to see them. */
+/** A food and its quantity on one row. When it has alternatives the row is a button that opens them right under it. */
 function MealItemRow({ item }: { item: PlanMeal['items'][number] }) {
   const theme = useTheme();
-  const [showSubstitutes, setShowSubstitutes] = useState(false);
-  const hasSubstitutes = (item.substitutes?.length ?? 0) > 0;
+  const [open, setOpen] = useState(false);
+  const substitutes = item.substitutes ?? [];
+  const hasSubstitutes = substitutes.length > 0;
 
+  const row = (
+    <>
+      <ThemedText style={styles.itemName} numberOfLines={2}>
+        {item.name}
+      </ThemedText>
+      <ThemedText style={styles.itemQuantity} themeColor="textSecondary" numberOfLines={1}>
+        {item.quantityLabel}
+      </ThemedText>
+      {hasSubstitutes ? <Icon name={open ? 'chevronUp' : 'swap'} size={14} color={theme.textTertiary} /> : null}
+    </>
+  );
+
+  if (!hasSubstitutes) return <View style={styles.itemRow}>{row}</View>;
   return (
-    <View style={{ gap: 4 }}>
-      <View style={styles.mealItemRow}>
-        <ThemedText type="small" style={{ flex: 1 }}>
-          {item.name} <ThemedText type="caption" themeColor="textSecondary">· {item.quantityLabel}</ThemedText>
+    <View>
+      <Pressable
+        onPress={() => {
+          hapticTap();
+          setOpen((v) => !v);
+        }}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+        accessibilityLabel={`${item.name}, ${item.quantityLabel}. Sostituzioni`}
+        style={({ pressed }) => [styles.itemRow, { opacity: pressed ? 0.6 : 1 }]}
+      >
+        {row}
+      </Pressable>
+      <Collapsible open={open} contentStyle={styles.substitutes}>
+        <ThemedText style={styles.substitutesTitle} themeColor="textSecondary">
+          Puoi sostituirlo con
         </ThemedText>
-        {hasSubstitutes ? (
-          <Pressable onPress={() => setShowSubstitutes((v) => !v)} hitSlop={8} style={styles.substituteToggle}>
-            <ThemedText type="caption" style={{ color: theme.accent, fontWeight: '600' }}>
-              Sostituzioni
+        {substitutes.map((s, i) => (
+          <View key={i} style={styles.substituteRow}>
+            <ThemedText style={styles.substituteText} numberOfLines={1}>
+              {s.name}
             </ThemedText>
-            <Icon name={showSubstitutes ? 'chevronUp' : 'chevronDown'} size={14} color={theme.accent} />
-          </Pressable>
-        ) : null}
-      </View>
-      {showSubstitutes && item.substitutes ? (
-        <View style={[styles.substituteList, { borderLeftColor: theme.border }]}>
-          {item.substitutes.map((s, i) => (
-            <ThemedText key={i} type="caption" themeColor="textSecondary">
-              {s.name} · {s.quantityLabel}
+            <ThemedText style={styles.substituteQuantity} themeColor="textSecondary">
+              {s.quantityLabel}
             </ThemedText>
-          ))}
-        </View>
-      ) : null}
+          </View>
+        ))}
+      </Collapsible>
     </View>
   );
 }
+
+const CARD_INSET = 14;
 
 const styles = StyleSheet.create({
   exerciseCard: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, padding: Spacing.three },
   thumb: { width: 48, height: 48, borderRadius: Radius.medium },
   infoButton: { padding: 4 },
-  mealCard: {
-    gap: Spacing.two,
-    padding: Spacing.three,
-  },
-  mealHeader: {
+  mealHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: CARD_INSET },
+  mealTexts: { flex: 1, minWidth: 0, gap: 2 },
+  overline: { fontSize: 12, lineHeight: 16, fontWeight: '600', letterSpacing: 0.4, textTransform: 'uppercase' },
+  mealTitle: { fontSize: 16, lineHeight: 21, fontWeight: '600', letterSpacing: -0.2 },
+  mealNumbers: { fontSize: 13, lineHeight: 18, fontVariant: ['tabular-nums'] },
+  hairline: { height: StyleSheet.hairlineWidth, marginLeft: CARD_INSET },
+  mealItems: { paddingHorizontal: CARD_INSET, paddingVertical: 4 },
+  itemRow: { minHeight: 40, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  itemName: { flex: 1, minWidth: 0, fontSize: 15, lineHeight: 20 },
+  itemQuantity: { fontSize: 15, lineHeight: 20, fontVariant: ['tabular-nums'] },
+  substitutes: { paddingBottom: 8, paddingLeft: 12, gap: 4 },
+  substitutesTitle: { fontSize: 12, lineHeight: 16, fontWeight: '600' },
+  substituteRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  substituteText: { flex: 1, minWidth: 0, fontSize: 14, lineHeight: 19 },
+  substituteQuantity: { fontSize: 14, lineHeight: 19, fontVariant: ['tabular-nums'] },
+  flavorings: { fontSize: 13, lineHeight: 18, paddingHorizontal: CARD_INSET, paddingBottom: 4 },
+  freeMeal: { fontSize: 14, lineHeight: 20, paddingHorizontal: CARD_INSET, paddingBottom: CARD_INSET },
+  recipeButton: {
+    minHeight: 44,
+    marginHorizontal: CARD_INSET,
+    marginTop: 6,
+    marginBottom: CARD_INSET,
+    borderRadius: 14,
+    borderCurve: 'continuous',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.two,
+    justifyContent: 'center',
+    gap: 6,
   },
-  recipeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.three,
-  },
-  recipeText: {
-    flex: 1,
-    gap: 2,
-  },
-  mealFooterDivider: {
-    paddingTop: Spacing.two,
-    borderTopWidth: StyleSheet.hairlineWidth,
-  },
-  mealItemRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  substituteToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  substituteList: {
-    gap: 2,
-    marginLeft: Spacing.two,
-    paddingLeft: Spacing.two,
-    borderLeftWidth: 2,
-  },
+  recipeButtonLabel: { fontSize: 15, lineHeight: 20, fontWeight: '600' },
+  recipeButtonMeta: { fontSize: 15, lineHeight: 20 },
 });

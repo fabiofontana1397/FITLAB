@@ -3,10 +3,12 @@ import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { DietPlanView, TrainingPlanView } from '@/components/plans/plan-kinds';
+import { CreatePlanPopup, PlanSourceBanner, usePlanNeverRequested } from '@/components/plans/plan-source-banner';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { TabHeader } from '@/components/tab-header';
 import { ThemedText } from '@/components/themed-text';
 import { FlatCard } from '@/components/ui/flat-card';
+import { PrimaryButton } from '@/components/ui/primary-button';
 import { SegmentedControl } from '@/components/ui/segmented-control';
 import { useEnsurePlan } from '@/hooks/use-ensure-plan';
 import { Layout } from '@/constants/theme';
@@ -18,7 +20,8 @@ import { useUserStore } from '@/store/user-store';
 
 type PlanKind = 'training' | 'diet';
 
-/** Piani: the training and the nutrition plan, one at a time behind a switch. Each opens with a small box for the macro
+/** Piani: the training and the nutrition plan, one at a time behind a switch. Under the switch, a line to load a card or
+ * diet the person already has (or to go back to the app's plan). Each plan opens with a small box for the macro
  * plan (name, progress, month selector, the chosen month), then the week of workouts or meals, and the check-in.
  * The page replays its entrance every time it opens. */
 export default function PlansScreen() {
@@ -30,6 +33,8 @@ export default function PlansScreen() {
 
   useEnsurePlan('training');
   useEnsurePlan('diet');
+  const neverRequested = usePlanNeverRequested(kind);
+  const [createOpen, setCreateOpen] = useState(false);
   const shownDietPlan = dietPlan && dietPlan.months.length > 0 && dietPlan.months.every((m) => Array.isArray(m.weeklySplit)) ? dietPlan : null;
 
   // Each time the page becomes the selected tab again, the card is remounted so its bars, ring and numbers play anew.
@@ -60,6 +65,10 @@ export default function PlansScreen() {
         />
       </View>
 
+      <View style={styles.banner}>
+        <PlanSourceBanner kind={kind} />
+      </View>
+
       {kind === 'training' && trainingPlan ? (
         <TrainingPlanView
           key={cardKey}
@@ -80,16 +89,20 @@ export default function PlansScreen() {
         <FlatCard radius={28} style={styles.empty}>
           <ThemedText type="smallBold">{kind === 'training' ? 'Nessun programma di allenamento' : 'Nessun piano alimentare'}</ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
-            Il piano è in preparazione o non è previsto dalle tue risposte al questionario.
+            {neverRequested ? 'Il tuo percorso non lo prevede. Puoi caricare il tuo qui sopra oppure crearne uno.' : 'Il piano è in preparazione.'}
           </ThemedText>
+          {neverRequested ? <PrimaryButton label="Crea il tuo piano" variant="ghost" dense onPress={() => setCreateOpen(true)} style={styles.emptyAction} /> : null}
         </FlatCard>
       )}
+      <CreatePlanPopup kind={kind} visible={createOpen} onClose={() => setCreateOpen(false)} />
     </ScreenScroll>
   );
 }
 
 const styles = StyleSheet.create({
   page: { paddingHorizontal: Layout.screenGutter, gap: 0 },
-  switcher: { marginTop: 12, marginBottom: 12 },
+  switcher: { marginTop: 12 },
+  banner: { marginTop: 8, marginBottom: 12 },
   empty: { padding: 20, gap: 6 },
+  emptyAction: { marginTop: 8, alignSelf: 'flex-start' },
 });
