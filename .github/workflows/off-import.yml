@@ -1,0 +1,29 @@
+name: Import Open Food Facts
+
+# Refreshes the packaged products in public.food_items from the Open Food
+# Facts nightly export (scripts/off-import/import.py). Needs the repository
+# secret SUPABASE_SERVICE_ROLE_KEY; without it the run is a dry run.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 3 * * 1'
+
+concurrency:
+  group: off-import
+  cancel-in-progress: false
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Import
+        run: python scripts/off-import/import.py
+        env:
+          # Public value (it ships in the web bundle); only the key is secret.
+          SUPABASE_URL: https://mcsvqsnidtvxmujehspw.supabase.co
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
