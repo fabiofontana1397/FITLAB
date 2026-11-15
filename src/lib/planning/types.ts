@@ -67,6 +67,8 @@ export type DietPlan = {
   months: DietMonthPlan[];
   /** Version of the diet generator that built it: an older plan is rebuilt in place (see DIET_ENGINE_VERSION). */
   engine?: string;
+  /** 'custom' = the person's own diet, imported as written: never rebuilt by the generator or the monthly recalibration. */
+  source?: 'generated' | 'custom';
   /** Monthly recalibration state and history (see domain/recalibration.ts). */
   calibration?: PlanCalibration;
   recalibrations?: RecalibrationRecord[];

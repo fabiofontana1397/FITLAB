@@ -2,14 +2,16 @@ import { Modal, StyleSheet, View } from 'react-native';
 
 import { DishPhoto, DishPlaceholder } from '@/components/nutrition/dish-photo';
 import { ThemedText } from '@/components/themed-text';
+import { Icon } from '@/components/ui/icon';
+import { ListGroup } from '@/components/ui/list-group';
 import { SheetScreen } from '@/components/ui/sheet-screen';
-import { Radius, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { dishImage } from '@/lib/planning/fitlab/dish-images';
 import { recipeForDish, WEIGHT_BASIS_NOTE } from '@/lib/planning/fitlab/recipes';
 import type { PlanMeal } from '@/lib/planning/types';
 
-const MEAL_PHOTO = 220;
+const MEAL_PHOTO = 232;
 
 export type MealRecipeSheetProps = {
   /** The meal to present; null keeps the sheet closed. */
@@ -18,10 +20,10 @@ export type MealRecipeSheetProps = {
 };
 
 /**
- * The meal as a bottom sheet, like Profilo and Promemoria: its photo, the
- * numbers of the portion assigned to this person, the ingredients with their
- * own quantities, and (for the official recipes) times, difficulty, equipment
- * and the numbered preparation. Dishes outside the recipe catalog still show
+ * The meal as a bottom sheet, like Profilo and Promemoria: its photo, time and
+ * difficulty, the numbers of the portion assigned to this person in one strip,
+ * then two grouped lists — the ingredients with their own quantities and (for
+ * the official recipes) the numbered preparation. Dishes outside the recipe catalog still show
  * the meal and its ingredients, just without a procedure.
  */
 export function MealRecipeSheet({ meal, onClose }: MealRecipeSheetProps) {
@@ -39,86 +41,77 @@ function MealRecipeContent({ meal, onClose }: { meal: PlanMeal; onClose: () => v
   const recipe = recipeForDish(meal.recipe?.dishId);
   const title = meal.recipe?.name ?? meal.label;
 
-  // one time only: the whole preparation, from start to plate
-  const facts: { label: string; value: string }[] = recipe
-    ? [
-        { label: 'Tempo totale', value: `${recipe.totalMinutes} min` },
-        { label: 'Difficoltà', value: recipe.difficulty },
-      ]
-    : [];
+  const numbers: { label: string; value: string }[] = [
+    ...(meal.totalKcal > 0 ? [{ label: 'kcal', value: meal.totalKcal.toLocaleString('it-IT') }] : []),
+    ...(meal.macros
+      ? [
+          { label: 'proteine', value: `${Math.round(meal.macros.protein)} g` },
+          { label: 'carboidrati', value: `${Math.round(meal.macros.carbs)} g` },
+          { label: 'grassi', value: `${Math.round(meal.macros.fats)} g` },
+        ]
+      : []),
+  ];
 
   return (
-    <SheetScreen title={title} eyebrow={`${meal.label} · ${meal.time}`} onClose={onClose}>
-      <View style={styles.hero}>{photo ? <DishPhoto image={photo} size={MEAL_PHOTO} radius={Radius.xlarge} /> : <DishPlaceholder size={MEAL_PHOTO} radius={Radius.xlarge} />}</View>
+    <SheetScreen title={title} eyebrow={`${meal.label} · ${meal.time}`} onClose={onClose} contentContainerStyle={styles.content}>
+      <View style={styles.hero}>{photo ? <DishPhoto image={photo} size={MEAL_PHOTO} radius={28} /> : <DishPlaceholder size={MEAL_PHOTO} radius={28} />}</View>
 
       {recipe ? (
-        <ThemedText type="small" themeColor="textSecondary">
-          {recipe.description}
-        </ThemedText>
+        <View style={styles.intro}>
+          <View style={styles.facts}>
+            <View style={styles.factItem}>
+              <Icon name="clock" size={16} color={theme.textSecondary} />
+              <ThemedText style={styles.factText}>{recipe.totalMinutes} min</ThemedText>
+            </View>
+            <View style={styles.factItem}>
+              <Icon name="gauge" size={16} color={theme.textSecondary} />
+              <ThemedText style={styles.factText}>{recipe.difficulty}</ThemedText>
+            </View>
+          </View>
+          <ThemedText style={styles.description} themeColor="textSecondary">
+            {recipe.description}
+          </ThemedText>
+        </View>
       ) : null}
 
-      {facts.length > 0 ? (
-        <View style={styles.grid}>
-          {facts.map((f) => (
-            <View key={f.label} style={[styles.fact, { backgroundColor: theme.backgroundElement }]}>
-              <ThemedText type="smallBold">{f.value}</ThemedText>
-              <ThemedText type="caption" themeColor="textSecondary">
-                {f.label}
+      {/* The portion's numbers, as one strip. */}
+      {numbers.length > 0 ? (
+        <View style={[styles.numbers, { backgroundColor: theme.backgroundElement }]}>
+          {numbers.map((n, i) => (
+            <View key={n.label} style={[styles.number, i > 0 && { borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: theme.border }]}>
+              <ThemedText style={styles.numberValue} numberOfLines={1}>
+                {n.value}
+              </ThemedText>
+              <ThemedText style={styles.numberLabel} themeColor="textSecondary" numberOfLines={1}>
+                {n.label}
               </ThemedText>
             </View>
           ))}
         </View>
       ) : null}
 
-      <View style={styles.grid}>
-        <Fact label="kcal" value={String(meal.totalKcal)} />
-        {meal.macros ? (
-          <>
-            <Fact label="proteine" value={`${Math.round(meal.macros.protein)} g`} />
-            <Fact label="carboidrati" value={`${Math.round(meal.macros.carbs)} g`} />
-            <Fact label="grassi" value={`${Math.round(meal.macros.fats)} g`} />
-          </>
-        ) : null}
-      </View>
-
-      <Section title="Ingredienti">
+      <ListGroup header="Ingredienti" footer={meal.recipe && meal.recipe.flavorings.length > 0 ? `Per insaporire: ${meal.recipe.flavorings.join(', ')}` : undefined}>
         {meal.items.map((item, i) => (
-          <View key={i} style={styles.ingredient}>
-            <ThemedText type="small" style={{ flex: 1 }}>
-              {item.name}
-            </ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">
+          <View key={i} style={styles.row}>
+            <ThemedText style={styles.rowTitle}>{item.name}</ThemedText>
+            <ThemedText style={styles.rowValue} themeColor="textSecondary">
               {item.quantityLabel}
             </ThemedText>
           </View>
         ))}
-        {meal.recipe && meal.recipe.flavorings.length > 0 ? (
-          <ThemedText type="caption" themeColor="textSecondary">
-            Per insaporire: {meal.recipe.flavorings.join(', ')}
-          </ThemedText>
-        ) : null}
-      </Section>
+      </ListGroup>
 
       {recipe ? (
         <>
-          <Section title="Attrezzatura">
-            <ThemedText type="small">{recipe.equipment.join(', ')}</ThemedText>
-          </Section>
-          <Section title="Preparazione">
+          <ListGroup header="Preparazione" footer={`Ti serve: ${recipe.equipment.join(', ').toLowerCase()}.`}>
             {recipe.steps.map((step, i) => (
-              <View key={i} style={styles.step}>
-                <View style={[styles.stepNumber, { backgroundColor: theme.backgroundElement }]}>
-                  <ThemedText type="caption" style={{ color: theme.accent, fontWeight: '700' }}>
-                    {i + 1}
-                  </ThemedText>
-                </View>
-                <ThemedText type="small" style={{ flex: 1 }}>
-                  {step}
-                </ThemedText>
+              <View key={i} style={[styles.row, styles.stepRow]}>
+                <ThemedText style={[styles.stepNumber, { color: theme.accent }]}>{i + 1}</ThemedText>
+                <ThemedText style={styles.stepText}>{step}</ThemedText>
               </View>
             ))}
-          </Section>
-          <ThemedText type="caption" themeColor="textSecondary">
+          </ListGroup>
+          <ThemedText type="caption" themeColor="textSecondary" style={styles.note}>
             {WEIGHT_BASIS_NOTE}
           </ThemedText>
         </>
@@ -127,33 +120,23 @@ function MealRecipeContent({ meal, onClose }: { meal: PlanMeal; onClose: () => v
   );
 }
 
-function Fact({ label, value }: { label: string; value: string }) {
-  const theme = useTheme();
-  return (
-    <View style={[styles.fact, { backgroundColor: theme.backgroundElement }]}>
-      <ThemedText type="smallBold">{value}</ThemedText>
-      <ThemedText type="caption" themeColor="textSecondary">
-        {label}
-      </ThemedText>
-    </View>
-  );
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <View style={styles.section}>
-      <ThemedText type="smallBold">{title}</ThemedText>
-      {children}
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
+  content: { gap: Spacing.four },
   hero: { alignItems: 'center' },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
-  fact: { flexGrow: 1, flexBasis: '22%', minWidth: 72, alignItems: 'center', gap: 2, paddingVertical: Spacing.two, paddingHorizontal: Spacing.two, borderRadius: Radius.medium, borderCurve: 'continuous' },
-  section: { gap: Spacing.two },
-  ingredient: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  step: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.two },
-  stepNumber: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  intro: { gap: Spacing.two, paddingHorizontal: Spacing.one },
+  facts: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
+  factItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  factText: { fontSize: 15, lineHeight: 20, fontWeight: '600' },
+  description: { fontSize: 15, lineHeight: 22 },
+  numbers: { flexDirection: 'row', borderRadius: 20, borderCurve: 'continuous', paddingVertical: 14 },
+  number: { flex: 1, minWidth: 0, alignItems: 'center', gap: 2, paddingHorizontal: 4 },
+  numberValue: { fontSize: 17, lineHeight: 22, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  numberLabel: { fontSize: 12, lineHeight: 16 },
+  row: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingHorizontal: Spacing.four, paddingVertical: 12 },
+  rowTitle: { flex: 1, minWidth: 0, fontSize: 16, lineHeight: 21 },
+  rowValue: { fontSize: 16, lineHeight: 21, fontVariant: ['tabular-nums'] },
+  stepRow: { alignItems: 'flex-start' },
+  stepNumber: { width: 20, fontSize: 16, lineHeight: 22, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  stepText: { flex: 1, minWidth: 0, fontSize: 16, lineHeight: 22 },
+  note: { paddingHorizontal: Spacing.four },
 });

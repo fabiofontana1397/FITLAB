@@ -66,10 +66,14 @@ export function buildPlans(ctx: UserContext, opts: BuildPlansOptions = {}): Plan
 
   const monthTargets = Array.from({ length: durationMonths }, (_, i) => computeTargets(ctx, training?.months[i]?.weeklySplit ?? null, calibration));
 
+  // The person's own diet is followed as written, like their own workout card.
+  const customDiet = existing?.diet?.source === 'custom' ? existing.diet : null;
   const diet =
     ctx.mode === 'training'
       ? null
-      : generateDietPlan({
+      : customDiet
+        ? { ...customDiet }
+        : generateDietPlan({
           ctx,
           monthTargets,
           strategy: strategy?.diet ?? null,

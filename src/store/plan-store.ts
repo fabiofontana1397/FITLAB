@@ -8,11 +8,12 @@ import { buildUserContext } from '@/domain/user-context';
 import { deleteDietPlan, deleteTrainingPlan, fetchDietPlan, fetchTrainingPlan, insertPlanVersion, type PlanVersionTrigger, upsertDietPlan, upsertTrainingPlan } from '@/lib/api/plans';
 import { fetchPlanStrategy } from '@/lib/api/plan-strategy';
 import { DIET_ENGINE_VERSION } from '@/lib/planning/diet-planner';
+import { buildCustomDietPlan } from '@/lib/planning/custom-diet';
 import { buildCustomTrainingPlan } from '@/lib/planning/custom-workout';
 import { TRAINING_ENGINE_VERSION } from '@/lib/planning/training-planner';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
 import { daysAgoISO } from '@/lib/mock/dates';
-import type { DietPlan, TrainingDayPlan, TrainingPlan } from '@/lib/planning/types';
+import type { DietDayPlan, DietPlan, TrainingDayPlan, TrainingPlan } from '@/lib/planning/types';
 import { withAuthRetry } from '@/lib/supabase/retry';
 import { useAuthStore } from '@/store/auth-store';
 import { appJsonStorage } from '@/store/storage';
@@ -67,6 +68,13 @@ type PlanState = {
   importCustomTraining: (answers: Record<string, unknown>, week: TrainingDayPlan[], currentWeightKg?: number) => void;
   /** Drops the custom card and builds the app's own plan again. */
   restoreGeneratedTraining: (answers: Record<string, unknown>, currentWeightKg?: number) => Promise<void>;
+  /**
+   * Puts the person's own diet in place of the nutrition plan (even when a plan already exists). It is followed as
+   * written: its own calories where the catalog knows every food, the app's targets otherwise.
+   */
+  importCustomDiet: (answers: Record<string, unknown>, week: DietDayPlan[], currentWeightKg?: number) => void;
+  /** Drops the custom diet and builds the app's own plan again, keeping the plan's start date. */
+  restoreGeneratedDiet: (answers: Record<string, unknown>, currentWeightKg?: number) => Promise<void>;
   syncFromServer: () => Promise<void>;
   /** Local-only reset on logout — see user-store.ts's clearLocal for why. */
   clearLocal: () => void;
@@ -118,10 +126,11 @@ export const usePlanStore = create<PlanState>()(
           const base = buildUserContext(answers);
           const ctx = currentWeightKg ? { ...base, weightKg: currentWeightKg } : base;
           const { dietPlan: currentDiet, trainingPlan: currentTraining } = get();
-          // A custom card is the person's choice: only they replace it (restoreGeneratedTraining), never a rebuild.
+          // A custom card or diet is the person's choice: only they replace it (restoreGenerated…), never a rebuild.
           const custom = currentTraining?.source === 'custom' && trigger !== 'onboarding' ? currentTraining : null;
-          const carry = custom && !keepProgress
-            ? { calibration: currentDiet?.calibration ?? custom.calibration, existing: { diet: null, training: custom } }
+          const customDiet = currentDiet?.source === 'custom' && trigger !== 'onboarding' ? currentDiet : null;
+          const carry = (custom || customDiet) && !keepProgress
+            ? { calibration: currentDiet?.calibration ?? currentTraining?.calibration, existing: { diet: customDiet, training: custom } }
             : keepProgress ? { calibration: currentDiet?.calibration ?? currentTraining?.calibration, existing: { diet: currentDiet, training: currentTraining }, preserveMonthsBefore: fromMonth } : {};
           const deterministic = buildPlans(ctx, carry);
           const first = deterministic.monthTargets[0];
@@ -158,6 +167,43 @@ export const usePlanStore = create<PlanState>()(
       restoreGeneratedTraining: async (answers, currentWeightKg) => {
         set({ trainingPlan: null });
         await get().generatePlans(answers, { only: 'training', skipAi: true, currentWeightKg });
+        // No training in the person's plan mode: nothing was built, so the custom card must not come back from the server.
+        if (!get().trainingPlan) {
+          const userId = currentUserId();
+          if (userId) deleteTrainingPlan(userId).catch((err) => console.warn('delete trainingPlan failed', err));
+        }
+      },
+      importCustomDiet: (answers, week, currentWeightKg) => {
+        const { dietPlan, trainingPlan } = get();
+        const base = buildUserContext(answers);
+        const ctx = currentWeightKg ? { ...base, weightKg: currentWeightKg } : base;
+        const anchor = dietPlan ?? trainingPlan;
+        const calibration = dietPlan?.calibration ?? trainingPlan?.calibration ?? NEUTRAL_CALIBRATION;
+        const trainingWeek = trainingPlan ? (trainingPlan.months.find((m) => m.monthIndex === currentMonthIndex(trainingPlan)) ?? trainingPlan.months[0])?.weeklySplit ?? null : null;
+        const targets = computeTargets(ctx, trainingWeek, calibration);
+        const diet = buildCustomDietPlan(week, {
+          generatedAt: anchor?.generatedAt,
+          durationMonths: anchor?.durationMonths,
+          goal: dietPlan?.goal ?? ctx.goal,
+          calibration,
+          recalibrations: anchor?.recalibrations,
+          fallback: { calories: targets.calories, macros: targets.macros },
+          trainingWeek,
+        });
+        set({ dietPlan: diet });
+        persistPlans(diet, null, 'regenerate', false);
+      },
+      restoreGeneratedDiet: async (answers, currentWeightKg) => {
+        // Marked as the app's own and outdated, so the rebuild replaces every month while the start date and calibration stay.
+        const { dietPlan } = get();
+        if (dietPlan) set({ dietPlan: { ...dietPlan, source: 'generated', engine: undefined } });
+        await get().generatePlans(answers, { only: 'diet', skipAi: true, keepProgress: dietPlan != null, currentWeightKg });
+        // No diet in the person's plan mode: nothing was built, so the custom one must not come back from the server.
+        if (!get().dietPlan || get().dietPlan?.source === 'custom') {
+          set({ dietPlan: null });
+          const userId = currentUserId();
+          if (userId) deleteDietPlan(userId).catch((err) => console.warn('delete dietPlan failed', err));
+        }
       },
       recalibrateMonth: async (input) => {
         const { dietPlan, trainingPlan } = get();
@@ -262,6 +308,8 @@ export function isValidTrainingPlan(plan: TrainingPlan | null): boolean {
  */
 export function isValidDietPlan(plan: DietPlan | null): boolean {
   if (!plan || !plan.calibration) return false;
+  // The person's own diet has no Fit Lab dishes: it only needs its week of meals.
+  if (plan.source === 'custom') return plan.months.length > 0 && plan.months.every((month) => Array.isArray(month.weeklySplit) && month.weeklySplit.length > 0);
   if (plan.engine !== DIET_ENGINE_VERSION) return false; // built by an older generator
   // plans built before the Fit Lab dishes (no recipe on a prescribed meal) are rebuilt
   return plan.months.every((month) => Array.isArray(month.weeklySplit) && month.weeklySplit.length > 0 && month.weeklySplit.every((day) => day.meals.every((meal) => meal.isFreeMeal || meal.recipe)));
