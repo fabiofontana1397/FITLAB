@@ -43,6 +43,11 @@ def num(value):
     return n if n == n and abs(n) != float('inf') else None
 
 
+def clean(value):
+    """Text without control characters (the export has stray NULs, which Postgres rejects) or repeated spaces."""
+    return ' '.join(''.join(ch if ch >= ' ' and ch != '\x7f' else ' ' for ch in (value or '')).split())
+
+
 def category(tags, p, c, f):
     def has(*keys):
         return any(k in tags for k in keys)
@@ -66,7 +71,7 @@ def category(tags, p, c, f):
 def normalise(row):
     """A food_items row from a CSV row (dict), or None when it is not usable."""
     code = ''.join(ch for ch in (row.get('code') or '') if ch.isdigit())
-    name = (row.get('product_name') or '').strip()
+    name = clean(row.get('product_name'))
     if not (8 <= len(code) <= 14) or not name:
         return None
     protein = num(row.get('proteins_100g'))
@@ -87,8 +92,8 @@ def normalise(row):
     c = round(min(100, max(0, carbs or 0)), 1)
     f = round(min(100, max(0, fats or 0)), 1)
     serving = num(row.get('serving_quantity'))
-    image = next((u for u in (row.get('image_small_url'), row.get('image_url')) if u and u.startswith('https://')), None)
-    brand = (row.get('brands') or '').split(',')[0].strip()
+    image = next((u for u in (row.get('image_small_url'), row.get('image_url')) if u and u.startswith('https://') and u.isprintable() and ' ' not in u), None)
+    brand = clean((row.get('brands') or '').split(',')[0])
     return {
         'id': f'off-{code}',
         'name': name[:120],
