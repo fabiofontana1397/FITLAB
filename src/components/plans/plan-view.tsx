@@ -10,11 +10,12 @@ import { GlassPopup } from '@/components/glass/glass-popup';
 import { Reveal } from '@/components/motion/reveal';
 import { ThemedText } from '@/components/themed-text';
 import { CheckinInfoPopup } from '@/components/training/checkin-info-popup';
+import { FlatCard } from '@/components/ui/flat-card';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { PrimaryButton } from '@/components/ui/primary-button';
 import { SegmentedControl } from '@/components/ui/segmented-control';
 import { HorizontalScrollDefaults } from '@/constants/scroll';
-import { OnBrand, Spacing } from '@/constants/theme';
+import { OnBrand, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { hapticSelection, hapticSuccess } from '@/lib/haptics';
 import { mondayIndex } from '@/lib/mock/dates';
@@ -24,6 +25,7 @@ import type { PlanPhaseKind } from '@/lib/planning/types';
 import { checkinUnlockedThroughMonth, useMonthlyCheckinStore } from '@/store/monthly-checkin-store';
 
 const DAY_MS = 86_400_000;
+const RING_SIZE = 40;
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 const WEEKDAY_OPTIONS = WEEKDAY_LABELS.map((weekday) => ({ value: weekday, label: weekday }));
 
@@ -42,7 +44,6 @@ export type PlanViewProps = {
   };
   /** The macro plan's name. */
   title: string;
-  subtitle?: string;
   description: string;
   objective: string;
   phaseDetail: Record<PlanPhaseKind, string>;
@@ -62,11 +63,11 @@ export type PlanViewProps = {
 };
 
 /**
- * The Piani page for one plan, kept light: a quiet header (plan name, overall progress, a pill per month), one line
- * for the chosen month (small ring, name, download) and then the week, which takes most of the screen. Descriptions,
- * objectives and numbers sit behind a tap. The check-in closes the page.
+ * The Piani page for one plan. A small white box sums up the macro plan (name, overall progress, a pill per month)
+ * and the chosen month (ring, name, download); descriptions, objectives and numbers sit behind a tap. Right under it
+ * comes the week of workouts or meals, which is what the page is for. The check-in closes the page.
  */
-export function PlanView({ kind, plan, title, subtitle, description, objective, phaseDetail, monthStats, renderDay, exportPdf, notice, footer, checkinPendingMonth, onCheckin }: PlanViewProps) {
+export function PlanView({ kind, plan, title, description, objective, phaseDetail, monthStats, renderDay, exportPdf, notice, footer, checkinPendingMonth, onCheckin }: PlanViewProps) {
   const theme = useTheme();
   const completedMonths = useMonthlyCheckinStore((s) => s.completedMonths);
 
@@ -102,8 +103,8 @@ export function PlanView({ kind, plan, title, subtitle, description, objective, 
   const monthSub = isDone ? 'Concluso' : isCurrent ? `Giorno ${progress.dayInMonth} di 30 · ${daysLeft <= 1 ? 'ultimo giorno' : `${daysLeft} giorni alla fine`}` : 'Non ancora sbloccato';
 
   // The small ring sweeps to the chosen month's fraction and glides when another month is picked.
-  const ringSize = 52;
-  const stroke = 5;
+  const ringSize = RING_SIZE;
+  const stroke = 4;
   const r = (ringSize - stroke) / 2;
   const c = 2 * Math.PI * r;
   const ring = usePlayValue(progress.fraction, true, 200);
@@ -131,32 +132,32 @@ export function PlanView({ kind, plan, title, subtitle, description, objective, 
 
   return (
     <>
-      {/* The plan in a glance: name, overall progress, one pill per month. */}
+      {/* The macro plan, in one small box: where the plan stands, the month selector, the chosen month. */}
       <Reveal index={0}>
-        <View style={styles.head}>
+        <FlatCard radius={Radius.medium} layout={LinearTransition.duration(260)} style={styles.box}>
           <View style={styles.headRow}>
             <View style={styles.flex}>
-              <ThemedText style={styles.title} numberOfLines={1} adjustsFontSizeToFit>
+              <ThemedText style={styles.title} numberOfLines={1}>
                 {title}
               </ThemedText>
-              {subtitle ? (
-                <ThemedText style={styles.subtitle} themeColor="textSecondary" numberOfLines={1}>
-                  {subtitle}
-                </ThemedText>
-              ) : null}
+              <ThemedText style={styles.caption} themeColor="textSecondary" numberOfLines={1}>
+                Mese {Math.min(currentMonth, total)} di {total} ·{' '}
+                <CountUpText value={Math.round(planFraction * 100)} play delay={300} format={(n) => `${Math.round(n)}%`} style={[styles.caption, styles.captionStrong, { color: theme.accent }]} />
+                {' completato'}
+              </ThemedText>
             </View>
-            <CountUpText value={Math.round(planFraction * 100)} play delay={300} format={(n) => `${Math.round(n)}%`} style={[styles.percent, { color: theme.accent }]} />
             <Pressable
               onPress={() => {
                 hapticSelection();
                 setPlanInfoOpen((v) => !v);
               }}
-              hitSlop={10}
+              hitSlop={8}
               accessibilityRole="button"
               accessibilityState={{ expanded: planInfoOpen }}
               accessibilityLabel="Dettagli del piano"
+              style={({ pressed }) => [styles.iconButton, { backgroundColor: theme.backgroundElement, opacity: pressed ? 0.6 : 1 }]}
             >
-              <Icon name={planInfoOpen ? 'chevronUp' : 'info'} size={20} color={theme.textSecondary} />
+              <Icon name={planInfoOpen ? 'chevronUp' : 'info'} size={18} color={theme.textSecondary} />
             </Pressable>
           </View>
 
@@ -179,12 +180,10 @@ export function PlanView({ kind, plan, title, subtitle, description, objective, 
           ) : null}
 
           <MonthPills months={plan.months.map((m) => m.monthIndex)} current={currentMonth} selected={selectedMonth} onSelect={(m) => setSelectedMonth(m)} />
-        </View>
-      </Reveal>
 
-      {/* The chosen month, on one line. */}
-      <Reveal index={1} style={styles.section}>
-        <Animated.View layout={LinearTransition.duration(260)}>
+          <View style={[styles.divider, { backgroundColor: theme.border }]} />
+
+          {/* The chosen month, on one line. */}
           <Animated.View key={`month-${selectedMonth}`} entering={FadeIn.duration(300)} style={styles.monthRow}>
             <Pressable
               onPress={() => {
@@ -194,9 +193,9 @@ export function PlanView({ kind, plan, title, subtitle, description, objective, 
               accessibilityRole="button"
               accessibilityState={{ expanded: monthInfoOpen }}
               accessibilityLabel={`Mese ${selectedMonth}: dettagli`}
-              style={styles.monthMain}
+              style={({ pressed }) => [styles.monthMain, { opacity: pressed ? 0.6 : 1 }]}
             >
-              <View style={{ width: ringSize, height: ringSize, alignItems: 'center', justifyContent: 'center' }}>
+              <View style={styles.ring}>
                 <Svg width={ringSize} height={ringSize} style={StyleSheet.absoluteFill}>
                   <Circle cx={ringSize / 2} cy={ringSize / 2} r={r} stroke={theme.backgroundElement} strokeWidth={stroke} fill="none" />
                   <AnimatedCircle
@@ -214,14 +213,14 @@ export function PlanView({ kind, plan, title, subtitle, description, objective, 
                 {timeElapsed ? (
                   <CountUpText value={progress.dayInMonth} play delay={150} format={(n) => String(Math.round(n))} style={styles.ringValue} />
                 ) : (
-                  <Icon name="lock" size={18} color={theme.textTertiary} />
+                  <Icon name="lock" size={15} color={theme.textTertiary} />
                 )}
               </View>
               <View style={styles.flex}>
                 <ThemedText style={styles.monthTitle} numberOfLines={1}>
                   {month.title}
                 </ThemedText>
-                <ThemedText style={styles.monthSub} themeColor="textSecondary" numberOfLines={1}>
+                <ThemedText style={styles.caption} themeColor="textSecondary" numberOfLines={1}>
                   {monthSub}
                 </ThemedText>
               </View>
@@ -234,9 +233,9 @@ export function PlanView({ kind, plan, title, subtitle, description, objective, 
               accessibilityRole="button"
               accessibilityLabel={`Scarica il PDF del Mese ${selectedMonth}`}
               accessibilityState={{ disabled: !unlocked }}
-              style={[styles.downloadButton, { backgroundColor: theme.backgroundElement, opacity: unlocked ? 1 : 0.4 }]}
+              style={({ pressed }) => [styles.iconButton, { backgroundColor: theme.backgroundElement, opacity: !unlocked ? 0.4 : pressed ? 0.6 : 1 }]}
             >
-              <Icon name="download" size={18} color={theme.accent} />
+              <Icon name="download" size={17} color={theme.accent} />
             </Pressable>
           </Animated.View>
 
@@ -250,7 +249,7 @@ export function PlanView({ kind, plan, title, subtitle, description, objective, 
                 {month.focusNote}
               </ThemedText>
               {stats.length > 0 ? (
-                <View style={styles.stats}>
+                <View style={[styles.stats, { backgroundColor: theme.backgroundElement }]}>
                   {stats.map((st) => (
                     <View key={st.label} style={styles.stat}>
                       <CountUpText
@@ -269,13 +268,13 @@ export function PlanView({ kind, plan, title, subtitle, description, objective, 
               ) : null}
             </Animated.View>
           ) : null}
-        </Animated.View>
+        </FlatCard>
       </Reveal>
 
       {notice ? <View style={styles.section}>{notice}</View> : null}
 
       {/* The week: the heart of the page. */}
-      <Reveal index={2} style={styles.weekSection}>
+      <Reveal index={1} style={styles.section}>
         {unlocked ? (
           <View style={styles.stack}>
             <SegmentedControl options={WEEKDAY_OPTIONS} value={selectedWeekday} onChange={setSelectedWeekday} />
@@ -299,7 +298,7 @@ export function PlanView({ kind, plan, title, subtitle, description, objective, 
       </Reveal>
 
       {/* Check-in, at the end of the month. */}
-      <Reveal index={3} style={styles.section}>
+      <Reveal index={2} style={styles.checkinSection}>
         <Animated.View key={`checkin-${selectedMonth}-${checkinDone}-${checkinDue}`} entering={FadeIn.duration(300)}>
           {checkinDone ? (
             <View style={[styles.checkin, { backgroundColor: theme.backgroundElement }]} accessibilityLabel={`Check-in del Mese ${selectedMonth} completato`}>
@@ -364,6 +363,7 @@ function MonthPills({ months, current, selected, onSelect }: { months: number[];
         accessibilityRole="button"
         accessibilityState={{ selected: isSelected }}
         accessibilityLabel={`Mese ${m}${done ? ', completato' : running ? ', in corso' : ', bloccato'}`}
+        hitSlop={{ top: 4, bottom: 4 }}
         style={[styles.pill, scrolls ? styles.pillFixed : styles.flex, { backgroundColor: bg }, isSelected && { borderColor: running ? theme.accent : theme.text, borderWidth: 1.5 }]}
       >
         {done ? (
@@ -389,28 +389,29 @@ const styles = StyleSheet.create({
   flex: { flex: 1, minWidth: 0 },
   stack: { gap: 12 },
   section: { marginTop: 16 },
-  weekSection: { marginTop: 14 },
+  checkinSection: { marginTop: 24 },
   center: { textAlign: 'center' },
-  head: { gap: 10 },
+  box: { padding: 14, gap: 12 },
   headRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  title: { fontSize: 28, lineHeight: 34, fontWeight: '700', letterSpacing: -0.6 },
-  subtitle: { fontSize: 13, lineHeight: 18 },
-  percent: { fontSize: 17, lineHeight: 22, fontWeight: '700' },
+  title: { fontSize: 17, lineHeight: 22, fontWeight: '700', letterSpacing: -0.3 },
+  caption: { fontSize: 13, lineHeight: 18 },
+  captionStrong: { fontWeight: '700' },
+  iconButton: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   track: { height: 4, borderRadius: 2, overflow: 'hidden' },
   trackFill: { height: '100%', borderRadius: 2, overflow: 'hidden' },
+  divider: { height: StyleSheet.hairlineWidth },
   info: { gap: 8 },
   infoText: { fontSize: 14, lineHeight: 20 },
   pills: { flexDirection: 'row', gap: 6 },
-  pill: { height: 38, borderRadius: 19, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 3 },
+  pill: { height: 36, borderRadius: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 3 },
   pillFixed: { width: 52 },
   pillText: { fontSize: 15, lineHeight: 20, fontWeight: '700' },
-  monthRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  monthMain: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  ringValue: { fontSize: 16, lineHeight: 20, fontWeight: '800' },
-  monthTitle: { fontSize: 17, lineHeight: 22, fontWeight: '600', letterSpacing: -0.2 },
-  monthSub: { fontSize: 13, lineHeight: 18 },
-  downloadButton: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
-  stats: { flexDirection: 'row', justifyContent: 'space-between', paddingTop: 4 },
+  monthRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  monthMain: { flex: 1, minWidth: 0, minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  ring: { width: RING_SIZE, height: RING_SIZE, alignItems: 'center', justifyContent: 'center' },
+  ringValue: { fontSize: 14, lineHeight: 18, fontWeight: '800' },
+  monthTitle: { fontSize: 15, lineHeight: 20, fontWeight: '600', letterSpacing: -0.2 },
+  stats: { flexDirection: 'row', justifyContent: 'space-around', paddingVertical: 10, paddingHorizontal: 8, borderRadius: 14 },
   stat: { alignItems: 'center', gap: 1 },
   statValue: { fontSize: 16, lineHeight: 21, fontWeight: '700' },
   statLabel: { fontSize: 12, lineHeight: 16 },
