@@ -1,17 +1,14 @@
-import { Image, Modal, Pressable, StyleSheet, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Image, Modal, StyleSheet, View } from 'react-native';
 
-import { ScrollDefaults } from '@/constants/scroll';
-import { GlassSurface } from '@/components/glass/glass-surface';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
-import { PopupScrollView } from '@/components/ui/swipe-dismiss';
-import { Radius, Spacing } from '@/constants/theme';
-import { useMotionPreference } from '@/hooks/use-motion-preference';
+import { ListGroup } from '@/components/ui/list-group';
+import { SheetScreen } from '@/components/ui/sheet-screen';
+import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { ExerciseMedia } from '@/lib/exercise-media/exercise-media';
 
-const SHEET_MAX_WIDTH = 440;
+const EXERCISE_IMAGE = 232;
 
 /** "2-0-1" / "3-1-1-0" — the standard tempo notation used across the
  * plan: eccentric (lowering) - pause at the bottom - concentric
@@ -41,179 +38,134 @@ export type ExerciseInfoModalProps = {
   onClose: () => void;
 };
 
-export function ExerciseInfoModal({ visible, exerciseName, media, sets, reps, tempo, restLabel, onClose }: ExerciseInfoModalProps) {
-  const { modalAnimation } = useMotionPreference();
-  const theme = useTheme();
-  const insets = useSafeAreaInsets();
-  const tempoPhases = describeTempo(tempo);
-
+/**
+ * The exercise as a bottom sheet, in the same language as the recipe: the demonstration on top, the prescription
+ * (sets, reps, rest) in one strip, then grouped lists for the tempo of each phase, what to do and what to avoid.
+ */
+export function ExerciseInfoModal({ visible, onClose, ...content }: ExerciseInfoModalProps) {
   return (
-    <Modal visible={visible} transparent animationType={modalAnimation('slide')} onRequestClose={onClose}>
-      <View style={[styles.backdrop, { backgroundColor: theme.scrim }]}>
-        <GlassSurface swipeToDismiss={onClose}
-          level="overlay"
-          radius={Radius.xlarge}
-          style={[styles.sheet, { paddingBottom: insets.bottom + Spacing.four }]}>
-          <View style={styles.header}>
-            <ThemedText type="subtitle" style={{ flex: 1 }}>
-              {exerciseName}
-            </ThemedText>
-            <Pressable onPress={onClose} hitSlop={11} accessibilityRole="button" accessibilityLabel="Chiudi">
-              <Icon name="close" size={22} color={theme.text} />
-            </Pressable>
-          </View>
-
-          <PopupScrollView {...ScrollDefaults}>
-            <View style={[styles.detailsCard, { backgroundColor: theme.backgroundElement }]}>
-              <DetailRow icon="repsHash" label="Serie e ripetizioni" value={`${sets} serie × ${reps} rip.`} />
-              <DetailRow icon="hourglass" label="Modalità di esecuzione" value={tempo} />
-              {tempoPhases ? (
-                <View style={styles.tempoBreakdown}>
-                  {tempoPhases.map((p) => (
-                    <View key={p.phase} style={styles.tempoPhaseRow}>
-                      <ThemedText type="caption" themeColor="textSecondary" style={{ flex: 1 }}>
-                        {p.phase}
-                      </ThemedText>
-                      <ThemedText type="caption" style={{ fontWeight: '700' }}>
-                        {p.seconds}s
-                      </ThemedText>
-                    </View>
-                  ))}
-                </View>
-              ) : null}
-              <DetailRow icon="clockOutline" label="Recupero tra le serie" value={restLabel} />
-            </View>
-
-            {media ? (
-              <>
-                <Image source={{ uri: media.gifUrl }} style={[styles.gif, { backgroundColor: theme.backgroundElement }]} resizeMode="cover" />
-
-                <View style={[styles.targetChip, { backgroundColor: theme.accentSoft }]}>
-                  <ThemedText type="caption" style={{ color: theme.accent, fontWeight: '700' }}>
-                    {media.target}
-                  </ThemedText>
-                </View>
-
-                <ThemedText type="smallBold" style={{ marginTop: Spacing.four }}>
-                  Come si esegue
-                </ThemedText>
-                <ThemedText type="small" themeColor="textSecondary" style={{ marginTop: 4 }}>
-                  {media.instructions}
-                </ThemedText>
-
-                <ThemedText type="smallBold" style={[styles.sectionTitle, { color: theme.success }]}>
-                  Cosa fare
-                </ThemedText>
-                {media.doTips.map((tip) => (
-                  <TipRow key={tip} icon="checkCircle" color={theme.success} text={tip} />
-                ))}
-
-                <ThemedText type="smallBold" style={[styles.sectionTitle, { color: theme.danger }]}>
-                  Cosa evitare
-                </ThemedText>
-                {media.dontTips.map((tip) => (
-                  <TipRow key={tip} icon="close" color={theme.danger} text={tip} />
-                ))}
-
-                <ThemedText type="caption" themeColor="textTertiary" style={{ marginTop: Spacing.four }}>
-                  {media.attribution}
-                </ThemedText>
-              </>
-            ) : (
-              <ThemedText type="caption" themeColor="textSecondary" style={{ marginTop: Spacing.three }}>
-                Descrizione non ancora disponibile per questo esercizio.
-              </ThemedText>
-            )}
-          </PopupScrollView>
-        </GlassSurface>
-      </View>
+    // The sheet animates itself, so the Modal only has to be transparent.
+    <Modal visible={visible} transparent animationType="none" statusBarTranslucent onRequestClose={onClose}>
+      {visible ? <ExerciseInfoContent {...content} onClose={onClose} /> : null}
     </Modal>
   );
 }
 
-function DetailRow({ icon, label, value }: { icon: 'repsHash' | 'hourglass' | 'clockOutline'; label: string; value: string }) {
+function ExerciseInfoContent({ exerciseName, media, sets, reps, tempo, restLabel, onClose }: Omit<ExerciseInfoModalProps, 'visible'>) {
   const theme = useTheme();
+  const tempoPhases = describeTempo(tempo);
+  const numbers: { label: string; value: string }[] = [
+    ...(sets > 0 ? [{ label: 'serie', value: String(sets) }] : []),
+    ...(reps ? [{ label: 'ripetizioni', value: reps }] : []),
+    ...(restLabel ? [{ label: 'recupero', value: restLabel }] : []),
+  ];
+
   return (
-    <View style={styles.detailRow}>
-      <Icon name={icon} size={15} color={theme.textSecondary} />
-      <ThemedText type="small" themeColor="textSecondary" style={{ flex: 1 }} numberOfLines={1}>
-        {label}
-      </ThemedText>
-      <ThemedText type="smallBold" numberOfLines={1}>
-        {value}
-      </ThemedText>
-    </View>
+    <SheetScreen title={exerciseName} eyebrow={media?.target} onClose={onClose} contentContainerStyle={styles.content}>
+      {media ? (
+        <View style={styles.hero}>
+          <Image source={{ uri: media.gifUrl }} style={[styles.image, { backgroundColor: theme.backgroundElement }]} resizeMode="cover" accessibilityLabel={`Dimostrazione: ${exerciseName}`} />
+        </View>
+      ) : null}
+
+      {/* The prescription, as one strip. */}
+      {numbers.length > 0 ? (
+        <View style={[styles.numbers, { backgroundColor: theme.backgroundElement }]}>
+          {numbers.map((n, i) => (
+            <View key={n.label} style={[styles.number, i > 0 && { borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: theme.border }]}>
+              <ThemedText style={styles.numberValue} numberOfLines={1} adjustsFontSizeToFit>
+                {n.value}
+              </ThemedText>
+              <ThemedText style={styles.numberLabel} themeColor="textSecondary" numberOfLines={1}>
+                {n.label}
+              </ThemedText>
+            </View>
+          ))}
+        </View>
+      ) : null}
+
+      {tempo ? (
+        <ListGroup header={tempoPhases ? `Tempo di esecuzione · ${tempo}` : 'Tempo di esecuzione'}>
+          {tempoPhases ? (
+            tempoPhases.map((p) => (
+              <View key={p.phase} style={styles.row}>
+                <ThemedText style={styles.rowTitle}>{p.phase}</ThemedText>
+                <ThemedText style={styles.rowValue} themeColor="textSecondary">
+                  {p.seconds} s
+                </ThemedText>
+              </View>
+            ))
+          ) : (
+            <View style={styles.row}>
+              <ThemedText style={styles.rowTitle}>{tempo}</ThemedText>
+            </View>
+          )}
+        </ListGroup>
+      ) : null}
+
+      {media ? (
+        <>
+          <View style={styles.text}>
+            <ThemedText type="label" themeColor="textSecondary" accessibilityRole="header">
+              Come si esegue
+            </ThemedText>
+            <ThemedText style={styles.paragraph}>{media.instructions}</ThemedText>
+          </View>
+
+          {media.doTips.length > 0 ? (
+            <ListGroup header="Cosa fare">
+              {media.doTips.map((tip) => (
+                <TipRow key={tip} icon="checkCircle" color={theme.success} text={tip} />
+              ))}
+            </ListGroup>
+          ) : null}
+          {media.dontTips.length > 0 ? (
+            <ListGroup header="Cosa evitare">
+              {media.dontTips.map((tip) => (
+                <TipRow key={tip} icon="close" color={theme.danger} text={tip} />
+              ))}
+            </ListGroup>
+          ) : null}
+
+          <ThemedText type="caption" themeColor="textTertiary" style={styles.note}>
+            {media.attribution}
+          </ThemedText>
+        </>
+      ) : (
+        <ThemedText themeColor="textSecondary" style={styles.note}>
+          La descrizione di questo esercizio non è ancora disponibile.
+        </ThemedText>
+      )}
+    </SheetScreen>
   );
 }
 
 function TipRow({ icon, color, text }: { icon: 'checkCircle' | 'close'; color: string; text: string }) {
   return (
-    <View style={styles.tipRow}>
-      <Icon name={icon} size={14} color={color} />
-      <ThemedText type="small" themeColor="textSecondary" style={{ flex: 1 }}>
-        {text}
-      </ThemedText>
+    <View style={[styles.row, styles.tipRow]}>
+      <View style={styles.tipIcon}>
+        <Icon name={icon} size={18} color={color} />
+      </View>
+      <ThemedText style={styles.tipText}>{text}</ThemedText>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-  },
-  sheet: {
-    width: '100%',
-    maxWidth: SHEET_MAX_WIDTH,
-    maxHeight: '85%',
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.four,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: Spacing.three,
-  },
-  gif: {
-    width: '100%',
-    aspectRatio: 1,
-    borderRadius: Radius.large,
-  },
-  targetChip: {
-    alignSelf: 'flex-start',
-    marginTop: Spacing.three,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: 4,
-    borderRadius: Radius.pill,
-  },
-  sectionTitle: {
-    marginTop: Spacing.four,
-    marginBottom: 4,
-  },
-  tipRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: Spacing.two,
-    paddingVertical: 3,
-  },
-  detailsCard: {
-    gap: Spacing.two,
-    padding: Spacing.three,
-    borderRadius: Radius.medium,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  tempoBreakdown: {
-    gap: 2,
-    marginLeft: Spacing.four,
-  },
-  tempoPhaseRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
+  content: { gap: Spacing.four },
+  hero: { alignItems: 'center' },
+  image: { width: EXERCISE_IMAGE, height: EXERCISE_IMAGE, borderRadius: 28, borderCurve: 'continuous' },
+  numbers: { flexDirection: 'row', borderRadius: 20, borderCurve: 'continuous', paddingVertical: 14 },
+  number: { flex: 1, minWidth: 0, alignItems: 'center', gap: 2, paddingHorizontal: 6 },
+  numberValue: { fontSize: 17, lineHeight: 22, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  numberLabel: { fontSize: 12, lineHeight: 16 },
+  row: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingHorizontal: Spacing.four, paddingVertical: 12 },
+  rowTitle: { flex: 1, minWidth: 0, fontSize: 16, lineHeight: 21 },
+  rowValue: { fontSize: 16, lineHeight: 21, fontVariant: ['tabular-nums'] },
+  text: { gap: Spacing.two, paddingHorizontal: Spacing.four },
+  paragraph: { fontSize: 16, lineHeight: 23 },
+  tipRow: { alignItems: 'flex-start' },
+  tipIcon: { height: 22, justifyContent: 'center' },
+  tipText: { flex: 1, minWidth: 0, fontSize: 16, lineHeight: 22 },
+  note: { paddingHorizontal: Spacing.four },
 });

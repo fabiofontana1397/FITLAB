@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Image, Pressable, StyleSheet, View } from 'react-native';
 
-import { GlassSurface } from '@/components/glass/glass-surface';
 import { DishPhoto, DishPlaceholder } from '@/components/nutrition/dish-photo';
 import { MealRecipeSheet } from '@/components/nutrition/meal-recipe-sheet';
 import { ThemedText } from '@/components/themed-text';
@@ -34,7 +33,8 @@ export function ExerciseSummaryCard({ item }: { item: ExerciseCardItem }) {
   const media = item.exerciseId ? getExerciseMedia(item.exerciseId) : undefined;
 
   return (
-    <GlassSurface level="card" radius={Radius.large} style={styles.exerciseCard}>
+    // The same flat surface as the macro-plan box and the meal cards, so the page reads as one set of cards.
+    <FlatCard radius={Radius.medium} style={styles.exerciseCard}>
       {media ? (
         <Image source={{ uri: media.gifUrl }} style={[styles.thumb, { backgroundColor: theme.backgroundElement }]} />
       ) : (
@@ -49,7 +49,7 @@ export function ExerciseSummaryCard({ item }: { item: ExerciseCardItem }) {
         ) : null}
       </View>
       {item.exerciseId ? (
-        <Pressable onPress={() => setInfoOpen(true)} hitSlop={8} style={styles.infoButton}>
+        <Pressable onPress={() => setInfoOpen(true)} hitSlop={10} accessibilityRole="button" accessibilityLabel={`Come si esegue: ${item.name}`} style={styles.infoButton}>
           <Icon name="info" size={20} color={theme.textSecondary} />
         </Pressable>
       ) : null}
@@ -64,7 +64,7 @@ export function ExerciseSummaryCard({ item }: { item: ExerciseCardItem }) {
         restLabel={item.restLabel ?? ''}
         onClose={() => setInfoOpen(false)}
       />
-    </GlassSurface>
+    </FlatCard>
   );
 }
 
