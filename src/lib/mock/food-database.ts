@@ -15,6 +15,8 @@ export type FoodItem = {
   /** Packaged products from Open Food Facts (search / barcode): the brand, the scanned EAN and where it comes from. */
   brand?: string | null;
   barcode?: string | null;
+  /** Front-of-pack photo of an Open Food Facts product (remote URL). */
+  imageUrl?: string | null;
   source?: 'fitlab' | 'openfoodfacts' | 'fatsecret';
 };
 

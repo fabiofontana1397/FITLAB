@@ -4,6 +4,7 @@ import { Icon } from '@/components/ui/icon';
 import { PhotoTile } from '@/components/ui/photo-tile';
 import { FOOD_PHOTOS_ENABLED } from '@/constants/food-images';
 import { useTheme } from '@/hooks/use-theme';
+import { findFood } from '@/lib/mock/food-database';
 import { foodPhoto } from '@/lib/nutrition/food-photos';
 
 /**
@@ -63,7 +64,8 @@ export function FoodThumb({ foodId, variant = 'row' }: { foodId: string; variant
   const radius = Math.round(size * 0.24);
 
   // No photo for this food (or photos are switched off in constants/food-images.ts): the grey tile with a fork and knife.
-  const photo = FOOD_PHOTOS_ENABLED ? foodPhoto(foodId) : null;
+  // Packaged products have no bundled photo: they show their Open Food Facts front-of-pack picture.
+  const photo = FOOD_PHOTOS_ENABLED ? (foodPhoto(foodId) ?? findFood(foodId)?.imageUrl ?? null) : null;
   const placeholder = (
     <View aria-hidden style={[styles.placeholder, { width: size, height: size, borderRadius: radius, backgroundColor: theme.backgroundElement }]}>
       <Icon name="utensils" size={Math.round(size * 0.42)} color={theme.textTertiary} />
