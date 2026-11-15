@@ -82,6 +82,15 @@ export const DISH_IMAGE_IDS: Record<string, string> = {
   X313: 'salmone-cereali-zucchine',
   X328: 'salmone-cereali-zucchine',
   PL047: 'frittata-spinaci-pomodori',
+  // foto dedicate dei piatti X (generate, vedi docs/MEAL-IMAGES.md)
+  X102: 'x102',
+  X103: 'x103',
+  X104: 'x104',
+  X305: 'x305',
+  X307: 'x307',
+  X317: 'x317',
+  X322: 'x322',
+  X323: 'x323',
 };
 
 
@@ -100,6 +109,10 @@ export const DISH_IMAGE_VARIANTS: Record<string, string[]> = {
  * be shown. A dish allows several proteins, bases and fruits, but a photo shows one of each (here only the ingredient that gives the dish its identity: the fish, the meat, the fruit): with another one in the
  * meal (salmon where the photo has sea bream, apple where it has banana) the photo would lie, so the plate shows the
  * placeholder instead. Photos with no entry always fit their dish. */
+/** Foods that look the same on the plate: a photo of one honestly shows the other. */
+const POULTRY = ['Petto di pollo', 'Petto di tacchino'];
+const YOGURT = ['Yogurt greco 0%', 'Yogurt greco 2%', 'Skyr', 'Yogurt magro', 'Yogurt proteico'];
+
 const PHOTO_KEYS: Record<string, string[][]> = {
   pl001: [['Frutti di bosco', 'Mirtilli', 'Fragole']],
   pl003: [["Albume d'uovo"]],
@@ -119,9 +132,9 @@ const PHOTO_KEYS: Record<string, string[][]> = {
   pl020: [['Kefir']],
   pl021: [['Uova intere']],
   pl022: [['Budino proteico']],
-  pl023: [['Petto di pollo']],
+  pl023: [POULTRY],
   pl024: [['Salmone']],
-  pl025: [['Petto di tacchino']],
+  pl025: [POULTRY],
   pl026: [['Merluzzo']],
   pl027: [['Ceci']],
   pl028: [['Orata']],
@@ -140,7 +153,7 @@ const PHOTO_KEYS: Record<string, string[][]> = {
   'pl038-trota': [['Trota']],
   pl039: [['Mozzarella', 'Mozzarella light']],
   pl040: [['Lenticchie']],
-  pl041: [['Petto di tacchino']],
+  pl041: [POULTRY],
   pl042: [['Ceci']],
   pl043: [['Lonza di maiale magra']],
   'pl043-tacchino': [['Petto di tacchino']],
@@ -151,9 +164,17 @@ const PHOTO_KEYS: Record<string, string[][]> = {
   pl048: [['Tonno al naturale']],
   'pl048-sgombro': [['Sgombro']],
   'risotto-funghi': [['Funghi']],
-  'pollo-patate-insalata': [['Petto di pollo'], ['Patate']],
+  'pollo-patate-insalata': [POULTRY, ['Patate']],
   'salmone-cereali-zucchine': [['Salmone']],
-  'frittata-spinaci-pomodori': [['Uova intere'], ['Spinaci']],
+  'frittata-spinaci-pomodori': [['Uova intere'], ['Spinaci', 'Bietole']],
+  x102: [['Banana']],
+  x103: [['Uova intere'], ['Arancia']],
+  x104: [['Banana']],
+  x305: [['Tonno al naturale']],
+  x307: [['Mozzarella light', 'Mozzarella']],
+  x317: [['Sardine']],
+  x322: [['Petto di pollo', 'Petto di tacchino']],
+  x323: [['Tonno al naturale']],
 };
 
 /** True when the meal's foods contain what the photo shows. */

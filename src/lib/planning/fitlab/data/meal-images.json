@@ -446,5 +446,61 @@
     "category": "lunch",
     "image": "/images/meals/pl048-sgombro.webp",
     "alt": "Pasta al tonno con pomodori e contorno di lattuga (con sgombro)"
+  },
+  {
+    "id": "x102",
+    "name": "Gallette di riso con ricotta e banana",
+    "category": "breakfast",
+    "image": "/images/meals/x102.webp",
+    "alt": "Gallette di riso con ricotta e banana"
+  },
+  {
+    "id": "x103",
+    "name": "Uova strapazzate con pane integrale e arancia",
+    "category": "breakfast",
+    "image": "/images/meals/x103.webp",
+    "alt": "Uova strapazzate con pane integrale e arancia"
+  },
+  {
+    "id": "x104",
+    "name": "Overnight oats con skyr e banana",
+    "category": "breakfast",
+    "image": "/images/meals/x104.webp",
+    "alt": "Overnight oats con skyr e banana"
+  },
+  {
+    "id": "x305",
+    "name": "Insalata di riso con tonno, pomodori e carote",
+    "category": "lunch",
+    "image": "/images/meals/x305.webp",
+    "alt": "Insalata di riso con tonno, pomodori e carote"
+  },
+  {
+    "id": "x307",
+    "name": "Insalata di pasta con mozzarella, pomodori e rucola",
+    "category": "lunch",
+    "image": "/images/meals/x307.webp",
+    "alt": "Insalata di pasta con mozzarella, pomodori e rucola"
+  },
+  {
+    "id": "x317",
+    "name": "Pasta con sardine e finocchi",
+    "category": "lunch",
+    "image": "/images/meals/x317.webp",
+    "alt": "Pasta con sardine e finocchi"
+  },
+  {
+    "id": "x322",
+    "name": "Riso con pollo e verdure grigliate",
+    "category": "lunch",
+    "image": "/images/meals/x322.webp",
+    "alt": "Riso con pollo e verdure grigliate"
+  },
+  {
+    "id": "x323",
+    "name": "Bowl di riso con tonno, cetrioli e rucola",
+    "category": "lunch",
+    "image": "/images/meals/x323.webp",
+    "alt": "Bowl di riso con tonno, cetrioli e rucola"
   }
 ]
