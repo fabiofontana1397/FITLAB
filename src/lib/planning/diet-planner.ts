@@ -12,7 +12,7 @@ import type { DietStrategy } from './strategy-types';
 import type { DietDayPlan, DietMonthPlan, DietPlan, PlanMeal, PlanPhaseKind } from './types';
 
 /** Bump when the generator changes in a way existing plans should pick up (they are rebuilt in place, keeping start date and history). */
-export const DIET_ENGINE_VERSION = 'fitlab-5';
+export const DIET_ENGINE_VERSION = 'fitlab-6';
 
 export type DietPlanInput = {
   ctx: UserContext;
@@ -116,7 +116,10 @@ export function generateDietPlan(input: DietPlanInput): DietPlan {
     }
     const phase = phaseForMonth(monthIndex, durationMonths);
     const targets = monthTargets[monthIndex - 1];
-    const usage: WeekUsage = { dish: new Map(), food: new Map(), slot: new Map() }; // variety within the month's week
+    // variety within the month's week, and rotation from the previous month (the pool's other recipes come first)
+    const prev = months[months.length - 1];
+    const previous = prev ? new Set(prev.weeklySplit.flatMap((d) => d.meals.map((m) => m.recipe?.dishId).filter((id): id is string => !!id))) : undefined;
+    const usage: WeekUsage = { dish: new Map(), food: new Map(), slot: new Map(), previous };
     const monthlyFocus = strategy?.monthlyFocus?.find((m) => m.monthIndex === monthIndex);
     months.push({
       monthIndex,

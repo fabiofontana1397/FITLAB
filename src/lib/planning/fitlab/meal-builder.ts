@@ -22,7 +22,13 @@ import { familyOf, type FitLabPools } from './pools';
 import { addMacros, kcalOfMacros, macrosOfGrams, portionBounds, solvePortions, ZERO, type Macros, type PortionVar } from './solver';
 
 /** What the week has already used: overall (dish, food) and per slot (`slotId|dish|id`, `slotId|name|recipe`, `slotId|food|id`), so the same meal never comes back more than a couple of times. */
-export type WeekUsage = { dish: Map<string, number>; food: Map<string, number>; slot: Map<string, number> };
+export type WeekUsage = {
+  dish: Map<string, number>;
+  food: Map<string, number>;
+  slot: Map<string, number>;
+  /** Recipes of the previous month: the pool rotates, so a new month (or an updated plan) brings mostly other recipes. */
+  previous?: Set<string>;
+};
 export type DayState = { eggGrams: number; families: Set<string>; dishes: Set<string> };
 
 export type BuiltMeal = {
@@ -68,9 +74,6 @@ function resolve(dish: Dish): ResolvedDish {
 }
 
 const OIL = foodByName('Olio extravergine di oliva');
-const LEGUMES = PRIMI.legumi.map(foodByName);
-/** Preferred foods that never join a lunch or dinner: a breakfast bread, and egg whites (a breakfast protein). */
-const NOT_IN_MAIN = new Set(['Pan bauletto', "Albume d'uovo"]);
 /** Cold cuts in the week so far (key in `WeekUsage.food`): once a week at most. */
 const CURED_KEY = 'family:cured';
 const CURED_PER_WEEK = 1;
@@ -97,47 +100,35 @@ function candidateDishes(kind: SlotKind, slotId: string, pools: FitLabPools, see
     const r = resolve(dish);
     // lunch is quick: no fish to cook (canned tuna is fine); a dish built only on fish stays for dinner
     const lunchOk = (foods: FitLabFood[]) => (kind === 'lunch' ? foods.filter((f) => !isFish(f) || f.name === 'Tonno al naturale') : foods);
-    // the foods the person picked as preferred join a role when they are of the same kind as the dish's own (another white meat, another cereal)
-    // (lunch and dinner only: breakfasts and snacks are the standard ones, as written)
-    const expand = (foods: FitLabFood[]) => {
-      if (pools.preferredFoods.length === 0 || foods.length === 0 || (kind !== 'lunch' && kind !== 'dinner')) return foods;
-      const subs = new Set(foods.map((f) => f.sub));
-      return [...foods, ...pools.preferredFoods.filter((f) => !foods.includes(f) && subs.has(f.sub) && f.meals.includes(kind) && !NOT_IN_MAIN.has(f.name))];
-    };
-    // sides: any preferred vegetable (main meals) or fruit (breakfast and snacks) can take the place of the dish's own
-    const expandSide = (group: FitLabFood[]) => {
-      const category = group[0]?.category;
-      if (pools.preferredFoods.length === 0 || (category !== 'Verdure' && category !== 'Frutta')) return group;
-      if (category === 'Verdure' && kind !== 'lunch' && kind !== 'dinner') return group;
-      return [...group, ...pools.preferredFoods.filter((f) => f.category === category && !group.includes(f) && f.meals.includes(kind))];
-    };
+    // a pool recipe keeps its own foods: the person's preferences decide how often it comes up (below), never what is in it
     const isMain = kind === 'lunch' || kind === 'dinner';
-    const base = expand(ok(r.base));
-    let protein = lunchOk(expand(ok(r.protein)));
-    // who eats no meat (and at lunch no fish to cook) has few secondi left: eggs and fresh cheese join;
-    // who eats neither meat nor fish also has legumes as a secondo, next to a cereal
-    if (protein.length < 4) protein = [...protein, ...ok(r.proteinFallback).filter((f) => !protein.includes(f))];
-    if (isMain && r.base[0]?.sub !== 'Legumi' && !ok(r.protein).some((f) => f.sub !== 'Uova')) protein = [...protein, ...ok(LEGUMES).filter((f) => !protein.includes(f))];
+    // alternatives in a role only differ where they must (pasta / gluten-free pasta, milk / lactose-free milk): the first allowed one
+    const base = ok(r.base).slice(0, 1);
+    let protein = lunchOk(ok(r.protein));
     // cold cuts once a week: after that, the meals built on them wait for next week
     if (used(week.food, CURED_KEY) >= CURED_PER_WEEK) protein = protein.filter((f) => !isCured(f));
     if (dish.base && base.length === 0) continue;
     if (dish.protein.length > 0 && protein.length === 0) continue;
     // a side nobody can eat (excluded) is dropped when the dish has another; a dish with a single side needs it
-    const sides = r.sides.map((g) => expandSide(ok(g))).filter((g) => g.length > 0);
-    if (r.sides.length > 0 && sides.length === 0) continue;
+    // every side of a recipe is part of it (its name and photo show it): a recipe whose side the person cannot eat is skipped
+    const sides = r.sides.map((g) => ok(g).slice(0, 1));
+    if (sides.some((g) => g.length === 0)) continue;
     const spread = ok(r.spread);
     if (r.spread.length > 0 && spread.length === 0) continue;
 
-    const liked = protein.length > 0 ? protein.reduce((s, f) => s + pools.weight(f, kind), 0) / protein.length : 1;
-    // the carbohydrate sources the person picked in the questionnaire decide the primo: a meal built on one comes first
-    // (lunch and dinner: at breakfast and snacks the protein of the meal matters more than which bread it comes with)
-    // breakfast and snacks: a meal with a fat the person picked (avocado, nuts) comes first
-    const fatLiked = isMain ? 1 : Math.max(1, ...[...r.fat, ...r.fatIfPreferred].filter((f) => pools.allowed(f)).map((f) => pools.weight(f, kind)));
-    const baseLiked = isMain && base.length > 0 ? Math.max(...base.map((f) => pools.weight(f, kind))) : 1;
+    // the foods picked in the questionnaire: a recipe that contains them comes up more often (and one with a preferred
+    // food not yet eaten this week first of all, so every preferred food reaches the table)
+    const foodsOf = [base[0], protein[0], ...sides.map((g) => g[0]), ok(r.fat)[0]].filter((f): f is FitLabFood => !!f);
+    const liked = foodsOf.reduce((sum, f) => sum + (pools.weight(f, kind) - 1) * (f === base[0] && isMain ? 4 : f === protein[0] ? 3 : 2), 0);
+    const freshPreferred = foodsOf.some((f) => pools.isPreferred(f) && used(week.food, f.id) === 0) ? 3 : 0;
+    // lunch and dinner of the same day do not share a protein family (chicken twice, fish twice)
+    const sameFamily = isMain && protein[0] && day.families.has(familyOf(protein[0])) ? 80 : 0;
     const inSlot = used(week.slot, `${slotId}|dish|${dish.id}`);
     const cost =
       used(week.dish, dish.id) * 3 +
       inSlot * 8 +
+      // rotation: last month's recipes wait (they come back when the pool for this person is small)
+      (week.previous?.has(dish.id) ? 14 : 0) +
       (inSlot >= 2 ? 150 : 0) +
       (inSlot >= 3 ? 600 : 0) +
       (day.dishes.has(dish.id) ? 300 : 0) +
@@ -146,27 +137,25 @@ function candidateDishes(kind: SlotKind, slotId: string, pools: FitLabPools, see
       (r.base[0]?.sub === 'Legumi' && day.families.has('legumes') ? 100 : 0) +
       // a reserve meal only fills the week when the standard ones are too few for this person
       (dish.reserve ? 25 : 0) +
-      // bread and rice cakes are a quick lunch: at dinner pasta, rice, potatoes and legumes come first
-      (kind === 'dinner' && dish.rareAtDinner ? 200 : 0) -
-      (baseLiked - 1) * 4 -
-      (fatLiked - 1) * 2 +
+      sameFamily +
       (kind === 'lunch' && pools.eatsOutOften && dish.portable ? -2.5 : 0) -
-      (liked - 1) * 1.5;
+      liked -
+      freshPreferred;
     out.push({
       r,
       base,
       protein,
       sides,
       spread,
-      fat: expand(ok(r.fat)),
+      fat: ok(r.fat).slice(0, 1),
       optionalFat: ok(r.fatIfPreferred).filter((f) => pools.isPreferred(f)),
       oil: !!dish.oil && pools.allowed(OIL),
       cost,
     });
   }
-  // the reserve meals only come in when the person's exclusions leave fewer than three standard ones
+  // the reserve meals only come in when the person's exclusions leave too few standard ones for a varied week
   const standard = out.filter((c) => !c.r.dish.reserve);
-  return (standard.length >= 3 ? standard : out).sort((a, b) => a.cost - b.cost);
+  return (standard.length >= 6 ? standard : out).sort((a, b) => a.cost - b.cost);
 }
 
 const FISH_SUBS = new Set(['Pesce', 'Crostacei', 'Preparazioni di pesce']);
@@ -345,7 +334,8 @@ export function buildFitLabMeal(args: { kind: SlotKind; slotId: string; target: 
   let best: (Solved & { cand: Candidate; picks: Picks; fixed: Fixed[] }) | null = null;
 
   // lunch and dinner: every primo is tried (they are few), so the best fit for the person's secondi is never left out
-  for (const cand of candidates.slice(0, isMain || kcalTarget > 900 ? 6 : 4)) {
+  // the recipes are fixed, so more of them are tried: the one whose foods fit the person's macros best wins
+  for (const cand of candidates.slice(0, isMain ? 12 : 8)) {
     // lunch and dinner never share a protein source (unless the dish has no other)
     const fresh = isMain ? cand.protein.filter((f) => !day.families.has(familyOf(f))) : cand.protein;
     const proteins: (FitLabFood | null)[] = cand.protein.length === 0 ? [null] : rank(fresh.length > 0 ? fresh : cand.protein, 'protein', 3);
@@ -428,7 +418,7 @@ export function buildFitLabMeal(args: { kind: SlotKind; slotId: string; target: 
               repeatPenalty(used(week.slot, `${slotId}|name|${name}`), 70, 600) +
               (pf ? repeatPenalty(used(week.slot, `${slotId}|food|${pf.id}`), 10, 300) : 0) +
               (bf ? repeatPenalty(used(week.slot, `${slotId}|food|${bf.id}`), 0, 40) : 0);
-            const score = solved.error / 6 + variety + kcalOff * 500 + proteinShort * 1.5 + repeats;
+            const score = solved.error / 6 + variety + kcalOff * 500 + proteinShort * 8 + repeats;
             if (!best || score < best.score) best = { ...solved, score, cand, picks, fixed };
           }
         }

@@ -8,15 +8,27 @@ profilo → target nutrizionali → struttura del pasto → alimenti → quantit
 
 Nessuna chiamata AI per utente: il motore è deterministico (costo zero). Il catalogo viene da un file Excel che si modifica a mano; l'AI di strategia (`generate-plan-strategy`) scrive solo i testi dei mesi.
 
-## Struttura dei pasti: una fonte per ruolo
+## Pool di ricette standard a rotazione
 
-La dieta è volutamente standard: pasti semplici da preparare, in cui ogni alimento si sostituisce con un altro dello stesso ruolo.
+La dieta usa un **pool fisso di ricette** (`fitlab/dishes.ts`), ognuna con il suo nome, la sua preparazione (`recipes.ts`) e la sua foto (`dish-images.ts`):
 
-| Pasto | Struttura |
-|---|---|
-| **Pranzo e cena** | **Primo** (una sola fonte di carboidrati) + **secondo** (una sola fonte di proteine) + **contorno** (una verdura) + **olio extravergine d'oliva**, unico grasso aggiunto. Qualsiasi primo va con qualsiasi secondo |
-| **Colazione** | Porridge (con yogurt o con albumi) · avocado toast con uova · uova strapazzate con pane · frittata di albumi con pane · pane, ricotta e marmellata · yogurt greco con cereali integrali · latte proteico con cereali integrali · yogurt greco con avena |
-| **Merenda** | Yogurt greco con frutta · yogurt greco con avena · pan bauletto con marmellata · panino con affettato (fesa di tacchino, bresaola o prosciutto crudo) |
+| Pasto | Ricette | Struttura |
+|---|---|---|
+| **Colazione** | 20 (B01–B20) | Porridge, uova, pane con ricotta o fiocchi di latte, yogurt greco con cereali o frutta, latte con cereali |
+| **Merenda** | 20 (S01–S20) | Yogurt greco con frutta o avena, pane con marmellata, panini con affettato (una volta a settimana), crackers con tonno, hummus, frutta |
+| **Pranzo** | 50 (L01–L50) | **Primo** (una fonte di carboidrati) + **secondo** (una fonte di proteine) + **contorno** (una verdura) + **olio extravergine d'oliva**. Veloce: niente pesce da cuocere (il tonno in scatola va bene) |
+| **Cena** | 50 (D01–D50) | Stessa struttura del pranzo, con il pesce |
+| **Riserva** | 4 (R01–R04) | Legumi accanto a un cereale, per chi non mangia carne, pesce, uova né latticini |
+
+Gli ingredienti di una ricetta **non cambiano** da persona a persona: cambiano solo i grammi, calcolati sui macro del pasto. Per questo la foto mostra sempre il piatto descritto dal nome. Le alternative in un ruolo sono solo alimenti uguali nel piatto (pasta e pasta senza glutine, riso e riso basmati, yogurt greco 0% e 2%): si usa il primo consentito alla persona.
+
+**Rotazione.** In una settimana la stessa ricetta torna al massimo due volte per pasto; da un mese al successivo (e quando il piano viene aggiornato) le ricette del mese prima passano in coda, così il nuovo mese porta soprattutto ricette diverse (sui profili di prova cambia circa l'86% delle ricette tra mesi consecutivi).
+
+**Preferenze del questionario.** Non cambiano gli ingredienti: fanno uscire più spesso le ricette che contengono gli alimenti scelti (il primo a pranzo e cena pesa di più, poi il secondo, poi contorno e frutta), e prima di tutto quelle con un alimento scelto non ancora mangiato in settimana.
+
+**Esclusioni, regime e allergeni.** Una ricetta con un alimento escluso non entra nel piano. Le ricette di riserva (`reserve`) entrano solo quando ne restano meno di sei per quel pasto.
+
+**Aggiungere una ricetta**: una riga in `dishes.ts` (nomi degli alimenti del catalogo), la preparazione in `recipes.ts` (`npm run recipes:check`) e la foto (`docs/MEAL-IMAGES.md`, `npm run meals:check`).
 
 Regole fisse, verificate dal banco di prova (Q13–Q16):
 
@@ -25,15 +37,14 @@ Regole fisse, verificate dal banco di prova (Q13–Q16):
 - **Secondi**: petto di pollo, petto di tacchino, vitello, manzo (bistecca), macinato di manzo magro, hamburger (manzo, pollo, tacchino), merluzzo, orata, lonza, salmone, tonno al naturale, uova.
 - **Contorni**: zucchine, insalata, pomodori, broccoli, spinaci, fagiolini, carote, finocchi, peperoni, melanzane, cavolfiore, bietole, più le verdure preferite dalla persona.
 - **Pan bauletto mai a pranzo o a cena** (è il pane di colazione e merenda). **A cena** pane e gallette sono un'ultima risorsa: si usano pasta, riso, patate e legumi.
-- **Preferenze del questionario prima di tutto**: a pranzo e cena il primo nasce dai carboidrati scelti dalla persona; secondi, verdure e frutta scelti vengono prima degli altri; a colazione e merenda vincono i pasti con i grassi scelti (avocado, frutta secca), e chi ha scelto la frutta secca la trova su yogurt e porridge.
 - **Affettati al massimo una volta a settimana** (in tutta la settimana, non per pasto).
 - **Legumi al massimo una volta al giorno.**
 - **Sostituzioni standard**: ogni primo elenca altri primi, ogni secondo altri secondi, ogni contorno altre verdure, con la quantità già ricalcolata. A colazione e merenda si sostituisce tra alimenti dello stesso tipo (yogurt con yogurt, pane con pane, uova con albumi).
 
 Eccezioni, solo quando le esclusioni della persona non lasciano alternative:
 
-- chi non mangia carne ha come secondi anche uova, albumi, fiocchi di latte, mozzarella light e ricotta; chi non mangia né carne né pesce anche i legumi, accanto a un cereale;
-- chi non può mangiare i pasti standard di colazione o merenda (per esempio senza latticini) riceve i pasti di riserva (`reserve` in `dishes.ts`): frutta e frutta secca, uova sode con pane, latte senza lattosio o bevanda di soia con cereali, porridge con bevanda vegetale.
+- chi non mangia carne trova nel pool le ricette con uova, mozzarella, ricotta e fiocchi di latte; chi non mangia né carne né pesce riceve anche le ricette di riserva con i legumi accanto a un cereale;
+- chi non può mangiare abbastanza colazioni o merende standard (per esempio senza latticini) riceve quelle di riserva: frutta e frutta secca, latte senza lattosio o bevanda di soia con cereali, porridge con bevanda vegetale, pane con burro di arachidi.
 
 ## Fonti dei dati
 
@@ -41,7 +52,7 @@ Eccezioni, solo quando le esclusioni della persona non lasciano alternative:
 |---|---|---|
 | **Catalogo alimenti** (157): categoria, regimi, allergeni, stato (secco/crudo/cotto), kcal e macro per 100 g | `data/fitlab/fitlab-catalogo-piatti.xlsx`, foglio "Catalogo Fit Lab" | Modifica l'Excel, poi `npm run catalog:import` rigenera `src/lib/planning/fitlab/data/foods.generated.ts` |
 | **Valori nutrizionali** | `scripts/catalog/nutrition-data.ts` → colonne dell'Excel | `npx tsx scripts/catalog/fill-nutrition.ts <in.xlsx> <out.xlsx>` |
-| **Pasti standard** e liste di primi, secondi e contorni | `src/lib/planning/fitlab/dishes.ts` | Modifica le liste `PRIMI`, `SECONDI`, `CONTORNI` o aggiungi un pasto: i nomi degli alimenti devono essere quelli del catalogo (un errore blocca il caricamento). Ogni pasto ha una ricetta in `recipes.ts` (`npm run recipes:check`) |
+| **Pool di ricette** | `src/lib/planning/fitlab/dishes.ts` | Una riga per ricetta: i nomi degli alimenti devono essere quelli del catalogo (un errore blocca il caricamento). Ogni ricetta ha la sua preparazione in `recipes.ts` (`npm run recipes:check`) e la sua foto (`npm run meals:check`). Le liste `PRIMI`, `SECONDI`, `CONTORNI` servono alle sostituzioni |
 
 Il catalogo contiene solo alimenti comuni nella cucina italiana di tutti i giorni: niente tofu, seitan, edamame, polenta, quinoa, grano saraceno, riso rosso o venere, crema di riso, semi di canapa, noci e burro di macadamia, burro di anacardi e di noci, germogli, bevanda di cocco.
 
@@ -64,9 +75,9 @@ Unica eccezione: la soglia minima di sicurezza (`MIN_CALORIES`). Se un giorno di
 |---|---|---|
 | 1. Target | `domain/targets.ts` | Calorie e macro di ogni giorno (vedi «Calorie del giorno»), poi quota per pasto da `lib/nutrition/meal-distribution.ts` (colazione ≈ 24%, spuntino ≈ 12%, pranzo ≈ 34%, cena ≈ 31%) |
 | 2. Filtri | `fitlab/pools.ts` | Regime alimentare e allergeni dalle colonne del catalogo, esclusioni per nome, pesi dalle preferenze / abitudini / alimenti richiesti; chi mangia spesso fuori ha pranzi trasportabili |
-| 3. Pasto | `fitlab/dishes.ts` | Il pasto standard definisce i ruoli: base (primo), proteine (secondo), contorno (verdura o frutta), olio EVO, aromi. Un solo alimento per ruolo |
+| 3. Ricetta | `fitlab/dishes.ts` | La ricetta del pool definisce gli alimenti: base (primo), proteine (secondo), contorno (verdura o frutta), olio EVO, aromi. Un solo alimento per ruolo |
 | 4. Quantità | `fitlab/solver.ts` | Grammi calcolati insieme su proteine, carboidrati e grassi del pasto, con porzioni realistiche e pesi nello stato del catalogo |
-| 5. Scelta | `fitlab/meal-builder.ts` | Prova i pasti e le combinazioni primo / secondo / contorno, tiene la più vicina ai target con meno ripetizioni |
+| 5. Scelta | `fitlab/meal-builder.ts` | Prova le ricette del pool adatte alla persona (preferenze, varietà, rotazione), tiene quella più vicina ai target con meno ripetizioni |
 | 6. Sostituzioni | `meal-builder.ts` | Liste standard (primo per primo, secondo per secondo, verdura per verdura), con la quantità ricalcolata sul nutriente che l'alimento porta |
 
 **Pranzo veloce, pesce a cena.** Il pesce da cuocere va a cena (il tonno in scatola va bene a pranzo). Controllo Q10 nel banco di prova.
@@ -79,12 +90,12 @@ Nel questionario, step "Preferenze alimentari", ci sono **cinque selettori** —
 
 Il motore li usa come alimenti **preferenziali**, mese dopo mese:
 
-- hanno un peso alto (×2) e, se ne hai scelti alcuni in un componente, gli altri di quel componente restano possibili ma meno probabili;
-- un alimento preferito non ancora comparso nella settimana è favorito, così tutti i preferiti arrivano in tavola;
-- a pranzo e cena possono fare da primo o da secondo se sono della stessa famiglia di quelli standard (un altro cereale, un altro pesce), e qualsiasi verdura preferita può fare da contorno; colazioni e merende restano quelle standard (cambia solo la frutta);
+- le ricette del pool che li contengono escono più spesso (gli alimenti non scelti dello stesso componente restano possibili ma meno probabili);
+- una ricetta con un alimento preferito non ancora comparso nella settimana è favorita, così i preferiti arrivano in tavola;
+- non cambiano gli ingredienti delle ricette: un alimento preferito che non compare in nessuna ricetta del pool non entra nel piano (va aggiunta una ricetta);
 - restano validi tutti i filtri: regime, allergeni, esclusioni, pranzo veloce, spuntini senza cottura.
 
-Il banco di prova (Q11) verifica che gli alimenti scelti con i nuovi selettori compaiano nella settimana di ogni mese.
+Il banco di prova (Q11) verifica che gli alimenti scelti compaiano nella settimana di ogni mese.
 
 ## Varietà categorica
 
