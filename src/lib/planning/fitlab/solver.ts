@@ -34,10 +34,10 @@ const BY_NAME: Record<string, Range> = {
   'Yogurt proteico': [100, 300],
   'Yogurt magro': [125, 300],
   Kefir: [150, 300],
-  'Fiocchi di latte': [80, 250],
-  'Ricotta magra': [60, 170],
+  'Fiocchi di latte': [80, 300],
+  'Ricotta magra': [60, 250],
   Mozzarella: [60, 125],
-  'Mozzarella light': [60, 125],
+  'Mozzarella light': [60, 150],
   'Parmigiano Reggiano': [10, 40],
   'Latte vaccino': [150, 300],
   'Latte senza lattosio': [150, 300],
@@ -102,7 +102,7 @@ const MIN_UNITS: Record<string, number> = { 'Gallette di riso': 2, 'Gallette di 
 function defaultRange(food: FitLabFood): Range {
   switch (food.category) {
     case 'Proteine':
-      if (food.sub === 'Legumi') return [50, 300];
+      if (food.sub === 'Legumi') return [50, 350];
       if (food.sub === 'Preparazioni di carne' || food.sub === 'Preparazioni di pesce') return [100, 200];
       return [100, 280]; // meat and fish, raw
     case 'Carboidrati':

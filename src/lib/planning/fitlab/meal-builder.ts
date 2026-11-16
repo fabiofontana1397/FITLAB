@@ -1,19 +1,23 @@
 /**
- * One meal, built in the Fit Lab order: slot → dish (recipe) → foods of that dish → quantities.
+ * One meal, built in the Fit Lab order: slot → standard meal (dishes.ts) → foods of that meal → quantities.
  *
- *  1. Dishes valid for the slot and for this person (their filters leave every role fillable)
+ *  1. Meals valid for the slot and for this person (their filters leave every role fillable)
  *     are ranked: not used today, not overused this week, liked, easy to carry when they eat out.
- *  2. For the best few dishes, the best foods per role are tried (variety: a protein already
+ *  2. For the best few, the best foods per role are tried (variety: a protein already
  *     eaten today or often this week costs more) and the quantities solved for each combination.
  *  3. The combination that lands closest to the meal's macros, with the least repetition, wins.
+ *
+ * One source per role, always: a meal has ONE carbohydrate source (never pasta and bread), ONE protein source and,
+ * at lunch and dinner, ONE vegetable with extra virgin olive oil as the only added fat. When a single source cannot
+ * cover a very large meal its portion grows (within reason); a second source is never added.
  *
  * Quantities are in the catalog's state: dry pasta and rice, raw meat and fish, cooked legumes.
  */
 import { formatFoodQuantity } from '../food-quantity';
 import type { PlanMealItem } from '../types';
-import { short, type Role, type SlotKind } from './catalog';
-import { DISHES, type Dish } from './dishes';
-import { FITLAB_FOODS, foodByName, type FitLabFood } from './foods';
+import { short, UNITS, type Role, type SlotKind } from './catalog';
+import { CONTORNI, DISHES, PRIMI, SECONDI, SECONDI_VEG, type Dish } from './dishes';
+import { foodByName, type FitLabFood } from './foods';
 import { familyOf, type FitLabPools } from './pools';
 import { addMacros, kcalOfMacros, macrosOfGrams, portionBounds, solvePortions, ZERO, type Macros, type PortionVar } from './solver';
 
@@ -45,7 +49,7 @@ type ResolvedDish = {
   dish: Dish;
   base: FitLabFood[];
   protein: FitLabFood[];
-  extraProtein: FitLabFood[];
+  proteinFallback: FitLabFood[];
   sides: FitLabFood[][];
   spread: FitLabFood[];
   fat: FitLabFood[];
@@ -56,25 +60,27 @@ function resolve(dish: Dish): ResolvedDish {
   let r = RESOLVED.get(dish.id);
   if (!r) {
     const all = (names?: string[]) => (names ?? []).map(foodByName);
-    r = { dish, base: all(dish.base), protein: all(dish.protein), extraProtein: all(dish.extraProtein), sides: (dish.sides ?? []).map(all), spread: all(dish.spread), fat: all(dish.fat) };
+    r = { dish, base: all(dish.base), protein: all(dish.protein), proteinFallback: all(dish.proteinFallback), sides: (dish.sides ?? []).map(all), spread: all(dish.spread), fat: all(dish.fat) };
     RESOLVED.set(dish.id, r);
   }
   return r;
 }
 
 const OIL = foodByName('Olio extravergine di oliva');
-const PASSATA = foodByName('Passata di pomodoro');
+const LEGUMES = PRIMI.legumi.map(foodByName);
+/** Cold cuts in the week so far (key in `WeekUsage.food`): once a week at most. */
+const CURED_KEY = 'family:cured';
+const CURED_PER_WEEK = 1;
+const isCured = (f: FitLabFood) => f.sub === 'Salumi';
 
 type Candidate = {
   r: ResolvedDish;
   base: FitLabFood[];
   protein: FitLabFood[];
-  extraProtein: FitLabFood[];
   sides: FitLabFood[][];
   spread: FitLabFood[];
   fat: FitLabFood[];
   oil: boolean;
-  sauce: boolean;
   cost: number;
 };
 
@@ -87,10 +93,11 @@ function candidateDishes(kind: SlotKind, slotId: string, pools: FitLabPools, see
     // lunch is quick: no fish to cook (canned tuna is fine); a dish built only on fish stays for dinner
     const lunchOk = (foods: FitLabFood[]) => (kind === 'lunch' ? foods.filter((f) => !isFish(f) || f.name === 'Tonno al naturale') : foods);
     // the foods the person picked as preferred join a role when they are of the same kind as the dish's own (another white meat, another cereal)
+    // (lunch and dinner only: breakfasts and snacks are the standard ones, as written)
     const expand = (foods: FitLabFood[]) => {
-      if (pools.preferredFoods.length === 0 || foods.length === 0) return foods;
+      if (pools.preferredFoods.length === 0 || foods.length === 0 || (kind !== 'lunch' && kind !== 'dinner')) return foods;
       const subs = new Set(foods.map((f) => f.sub));
-      return [...foods, ...pools.preferredFoods.filter((f) => !foods.includes(f) && subs.has(f.sub) && f.meals.includes(kind) && !(kind === 'snack' && needsCooking(f)))];
+      return [...foods, ...pools.preferredFoods.filter((f) => !foods.includes(f) && subs.has(f.sub) && f.meals.includes(kind) && f.name !== "Albume d'uovo")];
     };
     // sides: any preferred vegetable (main meals) or fruit (breakfast and snacks) can take the place of the dish's own
     const expandSide = (group: FitLabFood[]) => {
@@ -99,8 +106,15 @@ function candidateDishes(kind: SlotKind, slotId: string, pools: FitLabPools, see
       if (category === 'Verdure' && kind !== 'lunch' && kind !== 'dinner') return group;
       return [...group, ...pools.preferredFoods.filter((f) => f.category === category && !group.includes(f) && f.meals.includes(kind))];
     };
+    const isMain = kind === 'lunch' || kind === 'dinner';
     const base = expand(ok(r.base));
-    const protein = lunchOk(expand(ok(r.protein)));
+    let protein = lunchOk(expand(ok(r.protein)));
+    // who eats no meat (and at lunch no fish to cook) has few secondi left: eggs and fresh cheese join;
+    // who eats neither meat nor fish also has legumes as a secondo, next to a cereal
+    if (protein.length < 4) protein = [...protein, ...ok(r.proteinFallback).filter((f) => !protein.includes(f))];
+    if (isMain && r.base[0]?.sub !== 'Legumi' && !ok(r.protein).some((f) => f.sub !== 'Uova')) protein = [...protein, ...ok(LEGUMES).filter((f) => !protein.includes(f))];
+    // cold cuts once a week: after that, the meals built on them wait for next week
+    if (used(week.food, CURED_KEY) >= CURED_PER_WEEK) protein = protein.filter((f) => !isCured(f));
     if (dish.base && base.length === 0) continue;
     if (dish.protein.length > 0 && protein.length === 0) continue;
     // a side nobody can eat (excluded) is dropped when the dish has another; a dish with a single side needs it
@@ -116,33 +130,31 @@ function candidateDishes(kind: SlotKind, slotId: string, pools: FitLabPools, see
       inSlot * 8 +
       (inSlot >= 2 ? 150 : 0) +
       (inSlot >= 3 ? 600 : 0) +
-      (day.dishes.has(dish.id) ? 100 : 0) +
+      (day.dishes.has(dish.id) ? 300 : 0) +
       hash(seed, dish.id) * 2 +
-      (dish.source === 'excel' ? -1 : 0) + // the dishes from the workbook come first, the extras add variety
-      (kind === 'lunch' && pools.eatsOutOften && dish.portable ? -2.5 : 0) +
-      // lunch has to be quick to prepare: slow dishes stay for dinner (a last resort when nothing else fits)
-      (kind === 'lunch' && dish.slow ? 200 : 0) -
+      // legumes once a day: as primo or as a vegetarian's secondo, not at both lunch and dinner
+      (r.base[0]?.sub === 'Legumi' && day.families.has('legumes') ? 100 : 0) +
+      // a reserve meal only fills the week when the standard ones are too few for this person
+      (dish.reserve ? 25 : 0) +
+      (kind === 'lunch' && pools.eatsOutOften && dish.portable ? -2.5 : 0) -
       (liked - 1) * 1.5;
     out.push({
       r,
       base,
       protein,
-      extraProtein: lunchOk(ok(r.extraProtein)),
       sides,
       spread,
       fat: expand(ok(r.fat)),
       oil: !!dish.oil && pools.allowed(OIL),
-      sauce: !!dish.sauce && pools.allowed(PASSATA),
       cost,
     });
   }
-  return out.sort((a, b) => a.cost - b.cost);
+  // the reserve meals only come in when the person's exclusions leave fewer than three standard ones
+  const standard = out.filter((c) => !c.r.dish.reserve);
+  return (standard.length >= 3 ? standard : out).sort((a, b) => a.cost - b.cost);
 }
 
 const FISH_SUBS = new Set(['Pesce', 'Crostacei', 'Preparazioni di pesce']);
-// a snack is assembled, not cooked: nothing to boil, roast or fry (canned tuna is fine)
-const COOKED_SUBS = new Set(['Carni bianche', 'Carni rosse', 'Carni suine', 'Preparazioni di carne', 'Preparazioni di pesce', 'Pesce', 'Crostacei', 'Pasta e derivati', 'Cereali', 'Pseudocereali', 'Tuberi']);
-const needsCooking = (f: FitLabFood) => (COOKED_SUBS.has(f.sub) || f.name === 'Cous cous') && f.name !== 'Tonno al naturale';
 const isFish = (food: FitLabFood) => FISH_SUBS.has(food.sub);
 
 function foodCost(food: FitLabFood, role: Role, kind: SlotKind, seed: number, pools: FitLabPools, day: DayState, week: WeekUsage): number {
@@ -205,33 +217,84 @@ function toItem(food: FitLabFood, grams: number, role: NonNullable<PlanMealItem[
 }
 
 const NUTRIENT: Record<string, 'p' | 'c' | 'f'> = { protein: 'p', carb: 'c', fat: 'f' };
-const CARB_SUBS = new Set(['Pasta e derivati', 'Cereali', 'Pseudocereali', 'Tuberi', 'Pane e prodotti da forno', 'Cereali e derivati', 'Cereali da colazione', 'Cereali e farine']);
 
-/** Same-category swaps (Fit Lab §17), re-sized to deliver the same amount of the nutrient the item is there for. */
-function substitutesFor(item: { food: FitLabFood; grams: number; role: Role }, kind: SlotKind, pools: FitLabPools, seed: number): PlanMealItem['substitutes'] {
+// The standard swaps of a main meal: any primo for any primo, any secondo for any secondo, any classic vegetable for another.
+const PRIMI_SWAPS = ['Pasta', 'Riso', 'Patate', 'Pane integrale', 'Gallette di riso', 'Pasta integrale', 'Riso integrale', 'Ceci', 'Fagioli cannellini', 'Lenticchie'].map(foodByName);
+const SECONDI_SWAPS = SECONDI.filter((n) => n !== 'Salmone' && n !== 'Uova intere' && n !== 'Lonza di maiale magra' && !/^Hamburger di (pollo|tacchino)/.test(n)).map(foodByName);
+const CONTORNI_SWAPS = CONTORNI.map(foodByName);
+const VEG_SWAPS = [...SECONDI_VEG, ...PRIMI.legumi.slice(0, 3)].map(foodByName);
+const MAX_SWAPS = 6;
+/** Foods that replace each other outside the primo / secondo lists: same kind, same way of eating them. */
+const SWAP_GROUPS: FitLabFood[][] = [
+  ['Yogurt greco 0%', 'Yogurt greco 2%', 'Skyr', 'Yogurt proteico', 'Kefir'],
+  ['Uova intere', "Albume d'uovo"],
+  ['Ricotta magra', 'Fiocchi di latte'],
+  ['Fesa di tacchino affettata', 'Bresaola', 'Prosciutto crudo'],
+  ['Latte senza lattosio', 'Bevanda di soia non zuccherata', 'Latte vaccino'],
+  ["Fiocchi d'avena", 'Avena istantanea', 'Cereali integrali', 'Muesli', 'Cereali da colazione senza zuccheri aggiunti'],
+  ['Pane integrale', 'Pane di segale', 'Pan bauletto', 'Fette biscottate integrali', 'Gallette di riso'],
+  ['Burro di arachidi 100%', 'Burro di mandorle 100%', 'Burro di nocciole 100%'],
+  ['Mandorle', 'Noci', 'Nocciole', 'Pistacchi'],
+  ['Ceci', 'Fagioli cannellini', 'Lenticchie', 'Fagioli borlotti', 'Fagioli'],
+].map((g) => g.map(foodByName));
+
+/** Swaps of the same role, re-sized to deliver the same amount of the nutrient the item is there for. At lunch and dinner
+ * they are the standard lists (primo for primo, secondo for secondo); elsewhere, foods of the same kind (SWAP_GROUPS). */
+function substitutesFor(item: { food: FitLabFood; grams: number; role: Role }, kind: SlotKind, pools: FitLabPools, kcalTarget: number): PlanMealItem['substitutes'] {
+  const isMain = kind === 'lunch' || kind === 'dinner';
+  if (item.role === 'veg') {
+    if (!isMain) return undefined;
+    const out = CONTORNI_SWAPS.filter((f) => f.id !== item.food.id && pools.allowed(f))
+      .slice(0, 4)
+      .map((f) => {
+        const grams = vegGrams(f, 1, kind, kcalTarget);
+        return { name: f.name, grams, foodId: f.id, quantityLabel: formatFoodQuantity(f.id, grams) };
+      });
+    return out.length > 0 ? out : undefined;
+  }
   const nutrient = NUTRIENT[item.role];
   if (!nutrient) return undefined;
-  const category = item.role === 'protein' ? 'Proteine' : item.role === 'carb' ? 'Carboidrati' : 'Grassi';
-  const legume = item.food.sub === 'Legumi';
   const wanted = (item.food[nutrient] * item.grams) / 100;
-  const candidates = FITLAB_FOODS.filter((f) => {
-    if (f.id === item.food.id || f.category !== category || !pools.allowed(f) || !f.meals.includes(kind)) return false;
-    if (item.role === 'carb' && !CARB_SUBS.has(f.sub)) return false;
-    if (item.role === 'fat' && (f.sub === 'Cioccolato' || f.sub === 'Preparazioni composte')) return false;
-    if (item.role === 'protein' && (kind === 'lunch' || kind === 'dinner') && (f.sub === 'Salumi' || f.sub === 'Bevande vegetali' || f.sub === 'Latte')) return false;
-    return legume === (f.sub === 'Legumi') || item.role !== 'protein';
-  });
-  const out: NonNullable<PlanMealItem['substitutes']> = [];
-  for (const f of sortedBy(candidates, (x) => hash(seed, x.id))) {
-    if (out.length >= 4) break;
-    if (f[nutrient] < 1) continue;
-    const b = portionBounds(f, item.role);
-    const grams = Math.round(((wanted / f[nutrient]) * 100) / b.step) * b.step;
-    if (grams < Math.max(b.min, b.step) || grams > b.max) continue;
-    if (wanted >= 4 && Math.abs((f[nutrient] * grams) / 100 / wanted - 1) > 0.25) continue;
-    out.push({ name: f.name, grams, foodId: f.id, quantityLabel: formatFoodQuantity(f.id, grams) });
+  const sized = (foods: FitLabFood[]): NonNullable<PlanMealItem['substitutes']> => {
+    const out: NonNullable<PlanMealItem['substitutes']> = [];
+    for (const f of foods) {
+      if (out.length >= MAX_SWAPS) break;
+      if (f[nutrient] < 1) continue;
+      const b = item.role === 'carb' && isMain ? primoBounds(f, kcalTarget) : portionBounds(f, item.role);
+      // a portion just past the food's range is brought back to it (the tolerance below still applies)
+      const grams = Math.min(Math.max(Math.round(((wanted / f[nutrient]) * 100) / b.step) * b.step, Math.max(b.min, b.step)), b.max);
+      if (wanted >= 4 && Math.abs((f[nutrient] * grams) / 100 / wanted - 1) > 0.25) continue;
+      out.push({ name: f.name, grams, foodId: f.id, quantityLabel: formatFoodQuantity(f.id, grams) });
+    }
+    return out;
+  };
+  const fits = (f: FitLabFood) => f.id !== item.food.id && pools.allowed(f);
+  if (isMain && (item.role === 'carb' || item.role === 'protein')) {
+    // fish to cook stays a dinner food: a quick lunch is not swapped for it
+    const standard = (item.role === 'carb' ? PRIMI_SWAPS : SECONDI_SWAPS).filter((f) => fits(f) && !(kind === 'lunch' && isFish(f) && f.name !== 'Tonno al naturale'));
+    const out = sized(standard);
+    if (out.length >= 2) return out;
+    // who eats no meat: eggs, fresh cheese and legumes are the secondi to swap
+    if (item.role === 'protein') {
+      const veg = sized([...standard, ...VEG_SWAPS.filter((f) => fits(f) && !standard.includes(f))]);
+      if (veg.length > 0) return veg;
+    }
   }
+  // breakfast and snacks (and whatever is left): foods of the same kind, eaten the same way
+  const group = SWAP_GROUPS.find((g) => g.some((f) => f.id === item.food.id));
+  const out = group ? sized(group.filter(fits)) : [];
   return out.length > 0 ? out : undefined;
+}
+
+/** The primo is the meal's only carbohydrate source: for a large meal its portion grows instead of a second source being added. */
+function primoBounds(food: FitLabFood, kcalTarget: number): ReturnType<typeof portionBounds> {
+  const b = portionBounds(food, 'carb');
+  const unit = UNITS[food.name];
+  if (unit) return { ...b, max: Math.max(b.max, 10 * unit.grams) }; // rice cakes as a primo: up to a sleeve
+  if (food.sub === 'Legumi') return { ...b, min: 100, max: 350 };
+  if (food.c < 40) return b; // potatoes and gnocchi are bulky already: their portion stays a plate
+  const stretch = Math.min(Math.max(kcalTarget / 750, 1), 1.8);
+  return { ...b, max: Math.round((b.max * stretch) / b.step) * b.step };
 }
 
 // ------------------------------------------------------------ fixed amounts --
@@ -251,7 +314,7 @@ const vegGrams = (food: FitLabFood, sides: number, kind: SlotKind, kcalTarget: n
 // ------------------------------------------------------------------ builder --
 
 type Solved = { vars: PortionVar[]; total: Macros; error: number; score: number };
-type Fixed = { food: FitLabFood; grams: number; kind: 'veg' | 'spread' | 'sauce' | 'accessory' };
+type Fixed = { food: FitLabFood; grams: number; kind: 'veg' | 'spread' | 'accessory' };
 
 export function buildFitLabMeal(args: { kind: SlotKind; slotId: string; target: Macros; pools: FitLabPools; seed: number; day: DayState; week: WeekUsage }): BuiltMeal {
   const { kind, slotId, target, pools, seed, day, week } = args;
@@ -265,7 +328,8 @@ export function buildFitLabMeal(args: { kind: SlotKind; slotId: string; target: 
 
   let best: (Solved & { cand: Candidate; picks: Picks; fixed: Fixed[] }) | null = null;
 
-  for (const cand of candidates.slice(0, kcalTarget > 900 ? 6 : 4)) {
+  // lunch and dinner: every primo is tried (they are few), so the best fit for the person's secondi is never left out
+  for (const cand of candidates.slice(0, isMain || kcalTarget > 900 ? 6 : 4)) {
     // lunch and dinner never share a protein source (unless the dish has no other)
     const fresh = isMain ? cand.protein.filter((f) => !day.families.has(familyOf(f))) : cand.protein;
     const proteins: (FitLabFood | null)[] = cand.protein.length === 0 ? [null] : rank(fresh.length > 0 ? fresh : cand.protein, 'protein', 3);
@@ -282,7 +346,8 @@ export function buildFitLabMeal(args: { kind: SlotKind; slotId: string; target: 
     };
     const sideCombos: FitLabFood[][] = buildSides(0, []);
     const fatTop = cand.fat.length > 0 ? rank(cand.fat, 'fat', 2) : [];
-    const fatOptions: FitLabFood[][] = fatTop.length === 0 ? [[]] : [...fatTop.map((f) => [f]), ...(fatTop.length === 2 ? [fatTop] : [])];
+    // one fat at most (and at lunch and dinner only the oil: the standard meals name no other)
+    const fatOptions: FitLabFood[][] = fatTop.length === 0 ? [[]] : fatTop.map((f) => [f]);
 
     for (const pf of proteins) {
       for (const bf of bases) {
@@ -296,7 +361,7 @@ export function buildFitLabMeal(args: { kind: SlotKind; slotId: string; target: 
               const needed = pf.p >= 15 ? Math.ceil((0.45 * target.protein) / (pf.p / 100) / pb.step) * pb.step : 0;
               vars.push({ food: pf, role: 'protein', ...pb, min: Math.min(Math.max(pb.min, needed), pb.max), grams: 0 });
             }
-            if (bf) vars.push({ food: bf, role: 'carb', ...portionBounds(bf, 'carb'), grams: 0 });
+            if (bf) vars.push({ food: bf, role: 'carb', ...(isMain ? primoBounds(bf, kcalTarget) : stretched(portionBounds(bf, 'carb'), kcalTarget, kind)), grams: 0 });
             const fixed: Fixed[] = [];
             let fixedMacros = ZERO;
             const nVeg = sides.filter((s) => s.category === 'Verdure').length;
@@ -321,11 +386,7 @@ export function buildFitLabMeal(args: { kind: SlotKind; slotId: string; target: 
               fixed.push({ food, grams, kind: 'accessory' });
               fixedMacros = addMacros(fixedMacros, macrosOfGrams(food, grams));
             }
-            if (cand.sauce) {
-              fixed.push({ food: PASSATA, grams: 60, kind: 'sauce' });
-              fixedMacros = addMacros(fixedMacros, macrosOfGrams(PASSATA, 60));
-            }
-            if (cand.oil) vars.push({ food: OIL, role: 'fat', ...portionBounds(OIL, 'fat', { cookingFat: true, bigMeal: kcalTarget > 900 }), grams: 0 });
+            if (cand.oil) vars.push({ food: OIL, role: 'fat', ...oilBounds(kcalTarget), grams: 0 });
             for (const f of fats) {
               const pb = portionBounds(f, 'fat', { bigMeal: kcalTarget > 900 });
               vars.push({ food: f, role: 'fat', ...pb, min: cand.r.dish.fatRequired ? pb.minUse : pb.min, grams: 0 });
@@ -333,7 +394,9 @@ export function buildFitLabMeal(args: { kind: SlotKind; slotId: string; target: 
             if (vars.length === 0) continue;
 
             const solved = solvePortions(fixedMacros, vars, target);
-            const kcalOff = Math.abs(kcalOfMacros(solved.total) - kcalTarget) / Math.max(kcalTarget, 1);
+            // the calories the person will read on the plan (fibre included: it counts for meals rich in legumes)
+            const labelKcal = [...fixed, ...solved.vars].reduce((sum, x) => sum + (x.food.kcal * x.grams) / 100, 0);
+            const kcalOff = (Math.abs(kcalOfMacros(solved.total) - kcalTarget) + Math.max(labelKcal - kcalTarget * 1.04, 0)) / Math.max(kcalTarget, 1);
             const fruit = sides.find((s) => s.category === 'Frutta');
             const picks: Picks = { base: bf ?? undefined, protein: pf ?? undefined, sides, fat: fats[0], spread: spreadPick ?? undefined, fruit };
             const variety =
@@ -346,9 +409,9 @@ export function buildFitLabMeal(args: { kind: SlotKind; slotId: string; target: 
             const name = recipeNameFor(cand.r.dish, { base: bf ?? undefined, protein: pf ?? undefined, sides, fat: fats[0], spread: spreadPick ?? undefined });
             const repeats =
               repeatPenalty(used(week.slot, `${slotId}|name|${name}`), 70, 600) +
-              (pf ? repeatPenalty(used(week.slot, `${slotId}|food|${pf.id}`), 0, 120) : 0) +
+              (pf ? repeatPenalty(used(week.slot, `${slotId}|food|${pf.id}`), 10, 300) : 0) +
               (bf ? repeatPenalty(used(week.slot, `${slotId}|food|${bf.id}`), 0, 40) : 0);
-            const score = solved.error / 6 + variety + kcalOff * 500 + proteinShort * 1.2 + repeats;
+            const score = solved.error / 6 + variety + kcalOff * 500 + proteinShort * 1.5 + repeats;
             if (!best || score < best.score) best = { ...solved, score, cand, picks, fixed };
           }
         }
@@ -358,34 +421,9 @@ export function buildFitLabMeal(args: { kind: SlotKind; slotId: string; target: 
   const chosen = best!;
   const dish = chosen.cand.r.dish;
 
-  let { vars, total } = chosen;
+  const { vars } = chosen;
+  let { total } = chosen;
   const fixedMacros = chosen.fixed.reduce((a, f) => addMacros(a, macrosOfGrams(f.food, f.grams)), ZERO);
-
-  // protein still short because one source hit its portion limit → a second, different source
-  const proteinVars = vars.filter((v) => v.role === 'protein');
-  if (target.protein - total.protein > 4 && proteinVars.length > 0) {
-    const taken = new Set(vars.map((v) => v.food.id));
-    const legumeFirst = proteinVars[0].food.sub === 'Legumi';
-    const pool = [...chosen.cand.protein, ...chosen.cand.extraProtein];
-    const alts = pool.filter((f) => !taken.has(f.id) && !(f.name === 'Uova intere' && eggRoom <= 0) && !(legumeFirst && f.sub === 'Legumi'));
-    let bestAlt: { vars: PortionVar[]; total: Macros; error: number } | null = null;
-    for (const f of sortedBy(alts, (x) => foodCost(x, 'protein', kind, seed, pools, day, week)).slice(0, 2)) {
-      const trial: PortionVar[] = [...vars.map((v) => ({ ...v })), { food: f, role: 'protein', ...portionBounds(f, 'protein', { eggRoom }), grams: 0 }];
-      const solved = solvePortions(fixedMacros, trial, target);
-      if (!bestAlt || solved.error < bestAlt.error) bestAlt = solved;
-    }
-    if (bestAlt && bestAlt.error < chosen.error && kcalOfMacros(bestAlt.total) <= kcalTarget * 1.04) ({ vars, total } = bestAlt);
-  }
-
-  // still well under the meal's calories (large appetites, few meals) → a side of bread (fruit at breakfast), as at any table
-  if (kcalOfMacros(total) < kcalTarget * 0.92 && kind !== 'snack') {
-    const side = foodByName(kind === 'breakfast' ? 'Banana' : 'Pane integrale');
-    if (pools.allowed(side) && !vars.some((v) => v.food.id === side.id)) {
-      const trial: PortionVar[] = [...vars.map((v) => ({ ...v })), { food: side, role: 'carb', ...portionBounds(side, 'carb'), grams: 0 }];
-      const solved = solvePortions(fixedMacros, trial, target);
-      if (solved.error < chosen.error) ({ vars, total } = solved);
-    }
-  }
 
   // an amount too small to be a real portion is no ingredient at all (a pinch of nuts, a drop of oil)
   const kept = vars.filter((v) => v.grams >= v.minUse);
@@ -406,13 +444,13 @@ export function buildFitLabMeal(args: { kind: SlotKind; slotId: string; target: 
     spread: picks.spread,
   });
 
-  const sub = (v: { food: FitLabFood; grams: number; role: Role }) => substitutesFor(v, kind, pools, seed);
+  const sub = (v: { food: FitLabFood; grams: number; role: Role }) => substitutesFor(v, kind, pools, kcalTarget);
   const items: PlanMealItem[] = [];
   for (const v of proteinKept) items.push(toItem(v.food, v.grams, 'protein', sub(v)));
   for (const v of carbKept) items.push(toItem(v.food, v.grams, 'carb', sub(v)));
-  for (const f of chosen.fixed.filter((x) => x.kind === 'veg')) items.push(toItem(f.food, f.grams, 'veg'));
+  for (const f of chosen.fixed.filter((x) => x.kind === 'veg')) items.push(toItem(f.food, f.grams, 'veg', sub({ food: f.food, grams: f.grams, role: 'veg' })));
   for (const v of fruitKept) items.push(toItem(v.food, v.grams, 'fruit'));
-  for (const f of chosen.fixed.filter((x) => x.kind === 'spread' || x.kind === 'sauce' || x.kind === 'accessory')) items.push(toItem(f.food, f.grams, 'extra'));
+  for (const f of chosen.fixed.filter((x) => x.kind === 'spread' || x.kind === 'accessory')) items.push(toItem(f.food, f.grams, 'extra'));
   for (const v of fatKept) items.push(toItem(v.food, v.grams, 'fat', v.food.id === OIL.id ? undefined : sub(v)));
 
   // remember what was used: variety within the day and across the week
@@ -426,11 +464,25 @@ export function buildFitLabMeal(args: { kind: SlotKind; slotId: string; target: 
     if (v.role === 'protein' || v.role === 'carb') bump(`${slotId}|food|${v.food.id}`);
     if (v.role === 'protein') day.families.add(familyOf(v.food));
     if (v.food.name === 'Uova intere') day.eggGrams += v.grams;
+    if (v.food.sub === 'Legumi') day.families.add('legumes');
+    if (isCured(v.food)) week.food.set(CURED_KEY, used(week.food, CURED_KEY) + 1);
   }
   for (const f of chosen.fixed) if (f.kind === 'veg') week.food.set(f.food.id, used(week.food, f.food.id) + 1);
 
   const flavorings = dish.aromas.filter((a) => pools.allowed(foodByName(a)));
   return { items, macros: total, recipe: { name: recipeName, flavorings, portable: dish.portable, dishId: dish.id } };
+}
+
+/** Olive oil is the only added fat of a main meal: one spoon, up to two for a normal lunch or dinner, three for a very large one. */
+function oilBounds(kcalTarget: number): ReturnType<typeof portionBounds> {
+  const b = portionBounds(OIL, 'fat', { cookingFat: true });
+  return { ...b, max: kcalTarget > 900 ? 30 : kcalTarget > 700 ? 25 : kcalTarget > 450 ? 20 : b.max };
+}
+
+/** Breakfast and snacks: the single carbohydrate source grows with a large meal (no second source is added). */
+function stretched(b: ReturnType<typeof portionBounds>, kcalTarget: number, kind: SlotKind): ReturnType<typeof portionBounds> {
+  const stretch = Math.min(Math.max(kcalTarget / (kind === 'snack' ? 300 : 500), 1), 1.6);
+  return { ...b, max: Math.max(b.max, Math.floor((b.max * stretch) / b.step) * b.step) };
 }
 
 type Picks = { base?: FitLabFood; protein?: FitLabFood; sides: FitLabFood[]; fat?: FitLabFood; spread?: FitLabFood; fruit?: FitLabFood };

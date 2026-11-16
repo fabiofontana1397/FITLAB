@@ -1,31 +1,31 @@
 # Test dei piani generati dai questionari
 
-Generato il 2026-10-10 15:16 — 22 questionari finti, piani creati con i generatori reali dell’app.
+Generato il 2026-11-16 09:31 — 22 questionari finti, piani creati con i generatori reali dell’app.
 
-**Totale:** 0 errori · 4 avvisi · 39 note
+**Totale:** 0 errori · 7 avvisi · 27 note
 
 | Persona | Target kcal | P/C/G (g) | Mesi | Palestra/Corsa a sett. | Errori | Avvisi |
 |---|---|---|---|---|---|---|
-| Sofia, 16 anni | 1703 | 88/209/57 | 4 | 2/0 | 0 | 0 |
+| Sofia, 16 anni | 1703 | 88/210/57 | 4 | 2/0 | 0 | 0 |
 | Matteo, 17 anni | 2601 | 118/337/87 | 5 | 3/0 | 0 | 0 |
-| Giulia, 24 anni | 1506 | 112/152/50 | 4 | 3/0 | 0 | 4 |
-| Luca, 22 anni | 2759 | 129/353/92 | 9 | 5/0 | 0 | 0 |
+| Giulia, 24 anni | 1506 | 112/152/50 | 4 | 3/0 | 0 | 5 |
+| Luca, 22 anni | 2759 | 129/354/92 | 9 | 5/0 | 0 | 1 |
 | Alessandro, 29 anni | 3370 | 128/463/112 | 4 | 4/2 | 0 | 0 |
-| Marco, 32 anni | 1913 | 143/192/64 | 6 | 3/0 | 0 | 0 |
-| Chiara, 25 anni | 1591 | 119/160/53 | 3 | 2/2 | 0 | 0 |
-| Paolo, 38 anni | 2579 | 108/344/86 | 4 | 0/4 | 0 | 0 |
+| Marco, 32 anni | 1913 | 143/191/64 | 6 | 3/0 | 0 | 0 |
+| Chiara, 25 anni | 1591 | 119/159/53 | 3 | 2/2 | 0 | 0 |
+| Paolo, 38 anni | 2579 | 108/343/86 | 4 | 0/4 | 0 | 0 |
 | Andrea, 40 anni | 1702 | 127/170/57 | 3 | –/– | 0 | 0 |
 | Ilaria, 29 anni | 2143 | 122/254/71 | 5 | 4/0 | 0 | 0 |
-| Anna, 52 anni | 1238 | 92/107/49 | 5 | 2/0 | 0 | 0 |
+| Anna, 52 anni | 1238 | 92/108/49 | 5 | 2/0 | 0 | 0 |
 | Roberto, 58 anni | 2387 | 115/302/80 | 4 | 2/0 | 0 | 0 |
 | Franco, 60 anni | 1892 | 109/223/63 | 4 | 1/0 | 0 | 0 |
 | Tommaso, 35 anni | 2184 | 128/254/73 | 4 | 1/0 | 0 | 0 |
 | Nina, 33 anni | 1586 | 118/159/53 | 4 | 3/0 | 0 | 0 |
 | Omar, 41 anni | 1734 | 130/171/59 | 5 | –/– | 0 | 0 |
-| Elena, 27 anni | 1420 | 106/144/47 | 3 | 3/0 | 0 | 0 |
-| Davide, 45 anni | 1805 | 135/181/60 | 4 | 3/0 | 0 | 0 |
-| Paola, 36 anni | 1798 | 106/209/60 | 4 | 3/0 | 0 | 0 |
-| Marta, 30 anni | 1670 | 93/199/56 | 4 | 3/0 | 0 | 0 |
+| Elena, 27 anni | 1420 | 106/143/47 | 3 | 3/0 | 0 | 0 |
+| Davide, 45 anni | 1805 | 135/181/60 | 4 | 3/0 | 0 | 1 |
+| Paola, 36 anni | 1798 | 106/208/60 | 4 | 3/0 | 0 | 0 |
+| Marta, 30 anni | 1670 | 93/198/56 | 4 | 3/0 | 0 | 0 |
 | Luigi, 55 anni | 1822 | 136/180/62 | 4 | 3/0 | 0 | 0 |
 | Sara, 26 anni | 1761 | 96/211/59 | 4 | 3/0 | 0 | 0 |
 
@@ -39,7 +39,7 @@ Un corpo virtuale segue il piano; a fine mese l’agente di ricalibrazione vede 
 |---|---|---|---|---|
 | Modello accurato, piano seguito | 55 → 55.2 kg | 0.01 kg/sett. | on_track › on_track › on_track › on_track | 0, 0, 0, 0 |
 | Metabolismo più lento del 10% | 55 → 57.7 kg | 0.16 kg/sett. | on_track › on_track › on_track › on_track | 0, 0, 0, 0 |
-| Metabolismo più veloce del 10% | 55 → 52.5 kg | -0.15 kg/sett. | on_track › on_track › on_track › on_track | 0, 0, 0, 0 |
+| Metabolismo più veloce del 10% | 55 → 52.5 kg | -0.14 kg/sett. | on_track › on_track › on_track › on_track | 0, 0, 0, 0 |
 | Segue il piano a metà (mangia il 20% in più, salta metà degli allenamenti) | 55 → 60.7 kg | 0.33 kg/sett. | low_adherence › low_adherence › low_adherence › low_adherence | 0, 0, 0, 0 |
 
 ### Matteo, 17 anni — magro, vuole mettere massa
@@ -55,10 +55,10 @@ Un corpo virtuale segue il piano; a fine mese l’agente di ricalibrazione vede 
 
 | Scenario | Peso (inizio → fine) | Ritmo medio | Verdetti mensili | Regolazione kcal |
 |---|---|---|---|---|
-| Modello accurato, piano seguito | 62 → 56.5 kg | -0.32 kg/sett. | on_track › on_track › on_track › on_track | 0, 0, 0, 0 |
+| Modello accurato, piano seguito | 62 → 56.6 kg | -0.32 kg/sett. | on_track › on_track › on_track › on_track | 0, 0, 0, 0 |
 | Metabolismo più lento del 10% | 62 → 58.2 kg | -0.22 kg/sett. | too_slow › on_track › on_track › on_track | -100, -100, -100, -100 |
 | Metabolismo più veloce del 10% | 62 → 54.6 kg | -0.43 kg/sett. | on_track › too_fast › on_track › on_track | 0, 100, 100, 100 |
-| Segue il piano a metà (mangia il 20% in più, salta metà degli allenamenti) | 62 → 61.6 kg | -0.03 kg/sett. | low_adherence › low_adherence › low_adherence › low_adherence | 0, 0, 0, 0 |
+| Segue il piano a metà (mangia il 20% in più, salta metà degli allenamenti) | 62 → 61.6 kg | -0.02 kg/sett. | low_adherence › low_adherence › low_adherence › low_adherence | 0, 0, 0, 0 |
 
 ### Luca, 22 anni — massa muscolare, esperto
 
@@ -67,7 +67,7 @@ Un corpo virtuale segue il piano; a fine mese l’agente di ricalibrazione vede 
 | Modello accurato, piano seguito | 68 → 73.1 kg | 0.20 kg/sett. | on_track › on_track › on_track › on_track › on_track › on_track | 0, 0, 0, 0, 0, 0 |
 | Metabolismo più lento del 10% | 68 → 74.7 kg | 0.26 kg/sett. | too_fast › too_fast › too_fast › on_track › on_track › too_slow | -100, -200, -300, -300, -300, -200 |
 | Metabolismo più veloce del 10% | 68 → 71.4 kg | 0.13 kg/sett. | wrong_direction › on_track › on_track › plateau › on_track › on_track | 150, 150, 150, 300, 300, 300 |
-| Segue il piano a metà (mangia il 20% in più, salta metà degli allenamenti) | 68 → 89.2 kg | 0.82 kg/sett. | low_adherence › low_adherence › low_adherence › low_adherence › low_adherence › low_adherence | 0, 0, 0, 0, 0, 0 |
+| Segue il piano a metà (mangia il 20% in più, salta metà degli allenamenti) | 68 → 89.3 kg | 0.83 kg/sett. | low_adherence › low_adherence › low_adherence › low_adherence › low_adherence › low_adherence | 0, 0, 0, 0, 0, 0 |
 
 ### Alessandro, 29 anni — molto attivo, anni di esperienza
 
@@ -85,7 +85,7 @@ Un corpo virtuale segue il piano; a fine mese l’agente di ricalibrazione vede 
 | Modello accurato, piano seguito | 92 → 82 kg | -0.39 kg/sett. | on_track › on_track › on_track › on_track › on_track › on_track | 0, 0, 0, 0, 0, 0 |
 | Metabolismo più lento del 10% | 92 → 84 kg | -0.31 kg/sett. | too_slow › on_track › too_slow › on_track › on_track › on_track | -100, -100, -200, -200, -200, -200 |
 | Metabolismo più veloce del 10% | 92 → 76.7 kg | -0.59 kg/sett. | on_track › on_track › on_track › on_track › on_track › on_track | 0, 0, 0, 0, 0, 0 |
-| Segue il piano a metà (mangia il 20% in più, salta metà degli allenamenti) | 92 → 91.3 kg | -0.02 kg/sett. | low_adherence › low_adherence › low_adherence › low_adherence › low_adherence › low_adherence | 0, 0, 0, 0, 0, 0 |
+| Segue il piano a metà (mangia il 20% in più, salta metà degli allenamenti) | 92 → 91.4 kg | -0.02 kg/sett. | low_adherence › low_adherence › low_adherence › low_adherence › low_adherence › low_adherence | 0, 0, 0, 0, 0, 0 |
 
 ### Chiara, 25 anni — palestra + corsa con 4 giorni disponibili
 
@@ -100,7 +100,7 @@ Un corpo virtuale segue il piano; a fine mese l’agente di ricalibrazione vede 
 
 | Scenario | Peso (inizio → fine) | Ritmo medio | Verdetti mensili | Regolazione kcal |
 |---|---|---|---|---|
-| Modello accurato, piano seguito | 72 → 72.8 kg | 0.05 kg/sett. | on_track › on_track › on_track › on_track | 0, 0, 0, 0 |
+| Modello accurato, piano seguito | 72 → 72.9 kg | 0.05 kg/sett. | on_track › on_track › on_track › on_track | 0, 0, 0, 0 |
 | Metabolismo più lento del 10% | 72 → 75.7 kg | 0.22 kg/sett. | on_track › too_fast › on_track › on_track | 0, -100, -100, -100 |
 | Metabolismo più veloce del 10% | 72 → 68.6 kg | -0.20 kg/sett. | on_track › on_track › on_track › too_slow | 0, 0, 0, 100 |
 | Segue il piano a metà (mangia il 20% in più, salta metà degli allenamenti) | 72 → 83 kg | 0.64 kg/sett. | low_adherence › low_adherence › low_adherence › low_adherence | 0, 0, 0, 0 |
@@ -119,7 +119,7 @@ Un corpo virtuale segue il piano; a fine mese l’agente di ricalibrazione vede 
 | Scenario | Peso (inizio → fine) | Ritmo medio | Verdetti mensili | Regolazione kcal |
 |---|---|---|---|---|
 | Modello accurato, piano seguito | 70 → 64.4 kg | -0.26 kg/sett. | on_track › on_track › on_track › on_track › on_track | 0, 0, 0, 0, 0 |
-| Metabolismo più lento del 10% | 70 → 66.8 kg | -0.15 kg/sett. | too_slow › plateau › on_track › too_slow › too_slow | -38, -38, -38, -38, -38 |
+| Metabolismo più lento del 10% | 70 → 66.9 kg | -0.14 kg/sett. | too_slow › plateau › on_track › plateau › too_slow | -38, -38, -38, -38, -38 |
 | Metabolismo più veloce del 10% | 70 → 62.3 kg | -0.36 kg/sett. | on_track › on_track › too_fast › on_track › on_track | 0, 0, 100, 100, 100 |
 | Segue il piano a metà (mangia il 20% in più, salta metà degli allenamenti) | 70 → 69.4 kg | -0.03 kg/sett. | low_adherence › low_adherence › low_adherence › low_adherence › low_adherence | 0, 0, 0, 0, 0 |
 
@@ -145,9 +145,9 @@ Un corpo virtuale segue il piano; a fine mese l’agente di ricalibrazione vede 
 
 | Scenario | Peso (inizio → fine) | Ritmo medio | Verdetti mensili | Regolazione kcal |
 |---|---|---|---|---|
-| Modello accurato, piano seguito | 80 → 80.1 kg | 0.01 kg/sett. | on_track › on_track › on_track › on_track | 0, 0, 0, 0 |
-| Metabolismo più lento del 10% | 80 → 83 kg | 0.17 kg/sett. | on_track › on_track › too_fast › on_track | 0, 0, -100, -100 |
-| Metabolismo più veloce del 10% | 80 → 76.7 kg | -0.20 kg/sett. | on_track › on_track › on_track › too_slow | 0, 0, 0, 100 |
+| Modello accurato, piano seguito | 80 → 80.2 kg | 0.01 kg/sett. | on_track › on_track › on_track › on_track | 0, 0, 0, 0 |
+| Metabolismo più lento del 10% | 80 → 83.4 kg | 0.20 kg/sett. | on_track › on_track › on_track › on_track | 0, 0, 0, 0 |
+| Metabolismo più veloce del 10% | 80 → 76.7 kg | -0.19 kg/sett. | on_track › on_track › on_track › too_slow | 0, 0, 0, 100 |
 | Segue il piano a metà (mangia il 20% in più, salta metà degli allenamenti) | 80 → 87.1 kg | 0.41 kg/sett. | low_adherence › low_adherence › low_adherence › low_adherence | 0, 0, 0, 0 |
 
 ### Nina, 33 anni — dimagrimento senza peso obiettivo
@@ -155,7 +155,7 @@ Un corpo virtuale segue il piano; a fine mese l’agente di ricalibrazione vede 
 | Scenario | Peso (inizio → fine) | Ritmo medio | Verdetti mensili | Regolazione kcal |
 |---|---|---|---|---|
 | Modello accurato, piano seguito | 70 → 64.3 kg | -0.33 kg/sett. | on_track › on_track › on_track › on_track | 0, 0, 0, 0 |
-| Metabolismo più lento del 10% | 70 → 66 kg | -0.23 kg/sett. | too_slow › on_track › on_track › on_track | -100, -100, -100, -100 |
+| Metabolismo più lento del 10% | 70 → 65.7 kg | -0.26 kg/sett. | too_slow › on_track › too_slow › on_track | -100, -100, -200, -200 |
 | Metabolismo più veloce del 10% | 70 → 62.6 kg | -0.43 kg/sett. | too_fast › on_track › on_track › on_track | 100, 100, 100, 100 |
 | Segue il piano a metà (mangia il 20% in più, salta metà degli allenamenti) | 70 → 69.7 kg | -0.02 kg/sett. | low_adherence › low_adherence › low_adherence › low_adherence | 0, 0, 0, 0 |
 
@@ -175,7 +175,7 @@ Un corpo virtuale segue il piano; a fine mese l’agente di ricalibrazione vede 
 | Modello accurato, piano seguito | 62 → 58.2 kg | -0.30 kg/sett. | on_track › on_track › on_track | 0, 0, 0 |
 | Metabolismo più lento del 10% | 62 → 59.3 kg | -0.21 kg/sett. | too_slow › on_track › on_track | -100, -100, -100 |
 | Metabolismo più veloce del 10% | 62 → 56.1 kg | -0.45 kg/sett. | on_track › on_track › on_track | 0, 0, 0 |
-| Segue il piano a metà (mangia il 20% in più, salta metà degli allenamenti) | 62 → 61.9 kg | -0.00 kg/sett. | low_adherence › low_adherence › low_adherence | 0, 0, 0 |
+| Segue il piano a metà (mangia il 20% in più, salta metà degli allenamenti) | 62 → 62 kg | -0.00 kg/sett. | low_adherence › low_adherence › low_adherence | 0, 0, 0 |
 
 ### Davide, 45 anni — niente uova né pesce
 
@@ -184,7 +184,7 @@ Un corpo virtuale segue il piano; a fine mese l’agente di ricalibrazione vede 
 | Modello accurato, piano seguito | 84 → 77.7 kg | -0.37 kg/sett. | on_track › on_track › on_track › on_track | 0, 0, 0, 0 |
 | Metabolismo più lento del 10% | 84 → 79.8 kg | -0.24 kg/sett. | on_track › too_slow › on_track › on_track | 0, -100, -100, -100 |
 | Metabolismo più veloce del 10% | 84 → 75.1 kg | -0.52 kg/sett. | too_fast › on_track › on_track › on_track | 100, 100, 100, 100 |
-| Segue il piano a metà (mangia il 20% in più, salta metà degli allenamenti) | 84 → 84 kg | 0.00 kg/sett. | low_adherence › low_adherence › low_adherence › low_adherence | 0, 0, 0, 0 |
+| Segue il piano a metà (mangia il 20% in più, salta metà degli allenamenti) | 84 → 84 kg | -0.00 kg/sett. | low_adherence › low_adherence › low_adherence › low_adherence | 0, 0, 0, 0 |
 
 ### Paola, 36 anni — mangia sempre bresaola e avocado a merenda
 
@@ -200,7 +200,7 @@ Un corpo virtuale segue il piano; a fine mese l’agente di ricalibrazione vede 
 | Scenario | Peso (inizio → fine) | Ritmo medio | Verdetti mensili | Regolazione kcal |
 |---|---|---|---|---|
 | Modello accurato, piano seguito | 58 → 58.1 kg | 0.01 kg/sett. | on_track › on_track › on_track › on_track | 0, 0, 0, 0 |
-| Metabolismo più lento del 10% | 58 → 60.7 kg | 0.16 kg/sett. | on_track › on_track › on_track › on_track | 0, 0, 0, 0 |
+| Metabolismo più lento del 10% | 58 → 60.8 kg | 0.16 kg/sett. | on_track › on_track › on_track › on_track | 0, 0, 0, 0 |
 | Metabolismo più veloce del 10% | 58 → 55.7 kg | -0.14 kg/sett. | on_track › on_track › on_track › on_track | 0, 0, 0, 0 |
 | Segue il piano a metà (mangia il 20% in più, salta metà degli allenamenti) | 58 → 63.8 kg | 0.34 kg/sett. | low_adherence › low_adherence › low_adherence › low_adherence | 0, 0, 0, 0 |
 
@@ -208,7 +208,7 @@ Un corpo virtuale segue il piano; a fine mese l’agente di ricalibrazione vede 
 
 | Scenario | Peso (inizio → fine) | Ritmo medio | Verdetti mensili | Regolazione kcal |
 |---|---|---|---|---|
-| Modello accurato, piano seguito | 88 → 81.3 kg | -0.39 kg/sett. | on_track › on_track › on_track › on_track | 0, 0, 0, 0 |
+| Modello accurato, piano seguito | 88 → 81.4 kg | -0.39 kg/sett. | on_track › on_track › on_track › on_track | 0, 0, 0, 0 |
 | Metabolismo più lento del 10% | 88 → 82.9 kg | -0.30 kg/sett. | too_slow › too_slow › on_track › on_track | -100, -200, -200, -200 |
 | Metabolismo più veloce del 10% | 88 → 78.5 kg | -0.55 kg/sett. | on_track › on_track › too_fast › on_track | 0, 0, 100, 100 |
 | Segue il piano a metà (mangia il 20% in più, salta metà degli allenamenti) | 88 → 87.6 kg | -0.03 kg/sett. | low_adherence › low_adherence › low_adherence › low_adherence | 0, 0, 0, 0 |
@@ -236,7 +236,7 @@ Un corpo virtuale segue il piano; a fine mese l’agente di ricalibrazione vede 
 | Profilo | female · 16 anni · 165 cm · 55 kg → 55 kg · obiettivo `maintainImprove` |
 | Metabolismo basale / fabbisogno | 1340 / 1703 kcal |
 | Target calorico | **1703 kcal** (0% sul fabbisogno) |
-| Macro | P 88 g (1.6 g/kg) · C 209 g · G 57 g |
+| Macro | P 88 g (1.6 g/kg) · C 210 g · G 57 g |
 | Idratazione | 1925 ml |
 | Durata piano | 4 mesi |
 
@@ -246,28 +246,28 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Yogurt proteico 155g, Avena istantanea 35g a secco, Mela 2 mele, Nocciole 20g | 508 |
-| Pranzo 13:00 | Tonno al naturale 95g, Pasta di mais 105g a secco, Bietole 120g, Pomodori 80g, Olio extravergine di oliva 15g | 662 |
-| Cena 20:00 | Sgombro 100g a crudo, Riso rosso 105g a secco, Broccoli 150g, Olio extravergine di oliva 5g | 637 |
+| Colazione 07:30 | Yogurt greco 2% 100g, Fiocchi d'avena 75g a secco, Mirtilli 75g, Latte vaccino 190 ml | 518 |
+| Pranzo 13:00 | Tonno al naturale 95g, Riso 115g a secco, Finocchi 150g, Olio extravergine di oliva 20g | 712 |
+| Cena 20:00 | Sardine 105g a crudo, Patate dolci 400g a crudo, Zucchine 150g, Olio extravergine di oliva 15g | 667 |
 
-Totale Lun: **1808 kcal** · P 90 g · C 231 g · G 52 g
+Totale Lun: **1896 kcal** · P 90 g · C 241 g · G 57 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Yogurt greco 2% 190g, Crema di riso 25g a secco, Banana 1 banana, Burro di mandorle 100% 15g | 430 |
-| Pranzo 13:00 | Ricotta magra 170g, Pasta 90g a secco, Spinaci 120g, Carciofi 120g, Olio extravergine di oliva 10g | 653 |
-| Cena 20:00 | _pasto libero_ | 581 |
+| Colazione 07:30 | Ricotta magra 200g, Pan bauletto 80g, Marmellata light 20g | 446 |
+| Pranzo 13:00 | Manzo magro 120g a crudo, Pasta di riso 90g a secco, Bietole 150g, Olio extravergine di oliva 15g | 637 |
+| Cena 20:00 | _pasto libero_ | 573 |
 
-Totale Sab: **1083 kcal** · P 58 g · C 130 g · G 33 g
+Totale Sab: **1082 kcal** · P 62 g · C 128 g · G 34 g
 
 **Mese 1 — Mese 1 · Adattamento e tecnica**
 
 | Giorno | Seduta | Dettaglio |
 |---|---|---|
-| Lun | Upper | Panca piana 3×10 @13kg; Trazioni alla sbarra 3×10; Military press 3×10 @9kg; Curl bicipiti 3×10 @4kg; Chest press macchina 3×10 |
+| Lun | Upper | Panca piana 3×8 @14kg; Trazioni alla sbarra 3×8; Military press 3×10 @9kg; Curl bicipiti 2×12 @4kg; Chest press macchina 3×10 |
 | Mar | Riposo | |
 | Mer | Riposo | |
-| Gio | Lower | Back squat 3×10 @19kg; Romanian deadlift 3×10 @15kg; Leg press 3×10 @25kg; Affondi 3×10 @4kg; Hip thrust 3×10 @13kg |
+| Gio | Lower | Back squat 3×8 @20kg; Romanian deadlift 3×8 @16kg; Leg press 3×10 @25kg; Affondi 3×10 @4kg; Hip thrust 3×10 @13kg |
 | Ven | Riposo | |
 | Sab | Riposo | |
 | Dom | Riposo | |
@@ -276,10 +276,10 @@ Totale Sab: **1083 kcal** · P 58 g · C 130 g · G 33 g
 
 | Giorno | Seduta | Dettaglio |
 |---|---|---|
-| Lun | Upper | Panca piana 3×10 @16kg; Trazioni alla sbarra 3×10; Military press 3×10 @11kg; Curl bicipiti 3×10 @4.5kg; Chest press macchina 3×10 |
+| Lun | Upper | Panca piana 3×6 @17kg; Trazioni alla sbarra 3×6; Military press 3×8-10 @11kg; Curl bicipiti 2×12 @4.5kg; Chest press macchina 3×8-10 |
 | Mar | Riposo | |
 | Mer | Riposo | |
-| Gio | Lower | Back squat 3×10 @22.5kg; Romanian deadlift 3×10 @19kg; Leg press 3×10 @30kg; Affondi 3×10 @4.5kg; Hip thrust 3×10 @16kg |
+| Gio | Lower | Back squat 3×6 @25kg; Romanian deadlift 3×6 @20kg; Leg press 3×8-10 @30kg; Affondi 3×8-10 @4.5kg; Hip thrust 3×8-10 @16kg |
 | Ven | Riposo | |
 | Sab | Riposo | |
 | Dom | Riposo | |
@@ -312,29 +312,29 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Yogurt proteico 150g, Avena istantanea 90g a secco, Mela 2 mele, Pistacchi 10g, Nocciole 20g | 765 |
-| Pranzo 13:00 | Tonno al naturale 90g, Pasta di mais 80g a secco, Pane integrale 150g, Bietole 120g, Pomodori 80g, Olio extravergine di oliva 25g | 1030 |
-| Cena 20:00 | Orata 140g a crudo, Riso lungo B 130g a secco, Broccoli 150g, Olio extravergine di oliva 25g | 886 |
+| Colazione 07:30 | Albume d'uovo 150g a crudo, Pan bauletto 200g, Olio extravergine di oliva 15g | 745 |
+| Pranzo 13:00 | Petto di pollo 130g a crudo, Riso basmati 175g a secco, Finocchi 150g, Olio extravergine di oliva 30g | 1049 |
+| Cena 20:00 | Sgombro 100g a crudo, Pasta di farro 165g a secco, Zucchine 150g, Olio extravergine di oliva 15g | 916 |
 
-Totale Lun: **2681 kcal** · P 117 g · C 337 g · G 87 g
+Totale Lun: **2709 kcal** · P 121 g · C 348 g · G 87 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Yogurt greco 0% 200g, Crema di riso 70g a secco, Frutti di bosco 250g, Burro di mandorle 100% 20g, Burro di macadamia 100% 15g | 715 |
-| Pranzo 13:00 | Ricotta magra 170g, Tofu 155g, Pasta di riso 130g a secco, Spinaci 120g, Carciofi 120g, Olio extravergine di oliva 15g | 978 |
-| Cena 20:00 | _pasto libero_ | 886 |
+| Colazione 07:30 | Ricotta magra 250g, Pane integrale 160g, Marmellata light 20g | 680 |
+| Pranzo 13:00 | Petto di tacchino 110g a crudo, Pan bauletto 200g, Bietole 150g, Olio extravergine di oliva 25g | 911 |
+| Cena 20:00 | _pasto libero_ | 873 |
 
-Totale Sab: **1692 kcal** · P 78 g · C 205 g · G 56 g
+Totale Sab: **1590 kcal** · P 85 g · C 187 g · G 51 g
 
 **Mese 1 — Mese 1 · Adattamento e tecnica**
 
 | Giorno | Seduta | Dettaglio |
 |---|---|---|
-| Lun | Full Body | Back squat 3×12 @30kg; Panca piana 3×12 @20kg; Rematore con bilanciere 3×12 @16kg; Plank 3×12; Leg press 3×12 @40kg |
+| Lun | Full Body | Back squat 3×10-12 @27.5kg; Panca piana 3×10-12 @19kg; Rematore con bilanciere 3×12 @15kg; Plank 3×20-30 s; Leg press 3×12 @37.5kg |
 | Mar | Riposo | |
-| Mer | Full Body | Back squat 3×12 @30kg; Panca piana 3×12 @20kg; Rematore con bilanciere 3×12 @16kg; Plank 3×12; Leg press 3×12 @40kg |
+| Mer | Full Body | Back squat 3×10-12 @27.5kg; Panca piana 3×10-12 @19kg; Rematore con bilanciere 3×12 @15kg; Plank 3×20-30 s; Leg press 3×12 @37.5kg |
 | Gio | Riposo | |
-| Ven | Full Body | Back squat 3×12 @30kg; Panca piana 3×12 @20kg; Rematore con bilanciere 3×12 @16kg; Plank 3×12; Leg press 3×12 @40kg |
+| Ven | Full Body | Back squat 3×10-12 @27.5kg; Panca piana 3×10-12 @19kg; Rematore con bilanciere 3×12 @15kg; Plank 3×20-30 s; Leg press 3×12 @37.5kg |
 | Sab | Riposo | |
 | Dom | Riposo | |
 
@@ -342,11 +342,11 @@ Totale Sab: **1692 kcal** · P 78 g · C 205 g · G 56 g
 
 | Giorno | Seduta | Dettaglio |
 |---|---|---|
-| Lun | Full Body | Back squat 5×8-12 @37.5kg; Panca piana 5×8-12 @25kg; Plank 5×8-12; Leg press 5×8-12 @52.5kg; Chest press macchina 5×8-12 |
+| Lun | Full Body A | Back squat 3×6-8 @40kg; Panca piana 3×6-8 @25kg; Plank 3×30-45 s; Leg press 3×8-10 @52.5kg; Chest press macchina 3×8-10 |
 | Mar | Riposo | |
-| Mer | Full Body | Back squat 5×8-12 @37.5kg; Panca piana 5×8-12 @25kg; Plank 5×8-12; Leg press 5×8-12 @52.5kg; Chest press macchina 5×8-12 |
+| Mer | Full Body B | Back squat 3×8-10 @37.5kg; Panca piana 3×8-10 @25kg; Plank 3×30-45 s; Leg press 3×8-10 @52.5kg; Chest press macchina 3×8-10 |
 | Gio | Riposo | |
-| Ven | Full Body | Back squat 5×8-12 @37.5kg; Panca piana 5×8-12 @25kg; Plank 5×8-12; Leg press 5×8-12 @52.5kg; Chest press macchina 5×8-12 |
+| Ven | Full Body A | Back squat 3×6-8 @40kg; Panca piana 3×6-8 @25kg; Plank 3×30-45 s; Leg press 3×8-10 @52.5kg; Chest press macchina 3×8-10 |
 | Sab | Riposo | |
 | Dom | Riposo | |
 
@@ -358,7 +358,7 @@ Totale Sab: **1692 kcal** · P 78 g · C 205 g · G 56 g
 
 ## Giulia, 24 anni — vuole dimagrire qualche kg
 
-**Esito:** ⚠️ SUPERATO CON AVVISI (0 errori, 4 avvisi, 1 note)
+**Esito:** ⚠️ SUPERATO CON AVVISI (0 errori, 5 avvisi, 1 note)
 
 - **Chi è:** Studentessa universitaria, 62 kg per 166 cm, vuole scendere a 57 kg. Poco attiva, principiante, 3 allenamenti.
 - **Cosa ci aspettiamo:** Deficit moderato, proteine alte, durata ~5-6 mesi, scheda full body principiante.
@@ -378,29 +378,29 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Yogurt proteico 245g, Avena istantanea 35g a secco, Mela 1 mela, Nocciole 15g | 445 |
-| Pranzo 13:00 | Fiocchi di latte 145g, Pasta di legumi 105g a secco, Melanzane 150g, Passata di pomodoro 60g, Olio extravergine di oliva 10g | 635 |
-| Cena 20:00 | Fagioli 160g, Tofu 220g, Riso rosso 40g a secco, Zucchine 150g, Olio extravergine di oliva 5g | 580 |
+| Colazione 07:30 | Albume d'uovo 200g a crudo, Pane di segale 100g, Olio extravergine di oliva 10g | 454 |
+| Pranzo 13:00 | Ricotta magra 250g, Pan bauletto 120g, Finocchi 150g, Olio extravergine di oliva 5g | 644 |
+| Cena 20:00 | Fiocchi di latte 100g, Ceci 295g, Zucchine 150g, Olio extravergine di oliva 5g | 615 |
 
-Totale Lun: **1659 kcal** · P 110 g · C 173 g · G 50 g
+Totale Lun: **1712 kcal** · P 107 g · C 182 g · G 54 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Yogurt greco 0% 215g, Fiocchi d'avena 25g a secco, Fragole 125g, Anacardi 25g | 404 |
-| Pranzo 13:00 | Ceci 100g, Mozzarella light 125g, Riso 40g a secco, Cetrioli 80g, Rucola 30g, Olio extravergine di oliva 5g | 573 |
-| Cena 20:00 | _pasto libero_ | 505 |
+| Colazione 07:30 | Uova intere 2 uova, Pane integrale 80g, Avocado 30g | 386 |
+| Pranzo 13:00 | Fagioli borlotti 205g, Pasta 40g a secco, Bietole 150g, Olio extravergine di oliva 15g | 561 |
+| Cena 20:00 | _pasto libero_ | 492 |
 
-Totale Sab: **976 kcal** · P 68 g · C 91 g · G 34 g
+Totale Sab: **947 kcal** · P 47 g · C 101 g · G 33 g
 
 **Mese 1 — Mese 1 · Adattamento e tecnica**
 
 | Giorno | Seduta | Dettaglio |
 |---|---|---|
-| Lun | Full Body | Back squat 3×15 @22.5kg; Panca piana 3×15 @14kg; Rematore con bilanciere 3×15 @12kg; Plank 3×15; Leg press 3×15 @30kg |
+| Lun | Full Body | Back squat 3×10-12 @22.5kg; Panca piana 3×10-12 @13kg; Rematore con bilanciere 3×12 @11kg; Plank 3×20-30 s; Leg press 3×12 @27.5kg |
 | Mar | Riposo | |
-| Mer | Full Body | Back squat 3×15 @22.5kg; Panca piana 3×15 @14kg; Rematore con bilanciere 3×15 @12kg; Plank 3×15; Leg press 3×15 @30kg |
+| Mer | Full Body | Back squat 3×10-12 @22.5kg; Panca piana 3×10-12 @13kg; Rematore con bilanciere 3×12 @11kg; Plank 3×20-30 s; Leg press 3×12 @27.5kg |
 | Gio | Riposo | |
-| Ven | Full Body | Back squat 3×15 @22.5kg; Panca piana 3×15 @14kg; Rematore con bilanciere 3×15 @12kg; Plank 3×15; Leg press 3×15 @30kg |
+| Ven | Full Body | Back squat 3×10-12 @22.5kg; Panca piana 3×10-12 @13kg; Rematore con bilanciere 3×12 @11kg; Plank 3×20-30 s; Leg press 3×12 @27.5kg |
 | Sab | Riposo | |
 | Dom | Riposo | |
 
@@ -408,27 +408,28 @@ Totale Sab: **976 kcal** · P 68 g · C 91 g · G 34 g
 
 | Giorno | Seduta | Dettaglio |
 |---|---|---|
-| Lun | Full Body | Back squat 3×12-15 @25kg; Panca piana 3×12-15 @18kg; Rematore con bilanciere 3×12-15 @15kg; Plank 3×12-15; Leg press 3×12-15 @37.5kg |
+| Lun | Full Body A | Back squat 3×6-8 @27.5kg; Panca piana 3×6-8 @19kg; Rematore con bilanciere 3×10-12 @14kg; Plank 3×30-45 s; Leg press 3×10-12 @35kg |
 | Mar | Riposo | |
-| Mer | Full Body | Back squat 3×12-15 @25kg; Panca piana 3×12-15 @18kg; Rematore con bilanciere 3×12-15 @15kg; Plank 3×12-15; Leg press 3×12-15 @37.5kg |
+| Mer | Full Body B | Back squat 3×10-12 @25kg; Panca piana 3×10-12 @17kg; Rematore con bilanciere 3×10-12 @14kg; Plank 3×30-45 s; Leg press 3×10-12 @35kg |
 | Gio | Riposo | |
-| Ven | Full Body | Back squat 3×12-15 @25kg; Panca piana 3×12-15 @18kg; Rematore con bilanciere 3×12-15 @15kg; Plank 3×12-15; Leg press 3×12-15 @37.5kg |
+| Ven | Full Body A | Back squat 3×6-8 @27.5kg; Panca piana 3×6-8 @19kg; Rematore con bilanciere 3×10-12 @14kg; Plank 3×30-45 s; Leg press 3×10-12 @35kg |
 | Sab | Riposo | |
 | Dom | Riposo | |
 
 **Controlli**
 
-- ⚠️ `D5` Proteine: i pasti danno in media il 93% del target (giorno peggiore: 14% di scarto)
-- ⚠️ `Q6` Ven (mese 1): stessa fonte proteica a pranzo e cena (legumes)
-- ⚠️ `Q6` Ven (mese 3): stessa fonte proteica a pranzo e cena (legumes)
-- ⚠️ `Q6` Mer (mese 4): stessa fonte proteica a pranzo e cena (legumes)
+- ⚠️ `D5` Proteine: i pasti danno in media il 91% del target (giorno peggiore: 20% di scarto)
+- ⚠️ `Q6` Lun (mese 1): stessa fonte proteica a pranzo e cena (cheese)
+- ⚠️ `Q6` Gio (mese 1): stessa fonte proteica a pranzo e cena (cheese)
+- ⚠️ `Q6` Lun (mese 2): stessa fonte proteica a pranzo e cena (cheese)
+- ⚠️ `Q6` Lun (mese 3): stessa fonte proteica a pranzo e cena (cheese)
 - ℹ️ `D14` Dal mese 2 in poi il target è identico (1506 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
 
 ---
 
 ## Luca, 22 anni — massa muscolare, esperto
 
-**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 12 note)
+**Esito:** ⚠️ SUPERATO CON AVVISI (0 errori, 1 avvisi, 1 note)
 
 - **Chi è:** Studente magro (68 kg per 180 cm), vuole arrivare a 75 kg. Esperto, 5 allenamenti a settimana da 60-90 min, 5 pasti.
 - **Cosa ci aspettiamo:** Surplus controllato, proteine ~1,9 g/kg, split a 5 giorni senza mese di adattamento, progressione di carichi mese dopo mese.
@@ -438,7 +439,7 @@ Totale Sab: **976 kcal** · P 68 g · C 91 g · G 34 g
 | Profilo | male · 22 anni · 180 cm · 68 kg → 75 kg · obiettivo `gainMuscle` |
 | Metabolismo basale / fabbisogno | 1700 / 2555 kcal |
 | Target calorico | **2759 kcal** (8% sul fabbisogno) |
-| Macro | P 129 g (1.9 g/kg) · C 353 g · G 92 g |
+| Macro | P 129 g (1.9 g/kg) · C 354 g · G 92 g |
 | Idratazione | 2730 ml |
 | Durata piano | 9 mesi |
 
@@ -448,62 +449,52 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Yogurt magro 300g, Avena istantanea 80g a secco, Pera 1 pera, Pistacchi 10g, Nocciole 15g | 638 |
-| Spuntino mattina 10:30 | Yogurt greco 2% 110g, Mela 2 mele, Semi di lino 15g | 313 |
-| Pranzo 13:00 | Ceci 230g, Parmigiano Reggiano 30g, Riso rosso 80g a secco, Peperoni 120g, Zucchine 120g, Olio extravergine di oliva 10g | 893 |
-| Spuntino pomeriggio 17:00 | Uova intere 1 uovo, Fette biscottate integrali 5 fette, Avocado 30g | 302 |
-| Cena 20:00 | Manzo magro 120g a crudo, Gnocchi di patate 300g, Rucola 30g, Pomodori 80g, Passata di pomodoro 60g, Olio extravergine di oliva 15g | 766 |
+| Colazione 07:30 | Albume d'uovo 60g a crudo, Fiocchi d'avena 120g a secco, Latte vaccino 150 ml, Burro di arachidi 100% 10g | 636 |
+| Spuntino mattina 10:30 | Prosciutto crudo 35g, Pan bauletto 80g | 294 |
+| Pranzo 13:00 | Petto di pollo 120g a crudo, Riso lungo B 140g a secco, Zucchine 150g, Olio extravergine di oliva 25g | 866 |
+| Spuntino pomeriggio 17:00 | Yogurt greco 0% 100g, Avena istantanea 65g a secco | 296 |
+| Cena 20:00 | Manzo magro 100g a crudo, Gnocchi di patate 310g, Broccoli 150g, Olio extravergine di oliva 20g | 810 |
 
-Totale Lun: **2913 kcal** · P 131 g · C 364 g · G 90 g
+Totale Lun: **2902 kcal** · P 139 g · C 377 g · G 86 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Uova intere 2 uova, Pan bauletto 160g, Avocado 30g | 617 |
-| Spuntino mattina 10:30 | Ricotta magra 95g, Pane integrale 80g | 295 |
-| Pranzo 13:00 | Seitan 80g, Riso lungo B 40g a secco, Pane integrale 160g, Broccoli 120g, Peperoni 120g, Olio extravergine di oliva 15g | 849 |
-| Spuntino pomeriggio 17:00 | Barretta proteica 1 barretta, Pera 2 pere | 305 |
-| Cena 20:00 | _pasto libero_ | 777 |
+| Colazione 07:30 | Ricotta magra 210g, Pan bauletto 140g, Marmellata light 20g | 618 |
+| Spuntino mattina 10:30 | Pan bauletto 70g, Marmellata light 20g | 217 |
+| Pranzo 13:00 | Vitello magro 105g a crudo, Pane di segale 180g, Melanzane 150g, Olio extravergine di oliva 20g | 806 |
+| Spuntino pomeriggio 17:00 | Yogurt greco 2% 190g, Pera 2 pere | 271 |
+| Cena 20:00 | _pasto libero_ | 788 |
 
-Totale Sab: **2068 kcal** · P 100 g · C 277 g · G 53 g
+Totale Sab: **1912 kcal** · P 96 g · C 251 g · G 52 g
 
 **Mese 1 — Mese 1 · Sovraccarico progressivo**
 
 | Giorno | Seduta | Dettaglio |
 |---|---|---|
-| Lun | Push | Panca piana 4×8-12 @40kg; Military press 4×8-12 @27.5kg; Dip alle parallele 4×8-12; Alzate laterali 4×8-12 @4kg; Chest press macchina 4×8-12; Push-up 4×8-12 |
-| Mar | Pull | Stacco da terra 4×8-12 @70kg; Trazioni zavorrate 4×8-12; Rematore con bilanciere 4×8-12 @32.5kg; Curl bicipiti 4×8-12 @12kg; Lat machine 4×8-12; Rematore con manubrio 4×8-12 @9kg |
+| Lun | Push | Panca piana 4×6-8 @42.5kg; Military press 4×6-8 @30kg; Dip alle parallele 3×8-12; Alzate laterali 3×12-15 @3.5kg; Chest press macchina 3×8-12; Push-up 3×8-12 |
+| Mar | Pull | Stacco da terra 4×6-8 @72.5kg; Trazioni zavorrate 4×6-8; Rematore con bilanciere 3×8-12 @30kg; Curl bicipiti 3×12-15 @11kg; Lat machine 3×8-12; Rematore con manubrio 3×8-12 @9kg |
 | Mer | Riposo | |
-| Gio | Legs | Back squat 4×8-12 @57.5kg; Romanian deadlift 4×8-12 @47.5kg; Leg press 4×8-12 @77.5kg; Affondi 4×8-12 @12kg; Hip thrust 4×8-12 @40kg; Leg curl machine 4×8-12 |
-| Ven | Upper | Panca piana 4×8-12 @40kg; Trazioni alla sbarra 4×8-12; Military press 4×8-12 @27.5kg; Curl bicipiti 4×8-12 @12kg; Chest press macchina 4×8-12; Lat machine 4×8-12 |
-| Sab | Lower | Back squat 4×8-12 @57.5kg; Romanian deadlift 4×8-12 @47.5kg; Leg press 4×8-12 @77.5kg; Affondi 4×8-12 @12kg; Hip thrust 4×8-12 @40kg; Leg curl machine 4×8-12 |
+| Gio | Legs | Back squat 4×6-8 @60kg; Romanian deadlift 4×6-8 @50kg; Leg press 3×8-12 @75kg; Affondi 3×8-12 @11kg; Hip thrust 3×8-12 @37.5kg; Leg curl machine 3×12-15 |
+| Ven | Upper | Panca piana 4×6-8 @42.5kg; Trazioni alla sbarra 4×6-8; Military press 3×8-12 @25kg; Curl bicipiti 3×12-15 @11kg; Chest press macchina 3×8-12; Lat machine 3×8-12 |
+| Sab | Lower | Back squat 4×6-8 @60kg; Romanian deadlift 4×6-8 @50kg; Leg press 3×8-12 @75kg; Affondi 3×8-12 @11kg; Hip thrust 3×8-12 @37.5kg; Leg curl machine 3×12-15 |
 | Dom | Riposo | |
 
 **Mese 9 — Mese 9 · Consolidamento**
 
 | Giorno | Seduta | Dettaglio |
 |---|---|---|
-| Lun | Push | Panca piana 5×8-12 @47.5kg; Military press 5×8-12 @32.5kg; Push-up 5×8-12; Dip alle parallele 5×8-12; Alzate laterali 5×8-12 @5kg; Chest press macchina 5×8-12 |
-| Mar | Pull | Stacco da terra 5×8-12 @85kg; Trazioni zavorrate 5×8-12; Rematore con manubrio 5×8-12 @11kg; Rematore con bilanciere 5×8-12 @40kg; Curl bicipiti 5×8-12 @14kg; Lat machine 5×8-12 |
+| Lun | Push | Panca piana 3×6-8 @50kg; Military press 3×6-8 @35kg; Push-up 3×8-10; Dip alle parallele 3×8-10; Alzate laterali 3×10-12 @4.5kg; Chest press macchina 3×8-10 |
+| Mar | Pull | Stacco da terra 3×6-8 @87.5kg; Trazioni zavorrate 3×6-8; Rematore con manubrio 3×8-10 @11kg; Rematore con bilanciere 3×8-10 @40kg; Curl bicipiti 3×10-12 @14kg; Lat machine 3×8-10 |
 | Mer | Riposo | |
-| Gio | Legs | Back squat 5×8-12 @70kg; Romanian deadlift 5×8-12 @57.5kg; Leg curl machine 5×8-12; Abductor machine 5×8-12; Polpacci alla macchina 5×8-12; Leg press 5×8-12 @92.5kg |
-| Ven | Upper | Panca piana 5×8-12 @47.5kg; Trazioni alla sbarra 5×8-12; Lat machine 5×8-12; Military press 5×8-12 @32.5kg; Curl bicipiti 5×8-12 @14kg; Chest press macchina 5×8-12 |
-| Sab | Lower | Back squat 5×8-12 @70kg; Romanian deadlift 5×8-12 @57.5kg; Leg curl machine 5×8-12; Abductor machine 5×8-12; Polpacci alla macchina 5×8-12; Leg press 5×8-12 @92.5kg |
+| Gio | Legs | Back squat 3×6-8 @72.5kg; Romanian deadlift 3×6-8 @60kg; Leg curl machine 3×10-12; Abductor machine 3×10-12; Polpacci alla macchina 3×10-12; Leg press 3×8-10 @92.5kg |
+| Ven | Upper | Panca piana 3×6-8 @50kg; Trazioni alla sbarra 3×6-8; Lat machine 3×8-10; Military press 3×8-10 @32.5kg; Curl bicipiti 3×10-12 @14kg; Chest press macchina 3×8-10 |
+| Sab | Lower | Back squat 3×6-8 @72.5kg; Romanian deadlift 3×6-8 @60kg; Leg curl machine 3×10-12; Abductor machine 3×10-12; Polpacci alla macchina 3×10-12; Leg press 3×8-10 @92.5kg |
 | Dom | Riposo | |
 
 **Controlli**
 
+- ⚠️ `D5` Grassi: i pasti danno in media il 86% del target (giorno peggiore: 20% di scarto)
 - ℹ️ `D14` Dal mese 2 in poi il target è identico (2759 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
-- ℹ️ `Q6` Gio (mese 1): una fonte proteica compare tre volte nel giorno
-- ℹ️ `Q6` Lun (mese 2): una fonte proteica compare tre volte nel giorno
-- ℹ️ `Q6` Mar (mese 2): una fonte proteica compare tre volte nel giorno
-- ℹ️ `Q6` Lun (mese 3): una fonte proteica compare tre volte nel giorno
-- ℹ️ `Q6` Dom (mese 3): una fonte proteica compare tre volte nel giorno
-- ℹ️ `Q6` Lun (mese 4): una fonte proteica compare tre volte nel giorno
-- ℹ️ `Q6` Lun (mese 5): una fonte proteica compare tre volte nel giorno
-- ℹ️ `Q6` Mar (mese 6): una fonte proteica compare tre volte nel giorno
-- ℹ️ `Q6` Mar (mese 7): una fonte proteica compare tre volte nel giorno
-- ℹ️ `Q6` Dom (mese 7): una fonte proteica compare tre volte nel giorno
-- ℹ️ `Q6` Ven (mese 9): una fonte proteica compare tre volte nel giorno
 
 ---
 
@@ -529,29 +520,29 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Yogurt magro 300g, Avena istantanea 100g a secco, Mela 2 mele, Pistacchi 40g, Nocciole 10g | 941 |
-| Pranzo 13:00 | Tonno al naturale 90g, Pasta di mais 130g a secco, Pane integrale 160g, Bietole 120g, Pomodori 80g, Olio extravergine di oliva 25g | 1236 |
-| Cena 20:00 | Sgombro 110g a crudo, Riso lungo B 130g a secco, Pane integrale 130g, Broccoli 150g, Olio extravergine di oliva 25g | 1239 |
+| Colazione 07:30 | Albume d'uovo 140g a crudo, Pan bauletto 250g, Olio extravergine di oliva 20g | 920 |
+| Pranzo 13:00 | Hamburger di pollo magro 160g, Pasta di mais 225g a secco, Finocchi 150g, Olio extravergine di oliva 30g | 1315 |
+| Cena 20:00 | Sgombro 160g a crudo, Riso lungo B 205g a secco, Zucchine 150g, Olio extravergine di oliva 20g | 1193 |
 
-Totale Lun: **3417 kcal** · P 131 g · C 458 g · G 106 g
+Totale Lun: **3427 kcal** · P 131 g · C 469 g · G 109 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Mozzarella 125g, Pane di segale 160g, Banana 1 banana, Pera 2 pere | 974 |
-| Pranzo 13:00 | Tofu 175g, Ricotta magra 60g, Pasta di riso 130g a secco, Pane integrale 150g, Spinaci 120g, Carciofi 120g, Olio extravergine di oliva 25g | 1347 |
-| Cena 20:00 | _pasto libero_ | 1187 |
+| Colazione 07:30 | Yogurt greco 2% 130g, Fiocchi d'avena 160g a secco, Mela 1 mela, Latte vaccino 230 ml | 918 |
+| Pranzo 13:00 | Tonno al naturale 95g, Pan bauletto 280g, Bietole 150g, Olio extravergine di oliva 30g | 1160 |
+| Cena 20:00 | _pasto libero_ | 1198 |
 
-Totale Sab: **2319 kcal** · P 88 g · C 310 g · G 71 g
+Totale Sab: **2077 kcal** · P 91 g · C 268 g · G 65 g
 
 **Mese 1 — Mese 1 · Sovraccarico progressivo**
 
 | Giorno | Seduta | Dettaglio |
 |---|---|---|
-| Lun | Push | Panca piana 5×3-5 @45kg; Military press 5×3-5 @32.5kg; Dip alle parallele 5×3-5; Alzate laterali 5×3-5 @4.5kg; Chest press macchina 5×3-5; Push-up 5×3-5 |
-| Mar | Pull | Stacco da terra 5×3-5 @82.5kg; Trazioni zavorrate 5×3-5; Rematore con bilanciere 5×3-5 @37.5kg; Curl bicipiti 5×3-5 @14kg; Lat machine 5×3-5; Rematore con manubrio 5×3-5 @11kg |
-| Mer | Legs | Back squat 5×3-5 @70kg; Romanian deadlift 5×3-5 @55kg; Leg press 5×3-5 @92.5kg; Affondi 5×3-5 @14kg; Hip thrust 5×3-5 @45kg; Leg curl machine 5×3-5 |
+| Lun | Push | Panca piana 5×3-5 @52.5kg; Military press 5×3-5 @37.5kg; Dip alle parallele 4×6-8; Alzate laterali 3×10-12 @4.5kg; Chest press macchina 4×6-8; Push-up 4×6-8 |
+| Mar | Pull | Stacco da terra 5×3-5 @95kg; Trazioni zavorrate 5×3-5; Rematore con bilanciere 4×6-8 @40kg; Curl bicipiti 3×10-12 @13kg; Lat machine 4×6-8; Rematore con manubrio 4×6-8 @12kg |
+| Mer | Legs | Back squat 5×3-5 @80kg; Romanian deadlift 5×3-5 @62.5kg; Leg press 4×6-8 @97.5kg; Affondi 4×6-8 @15kg; Hip thrust 4×6-8 @47.5kg; Leg curl machine 3×10-12 |
 | Gio | Riposo | |
-| Ven | Upper | Panca piana 5×3-5 @45kg; Trazioni alla sbarra 5×3-5; Military press 5×3-5 @32.5kg; Curl bicipiti 5×3-5 @14kg; Chest press macchina 5×3-5; Lat machine 5×3-5 |
+| Ven | Upper | Panca piana 5×3-5 @52.5kg; Trazioni alla sbarra 5×3-5; Military press 4×6-8 @35kg; Curl bicipiti 3×10-12 @13kg; Chest press macchina 4×6-8; Lat machine 4×6-8 |
 | Sab | Corsa | Corsa facile 35-40 min |
 | Dom | Corsa | Corsa a ritmo medio 30 min |
 
@@ -559,11 +550,11 @@ Totale Sab: **2319 kcal** · P 88 g · C 310 g · G 71 g
 
 | Giorno | Seduta | Dettaglio |
 |---|---|---|
-| Lun | Push | Panca piana 5×3-5 @47.5kg; Military press 5×3-5 @35kg; Alzate laterali 5×3-5 @5kg; Chest press macchina 5×3-5; Push-up 5×3-5; Dip alle parallele 5×3-5 |
-| Mar | Pull | Stacco da terra 5×3-5 @90kg; Trazioni zavorrate 5×3-5; Curl bicipiti 5×3-5 @15kg; Lat machine 5×3-5; Rematore con manubrio 5×3-5 @12kg; Rematore con bilanciere 5×3-5 @40kg |
-| Mer | Legs | Back squat 5×3-5 @75kg; Romanian deadlift 5×3-5 @60kg; Affondi 5×3-5 @15kg; Hip thrust 5×3-5 @47.5kg; Leg curl machine 5×3-5; Abductor machine 5×3-5 |
+| Lun | Push | Panca piana 4×2-4 @57.5kg; Military press 4×2-4 @42.5kg; Alzate laterali 2×10-12 @4.5kg; Chest press macchina 3×5-6; Push-up 3×5-6; Dip alle parallele 3×5-6 |
+| Mar | Pull | Stacco da terra 4×2-4 @105kg; Trazioni zavorrate 4×2-4; Curl bicipiti 2×10-12 @14kg; Lat machine 3×5-6; Rematore con manubrio 3×5-6 @13kg; Rematore con bilanciere 3×5-6 @45kg |
+| Mer | Legs | Back squat 4×2-4 @90kg; Romanian deadlift 4×2-4 @70kg; Affondi 3×5-6 @17kg; Hip thrust 3×5-6 @55kg; Leg curl machine 2×10-12; Abductor machine 2×10-12 |
 | Gio | Riposo | |
-| Ven | Upper | Panca piana 5×3-5 @47.5kg; Trazioni alla sbarra 5×3-5; Curl bicipiti 5×3-5 @15kg; Chest press macchina 5×3-5; Lat machine 5×3-5; Military press 5×3-5 @35kg |
+| Ven | Upper | Panca piana 4×2-4 @57.5kg; Trazioni alla sbarra 4×2-4; Curl bicipiti 2×10-12 @14kg; Chest press macchina 3×5-6; Lat machine 3×5-6; Military press 3×5-6 @40kg |
 | Sab | Corsa | Corsa facile 35-40 min |
 | Dom | Corsa | Corsa a ritmo medio 30 min |
 
@@ -586,7 +577,7 @@ Totale Sab: **2319 kcal** · P 88 g · C 310 g · G 71 g
 | Profilo | male · 32 anni · 178 cm · 92 kg → 82 kg · obiettivo `loseFat` |
 | Metabolismo basale / fabbisogno | 1878 / 2391 kcal |
 | Target calorico | **1913 kcal** (-20% sul fabbisogno) |
-| Macro | P 143 g (1.6 g/kg) · C 192 g · G 64 g |
+| Macro | P 143 g (1.6 g/kg) · C 191 g · G 64 g |
 | Idratazione | 3220 ml |
 | Durata piano | 6 mesi |
 
@@ -596,29 +587,29 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Yogurt proteico 260g, Fiocchi d'avena 50g a secco, Pera 1 pera, Pistacchi 30g | 575 |
-| Pranzo 13:00 | Petto di pollo 200g a crudo, Pasta di mais 100g a secco, Pomodori 100g, Pesto 40g | 767 |
-| Cena 20:00 | Lonza di maiale magra 175g a crudo, Patate 400g a crudo, Cavolini di Bruxelles 150g, Olio extravergine di oliva 15g | 737 |
+| Colazione 07:30 | Albume d'uovo 180g a crudo, Avena istantanea 95g a secco, Latte vaccino 140 ml, Burro di arachidi 100% 10g | 587 |
+| Pranzo 13:00 | Petto di pollo 200g a crudo, Riso 110g a secco, Finocchi 150g, Olio extravergine di oliva 20g | 801 |
+| Cena 20:00 | Hamburger di tacchino magro 180g, Pan bauletto 160g, Lattuga 60g, Olio extravergine di oliva 10g | 742 |
 
-Totale Lun: **2078 kcal** · P 144 g · C 218 g · G 63 g
+Totale Lun: **2130 kcal** · P 143 g · C 235 g · G 64 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Skyr 300g, Crema di riso 20g a secco, Mela 1 mela, Noci 25g | 509 |
-| Pranzo 13:00 | Petto di tacchino 190g a crudo, Cous cous 75g a secco, Carote 80g, Peperoni 120g, Olio extravergine di oliva 15g | 669 |
-| Cena 20:00 | _pasto libero_ | 637 |
+| Colazione 07:30 | Ricotta magra 250g, Pan bauletto 60g, Marmellata light 20g | 443 |
+| Pranzo 13:00 | Manzo magro 220g a crudo, Pasta di riso 70g a secco, Bietole 150g, Olio extravergine di oliva 15g | 684 |
+| Cena 20:00 | _pasto libero_ | 618 |
 
-Totale Sab: **1177 kcal** · P 94 g · C 112 g · G 36 g
+Totale Sab: **1127 kcal** · P 85 g · C 104 g · G 40 g
 
 **Mese 1 — Mese 1 · Adattamento e tecnica**
 
 | Giorno | Seduta | Dettaglio |
 |---|---|---|
-| Lun | Full Body | Back squat 3×15 @32.5kg; Panca piana 3×15 @22.5kg; Rematore con bilanciere 3×15 @17kg; Plank 3×15; Leg press 3×15 @42.5kg |
+| Lun | Full Body | Back squat 3×10-12 @30kg; Panca piana 3×10-12 @22.5kg; Rematore con bilanciere 3×12 @16kg; Plank 3×20-30 s; Leg press 3×12 @40kg |
 | Mar | Riposo | |
-| Mer | Full Body | Back squat 3×15 @32.5kg; Panca piana 3×15 @22.5kg; Rematore con bilanciere 3×15 @17kg; Plank 3×15; Leg press 3×15 @42.5kg |
+| Mer | Full Body | Back squat 3×10-12 @30kg; Panca piana 3×10-12 @22.5kg; Rematore con bilanciere 3×12 @16kg; Plank 3×20-30 s; Leg press 3×12 @40kg |
 | Gio | Riposo | |
-| Ven | Full Body | Back squat 3×15 @32.5kg; Panca piana 3×15 @22.5kg; Rematore con bilanciere 3×15 @17kg; Plank 3×15; Leg press 3×15 @42.5kg |
+| Ven | Full Body | Back squat 3×10-12 @30kg; Panca piana 3×10-12 @22.5kg; Rematore con bilanciere 3×12 @16kg; Plank 3×20-30 s; Leg press 3×12 @40kg |
 | Sab | Riposo | |
 | Dom | Riposo | |
 
@@ -626,11 +617,11 @@ Totale Sab: **1177 kcal** · P 94 g · C 112 g · G 36 g
 
 | Giorno | Seduta | Dettaglio |
 |---|---|---|
-| Lun | Full Body | Back squat 4×12-15 @42.5kg; Panca piana 4×12-15 @27.5kg; Plank 4×12-15; Leg press 4×12-15 @55kg; Chest press macchina 4×12-15 |
+| Lun | Full Body A | Back squat 3×6-8 @45kg; Panca piana 3×6-8 @30kg; Plank 3×30-45 s; Leg press 3×10-12 @52.5kg; Chest press macchina 3×10-12 |
 | Mar | Riposo | |
-| Mer | Full Body | Back squat 4×12-15 @42.5kg; Panca piana 4×12-15 @27.5kg; Plank 4×12-15; Leg press 4×12-15 @55kg; Chest press macchina 4×12-15 |
+| Mer | Full Body B | Back squat 3×10-12 @40kg; Panca piana 3×10-12 @27.5kg; Plank 3×30-45 s; Leg press 3×10-12 @52.5kg; Chest press macchina 3×10-12 |
 | Gio | Riposo | |
-| Ven | Full Body | Back squat 4×12-15 @42.5kg; Panca piana 4×12-15 @27.5kg; Plank 4×12-15; Leg press 4×12-15 @55kg; Chest press macchina 4×12-15 |
+| Ven | Full Body A | Back squat 3×6-8 @45kg; Panca piana 3×6-8 @30kg; Plank 3×30-45 s; Leg press 3×10-12 @52.5kg; Chest press macchina 3×10-12 |
 | Sab | Riposo | |
 | Dom | Riposo | |
 
@@ -652,7 +643,7 @@ Totale Sab: **1177 kcal** · P 94 g · C 112 g · G 36 g
 | Profilo | female · 25 anni · 168 cm · 60 kg → 56 kg · obiettivo `loseFat` |
 | Metabolismo basale / fabbisogno | 1364 / 1989 kcal |
 | Target calorico | **1591 kcal** (-20% sul fabbisogno) |
-| Macro | P 119 g (2.0 g/kg) · C 160 g · G 53 g |
+| Macro | P 119 g (2.0 g/kg) · C 159 g · G 53 g |
 | Idratazione | 2450 ml |
 | Durata piano | 3 mesi |
 
@@ -662,26 +653,26 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Yogurt greco 2% 285g, Fiocchi d'avena 25g a secco, Mela 1 mela, Pistacchi 15g | 460 |
-| Pranzo 13:00 | Tonno al naturale 80g, Pasta di legumi 115g a secco, Bietole 120g, Pomodori 80g, Olio extravergine di oliva 15g | 655 |
-| Cena 20:00 | Orata 160g a crudo, Riso rosso 75g a secco, Broccoli 150g, Olio extravergine di oliva 10g | 585 |
+| Colazione 07:30 | Albume d'uovo 155g a crudo, Fiocchi d'avena 70g a secco, Latte vaccino 110 ml, Burro di arachidi 100% 10g | 468 |
+| Pranzo 13:00 | Hamburger di pollo magro 190g, Pasta di mais 80g a secco, Finocchi 150g, Olio extravergine di oliva 10g | 645 |
+| Cena 20:00 | Sardine 160g a crudo, Patate 340g a crudo, Zucchine 150g, Olio extravergine di oliva 10g | 598 |
 
-Totale Lun: **1699 kcal** · P 122 g · C 168 g · G 54 g
+Totale Lun: **1711 kcal** · P 119 g · C 178 g · G 53 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Skyr 250g, Crema di riso 20g a secco, Frutti di bosco 125g, Burro di macadamia 100% 15g | 393 |
-| Pranzo 13:00 | Tofu 140g, Ricotta magra 170g, Pasta 55g a secco, Spinaci 120g, Carciofi 120g, Olio extravergine di oliva 5g | 600 |
-| Cena 20:00 | _pasto libero_ | 526 |
+| Colazione 07:30 | Ricotta magra 250g, Pan bauletto 40g, Marmellata light 20g | 390 |
+| Pranzo 13:00 | Manzo magro 185g a crudo, Riso integrale 60g a secco, Bietole 150g, Olio extravergine di oliva 10g | 563 |
+| Cena 20:00 | _pasto libero_ | 507 |
 
-Totale Sab: **993 kcal** · P 73 g · C 91 g · G 34 g
+Totale Sab: **951 kcal** · P 76 g · C 84 g · G 33 g
 
 **Mese 1 — Mese 1 · Sovraccarico progressivo**
 
 | Giorno | Seduta | Dettaglio |
 |---|---|---|
-| Lun | Upper | Panca piana 3×12-15 @30kg; Trazioni alla sbarra 3×12-15; Military press 3×12-15 @20kg; Curl bicipiti 3×12-15 @9kg; Chest press macchina 3×12-15 |
-| Mar | Lower | Back squat 3×12-15 @45kg; Romanian deadlift 3×12-15 @35kg; Leg press 3×12-15 @60kg; Affondi 3×12-15 @9kg; Hip thrust 3×12-15 @30kg |
+| Lun | Upper | Panca piana 4×6-8 @32.5kg; Trazioni alla sbarra 4×6-8; Military press 3×10-12 @19kg; Curl bicipiti 3×12-15 @8kg; Chest press macchina 3×10-12 |
+| Mar | Lower | Back squat 4×6-8 @47.5kg; Romanian deadlift 4×6-8 @37.5kg; Leg press 3×10-12 @57.5kg; Affondi 3×10-12 @9kg; Hip thrust 3×10-12 @27.5kg |
 | Mer | Riposo | |
 | Gio | Corsa | Corsa facile 35 min |
 | Ven | Corsa | Corsa a ritmo medio 30 min |
@@ -692,8 +683,8 @@ Totale Sab: **993 kcal** · P 73 g · C 91 g · G 34 g
 
 | Giorno | Seduta | Dettaglio |
 |---|---|---|
-| Lun | Upper | Panca piana 3×12-15 @30kg; Trazioni alla sbarra 3×12-15; Military press 3×12-15 @20kg; Curl bicipiti 3×12-15 @9kg; Chest press macchina 3×12-15 |
-| Mar | Lower | Back squat 3×12-15 @47.5kg; Romanian deadlift 3×12-15 @37.5kg; Leg press 3×12-15 @62.5kg; Affondi 3×12-15 @9kg; Hip thrust 3×12-15 @30kg |
+| Lun | Upper | Panca piana 3×6-8 @32.5kg; Trazioni alla sbarra 3×6-8; Military press 3×10-12 @20kg; Curl bicipiti 2×15 @8kg; Chest press macchina 3×10-12 |
+| Mar | Lower | Back squat 3×6-8 @50kg; Romanian deadlift 3×6-8 @37.5kg; Leg press 3×10-12 @60kg; Affondi 3×10-12 @9kg; Hip thrust 3×10-12 @30kg |
 | Mer | Riposo | |
 | Gio | Corsa | Corsa facile 35 min |
 | Ven | Corsa | Corsa a ritmo medio 30 min |
@@ -719,7 +710,7 @@ Totale Sab: **993 kcal** · P 73 g · C 91 g · G 34 g
 | Profilo | male · 38 anni · 176 cm · 72 kg → 72 kg · obiettivo `improveEndurance` |
 | Metabolismo basale / fabbisogno | 1635 / 2579 kcal |
 | Target calorico | **2579 kcal** (0% sul fabbisogno) |
-| Macro | P 108 g (1.5 g/kg) · C 344 g · G 86 g |
+| Macro | P 108 g (1.5 g/kg) · C 343 g · G 86 g |
 | Idratazione | 2870 ml |
 | Durata piano | 4 mesi |
 
@@ -729,19 +720,19 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Albume d'uovo 100g a crudo, Fiocchi d'avena 95g a secco, Mela 2 mele, Pistacchi 15g, Burro di nocciole 100% 15g | 753 |
-| Pranzo 13:00 | Tonno al naturale 75g, Pasta di mais 85g a secco, Pane integrale 150g, Bietole 120g, Pomodori 80g, Olio extravergine di oliva 25g | 1031 |
-| Cena 20:00 | Orata 125g a crudo, Riso lungo B 130g a secco, Broccoli 150g, Olio extravergine di oliva 25g | 869 |
+| Colazione 07:30 | Albume d'uovo 125g a crudo, Pan bauletto 200g, Olio extravergine di oliva 15g | 733 |
+| Pranzo 13:00 | Tonno al naturale 105g, Riso 175g a secco, Finocchi 150g, Olio extravergine di oliva 30g | 1024 |
+| Cena 20:00 | Sgombro 100g a crudo, Pasta di farro 160g a secco, Zucchine 150g, Olio extravergine di oliva 15g | 898 |
 
-Totale Lun: **2654 kcal** · P 108 g · C 342 g · G 86 g
+Totale Lun: **2654 kcal** · P 113 g · C 346 g · G 85 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Yogurt greco 0% 200g, Crema di riso 70g a secco, Frutti di bosco 250g, Burro di macadamia 100% 30g | 697 |
-| Pranzo 13:00 | Ricotta magra 170g, Tofu 115g, Pasta di riso 130g a secco, Spinaci 120g, Carciofi 120g, Olio extravergine di oliva 15g | 944 |
-| Cena 20:00 | _pasto libero_ | 857 |
+| Colazione 07:30 | Ricotta magra 250g, Pane di segale 130g, Marmellata light 20g | 630 |
+| Pranzo 13:00 | Petto di tacchino 100g a crudo, Pan bauletto 190g, Bietole 150g, Olio extravergine di oliva 25g | 873 |
+| Cena 20:00 | _pasto libero_ | 830 |
 
-Totale Sab: **1640 kcal** · P 72 g · C 203 g · G 54 g
+Totale Sab: **1502 kcal** · P 79 g · C 174 g · G 51 g
 
 **Mese 1 — Mese 1 · Adattamento e tecnica**
 
@@ -796,19 +787,19 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Yogurt proteico 260g, Fiocchi d'avena 30g a secco, Mirtilli 150g, Nocciole 20g | 481 |
-| Pranzo 13:00 | Tonno al naturale 90g, Pasta di legumi 115g a secco, Bietole 120g, Pomodori 80g, Olio extravergine di oliva 15g | 666 |
-| Cena 20:00 | Sardine 170g a crudo, Riso lungo B 70g a secco, Broccoli 150g, Olio extravergine di oliva 10g | 600 |
+| Colazione 07:30 | Albume d'uovo 170g a crudo, Fiocchi d'avena 60g a secco, Latte vaccino 120 ml, Burro di arachidi 100% 15g | 476 |
+| Pranzo 13:00 | Tonno al naturale 155g, Riso basmati 80g a secco, Finocchi 150g, Olio extravergine di oliva 20g | 657 |
+| Cena 20:00 | Sardine 150g a crudo, Pasta di farro 85g a secco, Zucchine 150g, Olio extravergine di oliva 10g | 607 |
 
-Totale Lun: **1746 kcal** · P 129 g · C 169 g · G 55 g
+Totale Lun: **1739 kcal** · P 127 g · C 167 g · G 59 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Yogurt greco 0% 265g, Crema di riso 30g a secco, Frutti di bosco 125g, Noci 10g, Burro di mandorle 100% 15g | 479 |
-| Pranzo 13:00 | Uova intere 2 uova, Albume d'uovo 170g a crudo, Pane integrale 140g, Spinaci 150g, Olio extravergine di oliva 10g | 697 |
+| Colazione 07:30 | Ricotta magra 250g, Pane di segale 70g, Marmellata light 20g | 470 |
+| Pranzo 13:00 | Petto di tacchino 170g a crudo, Pasta di riso 75g a secco, Bietole 150g, Olio extravergine di oliva 20g | 663 |
 | Cena 20:00 | _pasto libero_ | 592 |
 
-Totale Sab: **1175 kcal** · P 82 g · C 112 g · G 40 g
+Totale Sab: **1130 kcal** · P 80 g · C 113 g · G 38 g
 
 _Nessun piano di allenamento generato._
 
@@ -841,11 +832,11 @@ _Nessun piano alimentare generato._
 
 | Giorno | Seduta | Dettaglio |
 |---|---|---|
-| Lun | Push | Panca piana 5×3-5 @37.5kg; Military press 5×3-5 @25kg; Dip alle parallele 5×3-5; Alzate laterali 5×3-5 @3.5kg; Chest press macchina 5×3-5; Push-up 5×3-5 |
-| Mar | Pull | Stacco da terra 5×3-5 @65kg; Trazioni zavorrate 5×3-5; Rematore con bilanciere 5×3-5 @30kg; Curl bicipiti 5×3-5 @11kg; Lat machine 5×3-5; Rematore con manubrio 5×3-5 @9kg |
+| Lun | Push | Panca piana 5×3-5 @42.5kg; Military press 5×3-5 @27.5kg; Dip alle parallele 4×6-8; Alzate laterali 3×10-12 @3.5kg; Chest press macchina 4×6-8; Push-up 4×6-8 |
+| Mar | Pull | Stacco da terra 5×3-5 @75kg; Trazioni zavorrate 5×3-5; Rematore con bilanciere 4×6-8 @32.5kg; Curl bicipiti 3×10-12 @10kg; Lat machine 4×6-8; Rematore con manubrio 4×6-8 @9kg |
 | Mer | Riposo | |
-| Gio | Legs | Back squat 5×3-5 @55kg; Romanian deadlift 5×3-5 @45kg; Leg press 5×3-5 @72.5kg; Affondi 5×3-5 @11kg; Hip thrust 5×3-5 @37.5kg; Leg curl machine 5×3-5 |
-| Ven | Upper | Panca piana 5×3-5 @37.5kg; Trazioni alla sbarra 5×3-5; Military press 5×3-5 @25kg; Curl bicipiti 5×3-5 @11kg; Chest press macchina 5×3-5; Lat machine 5×3-5 |
+| Gio | Legs | Back squat 5×3-5 @62.5kg; Romanian deadlift 5×3-5 @52.5kg; Leg press 4×6-8 @77.5kg; Affondi 4×6-8 @12kg; Hip thrust 4×6-8 @40kg; Leg curl machine 3×10-12 |
+| Ven | Upper | Panca piana 5×3-5 @42.5kg; Trazioni alla sbarra 5×3-5; Military press 4×6-8 @27.5kg; Curl bicipiti 3×10-12 @10kg; Chest press macchina 4×6-8; Lat machine 4×6-8 |
 | Sab | Riposo | |
 | Dom | Riposo | |
 
@@ -853,11 +844,11 @@ _Nessun piano alimentare generato._
 
 | Giorno | Seduta | Dettaglio |
 |---|---|---|
-| Lun | Push | Panca piana 5×3-5 @42.5kg; Military press 5×3-5 @27.5kg; Alzate laterali 5×3-5 @4kg; Chest press macchina 5×3-5; Push-up 5×3-5; Dip alle parallele 5×3-5 |
-| Mar | Pull | Stacco da terra 5×3-5 @72.5kg; Trazioni zavorrate 5×3-5; Curl bicipiti 5×3-5 @12kg; Lat machine 5×3-5; Rematore con manubrio 5×3-5 @10kg; Rematore con bilanciere 5×3-5 @32.5kg |
+| Lun | Push | Panca piana 4×2-4 @50kg; Military press 4×2-4 @32.5kg; Alzate laterali 2×10-12 @3.5kg; Chest press macchina 3×5-6; Push-up 3×5-6; Dip alle parallele 3×5-6 |
+| Mar | Pull | Stacco da terra 4×2-4 @85kg; Trazioni zavorrate 4×2-4; Curl bicipiti 2×10-12 @12kg; Lat machine 3×5-6; Rematore con manubrio 3×5-6 @11kg; Rematore con bilanciere 3×5-6 @37.5kg |
 | Mer | Riposo | |
-| Gio | Legs | Back squat 5×3-5 @62.5kg; Romanian deadlift 5×3-5 @50kg; Affondi 5×3-5 @12kg; Hip thrust 5×3-5 @42.5kg; Leg curl machine 5×3-5; Abductor machine 5×3-5 |
-| Ven | Upper | Panca piana 5×3-5 @42.5kg; Trazioni alla sbarra 5×3-5; Curl bicipiti 5×3-5 @12kg; Chest press macchina 5×3-5; Lat machine 5×3-5; Military press 5×3-5 @27.5kg |
+| Gio | Legs | Back squat 4×2-4 @72.5kg; Romanian deadlift 4×2-4 @60kg; Affondi 3×5-6 @14kg; Hip thrust 3×5-6 @47.5kg; Leg curl machine 2×10-12; Abductor machine 2×10-12 |
+| Ven | Upper | Panca piana 4×2-4 @50kg; Trazioni alla sbarra 4×2-4; Curl bicipiti 2×10-12 @12kg; Chest press macchina 3×5-6; Lat machine 3×5-6; Military press 3×5-6 @30kg |
 | Sab | Riposo | |
 | Dom | Riposo | |
 
@@ -879,7 +870,7 @@ _Nessun piano alimentare generato._
 | Profilo | female · 52 anni · 162 cm · 70 kg → 64 kg · obiettivo `loseFat` |
 | Metabolismo basale / fabbisogno | 1292 / 1548 kcal |
 | Target calorico | **1238 kcal** (-20% sul fabbisogno) |
-| Macro | P 92 g (1.3 g/kg) · C 107 g · G 49 g |
+| Macro | P 92 g (1.3 g/kg) · C 108 g · G 49 g |
 | Idratazione | 2450 ml |
 | Durata piano | 5 mesi |
 
@@ -889,28 +880,28 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Yogurt proteico 165g, Fiocchi d'avena 20g a secco, Mirtilli 100g, Pistacchi 25g | 370 |
-| Pranzo 13:00 | Tonno al naturale 65g, Pasta di legumi 80g a secco, Bietole 120g, Pomodori 80g, Olio extravergine di oliva 15g | 519 |
-| Cena 20:00 | Sardine 120g a crudo, Riso lungo B 50g a secco, Broccoli 150g, Olio extravergine di oliva 10g | 466 |
+| Colazione 07:30 | Albume d'uovo 180g a crudo, Pan bauletto 70g, Olio extravergine di oliva 10g | 364 |
+| Pranzo 13:00 | Petto di pollo 125g a crudo, Riso basmati 65g a secco, Finocchi 150g, Olio extravergine di oliva 15g | 520 |
+| Cena 20:00 | Sardine 125g a crudo, Patate 250g a crudo, Zucchine 150g, Olio extravergine di oliva 10g | 480 |
 
-Totale Lun: **1356 kcal** · P 94 g · C 123 g · G 49 g
+Totale Lun: **1363 kcal** · P 93 g · C 134 g · G 48 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Uova intere 3 uova, Pane integrale 30g, Arancia 1 arancia | 344 |
-| Pranzo 13:00 | Ricotta magra 170g, Pasta di riso 40g a secco, Spinaci 120g, Carciofi 120g, Olio extravergine di oliva 10g | 478 |
-| Cena 20:00 | _pasto libero_ | 420 |
+| Colazione 07:30 | Ricotta magra 225g, Pane integrale 30g, Marmellata light 20g | 331 |
+| Pranzo 13:00 | Manzo magro 140g a crudo, Gallette di riso 5 gallette, Bietole 150g, Olio extravergine di oliva 10g | 463 |
+| Cena 20:00 | _pasto libero_ | 417 |
 
-Totale Sab: **821 kcal** · P 50 g · C 69 g · G 35 g
+Totale Sab: **793 kcal** · P 62 g · C 68 g · G 29 g
 
 **Mese 1 — Mese 1 · Adattamento e tecnica**
 
 | Giorno | Seduta | Dettaglio |
 |---|---|---|
-| Lun | Upper | Panca piana 3×15 @16kg; Trazioni alla sbarra 3×15; Military press 3×15 @11kg; Curl bicipiti 3×15 @5kg |
+| Lun | Upper | Panca piana 3×10-12 @15kg; Trazioni alla sbarra 3×12; Military press 3×12 @10kg; Curl bicipiti 2×15 @4.5kg |
 | Mar | Riposo | |
 | Mer | Riposo | |
-| Gio | Lower | Romanian deadlift 3×15 @20kg; Hip thrust 3×15 @16kg; Abductor machine 3×15; Polpacci alla macchina 3×15 |
+| Gio | Lower | Romanian deadlift 3×10-12 @19kg; Hip thrust 3×12 @15kg; Abductor machine 2×15; Polpacci alla macchina 2×15 |
 | Ven | Riposo | |
 | Sab | Riposo | |
 | Dom | Riposo | |
@@ -919,10 +910,10 @@ Totale Sab: **821 kcal** · P 50 g · C 69 g · G 35 g
 
 | Giorno | Seduta | Dettaglio |
 |---|---|---|
-| Lun | Upper | Panca piana 4×12-15 @20kg; Trazioni alla sbarra 4×12-15; Curl bicipiti 4×12-15 @6kg; Chest press macchina 4×12-15 |
+| Lun | Upper | Panca piana 3×6-8 @22.5kg; Trazioni alla sbarra 3×10-12; Curl bicipiti 2×15 @6kg; Chest press macchina 3×10-12 |
 | Mar | Riposo | |
 | Mer | Riposo | |
-| Gio | Lower | Romanian deadlift 4×12-15 @25kg; Hip thrust 4×12-15 @20kg; Abductor machine 4×12-15; Polpacci alla macchina 4×12-15 |
+| Gio | Lower | Romanian deadlift 3×6-8 @25kg; Hip thrust 3×10-12 @20kg; Abductor machine 2×15; Polpacci alla macchina 2×15 |
 | Ven | Riposo | |
 | Sab | Riposo | |
 | Dom | Riposo | |
@@ -955,28 +946,28 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Yogurt greco 2% 195g, Avena istantanea 75g a secco, Mela 2 mele, Nocciole 20g | 705 |
-| Pranzo 13:00 | Tonno al naturale 100g, Pasta di mais 95g a secco, Pane integrale 100g, Bietole 120g, Pomodori 80g, Olio extravergine di oliva 25g | 971 |
-| Cena 20:00 | Sgombro 150g a crudo, Riso lungo B 130g a secco, Broccoli 150g, Olio extravergine di oliva 10g | 848 |
+| Colazione 07:30 | Albume d'uovo 60g a crudo, Avena istantanea 135g a secco, Latte vaccino 150 ml, Burro di arachidi 100% 15g | 714 |
+| Pranzo 13:00 | Petto di pollo 135g a crudo, Pasta di mais 160g a secco, Finocchi 150g, Olio extravergine di oliva 25g | 973 |
+| Cena 20:00 | Sardine 135g a crudo, Riso lungo B 145g a secco, Zucchine 150g, Olio extravergine di oliva 20g | 883 |
 
-Totale Lun: **2524 kcal** · P 116 g · C 319 g · G 79 g
+Totale Lun: **2570 kcal** · P 116 g · C 333 g · G 81 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Skyr 195g, Crema di riso 70g a secco, Frutti di bosco 150g, Burro di mandorle 100% 10g, Noci di macadamia 20g | 659 |
-| Pranzo 13:00 | Tofu 95g, Ricotta magra 155g, Pasta 130g a secco, Spinaci 120g, Carciofi 120g, Olio extravergine di oliva 15g | 905 |
-| Cena 20:00 | _pasto libero_ | 818 |
+| Colazione 07:30 | Ricotta magra 250g, Pane di segale 130g, Marmellata light 20g | 630 |
+| Pranzo 13:00 | Manzo magro 115g a crudo, Pan bauletto 190g, Bietole 150g, Olio extravergine di oliva 20g | 861 |
+| Cena 20:00 | _pasto libero_ | 810 |
 
-Totale Sab: **1562 kcal** · P 77 g · C 186 g · G 52 g
+Totale Sab: **1490 kcal** · P 79 g · C 174 g · G 49 g
 
 **Mese 1 — Mese 1 · Adattamento e tecnica**
 
 | Giorno | Seduta | Dettaglio |
 |---|---|---|
-| Lun | Upper | Panca piana 3×10 @19kg; Trazioni alla sbarra 3×10; Military press 3×10 @13kg; Curl bicipiti 3×10 @6kg |
+| Lun | Upper | Panca piana 3×8 @20kg; Trazioni alla sbarra 3×10; Military press 3×10 @13kg; Curl bicipiti 2×12 @6kg |
 | Mar | Riposo | |
 | Mer | Riposo | |
-| Gio | Lower | Back squat 3×10 @30kg; Romanian deadlift 3×10 @22.5kg; Leg press 3×10 @37.5kg; Affondi 3×10 @6kg |
+| Gio | Lower | Back squat 3×8 @32.5kg; Romanian deadlift 3×10 @22.5kg; Leg press 3×10 @37.5kg; Affondi 3×10 @6kg |
 | Ven | Riposo | |
 | Sab | Riposo | |
 | Dom | Riposo | |
@@ -985,10 +976,10 @@ Totale Sab: **1562 kcal** · P 77 g · C 186 g · G 52 g
 
 | Giorno | Seduta | Dettaglio |
 |---|---|---|
-| Lun | Upper | Panca piana 3×10 @22.5kg; Trazioni alla sbarra 3×10; Military press 3×10 @17kg; Curl bicipiti 3×10 @7kg |
+| Lun | Upper | Panca piana 3×6 @25kg; Trazioni alla sbarra 3×8-10; Military press 3×8-10 @17kg; Curl bicipiti 2×12 @7kg |
 | Mar | Riposo | |
 | Mer | Riposo | |
-| Gio | Lower | Back squat 3×10 @37.5kg; Romanian deadlift 3×10 @27.5kg; Leg press 3×10 @47.5kg; Affondi 3×10 @7kg |
+| Gio | Lower | Back squat 3×6 @40kg; Romanian deadlift 3×8-10 @27.5kg; Leg press 3×8-10 @47.5kg; Affondi 3×8-10 @7kg |
 | Ven | Riposo | |
 | Sab | Riposo | |
 | Dom | Riposo | |
@@ -1021,25 +1012,25 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Yogurt proteico 175g, Avena istantanea 60g a secco, Mirtilli 175g, Nocciole 20g | 555 |
-| Pranzo 13:00 | Tonno al naturale 125g, Pasta di mais 110g a secco, Bietole 120g, Pomodori 80g, Olio extravergine di oliva 15g | 714 |
-| Cena 20:00 | Sgombro 135g a crudo, Riso rosso 110g a secco, Asparagi 150g, Olio extravergine di oliva 5g | 698 |
+| Colazione 07:30 | Albume d'uovo 85g a crudo, Fiocchi d'avena 100g a secco, Latte vaccino 140 ml, Burro di arachidi 100% 10g | 566 |
+| Pranzo 13:00 | Petto di pollo 140g a crudo, Riso 120g a secco, Finocchi 150g, Olio extravergine di oliva 20g | 772 |
+| Cena 20:00 | Sardine 85g a crudo, Pasta di farro 130g a secco, Zucchine 150g, Olio extravergine di oliva 15g | 730 |
 
-Totale Lun: **1967 kcal** · P 110 g · C 239 g · G 58 g
+Totale Lun: **2068 kcal** · P 109 g · C 252 g · G 64 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Skyr 165g, Crema di riso 40g a secco, Frutti di bosco 200g, Pistacchi 35g | 535 |
-| Pranzo 13:00 | Ricotta magra 105g, Tofu 170g, Gnocchi di patate 225g, Spinaci 120g, Carciofi 120g, Olio extravergine di oliva 10g | 743 |
-| Cena 20:00 | _pasto libero_ | 654 |
+| Colazione 07:30 | Ricotta magra 235g, Pan bauletto 90g, Marmellata light 20g | 508 |
+| Pranzo 13:00 | Petto di tacchino 110g a crudo, Pasta 110g a secco, Bietole 150g, Olio extravergine di oliva 20g | 720 |
+| Cena 20:00 | _pasto libero_ | 651 |
 
-Totale Sab: **1279 kcal** · P 69 g · C 143 g · G 42 g
+Totale Sab: **1227 kcal** · P 73 g · C 142 g · G 39 g
 
 **Mese 1 — Mese 1 · Adattamento e tecnica**
 
 | Giorno | Seduta | Dettaglio |
 |---|---|---|
-| Lun | Full Body | Back squat 3×10 @27.5kg; Panca piana 3×10 @18kg; Rematore con bilanciere 3×10 @15kg |
+| Lun | Full Body | Back squat 3×8 @30kg; Panca piana 3×10 @18kg; Rematore con bilanciere 3×10 @15kg |
 | Mar | Riposo | |
 | Mer | Riposo | |
 | Gio | Riposo | |
@@ -1051,7 +1042,7 @@ Totale Sab: **1279 kcal** · P 69 g · C 143 g · G 42 g
 
 | Giorno | Seduta | Dettaglio |
 |---|---|---|
-| Lun | Full Body | Back squat 3×10 @35kg; Panca piana 3×10 @22.5kg; Rematore con bilanciere 3×10 @18kg |
+| Lun | Full Body | Back squat 3×6 @37.5kg; Panca piana 3×8-10 @22.5kg; Rematore con bilanciere 3×8-10 @18kg |
 | Mar | Riposo | |
 | Mer | Riposo | |
 | Gio | Riposo | |
@@ -1087,25 +1078,25 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Yogurt greco 2% 225g, Fiocchi d'avena 80g a secco, Mirtilli 175g, Nocciole 15g | 659 |
-| Pranzo 13:00 | Tonno al naturale 115g, Pasta di mais 45g a secco, Pane integrale 160g, Bietole 120g, Pomodori 80g, Olio extravergine di oliva 15g | 865 |
-| Cena 20:00 | Sardine 170g a crudo, Riso lungo B 125g a secco, Zucchine 150g, Olio extravergine di oliva 15g | 813 |
+| Colazione 07:30 | Albume d'uovo 95g a crudo, Avena istantanea 130g a secco, Latte vaccino 150 ml, Burro di arachidi 100% 10g | 682 |
+| Pranzo 13:00 | Tonno al naturale 145g, Riso 150g a secco, Finocchi 150g, Olio extravergine di oliva 25g | 936 |
+| Cena 20:00 | Sgombro 120g a crudo, Pasta integrale 145g a secco, Zucchine 150g, Olio extravergine di oliva 10g | 834 |
 
-Totale Lun: **2337 kcal** · P 130 g · C 290 g · G 66 g
+Totale Lun: **2450 kcal** · P 127 g · C 303 g · G 74 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Skyr 200g, Crema di riso 50g a secco, Frutti di bosco 150g, Burro di mandorle 100% 20g, Pistacchi 20g | 614 |
-| Pranzo 13:00 | Ricotta magra 160g, Pasta di legumi 130g a secco, Spinaci 120g, Carciofi 120g, Olio extravergine di oliva 15g | 810 |
-| Cena 20:00 | _pasto libero_ | 751 |
+| Colazione 07:30 | Ricotta magra 250g, Pane integrale 120g, Marmellata light 20g | 581 |
+| Pranzo 13:00 | Petto di tacchino 170g a crudo, Patate dolci 400g a crudo, Bietole 150g, Olio extravergine di oliva 25g | 812 |
+| Cena 20:00 | _pasto libero_ | 746 |
 
-Totale Sab: **1423 kcal** · P 87 g · C 142 g · G 49 g
+Totale Sab: **1391 kcal** · P 86 g · C 152 g · G 43 g
 
 **Mese 1 — Mese 1 · Sovraccarico progressivo**
 
 | Giorno | Seduta | Dettaglio |
 |---|---|---|
-| Lun | Full Body | Back squat 4×8-12 @60kg; Panca piana 4×8-12 @40kg; Rematore con bilanciere 4×8-12 @32.5kg; Plank 4×8-12; Leg press 4×8-12 @80kg |
+| Lun | Full Body | Back squat 4×6-8 @62.5kg; Panca piana 4×6-8 @42.5kg; Rematore con bilanciere 3×8-12 @30kg; Plank 3×30-45 s; Leg press 3×8-12 @75kg |
 | Mar | Riposo | |
 | Mer | Riposo | |
 | Gio | Riposo | |
@@ -1117,7 +1108,7 @@ Totale Sab: **1423 kcal** · P 87 g · C 142 g · G 49 g
 
 | Giorno | Seduta | Dettaglio |
 |---|---|---|
-| Lun | Full Body | Back squat 5×8-12 @65kg; Panca piana 5×8-12 @42.5kg; Plank 5×8-12; Leg press 5×8-12 @87.5kg; Chest press macchina 5×8-12 |
+| Lun | Full Body | Back squat 3×6-8 @67.5kg; Panca piana 3×6-8 @45kg; Plank 3×30-45 s; Leg press 3×8-10 @87.5kg; Chest press macchina 3×8-10 |
 | Mar | Riposo | |
 | Mer | Riposo | |
 | Gio | Riposo | |
@@ -1153,29 +1144,29 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Yogurt proteico 260g, Fiocchi d'avena 30g a secco, Mela 1 mela, Nocciole 20g | 472 |
-| Pranzo 13:00 | Albume d'uovo 250g a crudo, Pane integrale 150g, Bietole 150g, Olio extravergine di oliva 15g | 661 |
-| Cena 20:00 | Sardine 165g a crudo, Riso lungo B 75g a secco, Zucchine 150g, Olio extravergine di oliva 10g | 586 |
+| Colazione 07:30 | Albume d'uovo 145g a crudo, Avena istantanea 75g a secco, Latte vaccino 120 ml, Burro di arachidi 100% 10g | 484 |
+| Pranzo 13:00 | Petto di pollo 160g a crudo, Riso basmati 95g a secco, Finocchi 150g, Olio extravergine di oliva 15g | 663 |
+| Cena 20:00 | Sardine 155g a crudo, Patate 375g a crudo, Zucchine 150g, Olio extravergine di oliva 10g | 621 |
 
-Totale Lun: **1716 kcal** · P 118 g · C 179 g · G 54 g
+Totale Lun: **1767 kcal** · P 119 g · C 195 g · G 52 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Yogurt greco 0% 245g, Crema di riso 20g a secco, Frutti di bosco 125g, Burro di mandorle 100% 25g | 429 |
-| Pranzo 13:00 | Tofu 220g, Pasta di legumi 95g a secco, Spinaci 120g, Carciofi 120g, Olio extravergine di oliva 5g | 622 |
-| Cena 20:00 | _pasto libero_ | 530 |
+| Colazione 07:30 | Ricotta magra 250g, Pan bauletto 40g, Marmellata light 20g | 390 |
+| Pranzo 13:00 | Manzo magro 160g a crudo, Pane di segale 100g, Bietole 150g, Olio extravergine di oliva 10g | 582 |
+| Cena 20:00 | _pasto libero_ | 515 |
 
-Totale Sab: **1050 kcal** · P 77 g · C 95 g · G 34 g
+Totale Sab: **970 kcal** · P 74 g · C 87 g · G 34 g
 
 **Mese 1 — Mese 1 · Adattamento e tecnica**
 
 | Giorno | Seduta | Dettaglio |
 |---|---|---|
-| Lun | Full Body | Back squat 3×15 @32.5kg; Panca piana 3×15 @22.5kg; Rematore con bilanciere 3×15 @18kg; Plank 3×15; Leg press 3×15 @45kg |
+| Lun | Full Body | Back squat 3×10-12 @30kg; Panca piana 3×10-12 @22.5kg; Rematore con bilanciere 3×12 @17kg; Plank 3×20-30 s; Leg press 3×12 @42.5kg |
 | Mar | Riposo | |
-| Mer | Full Body | Back squat 3×15 @32.5kg; Panca piana 3×15 @22.5kg; Rematore con bilanciere 3×15 @18kg; Plank 3×15; Leg press 3×15 @45kg |
+| Mer | Full Body | Back squat 3×10-12 @30kg; Panca piana 3×10-12 @22.5kg; Rematore con bilanciere 3×12 @17kg; Plank 3×20-30 s; Leg press 3×12 @42.5kg |
 | Gio | Riposo | |
-| Ven | Full Body | Back squat 3×15 @32.5kg; Panca piana 3×15 @22.5kg; Rematore con bilanciere 3×15 @18kg; Plank 3×15; Leg press 3×15 @45kg |
+| Ven | Full Body | Back squat 3×10-12 @30kg; Panca piana 3×10-12 @22.5kg; Rematore con bilanciere 3×12 @17kg; Plank 3×20-30 s; Leg press 3×12 @42.5kg |
 | Sab | Riposo | |
 | Dom | Riposo | |
 
@@ -1183,11 +1174,11 @@ Totale Sab: **1050 kcal** · P 77 g · C 95 g · G 34 g
 
 | Giorno | Seduta | Dettaglio |
 |---|---|---|
-| Lun | Full Body | Back squat 3×12-15 @42.5kg; Panca piana 3×12-15 @27.5kg; Rematore con bilanciere 3×12-15 @20kg; Plank 3×12-15; Leg press 3×12-15 @55kg |
+| Lun | Full Body A | Back squat 3×6-8 @45kg; Panca piana 3×6-8 @30kg; Rematore con bilanciere 3×10-12 @20kg; Plank 3×30-45 s; Leg press 3×10-12 @52.5kg |
 | Mar | Riposo | |
-| Mer | Full Body | Back squat 3×12-15 @42.5kg; Panca piana 3×12-15 @27.5kg; Rematore con bilanciere 3×12-15 @20kg; Plank 3×12-15; Leg press 3×12-15 @55kg |
+| Mer | Full Body B | Back squat 3×10-12 @40kg; Panca piana 3×10-12 @27.5kg; Rematore con bilanciere 3×10-12 @20kg; Plank 3×30-45 s; Leg press 3×10-12 @52.5kg |
 | Gio | Riposo | |
-| Ven | Full Body | Back squat 3×12-15 @42.5kg; Panca piana 3×12-15 @27.5kg; Rematore con bilanciere 3×12-15 @20kg; Plank 3×12-15; Leg press 3×12-15 @55kg |
+| Ven | Full Body A | Back squat 3×6-8 @45kg; Panca piana 3×6-8 @30kg; Rematore con bilanciere 3×10-12 @20kg; Plank 3×30-45 s; Leg press 3×10-12 @52.5kg |
 | Sab | Riposo | |
 | Dom | Riposo | |
 
@@ -1219,19 +1210,19 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Yogurt proteico 255g, Fiocchi d'avena 25g a secco, Mela 1 mela, Pistacchi 30g | 489 |
-| Pranzo 13:00 | Tonno al naturale 90g, Pasta di legumi 120g a secco, Bietole 120g, Pomodori 80g, Olio extravergine di oliva 15g | 683 |
-| Cena 20:00 | Sardine 180g a crudo, Riso lungo B 70g a secco, Broccoli 150g, Olio extravergine di oliva 10g | 613 |
+| Colazione 07:30 | Yogurt greco 2% 300g, Fiocchi d'avena 20g a secco, Mela 1 mela, Latte vaccino 180 ml | 482 |
+| Pranzo 13:00 | Tonno al naturale 160g, Patate 365g a crudo, Finocchi 150g, Olio extravergine di oliva 20g | 684 |
+| Cena 20:00 | Sardine 185g a crudo, Riso lungo B 75g a secco, Zucchine 150g, Olio extravergine di oliva 10g | 611 |
 
-Totale Lun: **1784 kcal** · P 133 g · C 171 g · G 57 g
+Totale Lun: **1775 kcal** · P 131 g · C 177 g · G 56 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Yogurt greco 0% 300g, Crema di riso 20g a secco, Frutti di bosco 225g, Burro di macadamia 100% 20g | 492 |
-| Pranzo 13:00 | Mozzarella light 115g, Albume d'uovo 135g a crudo, Pasta 85g a secco, Pomodori 80g, Rucola 30g, Olio extravergine di oliva 10g | 681 |
+| Colazione 07:30 | Ricotta magra 250g, Pan bauletto 70g, Marmellata light 20g | 470 |
+| Pranzo 13:00 | Petto di tacchino 175g a crudo, Pasta di riso 75g a secco, Bietole 150g, Olio extravergine di oliva 20g | 668 |
 | Cena 20:00 | _pasto libero_ | 603 |
 
-Totale Sab: **1173 kcal** · P 84 g · C 114 g · G 39 g
+Totale Sab: **1136 kcal** · P 81 g · C 113 g · G 38 g
 
 _Nessun piano di allenamento generato._
 
@@ -1244,7 +1235,7 @@ _Nessun piano di allenamento generato._
 
 ## Elena, 27 anni — intollerante al lattosio, 5 pasti
 
-**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 2 note)
+**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 1 note)
 
 - **Chi è:** Impiegata, 62 kg per 167 cm, vuole dimagrire un po’. Intollerante al lattosio (niente yogurt, latticini, whey), colazione e due spuntini.
 - **Cosa ci aspettiamo:** Senza latticini la dieta deve restare varia: colazioni e spuntini diversi ogni giorno, mai la stessa merenda per tutta la settimana.
@@ -1254,7 +1245,7 @@ _Nessun piano di allenamento generato._
 | Profilo | female · 27 anni · 167 cm · 62 kg → 58 kg · obiettivo `loseFat` |
 | Metabolismo basale / fabbisogno | 1368 / 1775 kcal |
 | Target calorico | **1420 kcal** (-20% sul fabbisogno) |
-| Macro | P 106 g (1.7 g/kg) · C 144 g · G 47 g |
+| Macro | P 106 g (1.7 g/kg) · C 143 g · G 47 g |
 | Idratazione | 2170 ml |
 | Durata piano | 3 mesi |
 
@@ -1264,33 +1255,33 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Albume d'uovo 155g a crudo, Avena istantanea 20g a secco, Mirtilli 150g, Burro di nocciole 100% 10g | 306 |
-| Spuntino mattina 10:30 | Banana 1 banana, Mandorle 10g | 171 |
-| Pranzo 13:00 | Tonno al naturale 75g, Pasta integrale 70g a secco, Spinaci 120g, Pomodori 80g, Olio extravergine di oliva 10g | 468 |
-| Spuntino pomeriggio 17:00 | Prosciutto crudo 30g, Pane di segale 30g, Rucola 30g | 156 |
-| Cena 20:00 | Merluzzo 115g a crudo, Riso venere 55g a secco, Broccoli 150g, Olio extravergine di oliva 10g | 425 |
+| Colazione 07:30 | Albume d'uovo 90g a crudo, Avena istantanea 60g a secco, Bevanda di soia non zuccherata 80 ml, Burro di arachidi 100% 10g | 350 |
+| Spuntino mattina 10:30 | Prosciutto crudo 30g, Pane integrale 40g | 168 |
+| Pranzo 13:00 | Petto di pollo 110g a crudo, Gallette di riso 7 gallette, Zucchine 150g, Olio extravergine di oliva 10g | 472 |
+| Spuntino pomeriggio 17:00 | Bevanda di soia non zuccherata 270 ml, Cereali da colazione senza zuccheri aggiunti 20g a secco | 163 |
+| Cena 20:00 | Sardine 85g a crudo, Pane di segale 90g, Broccoli 150g, Olio extravergine di oliva 5g | 442 |
 
-Totale Lun: **1527 kcal** · P 98 g · C 167 g · G 45 g
+Totale Lun: **1596 kcal** · P 106 g · C 173 g · G 48 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Bevanda di soia non zuccherata 300g, Crema di riso 20g a secco, Mela 1 mela, Pistacchi 10g | 308 |
-| Spuntino mattina 10:30 | Parmigiano Reggiano 20g, Pera 1 pera | 146 |
-| Pranzo 13:00 | Uova intere 1 uovo, Tonno al naturale 65g, Pasta di farro 55g a secco, Pomodori 80g, Lattuga 50g, Olio extravergine di oliva 5g | 405 |
-| Spuntino pomeriggio 17:00 | Edamame 80g, Gallette di farro 2 gallette | 172 |
-| Cena 20:00 | _pasto libero_ | 377 |
+| Colazione 07:30 | Uova intere 2 uova, Pane di segale 50g | 272 |
+| Spuntino mattina 10:30 | Arancia 1 arancia, Mandorle 10g | 121 |
+| Pranzo 13:00 | Vitello magro 130g a crudo, Patate 185g a crudo, Melanzane 150g, Olio extravergine di oliva 10g | 415 |
+| Spuntino pomeriggio 17:00 | Uova intere 1 uovo, Pane di segale 30g | 149 |
+| Cena 20:00 | _pasto libero_ | 366 |
 
-Totale Sab: **1030 kcal** · P 64 g · C 109 g · G 33 g
+Totale Sab: **956 kcal** · P 62 g · C 89 g · G 36 g
 
 **Mese 1 — Mese 1 · Sovraccarico progressivo**
 
 | Giorno | Seduta | Dettaglio |
 |---|---|---|
-| Lun | Push | Panca piana 4×8-12 @30kg; Military press 4×8-12 @22.5kg; Dip alle parallele 4×8-12; Alzate laterali 4×8-12 @3kg; Chest press macchina 4×8-12 |
+| Lun | Push | Panca piana 4×6-8 @32.5kg; Military press 4×6-8 @22.5kg; Dip alle parallele 3×8-12; Alzate laterali 3×12-15 @2.5kg; Chest press macchina 3×8-12 |
 | Mar | Riposo | |
-| Mer | Pull | Stacco da terra 4×8-12 @55kg; Trazioni zavorrate 4×8-12; Rematore con bilanciere 4×8-12 @25kg; Curl bicipiti 4×8-12 @9kg; Lat machine 4×8-12 |
+| Mer | Pull | Stacco da terra 4×6-8 @57.5kg; Trazioni zavorrate 4×6-8; Rematore con bilanciere 3×8-12 @25kg; Curl bicipiti 3×12-15 @8kg; Lat machine 3×8-12 |
 | Gio | Riposo | |
-| Ven | Legs | Back squat 4×8-12 @47.5kg; Romanian deadlift 4×8-12 @37.5kg; Leg press 4×8-12 @62.5kg; Affondi 4×8-12 @9kg; Hip thrust 4×8-12 @30kg |
+| Ven | Legs | Back squat 4×6-8 @50kg; Romanian deadlift 4×6-8 @40kg; Leg press 3×8-12 @60kg; Affondi 3×8-12 @9kg; Hip thrust 3×8-12 @27.5kg |
 | Sab | Riposo | |
 | Dom | Riposo | |
 
@@ -1298,24 +1289,23 @@ Totale Sab: **1030 kcal** · P 64 g · C 109 g · G 33 g
 
 | Giorno | Seduta | Dettaglio |
 |---|---|---|
-| Lun | Push | Panca piana 4×8-12 @30kg; Military press 4×8-12 @22.5kg; Dip alle parallele 4×8-12; Alzate laterali 4×8-12 @3kg; Chest press macchina 4×8-12 |
+| Lun | Push | Panca piana 3×6-8 @32.5kg; Military press 3×6-8 @25kg; Dip alle parallele 3×8-10; Alzate laterali 3×10-12 @3kg; Chest press macchina 3×8-10 |
 | Mar | Riposo | |
-| Mer | Pull | Stacco da terra 4×8-12 @57.5kg; Trazioni zavorrate 4×8-12; Rematore con bilanciere 4×8-12 @25kg; Curl bicipiti 4×8-12 @9kg; Lat machine 4×8-12 |
+| Mer | Pull | Stacco da terra 3×6-8 @60kg; Trazioni zavorrate 3×6-8; Rematore con bilanciere 3×8-10 @25kg; Curl bicipiti 3×10-12 @9kg; Lat machine 3×8-10 |
 | Gio | Riposo | |
-| Ven | Legs | Back squat 4×8-12 @50kg; Romanian deadlift 4×8-12 @40kg; Leg press 4×8-12 @65kg; Affondi 4×8-12 @9kg; Hip thrust 4×8-12 @30kg |
+| Ven | Legs | Back squat 3×6-8 @52.5kg; Romanian deadlift 3×6-8 @40kg; Leg press 3×8-10 @65kg; Affondi 3×8-10 @9kg; Hip thrust 3×8-10 @30kg |
 | Sab | Riposo | |
 | Dom | Riposo | |
 
 **Controlli**
 
 - ℹ️ `D14` Dal mese 2 in poi il target è identico (1420 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
-- ℹ️ `Q6` Mer (mese 2): una fonte proteica compare tre volte nel giorno
 
 ---
 
 ## Davide, 45 anni — niente uova né pesce
 
-**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 1 note)
+**Esito:** ⚠️ SUPERATO CON AVVISI (0 errori, 1 avvisi, 1 note)
 
 - **Chi è:** Commerciale, 84 kg per 178 cm, vuole dimagrire. Allergico alle uova e non mangia pesce; 4 pasti.
 - **Cosa ci aspettiamo:** Con uova e pesce esclusi pranzi, cene e colazioni restano vari (non sempre pollo e pasta), senza ripetere lo stesso pasto più di 3 volte a settimana.
@@ -1335,31 +1325,31 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Yogurt proteico 270g, Cereali integrali 30g a secco, Mela 1 mela, Nocciole 20g | 475 |
-| Pranzo 13:00 | Petto di pollo 150g a crudo, Cous cous 85g a secco, Carote 80g, Pomodori 80g, Olio extravergine di oliva 15g | 648 |
-| Spuntino pomeriggio 17:00 | Yogurt greco 0% 125g, Pera 1 pera, Anacardi 15g | 229 |
-| Cena 20:00 | Hamburger di pollo magro 170g, Patate 330g a crudo, Lattuga 50g, Pomodori 80g, Olio extravergine di oliva 10g | 603 |
+| Colazione 07:30 | Yogurt greco 2% 225g, Fiocchi d'avena 45g a secco, Mirtilli 75g, Latte vaccino 180 ml | 487 |
+| Pranzo 13:00 | Petto di pollo 165g a crudo, Pasta di mais 95g a secco, Finocchi 150g, Olio extravergine di oliva 15g | 679 |
+| Spuntino pomeriggio 17:00 | Prosciutto crudo 40g, Pan bauletto 50g | 226 |
+| Cena 20:00 | Hamburger di pollo magro 170g, Patate 340g a crudo, Carote 100g, Olio extravergine di oliva 10g | 626 |
 
-Totale Lun: **1955 kcal** · P 137 g · C 207 g · G 58 g
+Totale Lun: **2016 kcal** · P 134 g · C 223 g · G 60 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Skyr 255g, Fiocchi d'avena 20g a secco, Mela 1 mela, Noci di macadamia 15g | 431 |
-| Pranzo 13:00 | Petto di tacchino 160g a crudo, Riso venere 70g a secco, Melanzane 150g, Olio extravergine di oliva 15g | 586 |
-| Spuntino pomeriggio 17:00 | Yogurt magro 270g, Miele 10g, Noci 10g | 207 |
-| Cena 20:00 | _pasto libero_ | 532 |
+| Colazione 07:30 | Bevanda proteica 1 bottiglietta, Cereali integrali 20g a secco, Frutti di bosco 175g | 347 |
+| Pranzo 13:00 | Petto di tacchino 140g a crudo, Pane integrale 110g, Bietole 150g, Olio extravergine di oliva 15g | 588 |
+| Spuntino pomeriggio 17:00 | Pane integrale 40g, Marmellata light 20g | 129 |
+| Cena 20:00 | _pasto libero_ | 517 |
 
-Totale Sab: **1223 kcal** · P 90 g · C 118 g · G 40 g
+Totale Sab: **1063 kcal** · P 82 g · C 115 g · G 25 g
 
 **Mese 1 — Mese 1 · Sovraccarico progressivo**
 
 | Giorno | Seduta | Dettaglio |
 |---|---|---|
-| Lun | Push | Panca piana 4×8-12 @42.5kg; Military press 4×8-12 @30kg; Dip alle parallele 4×8-12; Alzate laterali 4×8-12 @4kg; Chest press macchina 4×8-12 |
+| Lun | Push | Panca piana 4×6-8 @45kg; Military press 4×6-8 @32.5kg; Dip alle parallele 3×8-12; Alzate laterali 3×12-15 @3.5kg; Chest press macchina 3×8-12 |
 | Mar | Riposo | |
-| Mer | Pull | Stacco da terra 4×8-12 @75kg; Trazioni zavorrate 4×8-12; Rematore con bilanciere 4×8-12 @32.5kg; Curl bicipiti 4×8-12 @13kg; Lat machine 4×8-12 |
+| Mer | Pull | Stacco da terra 4×6-8 @80kg; Trazioni zavorrate 4×6-8; Rematore con bilanciere 3×8-12 @30kg; Curl bicipiti 3×12-15 @12kg; Lat machine 3×8-12 |
 | Gio | Riposo | |
-| Ven | Legs | Back squat 4×8-12 @62.5kg; Romanian deadlift 4×8-12 @50kg; Leg press 4×8-12 @85kg; Affondi 4×8-12 @13kg; Hip thrust 4×8-12 @42.5kg |
+| Ven | Legs | Back squat 4×6-8 @65kg; Romanian deadlift 4×6-8 @52.5kg; Leg press 3×8-12 @80kg; Affondi 3×8-12 @12kg; Hip thrust 3×8-12 @40kg |
 | Sab | Riposo | |
 | Dom | Riposo | |
 
@@ -1367,16 +1357,17 @@ Totale Sab: **1223 kcal** · P 90 g · C 118 g · G 40 g
 
 | Giorno | Seduta | Dettaglio |
 |---|---|---|
-| Lun | Push | Panca piana 5×8-12 @45kg; Military press 5×8-12 @32.5kg; Alzate laterali 5×8-12 @4.5kg; Chest press macchina 5×8-12; Push-up 5×8-12 |
+| Lun | Push | Panca piana 3×6-8 @47.5kg; Military press 3×6-8 @35kg; Alzate laterali 3×10-12 @4kg; Chest press macchina 3×8-10; Push-up 3×8-10 |
 | Mar | Riposo | |
-| Mer | Pull | Stacco da terra 5×8-12 @80kg; Trazioni zavorrate 5×8-12; Curl bicipiti 5×8-12 @14kg; Lat machine 5×8-12; Rematore con manubrio 5×8-12 @11kg |
+| Mer | Pull | Stacco da terra 3×6-8 @85kg; Trazioni zavorrate 3×6-8; Curl bicipiti 3×10-12 @13kg; Lat machine 3×8-10; Rematore con manubrio 3×8-10 @11kg |
 | Gio | Riposo | |
-| Ven | Legs | Back squat 5×8-12 @67.5kg; Romanian deadlift 5×8-12 @55kg; Affondi 5×8-12 @14kg; Hip thrust 5×8-12 @45kg; Leg curl machine 5×8-12 |
+| Ven | Legs | Back squat 3×6-8 @70kg; Romanian deadlift 3×6-8 @57.5kg; Affondi 3×8-10 @14kg; Hip thrust 3×8-10 @45kg; Leg curl machine 3×10-12 |
 | Sab | Riposo | |
 | Dom | Riposo | |
 
 **Controlli**
 
+- ⚠️ `D5` Grassi: i pasti danno in media il 88% del target (giorno peggiore: 29% di scarto)
 - ℹ️ `D14` Dal mese 2 in poi il target è identico (1805 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
 
 ---
@@ -1393,7 +1384,7 @@ Totale Sab: **1223 kcal** · P 90 g · C 118 g · G 40 g
 | Profilo | female · 36 anni · 170 cm · 66 kg → 66 kg · obiettivo `maintainImprove` |
 | Metabolismo basale / fabbisogno | 1382 / 1798 kcal |
 | Target calorico | **1798 kcal** (0% sul fabbisogno) |
-| Macro | P 106 g (1.6 g/kg) · C 209 g · G 60 g |
+| Macro | P 106 g (1.6 g/kg) · C 208 g · G 60 g |
 | Idratazione | 2310 ml |
 | Durata piano | 4 mesi |
 
@@ -1403,31 +1394,31 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Yogurt proteico 185g, Fiocchi d'avena 20g a secco, Mela 2 mele, Nocciole 20g | 472 |
-| Pranzo 13:00 | Albume d'uovo 170g a crudo, Pane integrale 160g, Bietole 150g, Olio extravergine di oliva 15g | 647 |
-| Spuntino pomeriggio 17:00 | Skyr 100g, Pesca 2 pesche | 158 |
-| Cena 20:00 | Trota 115g a crudo, Riso basmati 85g a secco, Broccoli 150g, Olio extravergine di oliva 10g | 588 |
+| Colazione 07:30 | Albume d'uovo 140g a crudo, Pane di segale 120g, Olio extravergine di oliva 10g | 479 |
+| Pranzo 13:00 | Petto di pollo 115g a crudo, Gallette di mais 10 gallette, Finocchi 150g, Olio extravergine di oliva 15g | 665 |
+| Spuntino pomeriggio 17:00 | Prosciutto crudo 35g, Pane integrale 60g | 228 |
+| Cena 20:00 | Trota 130g a crudo, Pasta di mais 85g a secco, Carote 100g, Olio extravergine di oliva 10g | 606 |
 
-Totale Lun: **1863 kcal** · P 108 g · C 223 g · G 52 g
+Totale Lun: **1978 kcal** · P 108 g · C 241 g · G 59 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Skyr 170g, Crema di riso 35g a secco, Frutti di bosco 150g, Noci 20g | 434 |
-| Pranzo 13:00 | Ricotta magra 170g, Pasta 75g a secco, Spinaci 120g, Carciofi 120g, Olio extravergine di oliva 10g | 600 |
-| Spuntino pomeriggio 17:00 | Prosciutto crudo 35g, Pane integrale 50g, Rucola 30g | 212 |
-| Cena 20:00 | _pasto libero_ | 535 |
+| Colazione 07:30 | Ricotta magra 215g, Pan bauletto 60g, Marmellata light 20g | 407 |
+| Pranzo 13:00 | Manzo magro 110g a crudo, Pasta 80g a secco, Bietole 150g, Olio extravergine di oliva 15g | 584 |
+| Spuntino pomeriggio 17:00 | Yogurt greco 2% 155g, Mela 1 mela | 189 |
+| Cena 20:00 | _pasto libero_ | 523 |
 
-Totale Sab: **1246 kcal** · P 73 g · C 135 g · G 41 g
+Totale Sab: **1179 kcal** · P 77 g · C 129 g · G 37 g
 
 **Mese 1 — Mese 1 · Sovraccarico progressivo**
 
 | Giorno | Seduta | Dettaglio |
 |---|---|---|
-| Lun | Push | Panca piana 4×8-12 @32.5kg; Military press 4×8-12 @22.5kg; Dip alle parallele 4×8-12; Alzate laterali 4×8-12 @3.5kg; Chest press macchina 4×8-12 |
+| Lun | Push | Panca piana 4×6-8 @35kg; Military press 4×6-8 @22.5kg; Dip alle parallele 3×8-12; Alzate laterali 3×12-15 @3kg; Chest press macchina 3×8-12 |
 | Mar | Riposo | |
-| Mer | Pull | Stacco da terra 4×8-12 @60kg; Trazioni zavorrate 4×8-12; Rematore con bilanciere 4×8-12 @27.5kg; Curl bicipiti 4×8-12 @10kg; Lat machine 4×8-12 |
+| Mer | Pull | Stacco da terra 4×6-8 @62.5kg; Trazioni zavorrate 4×6-8; Rematore con bilanciere 3×8-12 @25kg; Curl bicipiti 3×12-15 @9kg; Lat machine 3×8-12 |
 | Gio | Riposo | |
-| Ven | Legs | Back squat 4×8-12 @50kg; Romanian deadlift 4×8-12 @40kg; Leg press 4×8-12 @65kg; Affondi 4×8-12 @10kg; Hip thrust 4×8-12 @32.5kg |
+| Ven | Legs | Back squat 4×6-8 @52.5kg; Romanian deadlift 4×6-8 @42.5kg; Leg press 3×8-12 @62.5kg; Affondi 3×8-12 @10kg; Hip thrust 3×8-12 @30kg |
 | Sab | Riposo | |
 | Dom | Riposo | |
 
@@ -1435,11 +1426,11 @@ Totale Sab: **1246 kcal** · P 73 g · C 135 g · G 41 g
 
 | Giorno | Seduta | Dettaglio |
 |---|---|---|
-| Lun | Push | Panca piana 5×8-12 @35kg; Military press 5×8-12 @25kg; Alzate laterali 5×8-12 @4kg; Chest press macchina 5×8-12; Push-up 5×8-12 |
+| Lun | Push | Panca piana 3×6-8 @37.5kg; Military press 3×6-8 @25kg; Alzate laterali 3×10-12 @3.5kg; Chest press macchina 3×8-10; Push-up 3×8-10 |
 | Mar | Riposo | |
-| Mer | Pull | Stacco da terra 5×8-12 @65kg; Trazioni zavorrate 5×8-12; Curl bicipiti 5×8-12 @11kg; Lat machine 5×8-12; Rematore con manubrio 5×8-12 @9kg |
+| Mer | Pull | Stacco da terra 3×6-8 @67.5kg; Trazioni zavorrate 3×6-8; Curl bicipiti 3×10-12 @10kg; Lat machine 3×8-10; Rematore con manubrio 3×8-10 @9kg |
 | Gio | Riposo | |
-| Ven | Legs | Back squat 5×8-12 @55kg; Romanian deadlift 5×8-12 @42.5kg; Affondi 5×8-12 @11kg; Hip thrust 5×8-12 @35kg; Leg curl machine 5×8-12 |
+| Ven | Legs | Back squat 3×6-8 @57.5kg; Romanian deadlift 3×6-8 @45kg; Affondi 3×8-10 @11kg; Hip thrust 3×8-10 @35kg; Leg curl machine 3×10-12 |
 | Sab | Riposo | |
 | Dom | Riposo | |
 
@@ -1461,7 +1452,7 @@ Totale Sab: **1246 kcal** · P 73 g · C 135 g · G 41 g
 | Profilo | female · 30 anni · 163 cm · 58 kg → 56 kg · obiettivo `maintainImprove` |
 | Metabolismo basale / fabbisogno | 1288 / 1670 kcal |
 | Target calorico | **1670 kcal** (0% sul fabbisogno) |
-| Macro | P 93 g (1.6 g/kg) · C 199 g · G 56 g |
+| Macro | P 93 g (1.6 g/kg) · C 198 g · G 56 g |
 | Idratazione | 2030 ml |
 | Durata piano | 4 mesi |
 
@@ -1471,31 +1462,31 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Yogurt magro 300g, Avena istantanea 35g a secco, Pera 1 pera, Pistacchi 10g, Nocciole 10g | 439 |
-| Pranzo 13:00 | Tonno al naturale 95g, Pasta di mais 90g a secco, Pomodori 80g, Lattuga 50g, Olio extravergine di oliva 15g | 591 |
-| Spuntino pomeriggio 17:00 | Yogurt greco 2% 100g, Mela 1 mela, Anacardi 10g | 210 |
-| Cena 20:00 | Trota 110g a crudo, Patate dolci 305g a crudo, Fagiolini 150g, Olio extravergine di oliva 10g | 562 |
+| Colazione 07:30 | Yogurt greco 2% 100g, Avena istantanea 65g a secco, Mirtilli 50g, Latte vaccino 160 ml | 443 |
+| Pranzo 13:00 | Petto di pollo 100g a crudo, Pasta di mais 95g a secco, Finocchi 150g, Olio extravergine di oliva 15g | 610 |
+| Spuntino pomeriggio 17:00 | Prosciutto crudo 30g, Pan bauletto 50g | 203 |
+| Cena 20:00 | Trota 115g a crudo, Patate dolci 315g a crudo, Carote 100g, Olio extravergine di oliva 10g | 574 |
 
-Totale Lun: **1801 kcal** · P 94 g · C 217 g · G 55 g
+Totale Lun: **1828 kcal** · P 95 g · C 227 g · G 54 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Skyr 145g, Gallette di farro 2 gallette, Arancia 2 arance, Noci di macadamia 15g | 407 |
-| Pranzo 13:00 | Seitan 90g, Riso integrale 65g a secco, Broccoli 120g, Peperoni 120g, Olio extravergine di oliva 15g | 561 |
-| Spuntino pomeriggio 17:00 | Fagioli borlotti 50g, Gallette di mais 2 gallette, Semi di sesamo 10g | 198 |
-| Cena 20:00 | _pasto libero_ | 498 |
+| Colazione 07:30 | Bevanda proteica 1 bottiglietta, Cereali integrali 25g a secco, Kiwi 2 kiwi | 364 |
+| Pranzo 13:00 | Manzo magro 110g a crudo, Riso lungo B 70g a secco, Bietole 150g, Olio extravergine di oliva 15g | 545 |
+| Spuntino pomeriggio 17:00 | Yogurt greco 0% 100g, Pesca 2 pesche | 153 |
+| Cena 20:00 | _pasto libero_ | 487 |
 
-Totale Sab: **1166 kcal** · P 62 g · C 134 g · G 37 g
+Totale Sab: **1060 kcal** · P 77 g · C 123 g · G 26 g
 
 **Mese 1 — Mese 1 · Sovraccarico progressivo**
 
 | Giorno | Seduta | Dettaglio |
 |---|---|---|
-| Lun | Push | Panca piana 4×8-12 @30kg; Military press 4×8-12 @20kg; Dip alle parallele 4×8-12; Alzate laterali 4×8-12 @3kg; Chest press macchina 4×8-12 |
+| Lun | Push | Panca piana 4×6-8 @32.5kg; Military press 4×6-8 @20kg; Dip alle parallele 3×8-12; Alzate laterali 3×12-15 @2.5kg; Chest press macchina 3×8-12 |
 | Mar | Riposo | |
-| Mer | Pull | Stacco da terra 4×8-12 @52.5kg; Trazioni zavorrate 4×8-12; Rematore con bilanciere 4×8-12 @22.5kg; Curl bicipiti 4×8-12 @9kg; Lat machine 4×8-12 |
+| Mer | Pull | Stacco da terra 4×6-8 @55kg; Trazioni zavorrate 4×6-8; Rematore con bilanciere 3×8-12 @22.5kg; Curl bicipiti 3×12-15 @8kg; Lat machine 3×8-12 |
 | Gio | Riposo | |
-| Ven | Legs | Back squat 4×8-12 @42.5kg; Romanian deadlift 4×8-12 @35kg; Leg press 4×8-12 @57.5kg; Affondi 4×8-12 @9kg; Hip thrust 4×8-12 @30kg |
+| Ven | Legs | Back squat 4×6-8 @45kg; Romanian deadlift 4×6-8 @37.5kg; Leg press 3×8-12 @55kg; Affondi 3×8-12 @9kg; Hip thrust 3×8-12 @27.5kg |
 | Sab | Riposo | |
 | Dom | Riposo | |
 
@@ -1503,11 +1494,11 @@ Totale Sab: **1166 kcal** · P 62 g · C 134 g · G 37 g
 
 | Giorno | Seduta | Dettaglio |
 |---|---|---|
-| Lun | Push | Panca piana 5×8-12 @32.5kg; Military press 5×8-12 @22.5kg; Alzate laterali 5×8-12 @3kg; Chest press macchina 5×8-12; Push-up 5×8-12 |
+| Lun | Push | Panca piana 3×6-8 @35kg; Military press 3×6-8 @22.5kg; Alzate laterali 3×10-12 @3kg; Chest press macchina 3×8-10; Push-up 3×8-10 |
 | Mar | Riposo | |
-| Mer | Pull | Stacco da terra 5×8-12 @57.5kg; Trazioni zavorrate 5×8-12; Curl bicipiti 5×8-12 @10kg; Lat machine 5×8-12; Rematore con manubrio 5×8-12 @8kg |
+| Mer | Pull | Stacco da terra 3×6-8 @60kg; Trazioni zavorrate 3×6-8; Curl bicipiti 3×10-12 @9kg; Lat machine 3×8-10; Rematore con manubrio 3×8-10 @8kg |
 | Gio | Riposo | |
-| Ven | Legs | Back squat 5×8-12 @45kg; Romanian deadlift 5×8-12 @37.5kg; Affondi 5×8-12 @10kg; Hip thrust 5×8-12 @32.5kg; Leg curl machine 5×8-12 |
+| Ven | Legs | Back squat 3×6-8 @47.5kg; Romanian deadlift 3×6-8 @40kg; Affondi 3×8-10 @10kg; Hip thrust 3×8-10 @32.5kg; Leg curl machine 3×10-12 |
 | Sab | Riposo | |
 | Dom | Riposo | |
 
@@ -1539,29 +1530,29 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Yogurt proteico 280g, Fiocchi d'avena 25g a secco, Pera 2 pere, Nocciole 20g | 522 |
-| Pranzo 13:00 | Tonno al naturale 95g, Pasta di legumi 130g a secco, Bietole 120g, Pomodori 80g, Olio extravergine di oliva 15g | 722 |
-| Cena 20:00 | Sardine 180g a crudo, Riso rosso 95g a secco, Zucchine 150g, Olio extravergine di oliva 10g | 681 |
+| Colazione 07:30 | Albume d'uovo 165g a crudo, Avena istantanea 90g a secco, Latte vaccino 140 ml, Burro di arachidi 100% 10g | 561 |
+| Pranzo 13:00 | Tonno al naturale 160g, Pasta di mais 105g a secco, Finocchi 150g, Olio extravergine di oliva 20g | 763 |
+| Cena 20:00 | Sardine 170g a crudo, Gallette di farro 10 gallette, Zucchine 150g, Olio extravergine di oliva 10g | 708 |
 
-Totale Lun: **1925 kcal** · P 138 g · C 197 g · G 57 g
+Totale Lun: **2032 kcal** · P 134 g · C 224 g · G 62 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Yogurt greco 0% 280g, Crema di riso 20g a secco, Frutti di bosco 150g, Burro di mandorle 100% 30g | 494 |
-| Pranzo 13:00 | Ricotta magra 170g, Tofu 210g, Pasta 65g a secco, Spinaci 120g, Carciofi 120g, Olio extravergine di oliva 5g | 693 |
-| Cena 20:00 | _pasto libero_ | 607 |
+| Colazione 07:30 | Uova intere 3 uova, Pane di segale 80g, Avocado 30g | 470 |
+| Pranzo 13:00 | Mozzarella light 150g, Pan bauletto 110g, Bietole 150g, Olio extravergine di oliva 5g | 634 |
+| Cena 20:00 | _pasto libero_ | 588 |
 
-Totale Sab: **1186 kcal** · P 86 g · C 105 g · G 42 g
+Totale Sab: **1104 kcal** · P 68 g · C 99 g · G 46 g
 
 **Mese 1 — Mese 1 · Sovraccarico progressivo**
 
 | Giorno | Seduta | Dettaglio |
 |---|---|---|
-| Lun | Push | Panca piana 4×8-12 @45kg; Military press 4×8-12 @30kg; Dip alle parallele 4×8-12; Alzate laterali 4×8-12 @4.5kg; Chest press macchina 4×8-12 |
+| Lun | Push | Panca piana 4×6-8 @47.5kg; Military press 4×6-8 @32.5kg; Dip alle parallele 3×8-12; Alzate laterali 3×12-15 @4kg; Chest press macchina 3×8-12 |
 | Mar | Riposo | |
-| Mer | Pull | Stacco da terra 4×8-12 @80kg; Trazioni zavorrate 4×8-12; Rematore con bilanciere 4×8-12 @35kg; Curl bicipiti 4×8-12 @13kg; Lat machine 4×8-12 |
+| Mer | Pull | Stacco da terra 4×6-8 @85kg; Trazioni zavorrate 4×6-8; Rematore con bilanciere 3×8-12 @32.5kg; Curl bicipiti 3×12-15 @12kg; Lat machine 3×8-12 |
 | Gio | Riposo | |
-| Ven | Legs | Back squat 4×8-12 @65kg; Romanian deadlift 4×8-12 @52.5kg; Leg press 4×8-12 @87.5kg; Affondi 4×8-12 @13kg; Hip thrust 4×8-12 @45kg |
+| Ven | Legs | Back squat 4×6-8 @67.5kg; Romanian deadlift 4×6-8 @55kg; Leg press 3×8-12 @82.5kg; Affondi 3×8-12 @12kg; Hip thrust 3×8-12 @42.5kg |
 | Sab | Riposo | |
 | Dom | Riposo | |
 
@@ -1569,11 +1560,11 @@ Totale Sab: **1186 kcal** · P 86 g · C 105 g · G 42 g
 
 | Giorno | Seduta | Dettaglio |
 |---|---|---|
-| Lun | Push | Panca piana 5×8-12 @47.5kg; Military press 5×8-12 @32.5kg; Alzate laterali 5×8-12 @5kg; Chest press macchina 5×8-12; Push-up 5×8-12 |
+| Lun | Push | Panca piana 3×6-8 @50kg; Military press 3×6-8 @35kg; Alzate laterali 3×10-12 @4.5kg; Chest press macchina 3×8-10; Push-up 3×8-10 |
 | Mar | Riposo | |
-| Mer | Pull | Stacco da terra 5×8-12 @87.5kg; Trazioni zavorrate 5×8-12; Curl bicipiti 5×8-12 @14kg; Lat machine 5×8-12; Rematore con manubrio 5×8-12 @12kg |
+| Mer | Pull | Stacco da terra 3×6-8 @90kg; Trazioni zavorrate 3×6-8; Curl bicipiti 3×10-12 @13kg; Lat machine 3×8-10; Rematore con manubrio 3×8-10 @12kg |
 | Gio | Riposo | |
-| Ven | Legs | Back squat 5×8-12 @70kg; Romanian deadlift 5×8-12 @57.5kg; Affondi 5×8-12 @14kg; Hip thrust 5×8-12 @47.5kg; Leg curl machine 5×8-12 |
+| Ven | Legs | Back squat 3×6-8 @75kg; Romanian deadlift 3×6-8 @60kg; Affondi 3×8-10 @14kg; Hip thrust 3×8-10 @47.5kg; Leg curl machine 3×10-12 |
 | Sab | Riposo | |
 | Dom | Riposo | |
 
@@ -1605,31 +1596,31 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Uova intere 2 uova, Fiocchi d'avena 65g a secco, Mela 1 mela | 460 |
-| Pranzo 13:00 | Ceci 220g, Quinoa 45g a secco, Broccoli 120g, Spinaci 120g, Olio extravergine di oliva 10g | 666 |
-| Spuntino pomeriggio 17:00 | Ricotta magra 75g, Gallette di riso 2 gallette, Mirtilli 75g | 189 |
-| Cena 20:00 | Petto di tacchino 100g a crudo, Patate 365g a crudo, Peperoni 150g, Olio extravergine di oliva 15g | 584 |
+| Colazione 07:30 | Yogurt greco 2% 100g, Avena istantanea 70g a secco, Mirtilli 50g, Latte vaccino 170 ml | 468 |
+| Pranzo 13:00 | Petto di tacchino 100g a crudo, Riso integrale 100g a secco, Broccoli 150g, Olio extravergine di oliva 15g | 653 |
+| Spuntino pomeriggio 17:00 | Prosciutto crudo 30g, Pane integrale 60g | 217 |
+| Cena 20:00 | Merluzzo 100g a crudo, Pasta 95g a secco, Peperoni 150g, Olio extravergine di oliva 15g | 592 |
 
-Totale Lun: **1899 kcal** · P 96 g · C 230 g · G 55 g
+Totale Lun: **1929 kcal** · P 103 g · C 241 g · G 56 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Mozzarella 65g, Fesa di tacchino affettata 30g, Pane di segale 50g, Banana 1 banana | 428 |
-| Pranzo 13:00 | Petto di tacchino 105g a crudo, Riso integrale 85g a secco, Melanzane 150g, Olio extravergine di oliva 15g | 587 |
-| Spuntino pomeriggio 17:00 | Ceci 50g, Gallette di farro 2 gallette, Semi di sesamo 10g | 212 |
-| Cena 20:00 | _pasto libero_ | 526 |
+| Colazione 07:30 | Albume d'uovo 130g a crudo, Pane integrale 100g, Olio extravergine di oliva 10g | 401 |
+| Pranzo 13:00 | Hamburger di manzo magro 100g, Pasta integrale 90g a secco, Finocchi 150g, Olio extravergine di oliva 10g | 586 |
+| Spuntino pomeriggio 17:00 | Yogurt greco 0% 100g, Fiocchi d'avena 35g a secco | 188 |
+| Cena 20:00 | _pasto libero_ | 514 |
 
-Totale Sab: **1227 kcal** · P 64 g · C 144 g · G 40 g
+Totale Sab: **1175 kcal** · P 70 g · C 131 g · G 36 g
 
 **Mese 1 — Mese 1 · Sovraccarico progressivo**
 
 | Giorno | Seduta | Dettaglio |
 |---|---|---|
-| Lun | Push | Panca piana 4×8-12 @30kg; Military press 4×8-12 @20kg; Dip alle parallele 4×8-12; Alzate laterali 4×8-12 @3kg; Chest press macchina 4×8-12 |
+| Lun | Push | Panca piana 4×6-8 @32.5kg; Military press 4×6-8 @20kg; Dip alle parallele 3×8-12; Alzate laterali 3×12-15 @2.5kg; Chest press macchina 3×8-12 |
 | Mar | Riposo | |
-| Mer | Pull | Stacco da terra 4×8-12 @55kg; Trazioni zavorrate 4×8-12; Rematore con bilanciere 4×8-12 @25kg; Curl bicipiti 4×8-12 @9kg; Lat machine 4×8-12 |
+| Mer | Pull | Stacco da terra 4×6-8 @57.5kg; Trazioni zavorrate 4×6-8; Rematore con bilanciere 3×8-12 @25kg; Curl bicipiti 3×12-15 @8kg; Lat machine 3×8-12 |
 | Gio | Riposo | |
-| Ven | Legs | Back squat 4×8-12 @45kg; Romanian deadlift 4×8-12 @35kg; Leg press 4×8-12 @60kg; Affondi 4×8-12 @9kg; Hip thrust 4×8-12 @30kg |
+| Ven | Legs | Back squat 4×6-8 @47.5kg; Romanian deadlift 4×6-8 @37.5kg; Leg press 3×8-12 @57.5kg; Affondi 3×8-12 @9kg; Hip thrust 3×8-12 @27.5kg |
 | Sab | Riposo | |
 | Dom | Riposo | |
 
@@ -1637,11 +1628,11 @@ Totale Sab: **1227 kcal** · P 64 g · C 144 g · G 40 g
 
 | Giorno | Seduta | Dettaglio |
 |---|---|---|
-| Lun | Push | Panca piana 5×8-12 @32.5kg; Military press 5×8-12 @22.5kg; Alzate laterali 5×8-12 @3kg; Chest press macchina 5×8-12; Push-up 5×8-12 |
+| Lun | Push | Panca piana 3×6-8 @35kg; Military press 3×6-8 @22.5kg; Alzate laterali 3×10-12 @3kg; Chest press macchina 3×8-10; Push-up 3×8-10 |
 | Mar | Riposo | |
-| Mer | Pull | Stacco da terra 5×8-12 @60kg; Trazioni zavorrate 5×8-12; Curl bicipiti 5×8-12 @10kg; Lat machine 5×8-12; Rematore con manubrio 5×8-12 @8kg |
+| Mer | Pull | Stacco da terra 3×6-8 @62.5kg; Trazioni zavorrate 3×6-8; Curl bicipiti 3×10-12 @9kg; Lat machine 3×8-10; Rematore con manubrio 3×8-10 @8kg |
 | Gio | Riposo | |
-| Ven | Legs | Back squat 5×8-12 @47.5kg; Romanian deadlift 5×8-12 @37.5kg; Affondi 5×8-12 @10kg; Hip thrust 5×8-12 @32.5kg; Leg curl machine 5×8-12 |
+| Ven | Legs | Back squat 3×6-8 @50kg; Romanian deadlift 3×6-8 @40kg; Affondi 3×8-10 @10kg; Hip thrust 3×8-10 @32.5kg; Leg curl machine 3×10-12 |
 | Sab | Riposo | |
 | Dom | Riposo | |
 
