@@ -33,6 +33,8 @@ export type Dish = {
   sides?: string[][];
   spread?: string[];
   fat?: string[];
+  /** Nuts added only for who picked them in the questionnaire (a spoonful on yogurt or porridge). */
+  fatIfPreferred?: string[];
   oil?: boolean;
   aromas: string[];
   portable?: boolean;
@@ -43,6 +45,8 @@ export type Dish = {
   refKcal?: number;
   /** The fat is named in the dish (avocado toast): it is always in the meal, never rounded away. */
   fatRequired?: boolean;
+  /** A quick lunch (bread, rice cakes): at dinner the other primi come first (pasta, rice, potatoes, legumes). */
+  rareAtDinner?: boolean;
   /** Not one of the standard meals: used only when the person's exclusions leave too few of them for a varied week. */
   reserve?: boolean;
 };
@@ -58,7 +62,8 @@ export const PRIMI = {
   pasta: ['Pasta', 'Pasta integrale'],
   riso: ['Riso', 'Riso basmati', 'Riso integrale'],
   patate: ['Patate', 'Patate dolci'],
-  pane: ['Pane integrale', 'Pane di segale', 'Pan bauletto'],
+  // pan bauletto is a breakfast and snack bread: never a primo at lunch or dinner
+  pane: ['Pane integrale', 'Pane di segale'],
   gallette: ['Gallette di riso', 'Gallette di mais', 'Gallette di farro'],
   legumi: ['Ceci', 'Fagioli cannellini', 'Lenticchie', 'Fagioli borlotti', 'Fagioli'],
 };
@@ -91,6 +96,7 @@ const BREAD = ['Pane integrale', 'Pane di segale', 'Pan bauletto'];
 const GREEK = ['Yogurt greco 0%', 'Yogurt greco 2%'];
 const MILK = ['Latte vaccino', 'Latte senza lattosio', 'Bevanda di soia non zuccherata'];
 const FRUIT = ['Banana', 'Mela', 'Frutti di bosco', 'Kiwi', 'Pera', 'Arancia', 'Fragole', 'Pesca'];
+const NUTS = ['Mandorle', 'Noci', 'Nocciole', 'Pistacchi'];
 const AROMI_CARNE = ['Limone', 'Rosmarino', 'Pepe nero'];
 
 const main = (id: string, base: string[], extra: Partial<Dish> = {}): Dish => ({
@@ -108,21 +114,21 @@ const main = (id: string, base: string[], extra: Partial<Dish> = {}): Dish => ({
 
 export const DISHES: Dish[] = [
   // =============================================================== COLAZIONE
-  { id: 'PL001', kinds: BF, name: "Porridge d'avena, {protein} e {s1}", base: OATS, protein: GREEK, sides: [['Frutti di bosco', 'Mirtilli', 'Fragole', 'Banana', 'Mela']], accessories: [{ foods: MILK, grams: 150, step: 10 }], aromas: ['Cannella'] },
+  { id: 'PL001', kinds: BF, name: "Porridge d'avena, {protein} e {s1}", base: OATS, protein: GREEK, sides: [['Frutti di bosco', 'Mirtilli', 'Fragole', 'Banana', 'Mela']], fatIfPreferred: NUTS, accessories: [{ foods: MILK, grams: 150, step: 10 }], aromas: ['Cannella'] },
   { id: 'PL003', kinds: BF, name: "Porridge d'avena e albumi", base: OATS, protein: ["Albume d'uovo"], fat: ['Burro di arachidi 100%'], accessories: [{ foods: MILK, grams: 100, step: 10 }], aromas: ['Cannella'], fatRequired: true },
   { id: 'ST-BF-UOVA-AVOCADO', kinds: BF, name: 'Avocado toast con {protein}', base: BREAD, protein: ['Uova intere'], fat: ['Avocado'], aromas: ['Limone', 'Pepe nero'], fatRequired: true },
   { id: 'ST-BF-UOVA', kinds: BF, name: 'Uova strapazzate con {base}', base: BREAD, protein: ['Uova intere'], aromas: ['Pepe nero', 'Prezzemolo'] },
   { id: 'ST-BF-ALBUMI', kinds: BF, name: 'Frittata di albumi con {base}', base: BREAD, protein: ["Albume d'uovo"], oil: true, aromas: ['Pepe nero', 'Prezzemolo'] },
   { id: 'PL005', kinds: BF, name: '{base} con {protein} e marmellata', base: BREAD, protein: ['Ricotta magra'], spread: ['Marmellata light'], aromas: [] },
-  { id: 'ST-BF-YOGURT-CEREALI', kinds: BF, name: '{protein} con {base} e {s1}', base: ['Cereali integrali', 'Muesli'], protein: GREEK, sides: [FRUIT], aromas: [] },
+  { id: 'ST-BF-YOGURT-CEREALI', kinds: BF, name: '{protein} con {base} e {s1}', base: ['Cereali integrali', 'Muesli'], protein: GREEK, sides: [FRUIT], fatIfPreferred: NUTS, aromas: [] },
   { id: 'ST-BF-LATTE-CEREALI', kinds: BF, name: 'Latte proteico con {base} e {s1}', base: ['Cereali integrali', 'Cereali da colazione senza zuccheri aggiunti'], protein: ['Bevanda proteica'], sides: [FRUIT], aromas: [] },
-  { id: 'ST-BF-YOGURT-AVENA', kinds: BF, name: '{protein} con avena e {s1}', base: OATS, protein: GREEK, sides: [FRUIT], aromas: ['Cannella'] },
+  { id: 'ST-BF-YOGURT-AVENA', kinds: BF, name: '{protein} con avena e {s1}', base: OATS, protein: GREEK, sides: [FRUIT], fatIfPreferred: NUTS, aromas: ['Cannella'] },
   // reserve, for who eats neither dairy nor eggs
   { id: 'ST-BF-PORRIDGE-VEG', kinds: BF, name: "Porridge d'avena con {protein} e {s1}", base: OATS, protein: ['Bevanda di soia non zuccherata', 'Bevanda di mandorla non zuccherata'], sides: [FRUIT], fat: ['Burro di arachidi 100%', 'Burro di mandorle 100%'], aromas: ['Cannella'], reserve: true },
   { id: 'ST-BF-PANE-MARMELLATA', kinds: BF, name: '{base} con marmellata e {s1}', base: BREAD, protein: [], sides: [FRUIT], spread: ['Marmellata light'], fat: ['Burro di arachidi 100%', 'Burro di mandorle 100%'], aromas: [], reserve: true },
 
   // ================================================================= MERENDA
-  { id: 'ST-SN-YOGURT', kinds: SN, name: '{protein} con {s1}', protein: GREEK, sides: [FRUIT], aromas: [] },
+  { id: 'ST-SN-YOGURT', kinds: SN, name: '{protein} con {s1}', protein: GREEK, sides: [FRUIT], fatIfPreferred: NUTS, aromas: [] },
   { id: 'ST-SN-YOGURT-AVENA', kinds: SN, name: '{protein} con avena', base: OATS, protein: GREEK, aromas: ['Cannella'] },
   { id: 'ST-SN-BAULETTO', kinds: SN, name: '{base} con marmellata', base: ['Pan bauletto', 'Pane integrale'], protein: [], spread: ['Marmellata light'], aromas: [], portable: true },
   // cold cuts: once a week at most (meal-builder.ts)
@@ -136,13 +142,13 @@ export const DISHES: Dish[] = [
   main('ST-PASTA', PRIMI.pasta, { aromas: ['Passata di pomodoro', 'Basilico', 'Limone'], portable: true }),
   main('ST-RISO', PRIMI.riso, { portable: true }),
   main('ST-PATATE', PRIMI.patate),
-  main('ST-PANE', PRIMI.pane, { portable: true }),
-  main('ST-GALLETTE', PRIMI.gallette, { portable: true }),
+  main('ST-PANE', PRIMI.pane, { portable: true, rareAtDinner: true }),
+  main('ST-GALLETTE', PRIMI.gallette, { portable: true, rareAtDinner: true }),
   // legumes are the carbohydrate source of the meal, next to a secondo like any other primo
   main('ST-LEGUMI', PRIMI.legumi, { aromas: ['Rosmarino', 'Limone', 'Pepe nero'], portable: true }),
 ];
 
 // Every food named in a dish must exist in the catalog (a typo fails loudly at load, not silently at plan time).
 for (const d of DISHES) {
-  for (const name of [...(d.base ?? []), ...d.protein, ...(d.proteinFallback ?? []), ...(d.sides ?? []).flat(), ...(d.spread ?? []), ...(d.fat ?? []), ...d.aromas, ...(d.accessories ?? []).flatMap((a) => a.foods)]) foodByName(name);
+  for (const name of [...(d.base ?? []), ...d.protein, ...(d.proteinFallback ?? []), ...(d.sides ?? []).flat(), ...(d.spread ?? []), ...(d.fat ?? []), ...(d.fatIfPreferred ?? []), ...d.aromas, ...(d.accessories ?? []).flatMap((a) => a.foods)]) foodByName(name);
 }

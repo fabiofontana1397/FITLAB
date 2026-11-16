@@ -53,6 +53,7 @@ type ResolvedDish = {
   sides: FitLabFood[][];
   spread: FitLabFood[];
   fat: FitLabFood[];
+  fatIfPreferred: FitLabFood[];
 };
 
 const RESOLVED = new Map<string, ResolvedDish>();
@@ -60,7 +61,7 @@ function resolve(dish: Dish): ResolvedDish {
   let r = RESOLVED.get(dish.id);
   if (!r) {
     const all = (names?: string[]) => (names ?? []).map(foodByName);
-    r = { dish, base: all(dish.base), protein: all(dish.protein), proteinFallback: all(dish.proteinFallback), sides: (dish.sides ?? []).map(all), spread: all(dish.spread), fat: all(dish.fat) };
+    r = { dish, base: all(dish.base), protein: all(dish.protein), proteinFallback: all(dish.proteinFallback), sides: (dish.sides ?? []).map(all), spread: all(dish.spread), fat: all(dish.fat), fatIfPreferred: all(dish.fatIfPreferred) };
     RESOLVED.set(dish.id, r);
   }
   return r;
@@ -68,6 +69,8 @@ function resolve(dish: Dish): ResolvedDish {
 
 const OIL = foodByName('Olio extravergine di oliva');
 const LEGUMES = PRIMI.legumi.map(foodByName);
+/** Preferred foods that never join a lunch or dinner: a breakfast bread, and egg whites (a breakfast protein). */
+const NOT_IN_MAIN = new Set(['Pan bauletto', "Albume d'uovo"]);
 /** Cold cuts in the week so far (key in `WeekUsage.food`): once a week at most. */
 const CURED_KEY = 'family:cured';
 const CURED_PER_WEEK = 1;
@@ -80,6 +83,8 @@ type Candidate = {
   sides: FitLabFood[][];
   spread: FitLabFood[];
   fat: FitLabFood[];
+  /** Nuts the person picked, added to a yogurt or porridge when they fit the meal. */
+  optionalFat: FitLabFood[];
   oil: boolean;
   cost: number;
 };
@@ -97,7 +102,7 @@ function candidateDishes(kind: SlotKind, slotId: string, pools: FitLabPools, see
     const expand = (foods: FitLabFood[]) => {
       if (pools.preferredFoods.length === 0 || foods.length === 0 || (kind !== 'lunch' && kind !== 'dinner')) return foods;
       const subs = new Set(foods.map((f) => f.sub));
-      return [...foods, ...pools.preferredFoods.filter((f) => !foods.includes(f) && subs.has(f.sub) && f.meals.includes(kind) && f.name !== "Albume d'uovo")];
+      return [...foods, ...pools.preferredFoods.filter((f) => !foods.includes(f) && subs.has(f.sub) && f.meals.includes(kind) && !NOT_IN_MAIN.has(f.name))];
     };
     // sides: any preferred vegetable (main meals) or fruit (breakfast and snacks) can take the place of the dish's own
     const expandSide = (group: FitLabFood[]) => {
@@ -124,6 +129,11 @@ function candidateDishes(kind: SlotKind, slotId: string, pools: FitLabPools, see
     if (r.spread.length > 0 && spread.length === 0) continue;
 
     const liked = protein.length > 0 ? protein.reduce((s, f) => s + pools.weight(f, kind), 0) / protein.length : 1;
+    // the carbohydrate sources the person picked in the questionnaire decide the primo: a meal built on one comes first
+    // (lunch and dinner: at breakfast and snacks the protein of the meal matters more than which bread it comes with)
+    // breakfast and snacks: a meal with a fat the person picked (avocado, nuts) comes first
+    const fatLiked = isMain ? 1 : Math.max(1, ...[...r.fat, ...r.fatIfPreferred].filter((f) => pools.allowed(f)).map((f) => pools.weight(f, kind)));
+    const baseLiked = isMain && base.length > 0 ? Math.max(...base.map((f) => pools.weight(f, kind))) : 1;
     const inSlot = used(week.slot, `${slotId}|dish|${dish.id}`);
     const cost =
       used(week.dish, dish.id) * 3 +
@@ -136,6 +146,10 @@ function candidateDishes(kind: SlotKind, slotId: string, pools: FitLabPools, see
       (r.base[0]?.sub === 'Legumi' && day.families.has('legumes') ? 100 : 0) +
       // a reserve meal only fills the week when the standard ones are too few for this person
       (dish.reserve ? 25 : 0) +
+      // bread and rice cakes are a quick lunch: at dinner pasta, rice, potatoes and legumes come first
+      (kind === 'dinner' && dish.rareAtDinner ? 200 : 0) -
+      (baseLiked - 1) * 4 -
+      (fatLiked - 1) * 2 +
       (kind === 'lunch' && pools.eatsOutOften && dish.portable ? -2.5 : 0) -
       (liked - 1) * 1.5;
     out.push({
@@ -145,6 +159,7 @@ function candidateDishes(kind: SlotKind, slotId: string, pools: FitLabPools, see
       sides,
       spread,
       fat: expand(ok(r.fat)),
+      optionalFat: ok(r.fatIfPreferred).filter((f) => pools.isPreferred(f)),
       oil: !!dish.oil && pools.allowed(OIL),
       cost,
     });
@@ -170,7 +185,8 @@ function foodCost(food: FitLabFood, role: Role, kind: SlotKind, seed: number, po
     (role === 'protein' && food.sub === 'Proteine vegetali' && !pools.wantsPlantProtein ? 5 : 0) +
     // fish takes longer to prepare: dinner, not lunch (canned tuna is quick)
     (role === 'protein' && isFish(food) ? (kind === 'lunch' && food.name !== 'Tonno al naturale' ? 100 : kind === 'dinner' ? -1.5 : 0) : 0) -
-    (pools.weight(food, kind) - 1) * 1.6 +
+    // the foods picked in the questionnaire come first, the others of the same group only for variety
+    (pools.weight(food, kind) - 1) * 3 +
     hash(seed + role.length, food.id) * 1.4
   );
 }
@@ -347,7 +363,8 @@ export function buildFitLabMeal(args: { kind: SlotKind; slotId: string; target: 
     const sideCombos: FitLabFood[][] = buildSides(0, []);
     const fatTop = cand.fat.length > 0 ? rank(cand.fat, 'fat', 2) : [];
     // one fat at most (and at lunch and dinner only the oil: the standard meals name no other)
-    const fatOptions: FitLabFood[][] = fatTop.length === 0 ? [[]] : fatTop.map((f) => [f]);
+    const optional = fatTop.length === 0 && cand.optionalFat.length > 0 ? rank(cand.optionalFat, 'fat', 2) : [];
+    const fatOptions: FitLabFood[][] = fatTop.length > 0 ? fatTop.map((f) => [f]) : [[], ...optional.map((f) => [f])];
 
     for (const pf of proteins) {
       for (const bf of bases) {
@@ -389,7 +406,7 @@ export function buildFitLabMeal(args: { kind: SlotKind; slotId: string; target: 
             if (cand.oil) vars.push({ food: OIL, role: 'fat', ...oilBounds(kcalTarget), grams: 0 });
             for (const f of fats) {
               const pb = portionBounds(f, 'fat', { bigMeal: kcalTarget > 900 });
-              vars.push({ food: f, role: 'fat', ...pb, min: cand.r.dish.fatRequired ? pb.minUse : pb.min, grams: 0 });
+              vars.push({ food: f, role: 'fat', ...pb, min: cand.r.dish.fatRequired || optional.includes(f) ? pb.minUse : pb.min, grams: 0 });
             }
             if (vars.length === 0) continue;
 

@@ -21,9 +21,11 @@ La dieta è volutamente standard: pasti semplici da preparare, in cui ogni alime
 Regole fisse, verificate dal banco di prova (Q13–Q16):
 
 - **Mai due fonti di carboidrati nello stesso pasto** (pasta e pane, riso e patate) e **mai due fonti di proteine**. Se un pasto è molto abbondante cresce la porzione dell'unica fonte, non se ne aggiunge una seconda.
-- **Primi**: pasta, pasta integrale, riso, riso basmati, riso integrale, patate, patate dolci, pane (integrale, di segale, bauletto), gallette (riso, mais, farro) e **legumi** (ceci, fagioli, lenticchie), che a pranzo e cena sono la fonte di carboidrati al posto del primo.
+- **Primi**: pasta, pasta integrale, riso, riso basmati, riso integrale, patate, patate dolci, pane (integrale, di segale), gallette (riso, mais, farro) e **legumi** (ceci, fagioli, lenticchie), che a pranzo e cena sono la fonte di carboidrati al posto del primo.
 - **Secondi**: petto di pollo, petto di tacchino, vitello, manzo (bistecca), macinato di manzo magro, hamburger (manzo, pollo, tacchino), merluzzo, orata, lonza, salmone, tonno al naturale, uova.
 - **Contorni**: zucchine, insalata, pomodori, broccoli, spinaci, fagiolini, carote, finocchi, peperoni, melanzane, cavolfiore, bietole, più le verdure preferite dalla persona.
+- **Pan bauletto mai a pranzo o a cena** (è il pane di colazione e merenda). **A cena** pane e gallette sono un'ultima risorsa: si usano pasta, riso, patate e legumi.
+- **Preferenze del questionario prima di tutto**: a pranzo e cena il primo nasce dai carboidrati scelti dalla persona; secondi, verdure e frutta scelti vengono prima degli altri; a colazione e merenda vincono i pasti con i grassi scelti (avocado, frutta secca), e chi ha scelto la frutta secca la trova su yogurt e porridge.
 - **Affettati al massimo una volta a settimana** (in tutta la settimana, non per pasto).
 - **Legumi al massimo una volta al giorno.**
 - **Sostituzioni standard**: ogni primo elenca altri primi, ogni secondo altri secondi, ogni contorno altre verdure, con la quantità già ricalcolata. A colazione e merenda si sostituisce tra alimenti dello stesso tipo (yogurt con yogurt, pane con pane, uova con albumi).

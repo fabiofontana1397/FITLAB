@@ -101,6 +101,8 @@ export function checkDietQuality(persona: Persona, diet: DietPlan): Finding[] {
           const veg = foods.filter(({ food }) => food?.category === 'Verdure');
           const fats = foods.filter(({ item, food }) => item.role === 'fat' || food?.category === 'Grassi');
           if (carbSources.length !== 1 || proteinSources.length !== 1) fail('Q15', `Manca il primo o il secondo: ${meal.items.map((i) => i.name).join(', ')} (${where})`);
+          // pan bauletto is a breakfast and snack bread, never the primo of a lunch or dinner
+          if (foods.some(({ food }) => food?.name === 'Pan bauletto')) fail('Q17', `Pan bauletto come primo (${where})`);
           if (veg.length !== 1) fail('Q15', `Contorni: attesa una verdura, trovate ${veg.length} (${where})`);
           if (fats.length !== 1 || fats[0].food?.name !== OIL_NAME) fail('Q15', `Il grasso di pranzo e cena è l'olio d'oliva, trovato: ${fats.map((x) => x.item.name).join(', ') || 'nessuno'} (${where})`);
           if (persona.answers.dietaryPattern !== 'vegan' && meal.items.length !== 4) fail('Q15', `Pasto non standard (${meal.items.length} alimenti): ${meal.items.map((i) => i.name).join(', ')} (${where})`);
@@ -179,7 +181,7 @@ export function checkPreferences(persona: Persona, diet: DietPlan): Finding[] {
   for (const component of FOOD_COMPONENTS) {
     // only the new selectors (food ids) promise every picked food a place; the broad codes of old answers are just a hint
     const raw = (persona.answers as Record<string, unknown>)[PREFERENCE_QUESTION_ID[component]];
-    if (!Array.isArray(raw) || !raw.every((v) => typeof v === 'string' && /^fld+$/.test(v))) continue;
+    if (!Array.isArray(raw) || !raw.every((v) => typeof v === 'string' && /^fl\d+$/.test(v))) continue;
     const wanted = picked[component];
     if (wanted.length < 2) continue;
     for (const month of diet.months.slice(0, 3)) {
