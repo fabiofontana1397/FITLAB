@@ -257,7 +257,7 @@ function QuestionScreenBody({
   const media = mediaIcon(question);
 
   return (
-    <View style={{ gap: Spacing.four }}>
+    <View style={{ gap: Spacing.three }}>
       {isStepOpener && step.banner ? (
         <GlassSurface level="subtle" radius={Radius.large} style={styles.banner}>
           <Icon name="alert" size={18} color={theme.warning} />
@@ -269,14 +269,16 @@ function QuestionScreenBody({
 
       {media ? <QuestionMedia icon={media} /> : null}
 
-      <View style={{ gap: Spacing.two }}>
-        <ThemedText type="display" style={{ textAlign: 'center' }} accessibilityRole="header">
-          {screenTitle(question)}
-          {question.optional ? (
-            <ThemedText type="default" themeColor="textTertiary">
-              {'  facoltativa'}
-            </ThemedText>
-          ) : null}
+      <View style={{ gap: Spacing.one }}>
+        {/* "Facoltativa" on a line of its own: appended to the title with spaces, a wrapped title started its
+            second line with a blank. */}
+        {question.optional ? (
+          <ThemedText type="caption" themeColor="textTertiary" style={styles.optionalTag}>
+            FACOLTATIVA
+          </ThemedText>
+        ) : null}
+        <ThemedText type="display" style={styles.questionTitle} accessibilityRole="header">
+          {screenTitle(question).trim()}
         </ThemedText>
         {subtitle ? (
           <ThemedText type="default" themeColor="textSecondary" style={{ textAlign: 'center' }}>
@@ -453,6 +455,9 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 }
 
 const styles = StyleSheet.create({
+  // A notch below the Large Title: two-line questions plus their answers fit one phone screen without scrolling.
+  questionTitle: { textAlign: 'center', fontSize: 28, lineHeight: 34, letterSpacing: 0 },
+  optionalTag: { textAlign: 'center', letterSpacing: 0.8, fontWeight: '700' },
   banner: {
     flexDirection: 'row',
     alignItems: 'center',
