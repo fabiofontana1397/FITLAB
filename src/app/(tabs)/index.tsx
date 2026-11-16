@@ -17,10 +17,12 @@ import { ThemedText } from '@/components/themed-text';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { SectionHeader } from '@/components/ui/section-header';
+import { TodayTiles, type TodayWorkout } from '@/components/home/today-tiles';
 import { WeekProgressCard } from '@/components/home/week-progress-card';
 import { WeekStrip, type WeekStripDay } from '@/components/home/week-strip';
 import { TabHeader } from '@/components/tab-header';
 import { LogActivityModal } from '@/components/training/log-activity-modal';
+import { WorkoutSessionModal } from '@/components/training/workout-session-modal';
 import { InfoPopover } from '@/components/ui/info-popover';
 import { FoodSearchModal } from '@/components/nutrition/food-search-modal';
 import { MealPickerModal } from '@/components/nutrition/meal-picker-modal';
@@ -31,7 +33,7 @@ import { sumActivityKcalForDate, useWeeklyEnergy } from '@/hooks/use-weekly-ener
 import { useTheme } from '@/hooks/use-theme';
 import { currentWeekDates, dayOfMonth, daysAgoISO, isoMondayIndex } from '@/lib/mock/dates';
 import { balanceCaption as captionFor, calorieBalance, goalBand, readBalance } from '@/domain/calorie-balance';
-import { dayEnergy } from '@/domain/energy';
+import { dayEnergy, sessionMinutes } from '@/domain/energy';
 import { trackingStreak } from '@/domain/week-progress';
 import { Brand, Layout, OnBrand, Radius } from '@/constants/theme';
 import { useUserContext } from '@/hooks/use-user-context';
@@ -43,6 +45,7 @@ import { useNutritionStore, sumMacros, type MealSlot } from '@/store/nutrition-s
 import { usePlanStore } from '@/store/plan-store';
 import { isExerciseCompleted, useTrainingProgressStore } from '@/store/training-progress-store';
 import { useUserStore } from '@/store/user-store';
+import { savedElapsedMs, useWorkoutSessionStore } from '@/store/workout-session-store';
 import { hapticTap } from '@/lib/haptics';
 
 const SCREEN_PADDING = Layout.screenGutter;
@@ -62,6 +65,14 @@ function glow(color: string, alpha: number) {
 
 type InfoTopic = 'burned' | 'eaten';
 
+/** "12:34" for the workout time of a session in progress. */
+function sessionClock(ms: number): string {
+  const s = Math.floor(Math.max(0, ms) / 1000);
+  const h = Math.floor(s / 3600);
+  const mm = String(Math.floor((s % 3600) / 60)).padStart(2, '0');
+  return `${h > 0 ? `${h}:` : ''}${mm}:${String(s % 60).padStart(2, '0')}`;
+}
+
 export default function HomeScreen() {
   const theme = useTheme();
   const currentUser = useUserStore();
@@ -75,6 +86,9 @@ export default function HomeScreen() {
   const activityLogEntries = useActivityLogStore((s) => s.entries);
   const addActivityEntry = useActivityLogStore((s) => s.addEntry);
   const [logActivityOpen, setLogActivityOpen] = useState(false);
+  // The guided session ("Inizia allenamento"), started from the day's tile; one left with the X resumes from there.
+  const [sessionOpen, setSessionOpen] = useState(false);
+  const activeSession = useWorkoutSessionStore((s) => s.active);
   const [registerMealOpen, setRegisterMealOpen] = useState(false);
   const [mealSlot, setMealSlot] = useState<MealSlot | null>(null);
   // Home's energy figures read both plans, so it builds a missing or outdated plan itself instead of waiting
@@ -124,6 +138,28 @@ export default function HomeScreen() {
   // That day's own target (training days eat more than rest days), then the month's average, then the profile.
   const calorieTarget = dietMonth?.weeklySplit[isoMondayIndex(viewDate)]?.calorieTarget ?? dietMonth?.calorieTarget ?? currentUser.dailyCalorieTarget;
   const todaysTotals = sumMacros(nutritionEntries.filter((e) => e.date === viewDate));
+  // The day's macro targets, resolved like the Nutrizione tab does: the day's own, then the month's, then the profile's.
+  const macroTargets = dietMonth?.weeklySplit[isoMondayIndex(viewDate)]?.macroTargetsG ?? dietMonth?.macroTargetsG ?? currentUser.macroTargetsG;
+
+  // What the training plan holds for the day shown. Only today's session starts from Home (as on Allenamento).
+  const viewPlanDay = weeklySplit[planIndexFor(viewDate, swaps)];
+  const viewWorkoutDone = viewExercises.length > 0 && viewDoneCount >= viewExercises.length;
+  const sessionInProgress = activeSession != null && activeSession.date === viewDate && !viewWorkoutDone;
+  const todayWorkout: TodayWorkout = !trainingPlan
+    ? { kind: 'none' }
+    : viewPlanDay?.type === 'workout'
+      ? {
+          kind: 'workout',
+          title: viewPlanDay.title,
+          minutes: sessionMinutes(viewPlanDay, ctx),
+          exercisesDone: viewDoneCount,
+          exercisesTotal: viewExercises.length,
+          resumeLabel: sessionInProgress ? sessionClock(savedElapsedMs(activeSession)) : undefined,
+          onStart: viewDate === today && !viewWorkoutDone ? () => setSessionOpen(true) : undefined,
+        }
+      : viewPlanDay?.type === 'cardio'
+        ? { kind: 'cardio', title: viewPlanDay.title }
+        : { kind: 'rest' };
 
   // The shown day's estimated expenditure from the unified energy model: resting + everyday activity
   // + the planned session scaled by how much was done + manually logged activities.
@@ -313,6 +349,26 @@ export default function HomeScreen() {
         />
       </FlatCard>
 
+      {/* The day's progress, side by side: macros against the plan, and the plan's session with its start. */}
+      <TodayTiles
+        isToday={viewDate === today}
+        inactive={isFutureDay}
+        macros={{
+          protein: { eaten: todaysTotals.protein, target: macroTargets.protein },
+          carbs: { eaten: todaysTotals.carbs, target: macroTargets.carbs },
+          fats: { eaten: todaysTotals.fats, target: macroTargets.fats },
+        }}
+        onMacrosPress={() => router.navigate('/nutrition')}
+        workout={todayWorkout}
+        onWorkoutPress={() =>
+          todayWorkout.kind === 'none'
+            ? router.navigate('/plans')
+            : todayWorkout.kind === 'rest'
+              ? router.navigate('/training')
+              : router.push({ pathname: '/workout-detail', params: { date: viewDate } })
+        }
+      />
+
       <View style={{ marginTop: 24 }}>
         <SectionHeader title="Questa settimana" />
       </View>
@@ -389,7 +445,18 @@ export default function HomeScreen() {
         trackedBalanceDays={trackedBalances.length}
         dailyGoalKcal={dailyGoalKcal}
         weeklyGoalKcal={weeklyGoalKcal}
+        weekTracked={weekDates.map((date) => loggedDates.has(date))}
+        todayIndex={weekDates.indexOf(today)}
+        onRegisterMeal={() => {
+          // Registered from the message, a meal is today's: that is the day the message talks about.
+          setViewDate(today);
+          openPopup(() => setRegisterMealOpen(true));
+        }}
       />
+
+      {sessionOpen && viewPlanDay?.type === 'workout' ? (
+        <WorkoutSessionModal visible onClose={() => setSessionOpen(false)} title={viewPlanDay.title} exercises={viewPlanDay.exercises ?? []} date={today} />
+      ) : null}
 
       <LogActivityModal
         visible={logActivityOpen}

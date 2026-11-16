@@ -86,7 +86,17 @@ export function pickMotivation(i: MotivationInput): Motivation {
     return { kind: 'workoutsDone', title: 'Allenamenti completati!', text: 'Hai fatto tutte le sessioni previste per questa settimana.' };
   }
   if (!i.todayTracked) {
-    return { kind: 'startStreak', title: i.streakDays === 1 ? 'Ieri tracciato: continua oggi' : 'Inizia la tua serie', text: 'Registra i pasti di oggi: ogni giorno tracciato costruisce una serie.' };
+    return i.streakDays === 1
+      ? { kind: 'startStreak', title: 'Ieri c’eri: non fermarti oggi', text: 'Registra i pasti di oggi e la tua serie sale a 2 giorni.' }
+      : { kind: 'startStreak', title: 'Accendi la tua serie', text: 'Registra il primo pasto di oggi: bastano pochi secondi per far partire il giorno 1.' };
   }
-  return { kind: 'keepGoing', title: 'Ottimo, continua così', text: 'Ogni pasto registrato ti aiuta a restare sull’obiettivo della settimana.' };
+  return { kind: 'keepGoing', title: 'Giornata avviata, continua così', text: 'Ogni pasto che registri rende più precisa la tua settimana e più vicino l’obiettivo.' };
+}
+
+/** The runs worth celebrating: the next one gives a streak something to aim at. */
+const STREAK_MILESTONES = [3, 7, 14, 30, 60, 100, 200, 365];
+
+/** The first milestone above the current streak (the last one once past them all). */
+export function nextStreakMilestone(streakDays: number): number {
+  return STREAK_MILESTONES.find((m) => m > streakDays) ?? STREAK_MILESTONES[STREAK_MILESTONES.length - 1];
 }
