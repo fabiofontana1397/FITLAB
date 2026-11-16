@@ -1,6 +1,6 @@
 # Test dei piani generati dai questionari
 
-Generato il 2026-11-16 19:06 — 22 questionari finti, piani creati con i generatori reali dell’app.
+Generato il 2026-11-16 19:30 — 22 questionari finti, piani creati con i generatori reali dell’app.
 
 **Totale:** 0 errori · 2 avvisi · 33 note
 

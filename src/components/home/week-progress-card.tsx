@@ -1,6 +1,8 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, {
+  Easing,
   runOnJS,
   useAnimatedProps,
   useAnimatedReaction,
@@ -13,17 +15,20 @@ import Animated, {
 } from 'react-native-reanimated';
 import Svg, { Circle } from 'react-native-svg';
 
+import { AnimatedFill } from '@/components/motion/animated-fill';
+import { PressableScale } from '@/components/motion/pressable-scale';
 import { useRevealedValue } from '@/components/motion/reveal';
 import { ThemedText } from '@/components/themed-text';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { acceptableRange, balanceHalfRange } from '@/domain/calorie-balance';
-import { pickMotivation, weekAverageState, type MotivationKind, type WeekAverageState } from '@/domain/week-progress';
+import { OnBrand } from '@/constants/theme';
+import { nextStreakMilestone, pickMotivation, weekAverageState, type MotivationKind, type WeekAverageState } from '@/domain/week-progress';
 import { useTheme } from '@/hooks/use-theme';
 import { formatSignedKcal } from '@/lib/format-kcal';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
-const RING = 70;
+const RING = 68;
 const STROKE = 8;
 
 function withAlpha(hex: string, alpha: number): string {
@@ -60,7 +65,7 @@ function Ring({ fraction, color, delay, children }: { fraction: number; color: s
   return (
     <View style={styles.ring}>
       <Svg width={RING} height={RING} style={StyleSheet.absoluteFill}>
-        <Circle cx={RING / 2} cy={RING / 2} r={r} fill="none" stroke={theme.backgroundElement} strokeWidth={STROKE} />
+        <Circle cx={RING / 2} cy={RING / 2} r={r} fill="none" stroke={withAlpha(color, theme.tabBarBlur === 'dark' ? 0.22 : 0.16)} strokeWidth={STROKE} />
         {fraction > 0 ? <AnimatedCircle cx={RING / 2} cy={RING / 2} r={r} fill="none" stroke={color} strokeWidth={STROKE} strokeLinecap="round" animatedProps={props} transform={`rotate(-90 ${RING / 2} ${RING / 2})`} /> : null}
       </Svg>
       <View style={styles.ringCenter}>{children}</View>
@@ -68,7 +73,7 @@ function Ring({ fraction, color, delay, children }: { fraction: number; color: s
   );
 }
 
-const BAR_W = 88;
+const BAR_W = 76;
 const BAR_H = 10;
 const DOT = 18;
 
@@ -94,11 +99,11 @@ function AverageGauge({ average, goalKcal, state, color, hasData }: { average: n
           kcal al giorno
         </ThemedText>
       </View>
-      <View style={[styles.track, { backgroundColor: theme.backgroundElement }]}>
+      <View style={[styles.track, { backgroundColor: theme.backgroundSelected }]}>
         <View style={[styles.zone, { width: zoneW, left: (BAR_W - zoneW) / 2, backgroundColor: zoneColor }]} />
         <View style={[styles.goalTick, { backgroundColor: theme.textSecondary }]} />
         {hasData ? (
-          <Animated.View style={[styles.dot, { backgroundColor: state === 'onTrack' ? theme.balanceGoalScale[2] : color, borderColor: theme.background }, dotStyle]} />
+          <Animated.View style={[styles.dot, { backgroundColor: state === 'onTrack' ? theme.balanceGoalScale[2] : color, borderColor: theme.backgroundElevated }, dotStyle]} />
         ) : null}
       </View>
     </View>
@@ -111,45 +116,142 @@ const TONE_ICON: Record<MotivationKind, IconName> = {
   weekOnTrack: 'target',
   workoutsDone: 'trophy',
   startStreak: 'sparkle',
-  keepGoing: 'sparkle',
+  keepGoing: 'bolt',
 };
 
-/** The message at the top: its icon pops in when the card is shown, and the flame of a streak keeps breathing. */
-function Banner({ kind, title, text, color }: { kind: MotivationKind; title: string; text: string; color: string }) {
+/** The message box is the colour: fire for a streak and for the invitation to track, green for a goal met. Same in both schemes. */
+const HERO_FIRE = ['#FF8A1F', '#F4511E', '#D8311F'] as const;
+const HERO_GOOD = ['#2FBF71', '#17995A', '#0B7A5C'] as const;
+const HERO_INK: Record<'fire' | 'good', string> = { fire: '#D8401B', good: '#0F7F55' };
+
+const WEEK_LETTERS = ['L', 'M', 'M', 'G', 'V', 'S', 'D'];
+
+/** A soft light drifting slowly inside the message box, so the colour is never still. */
+function Glow({ size, top, left, drift, duration }: { size: number; top: number; left: number; drift: number; duration: number }) {
   const reduceMotion = useReducedMotion();
-  const enter = useRevealedValue(1, 40);
-  const pulse = useSharedValue(1);
-  const breathes = kind === 'streak' && !reduceMotion;
+  const t = useSharedValue(0);
   useEffect(() => {
-    pulse.set(breathes ? withRepeat(withSequence(withTiming(1.14, { duration: 700 }), withTiming(1, { duration: 700 })), -1) : 1);
+    t.set(reduceMotion ? 0 : withRepeat(withTiming(1, { duration, easing: Easing.inOut(Easing.sin) }), -1, true));
+  }, [reduceMotion, duration, t]);
+  const style = useAnimatedStyle(() => ({ transform: [{ translateX: t.value * drift }, { translateY: t.value * drift * 0.5 }, { scale: 1 + t.value * 0.12 }] }));
+  return <Animated.View pointerEvents="none" style={[styles.glow, { width: size, height: size, borderRadius: size / 2, top, left }, style]} />;
+}
+
+/** One day of the week in the message box: a white tick once tracked, a breathing ring for today still to track. */
+function DayDot({ letter, tracked, today, future, delay, ink }: { letter: string; tracked: boolean; today: boolean; future: boolean; delay: number; ink: string }) {
+  const reduceMotion = useReducedMotion();
+  const enter = useRevealedValue(1, delay);
+  const pulse = useSharedValue(1);
+  const breathes = today && !tracked && !reduceMotion;
+  useEffect(() => {
+    pulse.set(breathes ? withRepeat(withSequence(withTiming(1.16, { duration: 800 }), withTiming(1, { duration: 800 })), -1) : 1);
   }, [breathes, pulse]);
-  const iconStyle = useAnimatedStyle(() => ({ transform: [{ scale: (0.6 + 0.4 * enter.value) * pulse.value }], opacity: enter.value }));
-  const textStyle = useAnimatedStyle(() => ({ opacity: enter.value, transform: [{ translateX: (1 - enter.value) * 10 }] }));
+  const style = useAnimatedStyle(() => ({ opacity: enter.value, transform: [{ scale: (0.5 + 0.5 * enter.value) * pulse.value }] }));
   return (
-    <View style={[styles.banner, { backgroundColor: withAlpha(color, 0.12) }]}>
-      <Animated.View style={[styles.bannerIcon, { backgroundColor: color }, iconStyle]}>
-        <Icon name={TONE_ICON[kind]} size={22} color="#FFFFFF" />
+    <View style={styles.day}>
+      <Animated.View
+        style={[
+          styles.dayDot,
+          tracked ? { backgroundColor: OnBrand.text } : today ? { borderWidth: 2, borderColor: OnBrand.text } : { backgroundColor: future ? 'rgba(255,255,255,0.14)' : OnBrand.fillStrong },
+          style,
+        ]}>
+        {tracked ? <Icon name="check" size={14} color={ink} /> : null}
       </Animated.View>
-      <Animated.View style={[styles.bannerText, textStyle]}>
-        <ThemedText style={styles.bannerTitle}>{title}</ThemedText>
-        <ThemedText style={styles.bannerBody} themeColor="textSecondary">
-          {text}
-        </ThemedText>
-      </Animated.View>
+      <ThemedText style={[styles.dayLetter, { color: today ? OnBrand.text : OnBrand.textFaint }]}>{letter}</ThemedText>
     </View>
   );
 }
 
-function Tile({ label, status, statusColor, statusIcon, children }: { label: string; status: string; statusColor: string; statusIcon?: IconName; children: React.ReactNode }) {
+type HeroProps = {
+  kind: MotivationKind;
+  title: string;
+  text: string;
+  streakDays: number;
+  todayTracked: boolean;
+  /** Monday to Sunday: that day has meals logged. */
+  weekTracked: boolean[];
+  /** Today's place in the week (0 = Monday). */
+  todayIndex: number;
+  onRegisterMeal?: () => void;
+};
+
+/**
+ * The motivational message as its own box: a full colour gradient with lights drifting inside, the icon
+ * breathing, the week's tracked days as dots, and the next step — "Registra un pasto" while today is still to
+ * track, the next streak milestone once it is.
+ */
+function MotivationHero({ kind, title, text, streakDays, todayTracked, weekTracked, todayIndex, onRegisterMeal }: HeroProps) {
+  const reduceMotion = useReducedMotion();
+  const tone = kind === 'todayOnGoal' || kind === 'weekOnTrack' || kind === 'workoutsDone' ? 'good' : 'fire';
+  const enter = useRevealedValue(1, 40);
+  const pulse = useSharedValue(1);
+  useEffect(() => {
+    pulse.set(reduceMotion ? 1 : withRepeat(withSequence(withTiming(1.12, { duration: 900 }), withTiming(1, { duration: 900 })), -1));
+  }, [reduceMotion, pulse]);
+  const iconStyle = useAnimatedStyle(() => ({ transform: [{ scale: (0.6 + 0.4 * enter.value) * pulse.value }], opacity: enter.value }));
+  const textStyle = useAnimatedStyle(() => ({ opacity: enter.value, transform: [{ translateY: (1 - enter.value) * 8 }] }));
+
+  const eyebrow = streakDays >= 2 ? `Serie di ${streakDays} giorni` : todayTracked ? 'Oggi tracciato' : 'Oggi tocca a te';
+  const milestone = nextStreakMilestone(streakDays);
+  const toGo = milestone - streakDays;
   return (
-    <View style={styles.tile}>
+    <LinearGradient colors={tone === 'good' ? HERO_GOOD : HERO_FIRE} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
+      <Glow size={170} top={-70} left={-40} drift={26} duration={5200} />
+      <Glow size={150} top={150} left={230} drift={-22} duration={6400} />
+
+      <View style={styles.heroTop}>
+        <Animated.View style={[styles.heroIcon, iconStyle]}>
+          <Icon name={TONE_ICON[kind]} size={24} color={HERO_INK[tone]} />
+        </Animated.View>
+        <View style={styles.eyebrow}>
+          <Icon name="flame" size={12} color={OnBrand.text} />
+          <ThemedText style={styles.eyebrowText}>{eyebrow}</ThemedText>
+        </View>
+      </View>
+
+      <Animated.View style={[styles.heroText, textStyle]}>
+        <ThemedText style={styles.heroTitle} accessibilityRole="header">
+          {title}
+        </ThemedText>
+        <ThemedText style={styles.heroBody}>{text}</ThemedText>
+      </Animated.View>
+
+      <View style={styles.days} accessibilityLabel={`Giorni tracciati questa settimana: ${weekTracked.filter(Boolean).length} su 7`}>
+        {WEEK_LETTERS.map((letter, i) => (
+          <DayDot key={i} letter={letter} tracked={weekTracked[i] ?? false} today={i === todayIndex} future={i > todayIndex} delay={160 + i * 60} ink={HERO_INK[tone]} />
+        ))}
+      </View>
+
+      {!todayTracked && onRegisterMeal ? (
+        <PressableScale onPress={onRegisterMeal} haptic="press" style={styles.heroCta} accessibilityRole="button" accessibilityLabel="Registra un pasto" testID="progress-register-meal">
+          <Icon name="plus" size={18} color={HERO_INK[tone]} />
+          <ThemedText style={[styles.heroCtaText, { color: HERO_INK[tone] }]}>Registra un pasto</ThemedText>
+        </PressableScale>
+      ) : (
+        <View style={styles.milestone}>
+          <View style={styles.milestoneLine}>
+            <ThemedText style={styles.milestoneLabel}>Prossimo traguardo: {milestone} giorni</ThemedText>
+            <ThemedText style={styles.milestoneLabel}>{toGo === 1 ? 'manca 1 giorno' : `mancano ${toGo} giorni`}</ThemedText>
+          </View>
+          <View style={styles.milestoneTrack}>
+            <AnimatedFill progress={streakDays / milestone} delay={420} style={styles.milestoneFill} />
+          </View>
+        </View>
+      )}
+    </LinearGradient>
+  );
+}
+
+function Tile({ label, status, statusColor, statusIcon, tint, children }: { label: string; status: string; statusColor: string; statusIcon?: IconName; tint: string; children: React.ReactNode }) {
+  return (
+    <View style={[styles.tile, { backgroundColor: tint }]}>
       {children}
-      <ThemedText style={styles.tileLabel} themeColor="textTertiary" numberOfLines={1}>
+      <ThemedText style={styles.tileLabel} themeColor="textSecondary" numberOfLines={1} adjustsFontSizeToFit>
         {label}
       </ThemedText>
       <View style={styles.statusRow}>
         {statusIcon ? <Icon name={statusIcon} size={12} color={statusColor} /> : null}
-        <ThemedText style={[styles.status, { color: statusColor }]} numberOfLines={2}>
+        <ThemedText style={[styles.status, { color: statusColor }]} numberOfLines={2} adjustsFontSizeToFit>
           {status}
         </ThemedText>
       </View>
@@ -170,6 +272,12 @@ export type WeekProgressCardProps = {
   trackedBalanceDays: number;
   dailyGoalKcal: number;
   weeklyGoalKcal: number;
+  /** Monday to Sunday: that day has meals logged. */
+  weekTracked: boolean[];
+  /** Today's place in the week (0 = Monday). */
+  todayIndex: number;
+  /** The message's own call to action while today is still to track. */
+  onRegisterMeal?: () => void;
 };
 
 const AVERAGE_STATUS: Record<WeekAverageState, string> = {
@@ -180,11 +288,12 @@ const AVERAGE_STATUS: Record<WeekAverageState, string> = {
 };
 
 /**
- * "I tuoi progressi": how the week is going, told encouragingly. A message on
- * top picks the best news of the moment (today on goal, a tracking streak, a
- * week on track, workouts done); under it three rings — workouts, days with
- * meals logged (with the streak) — and, in place of a third ring, a scale for the
- * average deficit/surplus against the goal. Rings sweep and numbers count up every time Home is shown.
+ * "I tuoi progressi": how the week is going, told encouragingly, in two boxes.
+ * First the message — a coloured, moving box that picks the best news of the
+ * moment (today on goal, a tracking streak, a week on track, workouts done) and
+ * invites the next step. Under it the indicators: workouts, days with meals
+ * logged, and a scale for the average deficit/surplus against the goal. Rings
+ * sweep and numbers count up every time Home is shown.
  */
 export function WeekProgressCard(p: WeekProgressCardProps) {
   const theme = useTheme();
@@ -200,69 +309,110 @@ export function WeekProgressCard(p: WeekProgressCardProps) {
     workoutsPlanned: p.workoutsPlanned,
     goalWord,
   });
-  const bannerColor = motivation.kind === 'streak' ? theme.accent : motivation.kind === 'startStreak' || motivation.kind === 'keepGoing' ? theme.accent : good;
 
   const workoutsLeft = p.workoutsPlanned - p.workoutsDone;
   const workoutsComplete = p.workoutsPlanned > 0 && workoutsLeft <= 0;
   const workoutsStatus = p.workoutsPlanned === 0 ? 'Settimana di riposo' : workoutsComplete ? 'Tutti fatti!' : workoutsLeft === 1 ? 'Ne manca 1' : `Ne mancano ${workoutsLeft}`;
   const mealsStatus = p.streakDays >= 2 ? `${p.streakDays} giorni di fila` : p.todayTracked ? 'Oggi tracciato' : 'Registra oggi';
   const averageColor = average.state === 'onTrack' ? good : average.state === 'none' ? theme.textTertiary : theme.accent;
+  const tintAlpha = theme.tabBarBlur === 'dark' ? 0.14 : 0.09;
 
   return (
-    <FlatCard radius={24} style={styles.card}>
-      <ThemedText style={styles.heading} accessibilityRole="header">
-        I tuoi progressi
-      </ThemedText>
-      <Banner kind={motivation.kind} title={motivation.title} text={motivation.text} color={bannerColor} />
+    <View style={styles.wrap}>
+      <MotivationHero
+        kind={motivation.kind}
+        title={motivation.title}
+        text={motivation.text}
+        streakDays={p.streakDays}
+        todayTracked={p.todayTracked}
+        weekTracked={p.weekTracked}
+        todayIndex={p.todayIndex}
+        onRegisterMeal={p.onRegisterMeal}
+      />
 
-      <View style={styles.tiles}>
-        <Tile label="Allenamenti" status={workoutsStatus} statusColor={workoutsComplete ? theme.brandGreen : theme.textSecondary} statusIcon={workoutsComplete ? 'check' : undefined}>
-          <Ring fraction={p.workoutsPlanned > 0 ? p.workoutsDone / p.workoutsPlanned : 0} color={theme.brandGreen} delay={120}>
-            <View style={styles.centerRow}>
-              <RevealCount value={p.workoutsDone} delay={120} style={styles.centerValue} />
-              <ThemedText style={styles.centerOf} themeColor="textTertiary">
-                /{p.workoutsPlanned}
-              </ThemedText>
-            </View>
-          </Ring>
-        </Tile>
+      <FlatCard radius={24} style={styles.card}>
+        <ThemedText style={styles.heading} accessibilityRole="header">
+          I tuoi progressi
+        </ThemedText>
+        <View style={styles.tiles}>
+          <Tile
+            label="Allenamenti"
+            tint={withAlpha(theme.brandGreen, tintAlpha)}
+            status={workoutsStatus}
+            statusColor={workoutsComplete ? theme.brandGreen : theme.text}
+            statusIcon={workoutsComplete ? 'check' : undefined}>
+            <Ring fraction={p.workoutsPlanned > 0 ? p.workoutsDone / p.workoutsPlanned : 0} color={theme.brandGreen} delay={120}>
+              <View style={styles.centerRow}>
+                <RevealCount value={p.workoutsDone} delay={120} style={styles.centerValue} />
+                <ThemedText style={styles.centerOf} themeColor="textSecondary">
+                  /{p.workoutsPlanned}
+                </ThemedText>
+              </View>
+            </Ring>
+          </Tile>
 
-        <Tile label="Pasti tracciati" status={mealsStatus} statusColor={p.streakDays >= 2 ? theme.accent : theme.textSecondary} statusIcon={p.streakDays >= 2 ? 'flame' : undefined}>
-          <Ring fraction={p.trackedMealDays / 7} color={theme.accent} delay={220}>
-            <View style={styles.centerRow}>
-              <RevealCount value={p.trackedMealDays} delay={220} style={styles.centerValue} />
-              <ThemedText style={styles.centerOf} themeColor="textTertiary">
-                /7
-              </ThemedText>
-            </View>
-          </Ring>
-        </Tile>
+          <Tile
+            label="Pasti tracciati"
+            tint={withAlpha(theme.accent, tintAlpha)}
+            status={mealsStatus}
+            statusColor={p.streakDays >= 2 ? theme.accent : theme.text}
+            statusIcon={p.streakDays >= 2 ? 'flame' : undefined}>
+            <Ring fraction={p.trackedMealDays / 7} color={theme.accent} delay={220}>
+              <View style={styles.centerRow}>
+                <RevealCount value={p.trackedMealDays} delay={220} style={styles.centerValue} />
+                <ThemedText style={styles.centerOf} themeColor="textSecondary">
+                  /7
+                </ThemedText>
+              </View>
+            </Ring>
+          </Tile>
 
-        <Tile label={p.weeklyGoalKcal >= 0 ? 'Surplus medio' : 'Deficit medio'} status={AVERAGE_STATUS[average.state]} statusColor={averageColor} statusIcon={average.state === 'onTrack' ? 'check' : undefined}>
-          <AverageGauge average={p.averageBalanceKcal} goalKcal={p.dailyGoalKcal} state={average.state} color={averageColor} hasData={p.trackedBalanceDays > 0} />
-        </Tile>
-      </View>
-    </FlatCard>
+          <Tile
+            label={p.weeklyGoalKcal >= 0 ? 'Surplus medio' : 'Deficit medio'}
+            tint={theme.backgroundElement}
+            status={AVERAGE_STATUS[average.state]}
+            statusColor={average.state === 'none' ? theme.text : averageColor}
+            statusIcon={average.state === 'onTrack' ? 'check' : undefined}>
+            <AverageGauge average={p.averageBalanceKcal} goalKcal={p.dailyGoalKcal} state={average.state} color={averageColor} hasData={p.trackedBalanceDays > 0} />
+          </Tile>
+        </View>
+      </FlatCard>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { marginTop: 12, paddingHorizontal: 14, paddingTop: 14, paddingBottom: 16, gap: 12 },
-  heading: { fontSize: 14, lineHeight: 18, fontWeight: '700' },
-  banner: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 18, padding: 12 },
-  bannerIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
-  bannerText: { flex: 1, gap: 1 },
-  bannerTitle: { fontSize: 16, lineHeight: 21, fontWeight: '800', letterSpacing: -0.2 },
-  bannerBody: { fontSize: 13, lineHeight: 17, fontWeight: '500' },
-  tiles: { flexDirection: 'row', alignItems: 'flex-start', gap: 4 },
-  tile: { flex: 1, alignItems: 'center', gap: 6 },
+  wrap: { marginTop: 12, gap: 12 },
+  hero: { borderRadius: 24, padding: 16, gap: 14, overflow: 'hidden' },
+  glow: { position: 'absolute', backgroundColor: 'rgba(255,255,255,0.13)' },
+  heroTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  heroIcon: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: OnBrand.text },
+  eyebrow: { flexDirection: 'row', alignItems: 'center', gap: 5, height: 28, paddingHorizontal: 10, borderRadius: 14, backgroundColor: OnBrand.fill },
+  eyebrowText: { color: OnBrand.text, fontSize: 12, lineHeight: 16, fontWeight: '700' },
+  heroText: { gap: 4 },
+  heroTitle: { color: OnBrand.text, fontSize: 24, lineHeight: 28, fontWeight: '800', letterSpacing: -0.5 },
+  heroBody: { color: OnBrand.textMuted, fontSize: 14, lineHeight: 19, fontWeight: '600' },
+  days: { flexDirection: 'row', justifyContent: 'space-between' },
+  day: { alignItems: 'center', gap: 4, width: 32 },
+  dayDot: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  dayLetter: { fontSize: 11, lineHeight: 14, fontWeight: '700' },
+  heroCta: { height: 48, borderRadius: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: OnBrand.text },
+  heroCtaText: { fontSize: 16, lineHeight: 21, fontWeight: '800' },
+  milestone: { gap: 6 },
+  milestoneLine: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
+  milestoneLabel: { color: OnBrand.textMuted, fontSize: 12, lineHeight: 16, fontWeight: '700' },
+  milestoneTrack: { height: 6, borderRadius: 3, backgroundColor: OnBrand.fillStrong, overflow: 'hidden' },
+  milestoneFill: { height: 6, borderRadius: 3, backgroundColor: OnBrand.text },
+  card: { paddingHorizontal: 12, paddingTop: 14, paddingBottom: 12, gap: 12 },
+  heading: { paddingHorizontal: 2, fontSize: 14, lineHeight: 18, fontWeight: '700' },
+  tiles: { flexDirection: 'row', alignItems: 'stretch', gap: 8 },
+  tile: { flex: 1, alignItems: 'center', gap: 6, borderRadius: 18, paddingTop: 12, paddingBottom: 8, paddingHorizontal: 6 },
   ring: { width: RING, height: RING },
   ringCenter: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   centerRow: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 1 },
-  centerCol: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10 },
   centerValue: { fontSize: 24, lineHeight: 28, fontWeight: '800', letterSpacing: -0.5 },
-  gauge: { width: RING + 20, height: RING, alignItems: 'center', justifyContent: 'center', gap: 10 },
-  gaugeValue: { alignItems: 'center', gap: 1 },
+  gauge: { alignSelf: 'stretch', height: RING, alignItems: 'center', justifyContent: 'center', gap: 10 },
+  gaugeValue: { alignSelf: 'stretch', alignItems: 'center', gap: 1 },
   gaugeNumber: { fontSize: 20, lineHeight: 24, fontWeight: '800', letterSpacing: -0.4 },
   track: { width: BAR_W, height: BAR_H, borderRadius: BAR_H / 2, justifyContent: 'center' },
   zone: { position: 'absolute', top: 0, bottom: 0, borderRadius: BAR_H / 2 },
@@ -270,7 +420,7 @@ const styles = StyleSheet.create({
   dot: { position: 'absolute', left: 0, width: DOT, height: DOT, borderRadius: DOT / 2, borderWidth: 3 },
   centerOf: { fontSize: 13, lineHeight: 17, fontWeight: '600' },
   centerUnit: { fontSize: 11, lineHeight: 12, fontWeight: '600' },
-  tileLabel: { fontSize: 13, lineHeight: 17, fontWeight: '500' },
+  tileLabel: { fontSize: 12, lineHeight: 16, fontWeight: '600' },
   statusRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 3, minHeight: 30 },
   status: { fontSize: 12, lineHeight: 15, fontWeight: '700', textAlign: 'center', flexShrink: 1 },
 });
