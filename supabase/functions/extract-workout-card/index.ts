@@ -5,7 +5,7 @@ import { createAnthropicClient, WORKOUT_CARD_MODEL } from '../_shared/anthropic-
 import { CORS_HEADERS, handlePreflight, jsonResponse } from '../_shared/cors.ts';
 import { createUserScopedClient, getAuthenticatedUser } from '../_shared/supabase-client.ts';
 
-type RequestBody = { base64: string; mediaType: string };
+type RequestBody = { base64: string; mediaType: string; /** What the file is: a workout card (default) or a diet. */ kind?: 'training' | 'diet' };
 
 const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 // Base64 of ~6 MB of file: enough for a scanned card, small enough for the function's request limit.
@@ -23,6 +23,16 @@ Formato di uscita, ESATTAMENTE questo:
 - Note, carichi in kg e altro che non sia giorno/esercizio/serie/recupero/tempo: ignorali.
 Rispondi in italiano, solo con la trascrizione. Se non vedi una scheda di allenamento, rispondi con una stringa vuota.`;
 
+const DIET_SYSTEM_PROMPT = `Trascrivi una dieta o un piano alimentare (foto, screenshot o PDF) in testo semplice, senza inventare nulla.
+
+Formato di uscita, ESATTAMENTE questo:
+- se la dieta distingue i giorni, una riga con il nome del giorno ("Lunedì", "Martedì"...) prima dei suoi pasti; se è uguale tutti i giorni non scrivere giorni.
+- una riga per ogni pasto: "Colazione", "Spuntino mattina", "Pranzo", "Spuntino pomeriggio", "Cena", "Spuntino sera" (aggiungi l'orario solo se indicato: "Colazione ore 7:30").
+- sotto, una riga per alimento: "Nome alimento QUANTITÀ" con la quantità come scritta (80g, 200 ml, 2 uova, 1 cucchiaio).
+- Se un pasto offre alternative, trascrivi solo la prima.
+- Note, integratori, consigli e altro che non sia giorno/pasto/alimento/quantità: ignorali.
+Rispondi in italiano, solo con la trascrizione. Se non vedi una dieta, rispondi con una stringa vuota.`;
+
 const SCHEMA = {
   type: 'object',
   properties: { text: { type: 'string' } },
@@ -39,7 +49,8 @@ Deno.serve(async (req: Request) => {
     const supabase = createUserScopedClient(req);
     await getAuthenticatedUser(supabase);
 
-    const { base64, mediaType } = (await req.json()) as RequestBody;
+    const { base64, mediaType, kind } = (await req.json()) as RequestBody;
+    const isDiet = kind === 'diet';
     if (!base64 || !mediaType) throw new Error('Missing file');
     if (base64.length > MAX_BASE64_LENGTH) throw new Error('File troppo grande');
     const isPdf = mediaType === 'application/pdf';
@@ -53,10 +64,10 @@ Deno.serve(async (req: Request) => {
     const response = await anthropic.messages.create({
       model: WORKOUT_CARD_MODEL,
       max_tokens: 3000,
-      system: SYSTEM_PROMPT,
+      system: isDiet ? DIET_SYSTEM_PROMPT : SYSTEM_PROMPT,
       // deno-lint-ignore no-explicit-any
       output_config: { format: { type: 'json_schema', schema: SCHEMA } } as any,
-      messages: [{ role: 'user', content: [fileBlock, { type: 'text', text: 'Trascrivi la scheda.' }] as never }],
+      messages: [{ role: 'user', content: [fileBlock, { type: 'text', text: isDiet ? 'Trascrivi la dieta.' : 'Trascrivi la scheda.' }] as never }],
     });
 
     const textBlock = response.content.find((b) => b.type === 'text');

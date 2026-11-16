@@ -1,20 +1,20 @@
 import { useState, type ReactNode } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import Animated, { FadeIn, FadeInDown, FadeOut, LinearTransition, useAnimatedProps, useAnimatedStyle } from 'react-native-reanimated';
-import { LinearGradient } from 'expo-linear-gradient';
+import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from 'react-native';
+import Animated, { FadeIn, FadeInDown, useAnimatedProps } from 'react-native-reanimated';
 import Svg, { Circle } from 'react-native-svg';
 
 import { CountUpText } from '@/components/energy-guide/count-up-text';
 import { usePlayValue } from '@/components/energy-guide/use-play-value';
 import { GlassPopup } from '@/components/glass/glass-popup';
+import { MonthTimeline } from '@/components/plans/month-timeline';
 import { Reveal } from '@/components/motion/reveal';
 import { ThemedText } from '@/components/themed-text';
 import { CheckinInfoPopup } from '@/components/training/checkin-info-popup';
+import { Collapsible } from '@/components/ui/collapsible';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { PrimaryButton } from '@/components/ui/primary-button';
 import { SegmentedControl } from '@/components/ui/segmented-control';
-import { HorizontalScrollDefaults } from '@/constants/scroll';
 import { OnBrand, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { hapticSelection, hapticSuccess } from '@/lib/haptics';
@@ -63,9 +63,9 @@ export type PlanViewProps = {
 };
 
 /**
- * The Piani page for one plan. A small white box sums up the macro plan (name, overall progress, a pill per month)
- * and the chosen month (ring, name, download); descriptions, objectives and numbers sit behind a tap. Right under it
- * comes the week of workouts or meals, which is what the page is for. The check-in closes the page.
+ * The Piani page for one plan. A small box sums up the macro plan (a plain title, its strategy, duration and progress as facts, the months as a path that fills)
+ * and the chosen month (ring, name, download, check-in); descriptions, objectives and numbers sit behind a tap and
+ * open by growing in place. Right under it comes the week of workouts or meals, which is what the page is for.
  */
 export function PlanView({ kind, plan, title, description, objective, phaseDetail, monthStats, renderDay, exportPdf, notice, footer, checkinPendingMonth, onCheckin }: PlanViewProps) {
   const theme = useTheme();
@@ -85,8 +85,6 @@ export function PlanView({ kind, plan, title, description, objective, phaseDetai
   const [now] = useState(() => Date.now());
   const start = new Date(plan.generatedAt);
   const planFraction = clamp01((now - start.getTime()) / (total * 30 * DAY_MS));
-  const planBar = usePlayValue(planFraction, true, 250);
-  const planBarStyle = useAnimatedStyle(() => ({ width: `${Math.max(planBar.value, 0.015) * 100}%` }));
 
   const month = plan.months.find((m) => m.monthIndex === selectedMonth) ?? plan.months[0];
   const unlockedThrough = checkinUnlockedThroughMonth(completedMonths);
@@ -134,17 +132,18 @@ export function PlanView({ kind, plan, title, description, objective, phaseDetai
     <>
       {/* The macro plan, in one small box: where the plan stands, the month selector, the chosen month. */}
       <Reveal index={0}>
-        <FlatCard radius={Radius.medium} layout={LinearTransition.duration(260)} style={styles.box}>
+        <FlatCard radius={Radius.medium} style={styles.box}>
+          <View>
           <View style={styles.headRow}>
             <View style={styles.flex}>
-              <ThemedText style={styles.title} numberOfLines={1}>
-                {title}
+              <ThemedText style={styles.title} numberOfLines={1} accessibilityRole="header">
+                {kind === 'training' ? 'Il tuo piano di allenamento' : 'Il tuo piano alimentare'}
               </ThemedText>
-              <ThemedText style={styles.caption} themeColor="textSecondary" numberOfLines={1}>
-                Mese {Math.min(currentMonth, total)} di {total} ·{' '}
-                <CountUpText value={Math.round(planFraction * 100)} play delay={300} format={(n) => `${Math.round(n)}%`} style={[styles.caption, styles.captionStrong, { color: theme.accent }]} />
-                {' completato'}
-              </ThemedText>
+              <View style={[styles.strategy, { backgroundColor: theme.accentSoft }]}>
+                <ThemedText style={[styles.strategyText, { color: theme.accent }]} numberOfLines={1}>
+                  {title}
+                </ThemedText>
+              </View>
             </View>
             <Pressable
               onPress={() => {
@@ -161,14 +160,33 @@ export function PlanView({ kind, plan, title, description, objective, phaseDetai
             </Pressable>
           </View>
 
-          <View style={[styles.track, { backgroundColor: theme.backgroundElement }]}>
-            <Animated.View style={[styles.trackFill, planBarStyle]}>
-              <LinearGradient colors={['#FFA11E', '#FF5A00']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />
-            </Animated.View>
+          {/* The plan at a glance: how long it lasts, where it stands. */}
+          <View style={styles.facts}>
+            <View style={styles.fact}>
+              <ThemedText style={styles.factValue} numberOfLines={1}>
+                {total} {total === 1 ? 'mese' : 'mesi'}
+              </ThemedText>
+              <ThemedText style={styles.factLabel} themeColor="textSecondary">
+                Durata
+              </ThemedText>
+            </View>
+            <View style={[styles.fact, styles.factDivided, { borderLeftColor: theme.border }]}>
+              <ThemedText style={styles.factValue} numberOfLines={1}>
+                {Math.min(currentMonth, total)} di {total}
+              </ThemedText>
+              <ThemedText style={styles.factLabel} themeColor="textSecondary">
+                Mese in corso
+              </ThemedText>
+            </View>
+            <View style={[styles.fact, styles.factDivided, { borderLeftColor: theme.border }]}>
+              <CountUpText value={Math.round(planFraction * 100)} play delay={300} format={(n) => `${Math.round(n)}%`} style={[styles.factValue, { color: theme.accent }]} />
+              <ThemedText style={styles.factLabel} themeColor="textSecondary">
+                Completato
+              </ThemedText>
+            </View>
           </View>
 
-          {planInfoOpen ? (
-            <Animated.View entering={FadeInDown.duration(260)} exiting={FadeOut.duration(120)} style={styles.info}>
+            <Collapsible open={planInfoOpen} contentStyle={styles.info}>
               <ThemedText style={styles.infoText} themeColor="textSecondary">
                 {description}
               </ThemedText>
@@ -176,14 +194,15 @@ export function PlanView({ kind, plan, title, description, objective, phaseDetai
                 <ThemedText style={[styles.infoText, { color: theme.accent, fontWeight: '700' }]}>Obiettivo · </ThemedText>
                 {objective}
               </ThemedText>
-            </Animated.View>
-          ) : null}
+            </Collapsible>
+          </View>
 
-          <MonthPills months={plan.months.map((m) => m.monthIndex)} current={currentMonth} selected={selectedMonth} onSelect={(m) => setSelectedMonth(m)} />
+          <MonthTimeline months={plan.months.map((m) => m.monthIndex)} current={currentMonth} selected={selectedMonth} elapsedMonths={planFraction * total} onSelect={(m) => setSelectedMonth(m)} />
 
           <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
           {/* The chosen month, on one line. */}
+          <View>
           <Animated.View key={`month-${selectedMonth}`} entering={FadeIn.duration(300)} style={styles.monthRow}>
             <Pressable
               onPress={() => {
@@ -217,7 +236,7 @@ export function PlanView({ kind, plan, title, description, objective, phaseDetai
                 )}
               </View>
               <View style={styles.flex}>
-                <ThemedText style={styles.monthTitle} numberOfLines={1}>
+                <ThemedText style={styles.monthTitle} numberOfLines={2}>
                   {month.title}
                 </ThemedText>
                 <ThemedText style={styles.caption} themeColor="textSecondary" numberOfLines={1}>
@@ -239,8 +258,7 @@ export function PlanView({ kind, plan, title, description, objective, phaseDetai
             </Pressable>
           </Animated.View>
 
-          {monthInfoOpen ? (
-            <Animated.View entering={FadeInDown.duration(260)} exiting={FadeOut.duration(120)} style={styles.info}>
+            <Collapsible open={monthInfoOpen} contentStyle={styles.info}>
               <ThemedText style={styles.infoText} themeColor="textSecondary">
                 {phaseDetail[month.phase]}
               </ThemedText>
@@ -252,13 +270,7 @@ export function PlanView({ kind, plan, title, description, objective, phaseDetai
                 <View style={[styles.stats, { backgroundColor: theme.backgroundElement }]}>
                   {stats.map((st) => (
                     <View key={st.label} style={styles.stat}>
-                      <CountUpText
-                        value={st.value}
-                        play
-                        format={(n) => Math.round(n).toLocaleString('it-IT')}
-                        suffix={st.unit ? ` ${st.unit}` : ''}
-                        style={styles.statValue}
-                      />
+                      <CountUpText value={st.value} play={monthInfoOpen} format={(n) => Math.round(n).toLocaleString('it-IT')} suffix={st.unit ? ` ${st.unit}` : ''} style={styles.statValue} />
                       <ThemedText style={styles.statLabel} themeColor="textSecondary" numberOfLines={1}>
                         {st.label}
                       </ThemedText>
@@ -266,8 +278,38 @@ export function PlanView({ kind, plan, title, description, objective, phaseDetai
                   ))}
                 </View>
               ) : null}
-            </Animated.View>
-          ) : null}
+            </Collapsible>
+          </View>
+
+          {/* The month's check-in: done, due now, or still to come. */}
+          {checkinDone ? (
+            <View style={[styles.checkin, { backgroundColor: theme.backgroundElement }]} accessibilityLabel={`Check-in del Mese ${selectedMonth} completato`}>
+              <Icon name="checkCircle" size={18} color={theme.brandGreen} />
+              <ThemedText style={styles.checkinText}>Check-in completato</ThemedText>
+            </View>
+          ) : checkinDue ? (
+            <Pressable
+              onPress={onCheckin}
+              accessibilityRole="button"
+              accessibilityLabel={`Fai il check-in del Mese ${selectedMonth}`}
+              style={({ pressed }) => [styles.checkin, { backgroundColor: theme.accent, opacity: pressed ? 0.85 : 1 }]}
+            >
+              <Icon name="checkCircle" size={18} color={OnBrand.text} />
+              <ThemedText style={[styles.checkinText, { color: OnBrand.text }]}>Fai il check-in · Mese {selectedMonth}</ThemedText>
+            </Pressable>
+          ) : (
+            <Pressable
+              onPress={() => setCheckinInfoOpen(true)}
+              accessibilityRole="button"
+              accessibilityLabel={`Check-in del Mese ${selectedMonth}: disponibile a fine mese`}
+              style={({ pressed }) => [styles.checkin, { backgroundColor: theme.backgroundElement, opacity: pressed ? 0.6 : 1 }]}
+            >
+              <Icon name="lock" size={16} color={theme.textSecondary} />
+              <ThemedText style={[styles.checkinText, { color: theme.textSecondary }]}>
+                Check-in · {timeElapsed && isCurrent ? (daysLeft <= 1 ? 'da domani' : `tra ${daysLeft} giorni`) : `Mese ${selectedMonth}`}
+              </ThemedText>
+            </Pressable>
+          )}
         </FlatCard>
       </Reveal>
 
@@ -297,34 +339,6 @@ export function PlanView({ kind, plan, title, description, objective, phaseDetai
         )}
       </Reveal>
 
-      {/* Check-in, at the end of the month. */}
-      <Reveal index={2} style={styles.checkinSection}>
-        <Animated.View key={`checkin-${selectedMonth}-${checkinDone}-${checkinDue}`} entering={FadeIn.duration(300)}>
-          {checkinDone ? (
-            <View style={[styles.checkin, { backgroundColor: theme.backgroundElement }]} accessibilityLabel={`Check-in del Mese ${selectedMonth} completato`}>
-              <Icon name="checkCircle" size={18} color={theme.brandGreen} />
-              <ThemedText style={styles.checkinText}>Check-in completato</ThemedText>
-            </View>
-          ) : checkinDue ? (
-            <Pressable onPress={onCheckin} accessibilityRole="button" accessibilityLabel={`Fai il check-in del Mese ${selectedMonth}`} style={[styles.checkin, { backgroundColor: theme.accent }]}>
-              <Icon name="checkCircle" size={18} color={OnBrand.text} />
-              <ThemedText style={[styles.checkinText, { color: OnBrand.text }]}>Fai il check-in · Mese {selectedMonth}</ThemedText>
-            </Pressable>
-          ) : (
-            <Pressable
-              onPress={() => setCheckinInfoOpen(true)}
-              accessibilityRole="button"
-              accessibilityLabel={`Check-in del Mese ${selectedMonth} bloccato fino alla fine del mese`}
-              accessibilityState={{ disabled: true }}
-              style={[styles.checkin, { backgroundColor: theme.backgroundElement }]}
-            >
-              <Icon name="lock" size={16} color={theme.textTertiary} />
-              <ThemedText style={[styles.checkinText, { color: theme.textSecondary }]}>Check-in · Mese {selectedMonth}</ThemedText>
-            </Pressable>
-          )}
-        </Animated.View>
-      </Reveal>
-
       <CheckinInfoPopup visible={checkinInfoOpen} onClose={() => setCheckinInfoOpen(false)} monthIndex={selectedMonth} daysLeft={daysLeft} endDate={monthEndLabel} />
 
       <GlassPopup visible={downloadOpen} onClose={() => (exporting ? undefined : setDownloadOpen(false))} style={styles.popup}>
@@ -344,68 +358,27 @@ export function PlanView({ kind, plan, title, description, objective, phaseDetai
   );
 }
 
-/** One small pill per month: a check when done, the accent when running, a padlock when still locked. */
-function MonthPills({ months, current, selected, onSelect }: { months: number[]; current: number; selected: number; onSelect: (month: number) => void }) {
-  const theme = useTheme();
-  const scrolls = months.length > 6;
-  const pills = months.map((m) => {
-    const done = m < current;
-    const running = m === current;
-    const isSelected = m === selected;
-    const bg = running ? theme.accent : done ? theme.backgroundElement : theme.backgroundElement;
-    return (
-      <Pressable
-        key={m}
-        onPress={() => {
-          hapticSelection();
-          onSelect(m);
-        }}
-        accessibilityRole="button"
-        accessibilityState={{ selected: isSelected }}
-        accessibilityLabel={`Mese ${m}${done ? ', completato' : running ? ', in corso' : ', bloccato'}`}
-        hitSlop={{ top: 4, bottom: 4 }}
-        style={[styles.pill, scrolls ? styles.pillFixed : styles.flex, { backgroundColor: bg }, isSelected && { borderColor: running ? theme.accent : theme.text, borderWidth: 1.5 }]}
-      >
-        {done ? (
-          <Icon name="check" size={15} color={theme.brandGreen} />
-        ) : !running ? (
-          <Icon name="lock" size={12} color={theme.textTertiary} />
-        ) : null}
-        <ThemedText style={[styles.pillText, { color: running ? OnBrand.text : done ? theme.text : theme.textTertiary }]}>{m}</ThemedText>
-      </Pressable>
-    );
-  });
-  if (scrolls) {
-    return (
-      <ScrollView {...HorizontalScrollDefaults} contentContainerStyle={styles.pills}>
-        {pills}
-      </ScrollView>
-    );
-  }
-  return <View style={styles.pills}>{pills}</View>;
-}
-
 const styles = StyleSheet.create({
   flex: { flex: 1, minWidth: 0 },
   stack: { gap: 12 },
   section: { marginTop: 16 },
-  checkinSection: { marginTop: 24 },
   center: { textAlign: 'center' },
   box: { padding: 14, gap: 12 },
-  headRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  headRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  strategy: { alignSelf: 'flex-start', marginTop: 6, paddingHorizontal: 10, paddingVertical: 3, borderRadius: 12, borderCurve: 'continuous', maxWidth: '100%' },
+  strategyText: { fontSize: 13, lineHeight: 18, fontWeight: '600' },
+  facts: { flexDirection: 'row', marginTop: 14 },
+  fact: { flex: 1, minWidth: 0, gap: 1 },
+  factDivided: { borderLeftWidth: StyleSheet.hairlineWidth, paddingLeft: 12 },
+  factValue: { fontSize: 16, lineHeight: 21, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  factLabel: { fontSize: 12, lineHeight: 16 },
   title: { fontSize: 17, lineHeight: 22, fontWeight: '700', letterSpacing: -0.3 },
   caption: { fontSize: 13, lineHeight: 18 },
   captionStrong: { fontWeight: '700' },
   iconButton: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  track: { height: 4, borderRadius: 2, overflow: 'hidden' },
-  trackFill: { height: '100%', borderRadius: 2, overflow: 'hidden' },
   divider: { height: StyleSheet.hairlineWidth },
-  info: { gap: 8 },
+  info: { gap: 8, paddingTop: 12 },
   infoText: { fontSize: 14, lineHeight: 20 },
-  pills: { flexDirection: 'row', gap: 6 },
-  pill: { height: 36, borderRadius: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 3 },
-  pillFixed: { width: 52 },
-  pillText: { fontSize: 15, lineHeight: 20, fontWeight: '700' },
   monthRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   monthMain: { flex: 1, minWidth: 0, minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 12 },
   ring: { width: RING_SIZE, height: RING_SIZE, alignItems: 'center', justifyContent: 'center' },
@@ -418,7 +391,7 @@ const styles = StyleSheet.create({
   locked: { alignItems: 'center', gap: 6, paddingVertical: 40, paddingHorizontal: 12 },
   lockedIcon: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
   lockedTitle: { fontSize: 16, lineHeight: 21, fontWeight: '700', textAlign: 'center' },
-  checkin: { minHeight: 46, borderRadius: 23, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 16 },
+  checkin: { minHeight: 44, borderRadius: 14, borderCurve: 'continuous', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 16 },
   checkinText: { fontSize: 15, lineHeight: 20, fontWeight: '600' },
   popup: { padding: Spacing.four, gap: Spacing.three, alignItems: 'stretch' },
 });

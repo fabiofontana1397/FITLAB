@@ -5,7 +5,25 @@
 // gets real columns. See supabase/migrations/0006_plans.sql for the
 // schema_version rationale.
 import { supabase } from '@/lib/supabase/client';
-import type { DietPlan, TrainingPlan } from '@/lib/planning/types';
+import type { DietMonthPlan, DietPlan, TrainingMonthPlan, TrainingPlan } from '@/lib/planning/types';
+
+/**
+ * What a plan carries besides its months: which generator built it, whether it is the person's own card or diet, and the
+ * monthly recalibration state. The tables have no column for it and `plan` must stay an array of months (the admin views
+ * and the notification function read it that way), so it travels on the first month under `planMeta` and is lifted
+ * back out on read. Without it a plan read from the server looked outdated and was rebuilt, losing a custom card.
+ */
+type PlanMeta = Pick<TrainingPlan, 'engine' | 'source' | 'calibration' | 'recalibrations'> & { needsManualReview?: boolean };
+
+function packMonths<M extends object>(months: M[], meta: PlanMeta): M[] {
+  return months.map((month, i) => (i === 0 ? { ...month, planMeta: meta } : month));
+}
+
+function unpackMonths<M extends object>(raw: unknown): { months: M[]; meta: PlanMeta } {
+  const rows = (Array.isArray(raw) ? raw : []) as (M & { planMeta?: PlanMeta })[];
+  const meta = rows[0]?.planMeta ?? {};
+  return { months: rows.map(({ planMeta: _meta, ...month }) => month as unknown as M), meta };
+}
 
 export async function fetchDietPlan(userId: string): Promise<DietPlan | null> {
   const { data, error } = await supabase
@@ -15,7 +33,8 @@ export async function fetchDietPlan(userId: string): Promise<DietPlan | null> {
     .maybeSingle();
   if (error) throw error;
   if (!data) return null;
-  return { generatedAt: data.generated_at, durationMonths: data.duration_months, goal: data.goal, months: data.plan };
+  const { months, meta } = unpackMonths<DietMonthPlan>(data.plan);
+  return { generatedAt: data.generated_at, durationMonths: data.duration_months, goal: data.goal, months, engine: meta.engine, source: meta.source, calibration: meta.calibration, recalibrations: meta.recalibrations };
 }
 
 export async function upsertDietPlan(userId: string, plan: DietPlan): Promise<void> {
@@ -25,7 +44,7 @@ export async function upsertDietPlan(userId: string, plan: DietPlan): Promise<vo
       generated_at: plan.generatedAt,
       duration_months: plan.durationMonths,
       goal: plan.goal,
-      plan: plan.months,
+      plan: packMonths(plan.months, { engine: plan.engine, source: plan.source, calibration: plan.calibration, recalibrations: plan.recalibrations }),
     },
     { onConflict: 'user_id' }
   );
@@ -41,12 +60,18 @@ export async function fetchTrainingPlan(userId: string): Promise<TrainingPlan | 
   const { data, error } = await supabase.from('training_plans').select('generated_at, duration_months, plan').eq('user_id', userId).maybeSingle();
   if (error) throw error;
   if (!data) return null;
-  return { generatedAt: data.generated_at, durationMonths: data.duration_months, months: data.plan };
+  const { months, meta } = unpackMonths<TrainingMonthPlan>(data.plan);
+  return { generatedAt: data.generated_at, durationMonths: data.duration_months, months, engine: meta.engine, source: meta.source, calibration: meta.calibration, recalibrations: meta.recalibrations, needsManualReview: meta.needsManualReview };
 }
 
 export async function upsertTrainingPlan(userId: string, plan: TrainingPlan): Promise<void> {
   const { error } = await supabase.from('training_plans').upsert(
-    { user_id: userId, generated_at: plan.generatedAt, duration_months: plan.durationMonths, plan: plan.months },
+    {
+      user_id: userId,
+      generated_at: plan.generatedAt,
+      duration_months: plan.durationMonths,
+      plan: packMonths(plan.months, { engine: plan.engine, source: plan.source, calibration: plan.calibration, recalibrations: plan.recalibrations, needsManualReview: plan.needsManualReview }),
+    },
     { onConflict: 'user_id' }
   );
   if (error) throw error;

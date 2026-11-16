@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon } from '@/components/ui/icon';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { dayOfMonth, isToday, weekdayShort } from '@/lib/mock/dates';
 import type { TrainingDayPlan } from '@/lib/planning/types';
@@ -27,6 +28,9 @@ export type TrainingWeekCardProps = {
  * on rest days a non-interactive moon. */
 export function TrainingWeekCard({ weekDates, selectedDate, onSelectDate, isDayComplete, onToggleDayComplete, dayType }: TrainingWeekCardProps) {
   const theme = useTheme();
+  // The empty circle is nothing but its outline, and `boxEdge` is transparent in dark (boxes there have a fill instead):
+  // in dark the ring takes the tertiary ink of the rest/cardio glyphs beside it.
+  const ringColor = useColorScheme() === 'dark' ? theme.textTertiary : theme.boxEdge;
   return (
     <FlatCard radius={20} style={styles.card}>
       <View style={styles.row}>
@@ -61,7 +65,7 @@ export function TrainingWeekCard({ weekDates, selectedDate, onSelectDate, isDayC
                     styles.circle,
                     complete
                       ? { backgroundColor: theme.accent, borderColor: theme.accent }
-                      : { borderColor: today ? theme.accent : theme.boxEdge },
+                      : { borderColor: today ? theme.accent : ringColor },
                   ]}>
                   {complete ? <Icon name="check" size={13} color={theme.onAccent} /> : null}
                 </Pressable>
