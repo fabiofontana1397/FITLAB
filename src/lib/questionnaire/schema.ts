@@ -5,7 +5,7 @@ import { foodOptions, PREFERENCE_QUESTION_ID, type FoodComponent } from './food-
 // — written alongside every answers upsert (see lib/api/onboarding.ts) so
 // existing responses can always be traced back to the schema version that
 // collected them.
-export const QUESTIONNAIRE_VERSION = 4; // v4: food preferences per component (food ids, incl. fruit and vegetables) instead of broad codes
+export const QUESTIONNAIRE_VERSION = 5; // v5: excludedFoods/includedFoods no longer asked (older answers are still honoured by the diet engine)
 
 export type QuestionType = 'single' | 'multi' | 'foodPicker' | 'scale' | 'number' | 'text' | 'longtext' | 'time';
 
@@ -405,8 +405,6 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
         ],
       },
       { id: 'allergiesIntolerances', type: 'text', label: 'Hai allergie alimentari, intolleranze o alimenti che digerisci male?', placeholder: 'No, oppure elenca quali', optional: true },
-      { id: 'excludedFoods', type: 'longtext', label: 'Quali alimenti NON vuoi nella tua dieta?', optional: true },
-      { id: 'includedFoods', type: 'longtext', label: 'Quali alimenti vuoi assolutamente includere?', optional: true },
       { id: 'usualBreakfast', type: 'text', label: 'Cosa mangi di solito a colazione?', optional: true },
       {
         id: 'usualMorningSnack',

@@ -41,7 +41,7 @@ export const PROFILE_GROUPS: ProfileGroup[] = [
     icon: 'nutrition',
     stepIds: ['preferences'],
     compact: true,
-    questionIds: ['dietaryPattern', 'allergiesIntolerances', 'excludedFoods', 'includedFoods', 'preferredProteins', 'preferredCarbs', 'preferredFats', 'preferredFruit', 'preferredVegetables'],
+    questionIds: ['dietaryPattern', 'allergiesIntolerances', 'preferredProteins', 'preferredCarbs', 'preferredFats', 'preferredFruit', 'preferredVegetables'],
   },
   {
     id: 'habits',
