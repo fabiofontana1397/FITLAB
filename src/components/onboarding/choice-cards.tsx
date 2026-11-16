@@ -55,23 +55,52 @@ export function ChoiceCards({ questionId, options, multi, value, onChange, exclu
     onChange(next.size > 0 ? [...next] : undefined);
   };
 
-  return (
-    <View style={styles.list}>
-      {options.map((option, index) => (
-        <ChoiceCard
-          key={option.value}
-          index={index}
-          label={option.label}
-          description={optionDescription(questionId, option.value)}
-          icon={optionIcon(questionId, option.value)}
-          selected={selected.has(option.value)}
-          multi={multi}
-          onPress={() => toggle(option.value)}
-        />
-      ))}
-    </View>
+  // Long lists are drawn tighter so the question and every option fit on one screen: from 5 options the
+  // cards get shorter, and short plain labels ("Manubri", "3x a settimana") go two per row.
+  const dense = options.length >= DENSE_FROM;
+  const grid =
+    options.length >= GRID_FROM &&
+    options.every((o) => o.label.length <= GRID_MAX_LABEL && !optionDescription(questionId, o.value));
+
+  const card = (option: QuestionOption, index: number) => (
+    <ChoiceCard
+      key={option.value}
+      index={index}
+      label={option.label}
+      description={optionDescription(questionId, option.value)}
+      icon={optionIcon(questionId, option.value)}
+      selected={selected.has(option.value)}
+      multi={multi}
+      dense={dense}
+      onPress={() => toggle(option.value)}
+    />
   );
+
+  if (grid) {
+    const rows: QuestionOption[][] = [];
+    for (let i = 0; i < options.length; i += 2) rows.push(options.slice(i, i + 2));
+    return (
+      <View style={styles.list}>
+        {rows.map((row, r) => (
+          <View key={row[0].value} style={styles.gridRow}>
+            {row.map((option, c) => (
+              <View key={option.value} style={styles.gridCell}>
+                {card(option, r * 2 + c)}
+              </View>
+            ))}
+            {row.length === 1 ? <View style={styles.gridCell} /> : null}
+          </View>
+        ))}
+      </View>
+    );
+  }
+
+  return <View style={styles.list}>{options.map(card)}</View>;
 }
+
+const DENSE_FROM = 5;
+const GRID_FROM = 6;
+const GRID_MAX_LABEL = 16;
 
 type ChoiceCardProps = {
   index: number;
@@ -80,10 +109,12 @@ type ChoiceCardProps = {
   icon?: IconName;
   selected: boolean;
   multi: boolean;
+  /** Shorter card, for long lists. */
+  dense?: boolean;
   onPress: () => void;
 };
 
-function ChoiceCard({ index, label, description, icon, selected, multi, onPress }: ChoiceCardProps) {
+function ChoiceCard({ index, label, description, icon, selected, multi, dense, onPress }: ChoiceCardProps) {
   const theme = useTheme();
   const reduceMotion = useReducedMotion();
   const pressed = useSharedValue(0);
@@ -129,6 +160,7 @@ function ChoiceCard({ index, label, description, icon, selected, multi, onPress 
         <Animated.View
           style={[
             styles.card,
+            dense && styles.cardDense,
             surfaceStyle,
             {
               backgroundColor: selected ? theme.accentSoft : theme.backgroundElement,
@@ -136,12 +168,14 @@ function ChoiceCard({ index, label, description, icon, selected, multi, onPress 
             },
           ]}>
           {icon ? (
-            <View style={[styles.iconWrap, { backgroundColor: selected ? theme.accent : theme.backgroundSelected }]}>
-              <Icon name={icon} size={20} color={selected ? theme.onAccent : theme.textSecondary} />
+            <View style={[styles.iconWrap, dense && styles.iconWrapDense, { backgroundColor: selected ? theme.accent : theme.backgroundSelected }]}>
+              <Icon name={icon} size={dense ? 17 : 20} color={selected ? theme.onAccent : theme.textSecondary} />
             </View>
           ) : null}
           <View style={styles.body}>
-            <ThemedText type="subtitle">{label}</ThemedText>
+            <ThemedText type={dense ? 'small' : 'subtitle'} style={dense ? styles.labelDense : undefined}>
+              {label}
+            </ThemedText>
             {description ? (
               <ThemedText type="small" themeColor="textSecondary">
                 {description}
@@ -176,6 +210,11 @@ const styles = StyleSheet.create({
     borderRadius: Radius.medium,
     minHeight: 64,
   },
+  cardDense: { minHeight: 48, paddingVertical: 10, gap: Spacing.two + 4 },
+  iconWrapDense: { width: 32, height: 32 },
+  labelDense: { fontWeight: '600' },
+  gridRow: { flexDirection: 'row', gap: Spacing.two },
+  gridCell: { flex: 1 },
   iconWrap: { width: 40, height: 40, borderRadius: Radius.small, alignItems: 'center', justifyContent: 'center' },
   body: { flex: 1, gap: 2 },
   mark: { width: 24, height: 24, borderRadius: Radius.pill, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },

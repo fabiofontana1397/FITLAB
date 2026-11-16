@@ -87,6 +87,6 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   flex: { flex: 1 },
   column: { width: '100%', maxWidth: MaxContentWidth, alignSelf: 'center', paddingHorizontal: Spacing.four },
-  scrollContent: { flexGrow: 1, justifyContent: 'center', paddingVertical: Spacing.four },
+  scrollContent: { flexGrow: 1, justifyContent: 'center', paddingVertical: Spacing.three },
   footer: { paddingTop: Spacing.three, gap: Spacing.two },
 });
