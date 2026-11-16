@@ -82,11 +82,49 @@ export const DISH_IMAGE_IDS: Record<string, string> = {
   X313: 'salmone-cereali-zucchine',
   X328: 'salmone-cereali-zucchine',
   PL047: 'frittata-spinaci-pomodori',
+  // foto dedicate dei piatti X (generate, vedi docs/MEAL-IMAGES.md)
+  X102: 'x102',
+  X103: 'x103',
+  X104: 'x104',
+  X305: 'x305',
+  X307: 'x307',
+  X317: 'x317',
+  X322: 'x322',
+  X323: 'x323',
+  X202: 'x202',
+  X204: 'x204',
+  X205: 'x205',
+  X301: 'x301',
+  X303: 'x303',
+  X304: 'x304',
+  X318: 'x318',
+  X319: 'x319',
+  X321: 'x321',
+  X330: 'x330',
+  X332: 'x332',
+  X333: 'x333',
+  X101: 'x101',
+  X106: 'x106',
+  X201: 'x201',
+  X206: 'x206',
+  X207: 'x207',
+  X306: 'x306',
+  X309: 'x309',
+  X310: 'x310',
+  X311: 'x311',
+  X312: 'x312',
+  X314: 'x314',
+  X315: 'x315',
+  X316: 'x316',
+  X325: 'x325',
+  X331: 'x331',
+  X208: 'x208',
+  X320: 'x320',
+  X327: 'x327',
 };
 
-
-/** Second photos of a dish for the variant of its main ingredient (another fish, another meat): tried in order after the
- * dish's own photo, each shown only when the meal has what it depicts (PHOTO_KEYS). */
+/** Second photos of a dish for the variant of its main ingredient (another fish, another meat): preferred over the
+ * dish's own photo when the meal has what they depict (PHOTO_KEYS). */
 export const DISH_IMAGE_VARIANTS: Record<string, string[]> = {
   PL034: ['pl034-sgombro'],
   PL036: ['pl036-tacchino'],
@@ -96,10 +134,14 @@ export const DISH_IMAGE_VARIANTS: Record<string, string[]> = {
   PL048: ['pl048-sgombro'],
 };
 
-/** What each photo actually shows: the foods that must be in the meal (each inner list is "any of these") for the photo to
- * be shown. A dish allows several proteins, bases and fruits, but a photo shows one of each (here only the ingredient that gives the dish its identity: the fish, the meat, the fruit): with another one in the
- * meal (salmon where the photo has sea bream, apple where it has banana) the photo would lie, so the plate shows the
- * placeholder instead. Photos with no entry always fit their dish. */
+/** What each photo actually shows: the foods (each inner list is "any of these") that make it the exact picture of a meal.
+ * A dish allows several proteins, bases and fruits, but a photo shows one of each (here only the ingredient that gives the
+ * dish its identity: the fish, the meat, the fruit). It decides which photo wins when a dish has more than one: the one
+ * that shows the meal's own foods, else the main one. Photos with no entry always count as exact. */
+/** Foods that look the same on the plate: a photo of one honestly shows the other. */
+const POULTRY = ['Petto di pollo', 'Petto di tacchino'];
+const YOGURT = ['Yogurt greco 0%', 'Yogurt greco 2%', 'Skyr', 'Yogurt magro', 'Yogurt proteico'];
+
 const PHOTO_KEYS: Record<string, string[][]> = {
   pl001: [['Frutti di bosco', 'Mirtilli', 'Fragole']],
   pl003: [["Albume d'uovo"]],
@@ -119,9 +161,9 @@ const PHOTO_KEYS: Record<string, string[][]> = {
   pl020: [['Kefir']],
   pl021: [['Uova intere']],
   pl022: [['Budino proteico']],
-  pl023: [['Petto di pollo']],
+  pl023: [POULTRY],
   pl024: [['Salmone']],
-  pl025: [['Petto di tacchino']],
+  pl025: [POULTRY],
   pl026: [['Merluzzo']],
   pl027: [['Ceci']],
   pl028: [['Orata']],
@@ -140,7 +182,7 @@ const PHOTO_KEYS: Record<string, string[][]> = {
   'pl038-trota': [['Trota']],
   pl039: [['Mozzarella', 'Mozzarella light']],
   pl040: [['Lenticchie']],
-  pl041: [['Petto di tacchino']],
+  pl041: [POULTRY],
   pl042: [['Ceci']],
   pl043: [['Lonza di maiale magra']],
   'pl043-tacchino': [['Petto di tacchino']],
@@ -151,20 +193,59 @@ const PHOTO_KEYS: Record<string, string[][]> = {
   pl048: [['Tonno al naturale']],
   'pl048-sgombro': [['Sgombro']],
   'risotto-funghi': [['Funghi']],
-  'pollo-patate-insalata': [['Petto di pollo'], ['Patate']],
+  'pollo-patate-insalata': [POULTRY, ['Patate']],
   'salmone-cereali-zucchine': [['Salmone']],
-  'frittata-spinaci-pomodori': [['Uova intere'], ['Spinaci']],
+  'frittata-spinaci-pomodori': [['Uova intere'], ['Spinaci', 'Bietole']],
+  x102: [['Banana']],
+  x103: [['Uova intere'], ['Arancia']],
+  x104: [['Banana']],
+  x305: [['Tonno al naturale']],
+  x307: [['Mozzarella light', 'Mozzarella']],
+  x317: [['Sardine']],
+  x322: [['Petto di pollo', 'Petto di tacchino']],
+  x323: [['Tonno al naturale']],
+  x202: [['Yogurt greco 0%', 'Yogurt greco 2%', 'Skyr'], ['Noci']],
+  x204: [['Tonno al naturale'], ['Pomodori']],
+  x205: [['Fesa di tacchino affettata'], ['Avocado']],
+  x301: [['Gamberi'], ['Zucca']],
+  x303: [['Petto di pollo', 'Petto di tacchino'], ['Fagiolini']],
+  x304: [['Ricotta magra'], ['Melanzane']],
+  x318: [['Petto di pollo', 'Petto di tacchino']],
+  x319: [['Hamburger di merluzzo']],
+  x321: [['Gamberi'], ['Zucchine']],
+  x330: [['Petto di pollo', 'Petto di tacchino']],
+  x332: [['Fesa di tacchino affettata']],
+  x333: [['Lenticchie']],
+  x101: [['Banana']],
+  x106: [['Banana']],
+  x201: [['Parmigiano Reggiano'], ['Pera']],
+  x206: [['Barretta proteica'], ['Mela']],
+  x207: [['Bevanda proteica'], ['Banana']],
+  x306: [['Ceci']],
+  x309: [['Manzo magro']],
+  x310: [['Merluzzo', 'Orata']],
+  x311: [['Ceci']],
+  x312: [['Fagioli borlotti', 'Fagioli cannellini']],
+  x314: [['Petto di tacchino', 'Petto di pollo']],
+  x315: [['Hamburger di tacchino magro', 'Hamburger di pollo magro'], ['Spinaci', 'Bietole']],
+  x316: [['Fagioli borlotti', 'Fagioli cannellini', 'Fagioli']],
+  x325: [['Manzo magro']],
+  x331: [['Bresaola']],
+  x208: [['Mozzarella light', 'Mozzarella'], ['Pomodori']],
+  x320: [['Uova intere'], ['Zucchine']],
+  x327: [['Lonza di maiale magra'], ['Cavolo nero', 'Bietole']],
 };
 
 /** True when the meal's foods contain what the photo shows. */
 const depicts = (photoId: string, foodNames: string[]): boolean => (PHOTO_KEYS[photoId] ?? []).every((anyOf) => anyOf.some((n) => foodNames.includes(n)));
 
-/** The photo for a dish, or undefined when the library has none for it. With the names of the meal's foods, only a photo that
- * really shows them (see PHOTO_KEYS). */
+/** The photo for a dish, or undefined when the library has none for it. With the names of the meal's foods, the photo that
+ * shows exactly them when there is one (the dish's own or a variant, see PHOTO_KEYS); otherwise the dish's main photo, which
+ * stands for the recipe whatever ingredient the plan swapped in (product decision: one photo per recipe is enough). */
 export function dishImage(dishId: string | undefined, foodNames?: string[]): MealImage | undefined {
   if (!dishId) return undefined;
   const main = DISH_IMAGE_IDS[dishId];
   if (!main) return undefined;
-  const id = [main, ...(DISH_IMAGE_VARIANTS[dishId] ?? [])].find((candidate) => !foodNames || depicts(candidate, foodNames));
-  return id ? BY_ID.get(id) : undefined;
+  const exact = foodNames ? [main, ...(DISH_IMAGE_VARIANTS[dishId] ?? [])].find((candidate) => depicts(candidate, foodNames)) : undefined;
+  return BY_ID.get(exact ?? main);
 }

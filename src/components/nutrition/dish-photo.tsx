@@ -17,11 +17,10 @@ export function mealImageUri(image: MealImage): string | undefined {
   return Platform.OS === 'web' ? image.image : undefined;
 }
 
-/**
- * A dish's photo in the Piano alimentare: a fixed square PhotoTile (always
- * the whole picture), lazy on the web since the plan lists a whole week of
- * meals. No photo URL, or a file that fails, leaves a plate glyph instead.
- */
+/** The photos are shot on white with the plate centred and air around it (scripts/assets/normalize-meal-photos.py), so
+ * the tile behind them is white in both schemes: the plate reads as one object, never as a square with a seam. */
+const PHOTO_BACKGROUND = '#FFFFFF';
+
 /** The grey tile with a fork and knife that stands in for every dish while pictures are off (constants/food-images.ts). */
 export function DishPlaceholder({ size = 64, radius = 14 }: { size?: number; radius?: number }) {
   const theme = useTheme();
@@ -32,6 +31,12 @@ export function DishPlaceholder({ size = 64, radius = 14 }: { size?: number; rad
   );
 }
 
+/**
+ * A dish's photo in the Piano alimentare: a fixed square PhotoTile (always
+ * the whole picture: the file is square and so is the tile, so nothing is
+ * cropped), lazy on the web since the plan lists a whole week of meals. No
+ * photo URL, or a file that fails, leaves a plate glyph instead.
+ */
 export function DishPhoto({ image, size = 64, radius = 14 }: { image: MealImage; size?: number; radius?: number }) {
   const theme = useTheme();
   if (!FOOD_IMAGES_ENABLED) return <DishPlaceholder size={size} radius={radius} />;
@@ -54,7 +59,7 @@ export function DishPhoto({ image, size = 64, radius = 14 }: { image: MealImage;
       source={{ uri, width: 512, height: 512 }}
       width={size}
       radius={radius}
-      background={theme.backgroundElement}
+      background={PHOTO_BACKGROUND}
       alt={image.alt}
       fallback={fallback}
       fill
