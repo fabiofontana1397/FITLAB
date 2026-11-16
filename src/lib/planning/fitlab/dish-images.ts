@@ -118,6 +118,9 @@ export const DISH_IMAGE_IDS: Record<string, string> = {
   X316: 'x316',
   X325: 'x325',
   X331: 'x331',
+  X208: 'x208',
+  X320: 'x320',
+  X327: 'x327',
 };
 
 /** Second photos of a dish for the variant of its main ingredient (another fish, another meat): preferred over the
@@ -228,6 +231,9 @@ const PHOTO_KEYS: Record<string, string[][]> = {
   x316: [['Fagioli borlotti', 'Fagioli cannellini', 'Fagioli']],
   x325: [['Manzo magro']],
   x331: [['Bresaola']],
+  x208: [['Mozzarella light', 'Mozzarella'], ['Pomodori']],
+  x320: [['Uova intere'], ['Zucchine']],
+  x327: [['Lonza di maiale magra'], ['Cavolo nero', 'Bietole']],
 };
 
 /** True when the meal's foods contain what the photo shows. */

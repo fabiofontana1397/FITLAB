@@ -691,5 +691,26 @@
     "category": "lunch",
     "image": "/images/meals/x331.webp",
     "alt": "Pane integrale con bresaola, rucola e carote"
+  },
+  {
+    "id": "x208",
+    "name": "Bruschetta con mozzarella e pomodori",
+    "category": "snack",
+    "image": "/images/meals/x208.webp",
+    "alt": "Bruschetta con mozzarella e pomodori"
+  },
+  {
+    "id": "x320",
+    "name": "Frittata con patate e zucchine",
+    "category": "dinner",
+    "image": "/images/meals/x320.webp",
+    "alt": "Frittata con patate e zucchine"
+  },
+  {
+    "id": "x327",
+    "name": "Lonza di maiale con patate e cavolo nero",
+    "category": "dinner",
+    "image": "/images/meals/x327.webp",
+    "alt": "Lonza di maiale con patate e cavolo nero"
   }
 ]
