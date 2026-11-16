@@ -1,175 +1,154 @@
 /**
- * The recipe layer of the Fit Lab framework. A dish says which foods may play which role, with the names used in the
- * catalog (data/fitlab workbook), so only pairings that make culinary sense can ever be built. Quantities are not here:
- * they are solved afterwards from the person's targets (fitlab/solver.ts).
+ * The standard meals of the Fit Lab diet. A dish says which foods may play which role, with the names used in the
+ * catalog (data/fitlab workbook). Quantities are not here: they are solved afterwards from the person's targets
+ * (fitlab/solver.ts).
  *
- * Roles (the workbook's columns):
+ * The structure is deliberately plain, so every meal is quick to prepare and every food is easy to swap:
+ *  - pranzo e cena   primo (ONE carbohydrate source) + secondo (ONE protein source) + contorno (ONE vegetable)
+ *                    + extra virgin olive oil, the only added fat. Any primo goes with any secondo.
+ *  - colazione       one of a short list of classic breakfasts (porridge, eggs, bread with ricotta and jam, yogurt…).
+ *  - merenda         yogurt, oats, bread with jam, or a sandwich with cold cuts (cold cuts: once a week at most).
+ * A meal never has two carbohydrate sources (pasta AND bread) nor two protein sources: meal-builder.ts enforces it.
+ *
+ * Roles:
  *  - base      primo / carbohydrate         - protein   secondo / protein source
- *  - sides     contorno (vegetables) or fruit; each inner list is one side to pick from
- *  - spread    jam or honey                 - fat       nuts, seeds, avocado, nut butters, pesto
- *  - oil       extra virgin olive oil as cooking / seasoning fat
- *  - sauce     tomato passata               - aromas    free flavourings (herbs, spices, lemon)
- * The FIRST food of every list is the dish as written in the workbook (PLxxx); the others are its allowed alternatives.
- * Dishes marked source 'extra' are additional Mediterranean dishes proposed by the agent.
+ *  - sides     contorno (vegetable) or fruit; each inner list is one side to pick from
+ *  - spread    jam or honey                 - fat       avocado, nut butter (breakfast only)
+ *  - oil       extra virgin olive oil       - aromas    free flavourings (herbs, spices, lemon, tomato passata)
+ * The FIRST food of every list is the default; the others are its alternatives.
  */
 import type { SlotKind } from './catalog';
 import { foodByName } from './foods';
 
 export type Dish = {
   id: string;
-  source: 'excel' | 'extra';
   kinds: SlotKind[];
-  /** Name template: {base} {protein} {s1} {s2} {fat} {spread}. */
+  /** Name template: {base} {protein} {s1} {fat} {spread}. */
   name: string;
   base?: string[];
   protein: string[];
-  /** A protein that complements the main one when the meal is short of protein (e.g. egg whites with a frittata). */
-  extraProtein?: string[];
+  /** Protein sources that join when the person can eat fewer than four of `protein` (who eats no meat: eggs and fresh cheese;
+   * who eats no fish either also gets legumes next to a cereal, see meal-builder.ts). */
+  proteinFallback?: string[];
   sides?: string[][];
   spread?: string[];
   fat?: string[];
+  /** Nuts added only for who picked them in the questionnaire (a spoonful on yogurt or porridge). */
+  fatIfPreferred?: string[];
   oil?: boolean;
-  sauce?: boolean;
   aromas: string[];
   portable?: boolean;
-  /** Takes time to prepare (oven, long-cooking grains, ragù, soups…): kept for dinner, lunch needs quick dishes. */
-  slow?: boolean;
-  /** Small fixed-by-recipe ingredients (milk in a porridge, honey, a squeeze of lemon, sesame): `grams` is the amount for a
+  /** Small fixed-by-recipe ingredients (milk in a porridge, honey, a squeeze of lemon): `grams` is the amount for a
    * `refKcal` meal (default 400), scaled with the meal's calories and rounded to `step`. The first allowed food of `foods` is used;
    * when none is allowed (e.g. no milk for a vegan) the ingredient is left out. Always counted in the nutrition of the meal. */
   accessories?: { foods: string[]; grams: number; step: number }[];
   refKcal?: number;
-  /** The fat is named in the dish (avocado toast, pesto): it is always in the meal, never rounded away. */
+  /** The fat is named in the dish (avocado toast): it is always in the meal, never rounded away. */
   fatRequired?: boolean;
+  /** A quick lunch (bread, rice cakes): at dinner the other primi come first (pasta, rice, potatoes, legumes). */
+  rareAtDinner?: boolean;
+  /** Not one of the standard meals: used only when the person's exclusions leave too few of them for a varied week. */
+  reserve?: boolean;
 };
 
-type Spec = Omit<Dish, 'source' | 'kinds'> & { kinds: SlotKind[] };
 const BF: SlotKind[] = ['breakfast'];
 const SN: SlotKind[] = ['snack'];
-const BFSN: SlotKind[] = ['breakfast', 'snack'];
 const MAIN: SlotKind[] = ['lunch', 'dinner'];
 
-const excel = (s: Spec): Dish => ({ source: 'excel', ...s });
-const extra = (s: Spec): Dish => ({ source: 'extra', ...s });
+// ------------------------------------------------------------ standard lists --
+
+/** Primo: one carbohydrate source. */
+export const PRIMI = {
+  pasta: ['Pasta', 'Pasta integrale'],
+  riso: ['Riso', 'Riso basmati', 'Riso integrale'],
+  patate: ['Patate', 'Patate dolci'],
+  // pan bauletto is a breakfast and snack bread: never a primo at lunch or dinner
+  pane: ['Pane integrale', 'Pane di segale'],
+  gallette: ['Gallette di riso', 'Gallette di mais', 'Gallette di farro'],
+  legumi: ['Ceci', 'Fagioli cannellini', 'Lenticchie', 'Fagioli borlotti', 'Fagioli'],
+};
+
+/** Secondo: one protein source. Meat and white fish first; all of them go with every primo. */
+export const SECONDI = [
+  'Petto di pollo',
+  'Petto di tacchino',
+  'Vitello magro',
+  'Manzo magro',
+  'Macinato di manzo magro',
+  'Hamburger di manzo magro',
+  'Merluzzo',
+  'Orata',
+  'Hamburger di pollo magro',
+  'Hamburger di tacchino magro',
+  'Lonza di maiale magra',
+  'Salmone',
+  'Tonno al naturale',
+  'Uova intere',
+];
+/** For who eats no meat: eggs and fresh cheese. */
+export const SECONDI_VEG = ['Uova intere', "Albume d'uovo", 'Fiocchi di latte', 'Mozzarella light', 'Ricotta magra'];
+
+/** Contorno: one classic vegetable (the person's preferred vegetables join the list, see meal-builder.ts). */
+export const CONTORNI = ['Zucchine', 'Lattuga', 'Pomodori', 'Broccoli', 'Spinaci', 'Fagiolini', 'Carote', 'Finocchi', 'Peperoni', 'Melanzane', 'Cavolfiore', 'Bietole'];
 
 const OATS = ["Fiocchi d'avena", 'Avena istantanea'];
-const BERRIES = ['Frutti di bosco', 'Mirtilli', 'Fragole'];
-const FRUIT_BF = ['Banana', 'Mela', 'Kiwi', 'Frutti di bosco', 'Arancia', 'Fragole', 'Pera', 'Pesca'];
-const FRUIT_SN = ['Mela', 'Pera', 'Kiwi', 'Banana', 'Arancia', 'Frutti di bosco', 'Pesca', 'Uva'];
-const PASTA = ['Pasta', 'Pasta integrale'];
-const RICE = ['Riso', 'Riso integrale', 'Riso basmati'];
-// legume dishes are low in protein per kcal: a complementary source is added when the meal falls short
-const LEGUME_BOOST = ['Ricotta magra', 'Uova intere', 'Parmigiano Reggiano', 'Mozzarella light'];
-const FISH_WHITE = ['Merluzzo', 'Orata', 'Trota'];
+const BREAD = ['Pane integrale', 'Pane di segale', 'Pan bauletto'];
+const GREEK = ['Yogurt greco 0%', 'Yogurt greco 2%'];
+const MILK = ['Latte vaccino', 'Latte senza lattosio', 'Bevanda di soia non zuccherata'];
+const FRUIT = ['Banana', 'Mela', 'Frutti di bosco', 'Kiwi', 'Pera', 'Arancia', 'Fragole', 'Pesca'];
+const NUTS = ['Mandorle', 'Noci', 'Nocciole', 'Pistacchi'];
+const AROMI_CARNE = ['Limone', 'Rosmarino', 'Pepe nero'];
+
+const main = (id: string, base: string[], extra: Partial<Dish> = {}): Dish => ({
+  id,
+  kinds: MAIN,
+  name: '{base}, {protein} e {s1}',
+  base,
+  protein: SECONDI,
+  proteinFallback: SECONDI_VEG,
+  sides: [CONTORNI],
+  oil: true,
+  aromas: AROMI_CARNE,
+  ...extra,
+});
 
 export const DISHES: Dish[] = [
   // =============================================================== COLAZIONE
-  excel({ id: 'PL001', kinds: BF, name: "Porridge d'avena, {protein} e {s1}", base: OATS, protein: ['Yogurt greco 0%', 'Yogurt greco 2%'], sides: [BERRIES], accessories: [{ foods: ['Latte vaccino', 'Latte senza lattosio', 'Bevanda di soia non zuccherata'], grams: 150, step: 10 }, { foods: ['Miele'], grams: 5, step: 1 }], aromas: [] }),
-  excel({ id: 'PL003', kinds: BF, name: "Porridge di avena e albumi d'uovo", base: OATS, protein: ["Albume d'uovo"], fat: ['Burro di arachidi 100%'], accessories: [{ foods: ['Latte vaccino', 'Latte senza lattosio', 'Bevanda di soia non zuccherata'], grams: 100, step: 10 }], aromas: ['Cannella'] }),
-  excel({ id: 'PL004', kinds: BF, name: 'Bowl di {protein}, muesli e {s1}', base: ['Muesli'], protein: ['Yogurt greco 0%', 'Yogurt greco 2%'], sides: [['Kiwi']], fat: ['Mandorle'], aromas: [] }),
-  excel({ id: 'PL005', kinds: BF, name: 'Toast integrale con {protein} e marmellata', base: ['Pane integrale'], protein: ['Ricotta magra'], spread: ['Marmellata light'], aromas: [] }),
-  excel({ id: 'PL006', kinds: BF, name: 'Avocado toast', base: ['Pane integrale'], protein: [], sides: [['Pomodori']], fat: ['Avocado'], accessories: [{ foods: ['Limone'], grams: 5, step: 5 }, { foods: ['Semi di sesamo'], grams: 3, step: 1 }], aromas: ['Pepe nero'] }),
-  excel({ id: 'PL007', kinds: BF, name: "Pancake d'avena con yogurt e {s1}", base: ["Fiocchi d'avena"], protein: ['Uova intere', "Albume d'uovo"], sides: [['Banana']], accessories: [{ foods: ['Latte vaccino', 'Latte senza lattosio', 'Bevanda di soia non zuccherata'], grams: 50, step: 10 }, { foods: ['Yogurt greco 0%', 'Yogurt greco 2%'], grams: 100, step: 10 }], aromas: [] }),
-  excel({ id: 'PL008', kinds: BF, name: 'Pane di segale con {protein} e marmellata', base: ['Pane di segale'], protein: ['Fiocchi di latte'], spread: ['Marmellata light'], aromas: [] }),
-  excel({ id: 'PL009', kinds: BF, name: 'Fette biscottate con {protein} e marmellata', base: ['Fette biscottate integrali'], protein: ['Yogurt greco 0%', 'Yogurt greco 2%'], spread: ['Marmellata light'], aromas: [] }),
-  excel({ id: 'PL010', kinds: BF, name: 'Kefir con avena e {s1}', base: ["Fiocchi d'avena"], protein: ['Kefir'], extraProtein: ['Skyr', 'Yogurt proteico', 'Fiocchi di latte'], sides: [['Mela']], fat: ['Noci'], aromas: ['Cannella'] }),
-  excel({ id: 'PL011', kinds: BF, name: 'Toast con {protein} e {s1}', base: ['Pane integrale'], protein: ['Fesa di tacchino affettata'], sides: [['Mela']], accessories: [{ foods: ['Ricotta magra'], grams: 20, step: 10 }], aromas: [] }),
-  extra({ id: 'X101', kinds: BF, name: '{protein} con {base} e {s1}', base: ['Cereali integrali', 'Cereali da colazione senza zuccheri aggiunti', 'Muesli'], protein: ['Latte vaccino', 'Latte senza lattosio', 'Bevanda di soia non zuccherata'], extraProtein: ['Yogurt greco 0%', 'Skyr', 'Yogurt proteico'], sides: [['Banana', 'Mela', 'Pera', 'Frutti di bosco']], fat: ['Mandorle', 'Noci'], aromas: [] }),
-  extra({ id: 'X102', kinds: BFSN, name: '{base} con {protein} e {s1}', base: ['Gallette di riso', 'Gallette di farro', 'Gallette di mais'], protein: ['Ricotta magra', 'Fiocchi di latte', 'Yogurt greco 0%'], sides: [FRUIT_BF], fat: ['Burro di mandorle 100%', 'Burro di arachidi 100%', 'Nocciole'], aromas: [] }),
-  extra({ id: 'X103', kinds: BF, name: 'Uova strapazzate con {base} e {s1}', base: ['Pane integrale', 'Pane di segale'], protein: ['Uova intere'], extraProtein: ["Albume d'uovo"], sides: [['Arancia', 'Kiwi', 'Mela']], aromas: ['Pepe nero', 'Prezzemolo'] }),
-  extra({ id: 'X104', kinds: BF, name: 'Overnight oats con {protein} e {s1}', base: OATS, protein: ['Skyr', 'Yogurt greco 0%', 'Yogurt proteico'], sides: [FRUIT_BF], fat: ['Semi di chia', 'Semi di lino', 'Mandorle'], aromas: ['Cannella'] }),
-  extra({ id: 'X106', kinds: BF, name: "Porridge d'avena con {protein} e {s1}", base: OATS, protein: ['Bevanda di soia non zuccherata', 'Bevanda di mandorla non zuccherata'], extraProtein: ['Bevanda proteica'], sides: [FRUIT_BF], fat: ['Burro di arachidi 100%', 'Semi di chia', 'Noci'], aromas: ['Cannella'] }),
+  { id: 'PL001', kinds: BF, name: "Porridge d'avena, {protein} e {s1}", base: OATS, protein: GREEK, sides: [['Frutti di bosco', 'Mirtilli', 'Fragole', 'Banana', 'Mela']], fatIfPreferred: NUTS, accessories: [{ foods: MILK, grams: 150, step: 10 }], aromas: ['Cannella'] },
+  { id: 'PL003', kinds: BF, name: "Porridge d'avena e albumi", base: OATS, protein: ["Albume d'uovo"], fat: ['Burro di arachidi 100%'], accessories: [{ foods: MILK, grams: 100, step: 10 }], aromas: ['Cannella'], fatRequired: true },
+  { id: 'ST-BF-UOVA-AVOCADO', kinds: BF, name: 'Avocado toast con {protein}', base: BREAD, protein: ['Uova intere'], fat: ['Avocado'], aromas: ['Limone', 'Pepe nero'], fatRequired: true },
+  { id: 'ST-BF-UOVA', kinds: BF, name: 'Uova strapazzate con {base}', base: BREAD, protein: ['Uova intere'], aromas: ['Pepe nero', 'Prezzemolo'] },
+  { id: 'ST-BF-ALBUMI', kinds: BF, name: 'Frittata di albumi con {base}', base: BREAD, protein: ["Albume d'uovo"], oil: true, aromas: ['Pepe nero', 'Prezzemolo'] },
+  { id: 'PL005', kinds: BF, name: '{base} con {protein} e marmellata', base: BREAD, protein: ['Ricotta magra'], spread: ['Marmellata light'], aromas: [] },
+  { id: 'ST-BF-YOGURT-CEREALI', kinds: BF, name: '{protein} con {base} e {s1}', base: ['Cereali integrali', 'Muesli'], protein: GREEK, sides: [FRUIT], fatIfPreferred: NUTS, aromas: [] },
+  { id: 'ST-BF-LATTE-CEREALI', kinds: BF, name: 'Latte proteico con {base} e {s1}', base: ['Cereali integrali', 'Cereali da colazione senza zuccheri aggiunti'], protein: ['Bevanda proteica'], sides: [FRUIT], aromas: [] },
+  { id: 'ST-BF-YOGURT-AVENA', kinds: BF, name: '{protein} con avena e {s1}', base: OATS, protein: GREEK, sides: [FRUIT], fatIfPreferred: NUTS, aromas: ['Cannella'] },
+  // reserve, for who eats neither dairy nor eggs
+  { id: 'ST-BF-PORRIDGE-VEG', kinds: BF, name: "Porridge d'avena con {protein} e {s1}", base: OATS, protein: ['Bevanda di soia non zuccherata', 'Bevanda di mandorla non zuccherata'], sides: [FRUIT], fat: ['Burro di arachidi 100%', 'Burro di mandorle 100%'], aromas: ['Cannella'], reserve: true },
+  { id: 'ST-BF-PANE-MARMELLATA', kinds: BF, name: '{base} con marmellata e {s1}', base: BREAD, protein: [], sides: [FRUIT], spread: ['Marmellata light'], fat: ['Burro di arachidi 100%', 'Burro di mandorle 100%'], aromas: [], reserve: true },
 
-  // ================================================================ SPUNTINO
-  // PL016 and PL017 are the snack versions of PL009 and PL004 (same plate, listed under spuntino in the official catalog).
-  excel({ id: 'PL012', kinds: SN, name: '{protein} con {s1} e {fat}', protein: ['Yogurt greco 0%', 'Skyr', 'Yogurt greco 2%'], sides: [FRUIT_SN], fat: ['Mandorle', 'Noci', 'Pistacchi'], aromas: [] }),
-  excel({ id: 'PL013', kinds: SN, name: '{protein} con {s1} e {fat}', protein: ['Skyr', 'Yogurt greco 0%'], sides: [['Banana', 'Mela', 'Pera']], fat: ['Semi di chia', 'Semi di lino'], aromas: [] }),
-  excel({ id: 'PL014', kinds: SN, name: '{base} con {protein}', base: ['Pane integrale', 'Pane di segale'], protein: ['Ricotta magra', 'Fiocchi di latte'], aromas: ['Origano', 'Pepe nero'] }),
-  excel({ id: 'PL015', kinds: SN, name: '{protein} con pane e rucola', base: ['Pane integrale', 'Pane di segale'], protein: ['Bresaola', 'Fesa di tacchino affettata', 'Prosciutto crudo'], sides: [['Rucola']], aromas: ['Limone', 'Pepe nero'] }),
-  excel({ id: 'PL016', kinds: SN, name: 'Fette biscottate con {protein} e marmellata', base: ['Fette biscottate integrali'], protein: ['Yogurt greco 0%', 'Yogurt greco 2%'], spread: ['Marmellata light'], aromas: [] }),
-  excel({ id: 'PL017', kinds: SN, name: 'Bowl di {protein}, muesli e {s1}', base: ['Muesli'], protein: ['Yogurt greco 0%', 'Yogurt greco 2%'], sides: [['Kiwi']], fat: ['Mandorle'], aromas: [] }),
-  excel({ id: 'PL018', kinds: SN, name: 'Hummus di ceci con {s1} e crackers', base: ['Crackers integrali'], protein: ['Ceci'], sides: [['Carote', 'Cetrioli', 'Sedano', 'Finocchi']], oil: true, aromas: ['Limone', 'Aglio', 'Paprika'], portable: true }),
-  excel({ id: 'PL019', kinds: SN, name: 'Frutta fresca e frutta secca', protein: [], sides: [FRUIT_SN], fat: ['Noci', 'Mandorle', 'Pistacchi', 'Nocciole'], aromas: [], portable: true }),
-  excel({ id: 'PL020', kinds: SN, name: '{protein} con {s1} e {fat}', protein: ['Kefir', 'Yogurt magro', 'Yogurt greco 0%'], sides: [BERRIES], fat: ['Semi di lino', 'Semi di chia'], aromas: [] }),
-  excel({ id: 'PL021', kinds: SN, name: 'Toast con avocado e {protein}', base: ['Pane integrale'], protein: ['Uova intere', 'Fiocchi di latte', 'Ricotta magra'], fat: ['Avocado'], aromas: ['Pepe nero', 'Limone'], portable: true }),
-  excel({ id: 'PL022', kinds: SN, name: '{protein} con {s1} e {fat}', protein: ['Budino proteico', 'Yogurt proteico'], sides: [['Kiwi', 'Mela', 'Fragole']], fat: ['Mandorle'], aromas: [] }),
-  extra({ id: 'X201', kinds: SN, name: '{s1} e scaglie di {protein}', protein: ['Parmigiano Reggiano'], sides: [['Pera', 'Mela']], fat: ['Noci'], aromas: [], portable: true }),
-  extra({ id: 'X202', kinds: SN, name: '{protein} con noci e miele', protein: ['Yogurt greco 0%', 'Skyr'], spread: ['Miele'], fat: ['Noci', 'Mandorle'], aromas: ['Cannella'] }),
-  extra({ id: 'X204', kinds: SN, name: 'Crackers con {protein} e {s1}', base: ['Crackers integrali'], protein: ['Tonno al naturale'], sides: [['Pomodori', 'Cetrioli']], oil: true, aromas: ['Limone', 'Pepe nero'], portable: true }),
-  extra({ id: 'X205', kinds: SN, name: 'Pane integrale con {protein} e avocado', base: ['Pane integrale', 'Pane di segale'], protein: ['Fesa di tacchino affettata', 'Bresaola', 'Prosciutto crudo'], fat: ['Avocado'], aromas: ['Limone', 'Pepe nero'] }),
-  extra({ id: 'X206', kinds: SN, name: '{protein} e {s1}', protein: ['Barretta proteica'], sides: [['Mela', 'Banana', 'Arancia', 'Pera']], aromas: [], portable: true }),
-  extra({ id: 'X207', kinds: SN, name: '{protein} con {s1} e {fat}', protein: ['Bevanda proteica'], sides: [['Banana', 'Mela', 'Pera']], fat: ['Mandorle', 'Nocciole'], aromas: [], portable: true }),
-  extra({ id: 'X208', kinds: SN, name: 'Bruschetta con {protein} e pomodori', base: ['Pane integrale', 'Gallette di farro'], protein: ['Mozzarella light', 'Mozzarella'], sides: [['Pomodori']], oil: true, aromas: ['Basilico', 'Origano'] }),
+  // ================================================================= MERENDA
+  { id: 'ST-SN-YOGURT', kinds: SN, name: '{protein} con {s1}', protein: GREEK, sides: [FRUIT], fatIfPreferred: NUTS, aromas: [] },
+  { id: 'ST-SN-YOGURT-AVENA', kinds: SN, name: '{protein} con avena', base: OATS, protein: GREEK, aromas: ['Cannella'] },
+  { id: 'ST-SN-BAULETTO', kinds: SN, name: '{base} con marmellata', base: ['Pan bauletto', 'Pane integrale'], protein: [], spread: ['Marmellata light'], aromas: [], portable: true },
+  // cold cuts: once a week at most (meal-builder.ts)
+  { id: 'ST-SN-PANINO', kinds: SN, name: 'Panino con {protein}', base: ['Pan bauletto', 'Pane integrale', 'Pane di segale'], protein: ['Fesa di tacchino affettata', 'Bresaola', 'Prosciutto crudo'], aromas: [], portable: true },
+  // reserve, for who eats no dairy
+  { id: 'ST-SN-UOVA', kinds: SN, name: 'Uova sode con {base}', base: BREAD, protein: ['Uova intere'], aromas: ['Pepe nero'], portable: true, reserve: true },
+  { id: 'ST-SN-LATTE-CEREALI', kinds: SN, name: '{protein} con {base}', base: ['Cereali integrali', 'Cereali da colazione senza zuccheri aggiunti'], protein: ['Latte senza lattosio', 'Bevanda di soia non zuccherata'], aromas: [], reserve: true },
+  { id: 'PL019', kinds: SN, name: 'Frutta fresca e frutta secca', protein: [], sides: [FRUIT], fat: ['Mandorle', 'Noci', 'Nocciole', 'Pistacchi'], aromas: [], portable: true, reserve: true, fatRequired: true },
 
-  // ======================================================= PRANZO E CENA
-  excel({ id: 'PL023', kinds: MAIN, name: '{base} al pomodoro, {protein} e {s1}', base: ['Pasta integrale', 'Pasta'], protein: ['Petto di pollo', 'Petto di tacchino'], sides: [['Zucchine']], oil: true, sauce: true, aromas: ['Basilico', 'Aglio'] }),
-  excel({ id: 'PL024', kinds: MAIN, name: '{base} con {protein} e {s1}', base: ['Riso integrale', 'Riso basmati'], protein: ['Salmone', 'Trota'], sides: [['Broccoli']], oil: true, aromas: ['Limone', 'Prezzemolo', 'Pepe nero'] }),
-  excel({ id: 'PL025', kinds: MAIN, name: '{base} con {protein}, {s1} e {s2}', base: ['Farro', 'Cous cous'], protein: ['Petto di tacchino', 'Petto di pollo'], sides: [['Melanzane', 'Zucchine'], ['Pomodori']], oil: true, aromas: ['Origano', 'Basilico'] }),
-  excel({ id: 'PL026', kinds: MAIN, name: '{base} con {protein}, {s2} e {s1}', base: PASTA, protein: ['Merluzzo', 'Orata'], sides: [['Spinaci', 'Bietole'], ['Pomodori']], oil: true, aromas: ['Aglio', 'Prezzemolo', 'Limone'] }),
-  excel({ id: 'PL027', kinds: MAIN, name: '{base} con {protein} e verdure mediterranee', base: ['Riso basmati', 'Riso integrale'], protein: ['Ceci'], extraProtein: LEGUME_BOOST, sides: [['Peperoni'], ['Zucchine']], oil: true, aromas: ['Curcuma', 'Paprika', 'Limone'], portable: true }),
-  excel({ id: 'PL028', kinds: MAIN, name: '{base} al forno con {protein} e {s1}', base: ['Patate'], protein: ['Orata', 'Merluzzo', 'Trota'], sides: [['Fagiolini']], oil: true, aromas: ['Rosmarino', 'Limone', 'Prezzemolo'] }),
-  excel({ id: 'PL029', kinds: MAIN, name: '{base} e {protein} con contorno di {s1}', base: PASTA, protein: ['Lenticchie', 'Ceci'], extraProtein: LEGUME_BOOST, sides: [['Finocchi']], oil: true, sauce: true, aromas: ['Rosmarino', 'Aglio'] }),
-  excel({ id: 'PL030', kinds: MAIN, name: '{base} con {protein} e {s1}', base: ['Patate'], protein: ['Manzo magro', 'Lonza di maiale magra'], sides: [['Cavolo nero']], oil: true, aromas: ['Rosmarino', 'Pepe nero', 'Aglio'] }),
-  excel({ id: 'PL031', kinds: MAIN, name: '{base} con {protein} e {s1}', base: ['Cous cous', 'Riso'], protein: ['Gamberi', 'Merluzzo'], sides: [['Zucchine']], oil: true, aromas: ['Limone', 'Prezzemolo', 'Aglio'] }),
-  excel({ id: 'PL032', kinds: MAIN, name: '{base} al ragù leggero con contorno di {s1}', base: PASTA, protein: ['Manzo magro'], sides: [['Lattuga', 'Rucola'], ['Pomodori']], oil: true, sauce: true, aromas: ['Carote', 'Basilico'] }),
-  excel({ id: 'PL034', kinds: MAIN, name: '{base} con {protein} e {s1}', base: ['Riso integrale', 'Riso basmati'], protein: ['Tonno al naturale', 'Sgombro'], sides: [['Zucchine']], oil: true, aromas: ['Limone', 'Basilico', 'Pepe nero'], portable: true }),
-  excel({ id: 'PL035', kinds: MAIN, name: '{base} con {protein} e {s1}, {s2} di contorno', base: PASTA, protein: ['Ricotta magra', 'Ceci', 'Fagioli cannellini', 'Lenticchie'], sides: [['Spinaci'], ['Carciofi']], oil: true, aromas: ['Pepe nero'] }),
-  excel({ id: 'PL036', kinds: MAIN, name: '{base} con {protein} e insalata', base: ['Patate dolci', 'Patate'], protein: ['Hamburger di pollo magro', 'Hamburger di tacchino magro'], sides: [['Lattuga', 'Rucola'], ['Pomodori']], oil: true, aromas: ['Rosmarino', 'Paprika', 'Limone'] }),
-  excel({ id: 'PL037', kinds: MAIN, name: '{base} con {protein} e {s1}', base: ['Orzo', 'Farro'], protein: ['Fagioli borlotti', 'Fagioli cannellini'], extraProtein: LEGUME_BOOST, sides: [['Zucchine']], oil: true, aromas: ['Aglio', 'Rosmarino', 'Peperoncino'], portable: true }),
-  excel({ id: 'PL038', kinds: MAIN, name: '{protein} al forno con {base} e {s1}', base: ['Riso basmati', 'Riso integrale'], protein: ['Salmone', 'Trota'], sides: [['Asparagi']], oil: true, aromas: ['Limone', 'Timo', 'Pepe nero'] }),
-  excel({ id: 'PL039', kinds: MAIN, name: '{base} al pomodoro con {protein} e {s1}', base: ['Gnocchi di patate'], protein: ['Mozzarella', 'Mozzarella light'], sides: [['Melanzane', 'Zucchine']], oil: true, sauce: true, aromas: ['Basilico', 'Origano'] }),
-  excel({ id: 'PL040', kinds: MAIN, name: '{protein} in umido con {base} e {s1}', base: ['Pane integrale'], protein: ['Lenticchie', 'Fagioli', 'Fagioli cannellini'], extraProtein: LEGUME_BOOST, sides: [['Cavolfiore']], oil: true, sauce: true, aromas: ['Rosmarino', 'Aglio'] }),
-  excel({ id: 'PL041', kinds: MAIN, name: '{base} con {protein} e {s1}', base: ['Riso integrale', 'Riso basmati'], protein: ['Petto di tacchino', 'Petto di pollo'], sides: [['Carote'], ['Finocchi']], oil: true, aromas: ['Limone', 'Timo', 'Pepe nero'] }),
-  excel({ id: 'PL042', kinds: MAIN, name: '{base} con {protein}, {s1} e {s2}', base: ['Farro', 'Orzo'], protein: ['Ceci'], extraProtein: LEGUME_BOOST, sides: [['Zucca'], ['Spinaci']], oil: true, aromas: ['Rosmarino', 'Paprika', 'Limone'], portable: true }),
-  excel({ id: 'PL043', kinds: MAIN, name: '{protein} con {base} e {s1}', base: ['Patate'], protein: ['Lonza di maiale magra', 'Petto di tacchino'], sides: [['Cavolini di Bruxelles']], oil: true, aromas: ['Rosmarino', 'Aglio', 'Pepe nero'] }),
-  excel({ id: 'PL044', kinds: MAIN, name: '{base} al pomodoro con {protein} e {s1}', base: ['Pasta di legumi'], protein: ['Ricotta magra', 'Lenticchie'], sides: [['Zucchine']], oil: true, sauce: true, aromas: ['Basilico', 'Pepe nero'] }),
-  excel({ id: 'PL045', kinds: MAIN, name: '{protein} al forno con {base} e {s1}', base: ['Cous cous'], protein: ['Merluzzo', 'Orata'], sides: [['Peperoni']], oil: true, aromas: ['Limone', 'Prezzemolo', 'Paprika'] }),
-  excel({ id: 'PL046', kinds: MAIN, name: '{base} con {protein} e {s1}', base: ['Farro', 'Orzo'], protein: ['Fagioli cannellini', 'Fagioli borlotti'], extraProtein: LEGUME_BOOST, sides: [['Carciofi']], oil: true, aromas: ['Aglio', 'Prezzemolo', 'Limone'], portable: true }),
-  excel({ id: 'PL047', kinds: MAIN, name: 'Frittata con {base} e contorno di {s1}', base: ['Pane integrale'], protein: ['Uova intere'], extraProtein: ["Albume d'uovo"], sides: [['Spinaci', 'Bietole']], oil: true, aromas: ['Pepe nero', 'Basilico'] }),
-  excel({ id: 'PL048', kinds: MAIN, name: '{base} con {protein}, {s1} e contorno di {s2}', base: PASTA, protein: ['Tonno al naturale', 'Sgombro'], sides: [['Pomodori'], ['Lattuga']], oil: true, aromas: ['Aglio', 'Basilico', 'Peperoncino'], portable: true }),
-
-  extra({ id: 'X301', kinds: MAIN, name: 'Risotto con {s1} e {protein}', base: ['Riso', 'Riso lungo B'], protein: ['Gamberi'], sides: [['Zucca']], oil: true, aromas: ['Prezzemolo', 'Pepe nero'] }),
-  extra({ id: 'X302', kinds: MAIN, name: 'Risotto ai {s1} con {protein}', base: RICE, protein: ['Petto di pollo', 'Petto di tacchino'], sides: [['Funghi']], oil: true, aromas: ['Prezzemolo', 'Aglio'] }),
-  extra({ id: 'X303', kinds: MAIN, name: '{base} al pesto con {protein} e {s1}', base: PASTA, protein: ['Petto di pollo', 'Petto di tacchino'], sides: [['Fagiolini', 'Pomodori']], fat: ['Pesto'], aromas: ['Pepe nero'] }),
-  extra({ id: 'X304', kinds: MAIN, name: '{base} alla Norma leggera con {protein}', base: PASTA, protein: ['Ricotta magra'], sides: [['Melanzane']], oil: true, sauce: true, aromas: ['Basilico', 'Pepe nero'] }),
-  extra({ id: 'X305', kinds: MAIN, name: 'Insalata di {base} con {protein}, {s1} e {s2}', base: RICE, protein: ['Tonno al naturale', 'Sgombro', 'Uova intere'], sides: [['Pomodori', 'Peperoni'], ['Carote', 'Cetrioli']], oil: true, aromas: ['Basilico', 'Limone'], portable: true }),
-  extra({ id: 'X306', kinds: MAIN, name: 'Insalata di {base} con {protein} e verdure', base: ['Farro', 'Orzo'], protein: ['Ceci', 'Fagioli cannellini'], extraProtein: LEGUME_BOOST, sides: [['Pomodori', 'Cetrioli'], ['Rucola', 'Lattuga']], oil: true, aromas: ['Limone', 'Prezzemolo'], portable: true }),
-  extra({ id: 'X307', kinds: MAIN, name: 'Insalata di {base} con {protein}, {s1} e {s2}', base: PASTA, protein: ['Mozzarella light', 'Tonno al naturale', 'Uova intere'], sides: [['Pomodori'], ['Rucola', 'Lattuga']], oil: true, aromas: ['Basilico', 'Origano'], portable: true }),
-  extra({ id: 'X308', kinds: MAIN, name: '{protein} al limone con {base} al forno e {s1}', base: ['Patate'], protein: ['Petto di pollo', 'Petto di tacchino'], sides: [['Fagiolini', 'Broccoli', 'Carote']], oil: true, aromas: ['Limone', 'Rosmarino'] }),
-  extra({ id: 'X309', kinds: MAIN, name: 'Spezzatino di {protein} con {base} e {s1}', base: ['Patate'], protein: ['Manzo magro', 'Lonza di maiale magra'], sides: [['Carote', 'Sedano']], oil: true, sauce: true, aromas: ['Rosmarino', 'Salvia'] }),
-  extra({ id: 'X310', kinds: MAIN, name: '{protein} alla livornese con {base}', base: ['Patate'], protein: FISH_WHITE, sides: [['Pomodori']], oil: true, aromas: ['Prezzemolo', 'Aglio', 'Peperoncino'] }),
-  extra({ id: 'X311', kinds: MAIN, name: 'Zuppa di {protein} e {base}', base: ['Farro', 'Orzo'], protein: ['Ceci', 'Fagioli borlotti', 'Lenticchie'], extraProtein: LEGUME_BOOST, sides: [['Carote', 'Sedano']], oil: true, aromas: ['Rosmarino', 'Aglio'] }),
-  extra({ id: 'X312', kinds: MAIN, name: 'Minestrone con {base} e {protein}', base: ['Orzo', 'Farro'], protein: ['Fagioli borlotti', 'Fagioli cannellini'], extraProtein: LEGUME_BOOST, sides: [['Zucchine', 'Cavolo cappuccio'], ['Carote', 'Sedano']], oil: true, aromas: ['Prezzemolo', 'Pepe nero'] }),
-  extra({ id: 'X313', kinds: MAIN, name: '{protein} con {base} e {s1}', base: ['Cous cous'], protein: ['Salmone', 'Trota'], sides: [['Zucchine']], oil: true, aromas: ['Limone', 'Prezzemolo'] }),
-  extra({ id: 'X314', kinds: MAIN, name: '{protein} alla pizzaiola con {base}', base: RICE, protein: ['Petto di tacchino', 'Petto di pollo'], sides: [['Pomodori']], oil: true, sauce: true, aromas: ['Origano', 'Aglio'] }),
-  extra({ id: 'X315', kinds: MAIN, name: '{protein} al pomodoro con {base} e {s1}', base: ['Pane integrale', 'Patate'], protein: ['Hamburger di tacchino magro', 'Hamburger di pollo magro'], sides: [['Spinaci', 'Bietole', 'Broccoli']], oil: true, sauce: true, aromas: ['Basilico', 'Prezzemolo'] }),
-  extra({ id: 'X316', kinds: MAIN, name: '{base} e {protein} con {s1}', base: ['Pasta', 'Pasta integrale', 'Orzo'], protein: ['Fagioli borlotti', 'Fagioli cannellini', 'Fagioli'], extraProtein: LEGUME_BOOST, sides: [['Sedano', 'Carote']], oil: true, sauce: true, aromas: ['Rosmarino', 'Aglio'] }),
-  extra({ id: 'X317', kinds: MAIN, name: '{base} con {protein} e {s1}', base: PASTA, protein: ['Sardine'], sides: [['Finocchi']], oil: true, aromas: ['Limone', 'Prezzemolo', 'Peperoncino'] }),
-  extra({ id: 'X318', kinds: MAIN, name: '{base} con {protein}, {s1} e {s2}', base: ['Cous cous'], protein: ['Petto di pollo', 'Petto di tacchino'], sides: [['Zucchine', 'Carote'], ['Peperoni', 'Pomodori']], oil: true, aromas: ['Curcuma', 'Limone', 'Zenzero'] }),
-  extra({ id: 'X319', kinds: MAIN, name: '{protein} con {base} e {s1}', base: ['Patate', 'Patate dolci'], protein: ['Hamburger di merluzzo', 'Hamburger di salmone'], sides: [['Lattuga', 'Rucola'], ['Pomodori']], oil: true, aromas: ['Limone', 'Prezzemolo'] }),
-  extra({ id: 'X320', kinds: MAIN, name: 'Frittata con {base} e {s1}', base: ['Patate'], protein: ['Uova intere'], extraProtein: ["Albume d'uovo"], sides: [['Zucchine', 'Peperoni', 'Funghi']], oil: true, aromas: ['Pepe nero', 'Prezzemolo'] }),
-  extra({ id: 'X321', kinds: MAIN, name: '{base} con {protein} e {s1}', base: PASTA, protein: ['Gamberi'], sides: [['Zucchine', 'Pomodori']], oil: true, aromas: ['Aglio', 'Prezzemolo', 'Limone'] }),
-  extra({ id: 'X322', kinds: MAIN, name: '{base} con {protein} e verdure grigliate', base: ['Riso integrale', 'Riso basmati'], protein: ['Petto di pollo', 'Petto di tacchino'], sides: [['Zucchine', 'Melanzane', 'Peperoni']], oil: true, aromas: ['Origano', 'Limone'] }),
-  extra({ id: 'X323', kinds: MAIN, name: 'Bowl di {base} con {protein}, {s1} e {s2}', base: ['Riso integrale', 'Riso basmati'], protein: ['Tonno al naturale', 'Petto di pollo', 'Uova intere', 'Salmone'], sides: [['Cetrioli', 'Carote'], ['Rucola', 'Lattuga']], oil: true, aromas: ['Limone', 'Salsa di soia'], portable: true }),
-  extra({ id: 'X325', kinds: MAIN, name: 'Straccetti di {protein} con rucola e {base}', base: ['Patate'], protein: ['Manzo magro'], sides: [['Rucola', 'Radicchio'], ['Pomodori']], oil: true, aromas: ['Rosmarino', 'Limone'] }),
-  extra({ id: 'X327', kinds: MAIN, name: '{protein} con {base} e {s1}', base: ['Patate'], protein: ['Lonza di maiale magra', 'Petto di tacchino'], sides: [['Cavolo nero', 'Bietole', 'Cavolo cappuccio']], oil: true, aromas: ['Salvia', 'Rosmarino'] }),
-  extra({ id: 'X330', kinds: MAIN, name: 'Insalata di {base} con {protein}, {s1} e {s2}', base: RICE, protein: ['Petto di pollo', 'Petto di tacchino', 'Fesa di tacchino affettata', 'Mozzarella'], sides: [['Pomodori', 'Cetrioli', 'Peperoni', 'Carote'], ['Rucola', 'Lattuga', 'Radicchio']], oil: true, aromas: ['Basilico', 'Origano', 'Limone'], portable: true }),
-  extra({ id: 'X331', kinds: MAIN, name: '{base} con {protein}, {s1} e {s2}', base: ['Pane integrale', 'Pane di segale'], protein: ['Bresaola', 'Prosciutto crudo', 'Fesa di tacchino affettata', 'Ricotta magra'], sides: [['Rucola', 'Pomodori', 'Lattuga'], ['Carote', 'Cetrioli']], oil: true, aromas: ['Pepe nero', 'Limone'], portable: true }),
-  extra({ id: 'X332', kinds: MAIN, name: 'Pasta fredda con {protein}, {s1} e {s2}', base: PASTA, protein: ['Fesa di tacchino affettata', 'Mozzarella', 'Petto di pollo'], sides: [['Pomodori', 'Peperoni', 'Cetrioli'], ['Rucola', 'Zucchine']], oil: true, aromas: ['Basilico', 'Origano'], portable: true }),
-  extra({ id: 'X333', kinds: MAIN, name: '{base} con {protein}, {s1} e {s2}', base: ['Riso', 'Riso basmati', 'Riso integrale'], protein: ['Lenticchie', 'Fagioli cannellini', 'Ceci', 'Fagioli borlotti'], extraProtein: LEGUME_BOOST, sides: [['Pomodori', 'Cetrioli', 'Carote'], ['Spinaci', 'Rucola']], oil: true, aromas: ['Limone', 'Prezzemolo', 'Pepe nero'], portable: true }),
-  extra({ id: 'X328', kinds: MAIN, name: '{base} con {protein} e {s1}', base: ['Farro', 'Orzo', 'Cous cous'], protein: ['Petto di pollo', 'Fesa di tacchino affettata', 'Salmone', 'Sgombro', 'Tonno al naturale'], sides: [['Zucchine', 'Pomodori', 'Cetrioli']], oil: true, aromas: ['Limone', 'Basilico'], portable: true }),
+  // =========================================================== PRANZO E CENA
+  main('ST-PASTA', PRIMI.pasta, { aromas: ['Passata di pomodoro', 'Basilico', 'Limone'], portable: true }),
+  main('ST-RISO', PRIMI.riso, { portable: true }),
+  main('ST-PATATE', PRIMI.patate),
+  main('ST-PANE', PRIMI.pane, { portable: true, rareAtDinner: true }),
+  main('ST-GALLETTE', PRIMI.gallette, { portable: true, rareAtDinner: true }),
+  // legumes are the carbohydrate source of the meal, next to a secondo like any other primo
+  main('ST-LEGUMI', PRIMI.legumi, { aromas: ['Rosmarino', 'Limone', 'Pepe nero'], portable: true }),
 ];
-
-// Dishes that need real preparation time: oven, ragù, stews and soups, risotto, farro and barley, roasting.
-const SLOW = new Set([
-  'PL025', 'PL028', 'PL029', 'PL030', 'PL032', 'PL034', 'PL036', 'PL037', 'PL038', 'PL040', 'PL041', 'PL042', 'PL043', 'PL045', 'PL046',
-  'X301', 'X302', 'X308', 'X309', 'X310', 'X311', 'X312', 'X314', 'X315', 'X316', 'X319', 'X320', 'X325', 'X327',
-]);
-for (const d of DISHES) d.slow = SLOW.has(d.id);
-const FAT_REQUIRED = new Set(['PL003', 'PL004', 'PL006', 'PL017', 'PL021', 'X205', 'X303']);
-for (const d of DISHES) d.fatRequired = FAT_REQUIRED.has(d.id);
 
 // Every food named in a dish must exist in the catalog (a typo fails loudly at load, not silently at plan time).
 for (const d of DISHES) {
-  for (const name of [...(d.base ?? []), ...d.protein, ...(d.extraProtein ?? []), ...(d.sides ?? []).flat(), ...(d.spread ?? []), ...(d.fat ?? []), ...d.aromas, ...(d.accessories ?? []).flatMap((a) => a.foods)]) foodByName(name);
+  for (const name of [...(d.base ?? []), ...d.protein, ...(d.proteinFallback ?? []), ...(d.sides ?? []).flat(), ...(d.spread ?? []), ...(d.fat ?? []), ...(d.fatIfPreferred ?? []), ...d.aromas, ...(d.accessories ?? []).flatMap((a) => a.foods)]) foodByName(name);
 }

@@ -1,5 +1,5 @@
 /**
- * Checks the official recipe catalog (fitlab/recipes.ts) against the dishes (fitlab/dishes.ts): every official PL dish
+ * Checks the official recipe catalog (fitlab/recipes.ts) against the dishes (fitlab/dishes.ts): every dish
  * has exactly one recipe with the same id, steps, times and difficulty; no recipe points at a missing dish; the meal of
  * the catalog is one the dish can be served at; and no step states a weight (quantities are solved per person).
  *
@@ -24,7 +24,7 @@ for (const r of RECIPES) {
   if (!(r.prepMinutes > 0) || r.cookMinutes < 0 || r.totalMinutes !== r.prepMinutes + r.cookMinutes) problems.push(`${r.id}: inconsistent times`);
   if (r.steps.some((s) => /\b\d+\s?(g|gr|grammi|kg|ml)\b/i.test(s))) problems.push(`${r.id}: a step states a weight, quantities must not be fixed in the recipe`);
 }
-for (const d of DISHES) if (d.source === 'excel' && !seen.has(d.id)) problems.push(`${d.id}: official dish without a recipe`);
+for (const d of DISHES) if (!seen.has(d.id)) problems.push(`${d.id}: dish without a recipe`);
 
 if (problems.length > 0) {
   console.error(`✗ ${problems.length} problem(s):\n` + problems.map((p) => `  - ${p}`).join('\n'));

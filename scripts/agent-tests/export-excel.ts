@@ -207,7 +207,7 @@ async function main() {
   let worst = 0;
   let fromFile = 0;
   let totalMeals = 0;
-  const sourceOf = new Map(DISHES.map((d) => [d.id, d.source]));
+  const sourceOf = new Map(DISHES.map((d) => [d.id, d.reserve ? 'reserve' : 'standard']));
   for (const { persona, diet } of runs) {
     for (const monthIndex of MONTHS_SHOWN) {
       const month = diet.months.find((m) => m.monthIndex === monthIndex);
@@ -226,7 +226,7 @@ async function main() {
           names.set(m!.recipe!.name, (names.get(m!.recipe!.name) ?? 0) + 1);
           dishes.set(m!.recipe!.dishId ?? '?', (dishes.get(m!.recipe!.dishId ?? '?') ?? 0) + 1);
           totalMeals++;
-          if (sourceOf.get(m!.recipe!.dishId ?? '') === 'excel') fromFile++;
+          if (sourceOf.get(m!.recipe!.dishId ?? '') === 'standard') fromFile++;
         }
         const maxName = Math.max(...names.values());
         const maxDish = Math.max(...dishes.values());
@@ -255,8 +255,8 @@ async function main() {
     let name = d.name;
     for (const [re, to] of TOKENS) name = name.replace(re, to);
     dishSheet.addRow([
-      d.id, d.source === 'excel' ? 'File' : 'Agente', d.kinds.map((k) => KIND_LABEL[k]).join(', '), name, list(d.base), list(d.protein), list(d.extraProtein),
-      (d.sides ?? []).map((g) => g.join(' / ')).join('  +  ') + (d.spread ? `${d.sides ? '  +  ' : ''}${d.spread.join(' / ')}` : ''), list(d.fat), d.oil ? 'Sì' : '', d.sauce ? 'Sì' : '', d.aromas.join(', '), d.portable ? 'Sì' : '',
+      d.id, d.reserve ? 'Riserva' : 'Standard', d.kinds.map((k) => KIND_LABEL[k]).join(', '), name, list(d.base), list(d.protein), list(d.proteinFallback),
+      (d.sides ?? []).map((g) => g.join(' / ')).join('  +  ') + (d.spread ? `${d.sides ? '  +  ' : ''}${d.spread.join(' / ')}` : ''), list(d.fat), d.oil ? 'Sì' : '', '', d.aromas.join(', '), d.portable ? 'Sì' : '',
     ]);
   }
   styleSheet(dishSheet, [8, 9, 18, 52, 32, 40, 32, 44, 32, 8, 8, 30, 12]);
@@ -294,7 +294,7 @@ async function main() {
   const file = join(dir, process.argv[2] ?? 'fitlab-20-diete.xlsx');
   await wb.xlsx.writeFile(file);
   console.log(
-    `Creato ${file}\n  questionari: ${runs.length}, righe nel foglio Diete: ${diets.rowCount - 1}, ripetizione massima in una settimana: ${worst}, pasti con piatti del tuo file: ${Math.round((fromFile / totalMeals) * 100)}%`
+    `Creato ${file}\n  questionari: ${runs.length}, righe nel foglio Diete: ${diets.rowCount - 1}, ripetizione massima in una settimana: ${worst}, pasti standard: ${Math.round((fromFile / totalMeals) * 100)}%`
   );
 }
 

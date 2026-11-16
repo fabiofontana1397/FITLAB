@@ -34,7 +34,7 @@ Il catalogo delle foto è separato dai piatti (`dishes.ts`): id, alimenti e gram
    `category` è uno tra `breakfast`, `lunch`, `dinner`, `snack`.
 3. Collega i piatti che la foto rappresenta davvero, in `DISH_IMAGE_IDS` (id del piatto da `dishes.ts`):
    ```ts
-   X306: 'orzo-ceci-pomodorini',
+   'ST-LEGUMI': 'orzo-ceci-pomodorini',
    ```
 4. Se il piatto ammette più alimenti (un altro pesce, un'altra frutta), dichiara in `PHOTO_KEYS` cosa mostra la foto: viene usata solo per i pasti che contengono quegli alimenti. Una seconda foto dello stesso piatto con un altro ingrediente principale va in `DISH_IMAGE_VARIANTS`.
 5. Esegui `npm run meals:check`. Controlla che il file esista e sia un WebP, che gli id siano unici e corrispondano al nome del file, che i piatti collegati esistano e che non ci siano file orfani.
