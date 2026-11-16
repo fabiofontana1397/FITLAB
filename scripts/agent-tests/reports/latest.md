@@ -1,8 +1,8 @@
 # Test dei piani generati dai questionari
 
-Generato il 2026-11-16 19:30 — 22 questionari finti, piani creati con i generatori reali dell’app.
+Generato il 2026-11-16 20:51 — 22 questionari finti, piani creati con i generatori reali dell’app.
 
-**Totale:** 0 errori · 2 avvisi · 33 note
+**Totale:** 0 errori · 2 avvisi · 54 note
 
 | Persona | Target kcal | P/C/G (g) | Mesi | Palestra/Corsa a sett. | Errori | Avvisi |
 |---|---|---|---|---|---|---|
@@ -226,7 +226,7 @@ Un corpo virtuale segue il piano; a fine mese l’agente di ricalibrazione vede 
 
 ## Sofia, 16 anni — studentessa, vuole tonificarsi
 
-**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 1 note)
+**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 2 note)
 
 - **Chi è:** Ragazza di 16 anni, 55 kg per 165 cm, vita da studente (sedentaria), mai fatto palestra. 2 allenamenti a settimana.
 - **Cosa ci aspettiamo:** Sotto i 18 anni nessun deficit: calorie di mantenimento, proteine moderate, scheda principiante con 2 sedute full body.
@@ -286,13 +286,14 @@ Totale Sab: **1102 kcal** · P 58 g · C 128 g · G 37 g
 
 **Controlli**
 
+- ℹ️ `Q2` Risposte non presenti nello schema: excludedFoods, includedFoods
 - ℹ️ `D14` Dal mese 2 in poi il target è identico (1703 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
 
 ---
 
 ## Matteo, 17 anni — magro, vuole mettere massa
 
-**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 1 note)
+**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 2 note)
 
 - **Chi è:** Ragazzo di 17 anni, 62 kg per 176 cm, vuole arrivare a 67 kg. Principiante, 3 allenamenti a settimana.
 - **Cosa ci aspettiamo:** Surplus lieve e sostenuto, proteine ~1,9 g/kg, split full body per principianti, mese di adattamento.
@@ -352,13 +353,14 @@ Totale Sab: **1577 kcal** · P 77 g · C 184 g · G 55 g
 
 **Controlli**
 
+- ℹ️ `Q2` Risposte non presenti nello schema: excludedFoods, includedFoods
 - ℹ️ `D14` Dal mese 2 in poi il target è identico (2601 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
 
 ---
 
 ## Giulia, 24 anni — vuole dimagrire qualche kg
 
-**Esito:** ⚠️ SUPERATO CON AVVISI (0 errori, 1 avvisi, 1 note)
+**Esito:** ⚠️ SUPERATO CON AVVISI (0 errori, 1 avvisi, 2 note)
 
 - **Chi è:** Studentessa universitaria, 62 kg per 166 cm, vuole scendere a 57 kg. Poco attiva, principiante, 3 allenamenti.
 - **Cosa ci aspettiamo:** Deficit moderato, proteine alte, durata ~5-6 mesi, scheda full body principiante.
@@ -419,13 +421,14 @@ Totale Sab: **952 kcal** · P 59 g · C 95 g · G 32 g
 **Controlli**
 
 - ⚠️ `D5` Proteine: i pasti danno in media il 93% del target (giorno peggiore: 18% di scarto)
+- ℹ️ `Q2` Risposte non presenti nello schema: excludedFoods, includedFoods
 - ℹ️ `D14` Dal mese 2 in poi il target è identico (1506 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
 
 ---
 
 ## Luca, 22 anni — massa muscolare, esperto
 
-**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 7 note)
+**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 8 note)
 
 - **Chi è:** Studente magro (68 kg per 180 cm), vuole arrivare a 75 kg. Esperto, 5 allenamenti a settimana da 60-90 min, 5 pasti.
 - **Cosa ci aspettiamo:** Surplus controllato, proteine ~1,9 g/kg, split a 5 giorni senza mese di adattamento, progressione di carichi mese dopo mese.
@@ -489,6 +492,7 @@ Totale Sab: **1929 kcal** · P 95 g · C 240 g · G 58 g
 
 **Controlli**
 
+- ℹ️ `Q2` Risposte non presenti nello schema: excludedFoods, includedFoods
 - ℹ️ `D14` Dal mese 2 in poi il target è identico (2759 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
 - ℹ️ `Q6` Gio (mese 1): una fonte proteica compare tre volte nel giorno
 - ℹ️ `Q6` Gio (mese 2): una fonte proteica compare tre volte nel giorno
@@ -501,7 +505,7 @@ Totale Sab: **1929 kcal** · P 95 g · C 240 g · G 58 g
 
 ## Alessandro, 29 anni — molto attivo, anni di esperienza
 
-**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 2 note)
+**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 3 note)
 
 - **Chi è:** Idraulico (lavoro fisico), 80 kg per 182 cm, 12.000+ passi al giorno. Palestra 4 volte + corsa 2 volte, esperto, vuole restare in forma.
 - **Cosa ci aspettiamo:** Fabbisogno alto (lavoro fisico + 6 sedute), calorie di mantenimento, alternanza sensata palestra/corsa su 6 giorni con almeno un riposo.
@@ -561,6 +565,7 @@ Totale Sab: **2129 kcal** · P 88 g · C 263 g · G 70 g
 
 **Controlli**
 
+- ℹ️ `Q2` Risposte non presenti nello schema: excludedFoods, includedFoods
 - ℹ️ `D14` Dal mese 2 in poi il target è identico (3370 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
 - ℹ️ `S2` 2 sedute di corsa a settimana (es. "Corsa facile 35-40 min")
 
@@ -568,7 +573,7 @@ Totale Sab: **2129 kcal** · P 88 g · C 263 g · G 70 g
 
 ## Marco, 32 anni — dimagrimento, sedentario
 
-**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 1 note)
+**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 2 note)
 
 - **Chi è:** Impiegato sedentario, 92 kg per 178 cm, vuole scendere a 82 kg. Mai fatto palestra, 3 giorni a settimana, 45-60 min.
 - **Cosa ci aspettiamo:** Deficit moderato (non estremo), proteine alte ma non esagerate, durata di circa 6-9 mesi, scheda full body principiante.
@@ -628,13 +633,14 @@ Totale Sab: **1196 kcal** · P 89 g · C 104 g · G 43 g
 
 **Controlli**
 
+- ℹ️ `Q2` Risposte non presenti nello schema: excludedFoods, includedFoods
 - ℹ️ `D14` Dal mese 2 in poi il target è identico (1913 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
 
 ---
 
 ## Chiara, 25 anni — palestra + corsa con 4 giorni disponibili
 
-**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 2 note)
+**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 3 note)
 
 - **Chi è:** Donna, 60 kg per 168 cm. Vorrebbe 3 palestra + 3 corsa ma ha solo 4 giorni disponibili. Obiettivo dimagrimento (−4 kg).
 - **Cosa ci aspettiamo:** Il piano rispetta i 4 giorni disponibili, bilancia palestra e corsa, e le calorie contano l’allenamento realmente programmato.
@@ -694,6 +700,7 @@ Totale Sab: **973 kcal** · P 78 g · C 84 g · G 33 g
 
 **Controlli**
 
+- ℹ️ `Q2` Risposte non presenti nello schema: excludedFoods, includedFoods
 - ℹ️ `D14` Dal mese 2 in poi il target è identico (1591 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
 - ℹ️ `S2` 2 sedute di corsa a settimana (es. "Corsa facile 35 min")
 
@@ -701,7 +708,7 @@ Totale Sab: **973 kcal** · P 78 g · C 84 g · G 33 g
 
 ## Paolo, 38 anni — solo corsa, resistenza
 
-**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 2 note)
+**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 3 note)
 
 - **Chi è:** Runner amatoriale, 72 kg per 176 cm. Corre 4 volte a settimana, nessuna palestra, vuole migliorare la resistenza.
 - **Cosa ci aspettiamo:** Nessuna seduta di palestra, 4 uscite di corsa varie (facili, medio, lungo), carboidrati abbondanti, calorie di mantenimento.
@@ -761,6 +768,7 @@ Totale Sab: **1546 kcal** · P 71 g · C 173 g · G 56 g
 
 **Controlli**
 
+- ℹ️ `Q2` Risposte non presenti nello schema: excludedFoods, includedFoods
 - ℹ️ `D14` Dal mese 2 in poi il target è identico (2622 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
 - ℹ️ `S2` 4 sedute di corsa a settimana (es. "Corsa facile 30 min")
 
@@ -768,7 +776,7 @@ Totale Sab: **1546 kcal** · P 71 g · C 173 g · G 56 g
 
 ## Andrea, 40 anni — solo dieta
 
-**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 2 note)
+**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 3 note)
 
 - **Chi è:** Uomo, 80 kg per 180 cm, vuole solo un piano alimentare per dimagrire a 75 kg. Non usa la parte allenamento.
 - **Cosa ci aspettiamo:** Il piano di allenamento non deve esistere, la dieta deve essere completa e basata su attività quotidiana.
@@ -806,6 +814,7 @@ _Nessun piano di allenamento generato._
 
 **Controlli**
 
+- ℹ️ `Q2` Risposte non presenti nello schema: excludedFoods, includedFoods
 - ℹ️ `D14` Dal mese 2 in poi il target è identico (1702 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
 - ℹ️ `S3` Utente solo dieta: la tab Allenamento deve mostrare che il piano non è stato richiesto
 
@@ -861,7 +870,7 @@ _Nessun piano alimentare generato._
 
 ## Anna, 52 anni — dimagrimento, sedentaria, fastidio al ginocchio
 
-**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 1 note)
+**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 2 note)
 
 - **Chi è:** Donna, 70 kg per 162 cm, vuole scendere a 64 kg. Sedentaria, principiante, 2 allenamenti. Fastidio al ginocchio quando sale le scale.
 - **Cosa ci aspettiamo:** Deficit prudente, nessun esercizio che carichi il ginocchio, sedute brevi con pochi esercizi.
@@ -921,13 +930,14 @@ Totale Sab: **811 kcal** · P 64 g · C 61 g · G 31 g
 
 **Controlli**
 
+- ℹ️ `Q2` Risposte non presenti nello schema: excludedFoods, includedFoods
 - ℹ️ `D14` Dal mese 2 in poi il target è identico (1238 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
 
 ---
 
 ## Roberto, 58 anni — salute generale, lavoro in piedi
 
-**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 1 note)
+**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 2 note)
 
 - **Chi è:** Uomo, 82 kg per 175 cm, lavoro in piedi tutto il giorno. Vuole stare meglio. Principiante, 2 allenamenti.
 - **Cosa ci aspettiamo:** Calorie di mantenimento, scheda semplice con carichi prudenti, 2 sedute.
@@ -987,13 +997,14 @@ Totale Sab: **1513 kcal** · P 75 g · C 174 g · G 53 g
 
 **Controlli**
 
+- ℹ️ `Q2` Risposte non presenti nello schema: excludedFoods, includedFoods
 - ℹ️ `D14` Dal mese 2 in poi il target è identico (2387 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
 
 ---
 
 ## Franco, 60 anni — pensionato, un solo giorno
 
-**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 1 note)
+**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 2 note)
 
 - **Chi è:** Uomo, 78 kg per 170 cm, pensionato. Può allenarsi 1 volta a settimana, 30 minuti, principiante.
 - **Cosa ci aspettiamo:** Una sola seduta a settimana (full body, 3 esercizi), piano non invasivo, calorie di mantenimento.
@@ -1053,13 +1064,14 @@ Totale Sab: **1233 kcal** · P 73 g · C 142 g · G 39 g
 
 **Controlli**
 
+- ℹ️ `Q2` Risposte non presenti nello schema: excludedFoods, includedFoods
 - ℹ️ `D14` Dal mese 2 in poi il target è identico (1892 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
 
 ---
 
 ## Tommaso, 35 anni — si allena una volta ogni due settimane
 
-**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 1 note)
+**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 2 note)
 
 - **Chi è:** Uomo, 80 kg per 178 cm, mantenimento. In palestra va "una volta ogni 2 settimane" e ha 3 giorni disponibili.
 - **Cosa ci aspettiamo:** Il piano programma 1 seduta a settimana (dose minima efficace) e il fabbisogno conta esattamente quella seduta.
@@ -1119,13 +1131,14 @@ Totale Sab: **1427 kcal** · P 84 g · C 155 g · G 47 g
 
 **Controlli**
 
+- ℹ️ `Q2` Risposte non presenti nello schema: excludedFoods, includedFoods
 - ℹ️ `D14` Dal mese 2 in poi il target è identico (2184 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
 
 ---
 
 ## Nina, 33 anni — dimagrimento senza peso obiettivo
 
-**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 1 note)
+**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 2 note)
 
 - **Chi è:** Donna, 70 kg per 166 cm, vuole dimagrire ma lascia vuoto il peso obiettivo (domanda facoltativa).
 - **Cosa ci aspettiamo:** Nessun peso obiettivo inventato: durata standard del piano e nessun traguardo falso nelle schermate.
@@ -1185,13 +1198,14 @@ Totale Sab: **967 kcal** · P 70 g · C 88 g · G 36 g
 
 **Controlli**
 
+- ℹ️ `Q2` Risposte non presenti nello schema: excludedFoods, includedFoods
 - ℹ️ `D14` Dal mese 2 in poi il target è identico (1586 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
 
 ---
 
 ## Omar, 41 anni — ora solo dieta, ma rimaste vecchie risposte di allenamento
 
-**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 2 note)
+**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 3 note)
 
 - **Chi è:** Uomo, 85 kg per 180 cm. Rifà il questionario scegliendo solo dieta; nelle risposte restano i dati di allenamento di prima (4 allenamenti di palestra).
 - **Cosa ci aspettiamo:** Con modalità "solo dieta" le vecchie risposte di allenamento non influenzano né il fabbisogno né la dieta.
@@ -1229,6 +1243,7 @@ _Nessun piano di allenamento generato._
 
 **Controlli**
 
+- ℹ️ `Q2` Risposte non presenti nello schema: excludedFoods, includedFoods
 - ℹ️ `D14` Dal mese 2 in poi il target è identico (1734 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
 - ℹ️ `S3` Utente solo dieta: la tab Allenamento deve mostrare che il piano non è stato richiesto
 
@@ -1236,7 +1251,7 @@ _Nessun piano di allenamento generato._
 
 ## Elena, 27 anni — intollerante al lattosio, 5 pasti
 
-**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 1 note)
+**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 2 note)
 
 - **Chi è:** Impiegata, 62 kg per 167 cm, vuole dimagrire un po’. Intollerante al lattosio (niente yogurt, latticini, whey), colazione e due spuntini.
 - **Cosa ci aspettiamo:** Senza latticini la dieta deve restare varia: colazioni e spuntini diversi ogni giorno, mai la stessa merenda per tutta la settimana.
@@ -1300,13 +1315,14 @@ Totale Sab: **966 kcal** · P 64 g · C 87 g · G 35 g
 
 **Controlli**
 
+- ℹ️ `Q2` Risposte non presenti nello schema: excludedFoods, includedFoods
 - ℹ️ `D14` Dal mese 2 in poi il target è identico (1420 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
 
 ---
 
 ## Davide, 45 anni — niente uova né pesce
 
-**Esito:** ⚠️ SUPERATO CON AVVISI (0 errori, 1 avvisi, 1 note)
+**Esito:** ⚠️ SUPERATO CON AVVISI (0 errori, 1 avvisi, 2 note)
 
 - **Chi è:** Commerciale, 84 kg per 178 cm, vuole dimagrire. Allergico alle uova e non mangia pesce; 4 pasti.
 - **Cosa ci aspettiamo:** Con uova e pesce esclusi pranzi, cene e colazioni restano vari (non sempre pollo e pasta), senza ripetere lo stesso pasto più di 3 volte a settimana.
@@ -1369,13 +1385,14 @@ Totale Sab: **1098 kcal** · P 77 g · C 111 g · G 36 g
 **Controlli**
 
 - ⚠️ `D5` Grassi: i pasti danno in media il 92% del target (giorno peggiore: 27% di scarto)
+- ℹ️ `Q2` Risposte non presenti nello schema: excludedFoods, includedFoods
 - ℹ️ `D14` Dal mese 2 in poi il target è identico (1805 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
 
 ---
 
 ## Paola, 36 anni — mangia sempre bresaola e avocado a merenda
 
-**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 1 note)
+**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 2 note)
 
 - **Chi è:** Insegnante, 66 kg per 170 cm. Nel questionario scrive che di solito mangia bresaola e avocado a merenda e vuole alimenti ricorrenti.
 - **Cosa ci aspettiamo:** Le abitudini dichiarate orientano la scelta ma non la rendono fissa: la stessa merenda non può tornare più di 3 volte a settimana.
@@ -1437,13 +1454,14 @@ Totale Sab: **1143 kcal** · P 65 g · C 133 g · G 36 g
 
 **Controlli**
 
+- ℹ️ `Q2` Risposte non presenti nello schema: excludedFoods, includedFoods
 - ℹ️ `D14` Dal mese 2 in poi il target è identico (1798 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
 
 ---
 
 ## Marta, 30 anni — pranza fuori casa quasi ogni giorno
 
-**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 1 note)
+**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 2 note)
 
 - **Chi è:** Impiegata, 58 kg per 163 cm, vuole tonificarsi. Mangia fuori 5 volte a settimana (schiscetta o bar), 4 pasti con una merenda.
 - **Cosa ci aspettiamo:** Pranzi trasportabili (insalate, bowl, panini) e piatti vari nella settimana.
@@ -1505,13 +1523,14 @@ Totale Sab: **1059 kcal** · P 60 g · C 128 g · G 32 g
 
 **Controlli**
 
+- ℹ️ `Q2` Risposte non presenti nello schema: excludedFoods, includedFoods
 - ℹ️ `D14` Dal mese 2 in poi il target è identico (1670 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
 
 ---
 
 ## Luigi, 55 anni — pescetariano, vuole perdere pancia
 
-**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 1 note)
+**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 2 note)
 
 - **Chi è:** Geometra, 88 kg per 175 cm. Non mangia carne ma mangia pesce, uova e latticini. 3 pasti, cammina molto.
 - **Cosa ci aspettiamo:** Dieta senza carne ma con pesce, uova, legumi e latticini, varia nella settimana.
@@ -1571,13 +1590,14 @@ Totale Sab: **1106 kcal** · P 78 g · C 98 g · G 41 g
 
 **Controlli**
 
+- ℹ️ `Q2` Risposte non presenti nello schema: excludedFoods, includedFoods
 - ℹ️ `D14` Dal mese 2 in poi il target è identico (1822 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
 
 ---
 
 ## Sara, 26 anni — sceglie i suoi alimenti preferiti
 
-**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 1 note)
+**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 2 note)
 
 - **Chi è:** Grafica, 60 kg per 168 cm, forma fisica. Nel questionario sceglie i suoi alimenti preferiti per proteine, carboidrati, grassi, frutta e verdura (selettori per componente).
 - **Cosa ci aspettiamo:** Gli alimenti scelti compaiono nelle diete, mese dopo mese; il piano resta vario.
@@ -1639,6 +1659,7 @@ Totale Sab: **1138 kcal** · P 61 g · C 135 g · G 35 g
 
 **Controlli**
 
+- ℹ️ `Q2` Risposte non presenti nello schema: excludedFoods, includedFoods
 - ℹ️ `D14` Dal mese 2 in poi il target è identico (1761 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
 
 ---
