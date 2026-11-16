@@ -1,17 +1,12 @@
-import { useMemo, useState } from 'react';
-import { Modal, Pressable, StyleSheet, View } from 'react-native';
+import { useMemo } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
 
-import { ScrollDefaults } from '@/constants/scroll';
-import { GlassSurface } from '@/components/glass/glass-surface';
 import { ThemedText } from '@/components/themed-text';
-import { AppTextInput } from '@/components/ui/app-text';
 import { Icon } from '@/components/ui/icon';
-import { PrimaryButton } from '@/components/ui/primary-button';
-import { PopupScrollView, SwipeDismiss } from '@/components/ui/swipe-dismiss';
 import { Radius, Spacing } from '@/constants/theme';
-import { useMotionPreference } from '@/hooks/use-motion-preference';
 import { useTheme } from '@/hooks/use-theme';
-import { COMPONENT_ICON, PICKER_PROMPT, PICKER_TITLE, normalizePreferred } from '@/lib/questionnaire/food-preferences';
+import { hapticSelection } from '@/lib/haptics';
+import { normalizePreferred } from '@/lib/questionnaire/food-preferences';
 import type { Question } from '@/lib/questionnaire/schema';
 import type { AnswerValue } from '@/store/onboarding-store';
 
@@ -21,152 +16,118 @@ export type FoodPickerProps = {
   onChange: (value: AnswerValue) => void;
 };
 
-const normalize = (text: string) => text.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-
 /**
- * "Quali proteine preferisci?": a selector that opens the list of catalog foods of one meal component
- * (grouped by type, with search). The chosen foods show as chips under the selector; the diet engine
- * favours them every month.
+ * "Quali proteine preferisci?": every catalog food of one meal component laid out on the page as a grid of
+ * tappable boxes, grouped by type. One tap selects, a second tap deselects — no menu to open, so a dozen
+ * foods take a dozen taps. The diet engine favours the chosen foods every month.
  */
 export function FoodPicker({ question, value, onChange }: FoodPickerProps) {
-  const { modalAnimation } = useMotionPreference();
   const theme = useTheme();
-  const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState('');
   const component = question.component!;
   const options = useMemo(() => question.options ?? [], [question.options]);
   const selected = useMemo(() => new Set(normalizePreferred(component, value)), [component, value]);
-  const labelOf = (id: string) => options.find((o) => o.value === id)?.label ?? id;
+
+  const groups = useMemo(() => {
+    const map = new Map<string, typeof options>();
+    for (const o of options) map.set(o.group ?? '', [...(map.get(o.group ?? '') ?? []), o]);
+    return [...map.entries()];
+  }, [options]);
 
   const toggle = (id: string) => {
+    hapticSelection();
     const next = new Set(selected);
     if (next.has(id)) next.delete(id);
     else next.add(id);
     onChange(next.size > 0 ? [...next] : undefined);
   };
 
-  const groups = useMemo(() => {
-    const q = normalize(query.trim());
-    const map = new Map<string, typeof options>();
-    for (const o of options) {
-      if (q && !normalize(o.label).includes(q) && !normalize(o.group ?? '').includes(q)) continue;
-      map.set(o.group ?? '', [...(map.get(o.group ?? '') ?? []), o]);
-    }
-    return [...map.entries()];
-  }, [options, query]);
-
-  const close = () => {
-    setOpen(false);
-    setQuery('');
-  };
-
   return (
-    <View style={{ gap: Spacing.two }}>
-      <Pressable onPress={() => setOpen(true)} accessibilityRole="button" accessibilityLabel={question.label}>
-        <GlassSurface level="card" radius={Radius.medium} style={[styles.selector, selected.size > 0 && { borderColor: theme.accent, borderWidth: 1.5 }]}>
-          <View style={styles.selectorInner}>
-            <Icon name={COMPONENT_ICON[component]} size={18} color={selected.size > 0 ? theme.accent : theme.textTertiary} />
-            <ThemedText type="small" style={{ flex: 1 }} themeColor={selected.size > 0 ? undefined : 'textSecondary'}>
-              {selected.size > 0 ? `${selected.size} ${selected.size === 1 ? 'alimento selezionato' : 'alimenti selezionati'}` : PICKER_PROMPT[component]}
+    <View style={{ gap: Spacing.three }}>
+      <View style={styles.counterRow}>
+        <ThemedText type="caption" themeColor={selected.size > 0 ? undefined : 'textSecondary'} style={selected.size > 0 ? { color: theme.accent, fontWeight: '700' } : undefined}>
+          {selected.size > 0 ? `${selected.size} ${selected.size === 1 ? 'alimento selezionato' : 'alimenti selezionati'}` : 'Tocca gli alimenti che ti piacciono'}
+        </ThemedText>
+        {selected.size > 0 ? (
+          <Pressable onPress={() => onChange(undefined)} hitSlop={8} accessibilityRole="button">
+            <ThemedText type="caption" style={{ color: theme.accent, fontWeight: '700' }}>
+              Deseleziona tutto
             </ThemedText>
-            <Icon name="chevronDown" size={18} color={theme.textTertiary} />
-          </View>
-        </GlassSurface>
-      </Pressable>
-
-      {selected.size > 0 ? (
-        <View style={styles.chips}>
-          {[...selected].map((id) => (
-            <Pressable key={id} onPress={() => toggle(id)} hitSlop={4} style={[styles.chip, { backgroundColor: theme.accentSoft }]} accessibilityLabel={`Rimuovi ${labelOf(id)}`}>
-              <ThemedText type="caption" style={{ color: theme.accent, fontWeight: '600' }}>
-                {labelOf(id)}
-              </ThemedText>
-              <Icon name="close" size={12} color={theme.accent} />
-            </Pressable>
-          ))}
-        </View>
-      ) : null}
-
-      {/* a long list needs a solid card: text showing through a translucent one is hard to read */}
-      <Modal visible={open} transparent animationType={modalAnimation('fade')} onRequestClose={close} statusBarTranslucent>
-        <View style={[styles.backdrop, { backgroundColor: theme.scrim }]}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={close} accessibilityLabel="Chiudi" />
-          <SwipeDismiss onDismiss={close} style={[styles.card, { backgroundColor: theme.backgroundElevated, borderColor: theme.boxEdge }]}>
-        <View style={styles.header}>
-          <View style={{ flex: 1 }}>
-            <ThemedText type="subtitle">{PICKER_TITLE[component]}</ThemedText>
-            <ThemedText type="caption" themeColor="textSecondary">
-              {selected.size > 0 ? `${selected.size} selezionati` : 'Seleziona quelli che ti piacciono'}
-            </ThemedText>
-          </View>
-          <Pressable onPress={close} hitSlop={11} accessibilityLabel="Chiudi">
-            <Icon name="close" size={22} color={theme.text} />
           </Pressable>
-        </View>
+        ) : null}
+      </View>
 
-        <AppTextInput
-          value={query}
-          onChangeText={setQuery}
-          placeholder="Cerca un alimento"
-          placeholderTextColor={theme.textTertiary}
-          style={[styles.search, { color: theme.text, backgroundColor: theme.backgroundElement, borderColor: theme.boxEdge }]}
-        />
-
-        <PopupScrollView {...ScrollDefaults} style={styles.list}>
-          {groups.length === 0 ? (
-            <ThemedText type="caption" themeColor="textSecondary">
-              Nessun alimento trovato.
+      {groups.map(([group, items]) => (
+        <View key={group} style={{ gap: Spacing.two }}>
+          {group ? (
+            <ThemedText type="caption" themeColor="textTertiary" style={styles.groupTitle}>
+              {group.toUpperCase()}
             </ThemedText>
           ) : null}
-          {groups.map(([group, items]) => (
-            <View key={group} style={{ gap: 4, marginBottom: Spacing.three }}>
-              {group ? (
-                <ThemedText type="caption" themeColor="textTertiary" style={styles.groupTitle}>
-                  {group.toUpperCase()}
-                </ThemedText>
-              ) : null}
-              {items.map((o) => {
-                const isSelected = selected.has(o.value);
-                return (
-                  <Pressable key={o.value} onPress={() => toggle(o.value)} style={[styles.row, { borderColor: isSelected ? theme.accent : 'transparent' }]}>
-                    <ThemedText type="small" style={{ flex: 1 }}>
-                      {o.label}
-                    </ThemedText>
-                    <Icon name={isSelected ? 'checkCircle' : 'addCircle'} size={20} color={isSelected ? theme.accent : theme.textTertiary} />
-                  </Pressable>
-                );
-              })}
-            </View>
+          {pairs(items).map((row) => (
+          <View key={row[0].value} style={styles.row}>
+            {row.map((o) => {
+              const isSelected = selected.has(o.value);
+              return (
+                <Pressable
+                  key={o.value}
+                  onPress={() => toggle(o.value)}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: isSelected }}
+                  accessibilityLabel={o.label}
+                  style={({ pressed }) => [
+                    styles.tile,
+                    {
+                      backgroundColor: isSelected ? theme.accentSoft : theme.backgroundElement,
+                      borderColor: isSelected ? theme.accent : theme.boxEdge,
+                      borderWidth: isSelected ? 1.5 : 1,
+                      transform: [{ scale: pressed ? 0.97 : 1 }],
+                    },
+                  ]}>
+                  <ThemedText type="small" numberOfLines={2} style={[styles.tileLabel, isSelected && { color: theme.accent, fontWeight: '700' }]}>
+                    {o.label}
+                  </ThemedText>
+                  <View
+                    style={[
+                      styles.mark,
+                      { borderColor: isSelected ? theme.accent : theme.borderStrong, backgroundColor: isSelected ? theme.accent : 'transparent' },
+                    ]}>
+                    {isSelected ? <Icon name="check" size={12} color={theme.onAccent} /> : null}
+                  </View>
+                </Pressable>
+              );
+            })}
+            {/* an odd last box keeps half the width instead of stretching across the row */}
+            {row.length === 1 ? <View style={styles.spacer} /> : null}
+          </View>
           ))}
-        </PopupScrollView>
-
-        <View style={{ gap: Spacing.two }}>
-          {selected.size > 0 ? (
-            <Pressable onPress={() => onChange(undefined)} hitSlop={8}>
-              <ThemedText type="caption" style={{ color: theme.accent, textAlign: 'center', fontWeight: '700' }}>
-                Deseleziona tutto
-              </ThemedText>
-            </Pressable>
-          ) : null}
-          <PrimaryButton label="Fatto" onPress={close} />
         </View>
-          </SwipeDismiss>
-        </View>
-      </Modal>
+      ))}
     </View>
   );
 }
 
+/** Two boxes per row on a phone. */
+function pairs<T>(items: T[]): T[][] {
+  const rows: T[][] = [];
+  for (let i = 0; i < items.length; i += 2) rows.push(items.slice(i, i + 2));
+  return rows;
+}
+
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.four },
-  card: { width: '100%', maxWidth: 420, maxHeight: '90%', borderRadius: Radius.xlarge, borderWidth: 1, padding: Spacing.four, gap: Spacing.three },
-  selector: { borderWidth: 1.5, borderColor: 'transparent' },
-  selectorInner: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, paddingHorizontal: Spacing.three, paddingVertical: 14 },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  chip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999 },
-  header: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.two },
-  search: { borderWidth: 1, borderRadius: Radius.medium, paddingHorizontal: Spacing.three, paddingVertical: 10, fontSize: 15 },
-  list: { maxHeight: 360, flexGrow: 0 },
-  groupTitle: { letterSpacing: 0.6, fontWeight: '700', marginTop: 2 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, paddingHorizontal: 10, paddingVertical: 10, borderRadius: 12, borderWidth: 1 },
+  counterRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.two },
+  groupTitle: { letterSpacing: 0.6, fontWeight: '700' },
+  row: { flexDirection: 'row', gap: Spacing.two },
+  spacer: { flex: 1 },
+  tile: {
+    flex: 1,
+    minHeight: 64,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: 12,
+    borderRadius: Radius.medium,
+  },
+  tileLabel: { flex: 1 },
+  mark: { width: 20, height: 20, borderRadius: 6, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
 });
