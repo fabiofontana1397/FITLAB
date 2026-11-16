@@ -118,30 +118,44 @@ export function stepsKcal(steps: number, weightKg: number): number {
   return Math.round(steps * 0.0005 * weightKg);
 }
 
-/** Waking hours: everyday activity (NEAT) is spent between these, not while asleep. */
-const WAKE_HOUR = 7;
-const SLEEP_HOUR = 22;
-
 /**
- * How much of the day's resting kcal (BMR) is already burned after `hours` whole
- * hours: the body burns it all day and night, so it grows evenly over 24 h.
+ * The part of the day over which today's resting and everyday kcal are counted: from the person's breakfast to their
+ * dinner (questionnaire answers `breakfastTime` and `dinnerTime`, in hours from midnight). Before breakfast nothing has
+ * been counted yet; at dinner the whole day's estimate is in, so the balance read at dinner is the day's.
  */
-export function restingShareAt(hours: number): number {
-  return Math.min(Math.max(hours / 24, 0), 1);
+export type EnergyWindow = { start: number; end: number };
+
+const DEFAULT_WINDOW: EnergyWindow = { start: 7.5, end: 20 };
+
+function hoursOf(value: unknown): number | null {
+  if (typeof value !== 'string') return null;
+  const m = value.trim().match(/^(\d{1,2})[:.](\d{2})$/);
+  if (!m) return null;
+  const h = Number(m[1]);
+  const min = Number(m[2]);
+  return h <= 23 && min <= 59 ? h + min / 60 : null;
 }
 
-/** How much of the everyday activity (NEAT) is already spent: it accrues only while awake. */
-export function everydayShareAt(hours: number): number {
-  return Math.min(Math.max((hours - WAKE_HOUR) / (SLEEP_HOUR - WAKE_HOUR), 0), 1);
+/** Breakfast → dinner from the answers; the default (07:30 → 20:00) when a time is missing or the two make no sense. */
+export function energyWindow(answers: Record<string, unknown> | null | undefined): EnergyWindow {
+  const start = hoursOf(answers?.breakfastTime) ?? DEFAULT_WINDOW.start;
+  const end = hoursOf(answers?.dinnerTime) ?? DEFAULT_WINDOW.end;
+  // at least 6 hours between breakfast and dinner, or the answers are not usable (e.g. dinner typed as 08:00)
+  return end - start >= 6 ? { start, end } : DEFAULT_WINDOW;
+}
+
+/** How much of the day's kcal is counted at `hours` (from midnight): 0 before breakfast, 1 from dinner on, linear between. */
+export function dayShareAt(hours: number, window: EnergyWindow = DEFAULT_WINDOW): number {
+  return Math.min(Math.max((hours - window.start) / (window.end - window.start), 0), 1);
 }
 
 export type DayEnergyOptions = {
   calibration?: EnergyCalibration | null;
   measured?: MeasuredDay | null;
   /**
-   * Whole hours elapsed today (0–24). When set, resting and everyday kcal are only
-   * the part burned SO FAR (they accrue through the day) instead of the full-day
-   * estimate. Leave it out for a finished day or for planning targets.
+   * Hours elapsed today (0–24, minutes as a fraction). When set, resting and everyday kcal are only the part counted
+   * SO FAR: they grow from the person's breakfast to their dinner (energyWindow), instead of the full-day estimate.
+   * Leave it out for a finished day or for planning targets.
    */
   elapsedHours?: number;
 };
@@ -155,7 +169,7 @@ export type DayEnergyOptions = {
  * measured so far already exceeds it.
  */
 export function dayEnergy(
-  ctx: Pick<UserContext, 'sex' | 'age' | 'heightCm' | 'weightKg' | 'lifestyle' | 'training'>,
+  ctx: Pick<UserContext, 'sex' | 'age' | 'heightCm' | 'weightKg' | 'lifestyle' | 'training'> & { answers?: UserContext['answers'] },
   day: SessionLike | null | undefined,
   completion = 1,
   extraKcal = 0,
@@ -171,7 +185,8 @@ export function dayEnergy(
   let everyday = modelEveryday;
   // Today, still running: resting and everyday kcal accrue through the day instead of landing all at once.
   const partial = elapsedHours != null && elapsedHours < 24;
-  const everydayNow = partial ? Math.round(modelEveryday * everydayShareAt(elapsedHours)) : modelEveryday;
+  const share = partial ? dayShareAt(elapsedHours, energyWindow(ctx.answers)) : 1;
+  const everydayNow = Math.round(modelEveryday * share);
   if (measured) {
     const measuredEveryday =
       measured.activeKcal != null && measured.activeKcal > 0
@@ -191,7 +206,7 @@ export function dayEnergy(
   } else if (partial) {
     everyday = everydayNow;
   }
-  if (partial && !measured?.complete) resting = Math.round(resting * restingShareAt(elapsedHours));
+  if (partial && !measured?.complete) resting = Math.round(resting * share);
   return { resting, everyday, exercise, total: resting + everyday + exercise };
 }
 

@@ -242,7 +242,7 @@ export default function HomeScreen() {
     burned: {
       icon: 'flame',
       title: 'Calorie bruciate',
-      body: `Una stima delle calorie che il tuo corpo ha bruciato oggi: metabolismo basale (BMR) più attività quotidiana (${formatKcal(basalKcal)} kcal), a cui si aggiungono l'allenamento svolto e le attività registrate (${formatKcal(trainingBurnKcal)} kcal). Insieme alle calorie assunte determina il tuo bilancio energetico verso l'obiettivo.`,
+      body: `Una stima delle calorie che il tuo corpo ha bruciato oggi: metabolismo basale (BMR) più attività quotidiana (${formatKcal(basalKcal)} kcal), a cui si aggiungono l'allenamento svolto e le attività registrate (${formatKcal(trainingBurnKcal)} kcal). Basale e attività quotidiana si sommano un po' alla volta dall'ora della tua colazione a quella della cena: a cena trovi il conto della giornata intera. Insieme alle calorie assunte determina il tuo bilancio energetico verso l'obiettivo.`,
     },
     eaten: {
       icon: 'utensils',
