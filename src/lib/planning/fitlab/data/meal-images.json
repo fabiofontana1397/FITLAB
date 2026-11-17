@@ -1,458 +1,31 @@
 [
   {
-    "id": "porridge-frutti-bosco",
-    "name": "Porridge con banana e frutti di bosco",
-    "category": "breakfast",
-    "image": "/images/meals/porridge-frutti-bosco.webp",
-    "alt": "Porridge con banana e frutti di bosco"
-  },
-  {
-    "id": "toast-avocado-uova",
-    "name": "Toast con avocado e uova",
-    "category": "breakfast",
-    "image": "/images/meals/toast-avocado-uova.webp",
-    "alt": "Toast con avocado e uova"
-  },
-  {
-    "id": "yogurt-frutta-granola",
-    "name": "Yogurt con frutta e granola",
-    "category": "breakfast",
-    "image": "/images/meals/yogurt-frutta-granola.webp",
-    "alt": "Yogurt con frutta e granola"
-  },
-  {
-    "id": "pancake-banana-mirtilli",
-    "name": "Pancake con banana e mirtilli",
-    "category": "breakfast",
-    "image": "/images/meals/pancake-banana-mirtilli.webp",
-    "alt": "Pancake con banana e mirtilli"
-  },
-  {
-    "id": "spaghetti-pomodoro",
-    "name": "Spaghetti al pomodoro e basilico",
-    "category": "lunch",
-    "image": "/images/meals/spaghetti-pomodoro.webp",
-    "alt": "Spaghetti al pomodoro e basilico"
-  },
-  {
-    "id": "penne-zucchine",
-    "name": "Penne con zucchine",
-    "category": "lunch",
-    "image": "/images/meals/penne-zucchine.webp",
-    "alt": "Penne con zucchine"
-  },
-  {
-    "id": "risotto-funghi",
-    "name": "Risotto ai funghi",
-    "category": "lunch",
-    "image": "/images/meals/risotto-funghi.webp",
-    "alt": "Risotto ai funghi"
-  },
-  {
-    "id": "farro-verdure-feta",
-    "name": "Farro con verdure e feta",
-    "category": "lunch",
-    "image": "/images/meals/farro-verdure-feta.webp",
-    "alt": "Farro con verdure e feta"
-  },
-  {
-    "id": "pollo-patate-insalata",
-    "name": "Pollo alla griglia con patate e insalata",
-    "category": "dinner",
-    "image": "/images/meals/pollo-patate-insalata.webp",
-    "alt": "Pollo alla griglia con patate e insalata"
-  },
-  {
-    "id": "salmone-cereali-zucchine",
-    "name": "Salmone con cereali e zucchine",
-    "category": "dinner",
-    "image": "/images/meals/salmone-cereali-zucchine.webp",
-    "alt": "Salmone con cereali e zucchine"
-  },
-  {
-    "id": "frittata-spinaci-pomodori",
-    "name": "Frittata con spinaci e pomodori",
-    "category": "dinner",
-    "image": "/images/meals/frittata-spinaci-pomodori.webp",
-    "alt": "Frittata con spinaci e pomodori"
-  },
-  {
-    "id": "insalata-tonno-ceci",
-    "name": "Insalata di tonno e ceci",
-    "category": "dinner",
-    "image": "/images/meals/insalata-tonno-ceci.webp",
-    "alt": "Insalata di tonno e ceci"
-  },
-  {
     "id": "pl001",
-    "name": "Porridge d'avena, yogurt e frutti di bosco",
+    "name": "Porridge d’avena con yogurt greco e frutti di bosco",
     "category": "breakfast",
     "image": "/images/meals/pl001.webp",
-    "alt": "Porridge d'avena, yogurt e frutti di bosco"
-  },
-  {
-    "id": "pl002",
-    "name": "Porridge di crema di riso e banana",
-    "category": "breakfast",
-    "image": "/images/meals/pl002.webp",
-    "alt": "Porridge di crema di riso e banana"
+    "alt": "Porridge d’avena con yogurt greco e frutti di bosco"
   },
   {
     "id": "pl003",
-    "name": "Porridge di avena e albumi d'uovo",
+    "name": "Porridge d’avena con albumi e burro di arachidi",
     "category": "breakfast",
     "image": "/images/meals/pl003.webp",
-    "alt": "Porridge di avena e albumi d'uovo"
+    "alt": "Porridge d’avena con albumi e burro di arachidi"
   },
   {
-    "id": "pl004",
-    "name": "Bowl di yogurt greco, muesli e kiwi",
+    "id": "b03",
+    "name": "Porridge d’avena con yogurt greco e banana",
     "category": "breakfast",
-    "image": "/images/meals/pl004.webp",
-    "alt": "Bowl di yogurt greco, muesli e kiwi"
-  },
-  {
-    "id": "pl005",
-    "name": "Toast integrale con ricotta e marmellata",
-    "category": "breakfast",
-    "image": "/images/meals/pl005.webp",
-    "alt": "Toast integrale con ricotta e marmellata"
-  },
-  {
-    "id": "pl006",
-    "name": "Avocado toast",
-    "category": "breakfast",
-    "image": "/images/meals/pl006.webp",
-    "alt": "Avocado toast"
-  },
-  {
-    "id": "pl007",
-    "name": "Pancake d'avena con yogurt e banana",
-    "category": "breakfast",
-    "image": "/images/meals/pl007.webp",
-    "alt": "Pancake d'avena con yogurt e banana"
-  },
-  {
-    "id": "pl008",
-    "name": "Pane di segale con fiocchi di latte e marmellata",
-    "category": "breakfast",
-    "image": "/images/meals/pl008.webp",
-    "alt": "Pane di segale con fiocchi di latte e marmellata"
-  },
-  {
-    "id": "pl009",
-    "name": "Fette biscottate con yogurt e marmellata",
-    "category": "breakfast",
-    "image": "/images/meals/pl009.webp",
-    "alt": "Fette biscottate con yogurt e marmellata"
-  },
-  {
-    "id": "pl010",
-    "name": "Kefir con avena e mela",
-    "category": "breakfast",
-    "image": "/images/meals/pl010.webp",
-    "alt": "Kefir con avena e mela"
-  },
-  {
-    "id": "pl011",
-    "name": "Toast con fesa di tacchino e frutta",
-    "category": "snack",
-    "image": "/images/meals/pl011.webp",
-    "alt": "Toast con fesa di tacchino e frutta"
-  },
-  {
-    "id": "pl012",
-    "name": "Yogurt greco con frutta e mandorle",
-    "category": "snack",
-    "image": "/images/meals/pl012.webp",
-    "alt": "Yogurt greco con frutta e mandorle"
-  },
-  {
-    "id": "pl013",
-    "name": "Skyr con banana e semi di chia",
-    "category": "snack",
-    "image": "/images/meals/pl013.webp",
-    "alt": "Skyr con banana e semi di chia"
-  },
-  {
-    "id": "pl014",
-    "name": "Pane integrale con ricotta",
-    "category": "snack",
-    "image": "/images/meals/pl014.webp",
-    "alt": "Pane integrale con ricotta"
-  },
-  {
-    "id": "pl015",
-    "name": "Bresaola con pane e rucola",
-    "category": "snack",
-    "image": "/images/meals/pl015.webp",
-    "alt": "Bresaola con pane e rucola"
-  },
-  {
-    "id": "pl016",
-    "name": "Fette biscottate con yogurt e marmellata",
-    "category": "snack",
-    "image": "/images/meals/pl016.webp",
-    "alt": "Fette biscottate con yogurt e marmellata"
-  },
-  {
-    "id": "pl017",
-    "name": "Bowl di yogurt greco, muesli e kiwi",
-    "category": "snack",
-    "image": "/images/meals/pl017.webp",
-    "alt": "Bowl di yogurt greco, muesli e kiwi"
-  },
-  {
-    "id": "pl018",
-    "name": "Hummus con carote e crackers",
-    "category": "snack",
-    "image": "/images/meals/pl018.webp",
-    "alt": "Hummus con carote e crackers"
-  },
-  {
-    "id": "pl019",
-    "name": "Frutta fresca e frutta secca",
-    "category": "snack",
-    "image": "/images/meals/pl019.webp",
-    "alt": "Frutta fresca e frutta secca"
-  },
-  {
-    "id": "pl020",
-    "name": "Kefir con frutti di bosco",
-    "category": "snack",
-    "image": "/images/meals/pl020.webp",
-    "alt": "Kefir con frutti di bosco"
+    "image": "/images/meals/b03.webp",
+    "alt": "Porridge d’avena con yogurt greco e banana"
   },
   {
     "id": "pl021",
-    "name": "Toast con avocado e uovo sodo",
-    "category": "snack",
-    "image": "/images/meals/pl021.webp",
-    "alt": "Toast con avocado e uovo sodo"
-  },
-  {
-    "id": "pl022",
-    "name": "Budino proteico con frutta",
-    "category": "snack",
-    "image": "/images/meals/pl022.webp",
-    "alt": "Budino proteico con frutta"
-  },
-  {
-    "id": "pl023",
-    "name": "Pasta integrale al pomodoro, pollo e zucchine",
-    "category": "lunch",
-    "image": "/images/meals/pl023.webp",
-    "alt": "Pasta integrale al pomodoro, pollo e zucchine"
-  },
-  {
-    "id": "pl024",
-    "name": "Riso integrale con salmone e broccoli",
-    "category": "lunch",
-    "image": "/images/meals/pl024.webp",
-    "alt": "Riso integrale con salmone e broccoli"
-  },
-  {
-    "id": "pl025",
-    "name": "Farro con tacchino, melanzane e pomodori",
-    "category": "lunch",
-    "image": "/images/meals/pl025.webp",
-    "alt": "Farro con tacchino, melanzane e pomodori"
-  },
-  {
-    "id": "pl026",
-    "name": "Pasta, merluzzo, pomodori e spinaci",
-    "category": "lunch",
-    "image": "/images/meals/pl026.webp",
-    "alt": "Pasta, merluzzo, pomodori e spinaci"
-  },
-  {
-    "id": "pl027",
-    "name": "Riso basmati con ceci e verdure mediterranee",
-    "category": "lunch",
-    "image": "/images/meals/pl027.webp",
-    "alt": "Riso basmati con ceci e verdure mediterranee"
-  },
-  {
-    "id": "pl028",
-    "name": "Patate al forno con orata e fagiolini",
-    "category": "lunch",
-    "image": "/images/meals/pl028.webp",
-    "alt": "Patate al forno con orata e fagiolini"
-  },
-  {
-    "id": "pl029",
-    "name": "Pasta e lenticchie con contorno di finocchi",
-    "category": "lunch",
-    "image": "/images/meals/pl029.webp",
-    "alt": "Pasta e lenticchie con contorno di finocchi"
-  },
-  {
-    "id": "pl030",
-    "name": "Polenta con manzo magro e cavolo nero",
-    "category": "lunch",
-    "image": "/images/meals/pl030.webp",
-    "alt": "Polenta con manzo magro e cavolo nero"
-  },
-  {
-    "id": "pl031",
-    "name": "Cous cous con gamberi e zucchine",
-    "category": "lunch",
-    "image": "/images/meals/pl031.webp",
-    "alt": "Cous cous con gamberi e zucchine"
-  },
-  {
-    "id": "pl032",
-    "name": "Pasta al ragù leggero con contorno di insalata",
-    "category": "lunch",
-    "image": "/images/meals/pl032.webp",
-    "alt": "Pasta al ragù leggero con contorno di insalata"
-  },
-  {
-    "id": "pl034",
-    "name": "Riso venere con tonno e zucchine",
-    "category": "dinner",
-    "image": "/images/meals/pl034.webp",
-    "alt": "Riso venere con tonno e zucchine"
-  },
-  {
-    "id": "pl035",
-    "name": "Pasta con ricotta e spinaci, carciofi di contorno",
-    "category": "lunch",
-    "image": "/images/meals/pl035.webp",
-    "alt": "Pasta con ricotta e spinaci, carciofi di contorno"
-  },
-  {
-    "id": "pl036",
-    "name": "Patate dolci con hamburger di pollo e insalata",
-    "category": "dinner",
-    "image": "/images/meals/pl036.webp",
-    "alt": "Patate dolci con hamburger di pollo e insalata"
-  },
-  {
-    "id": "pl037",
-    "name": "Orzo con fagioli borlotti e zucchine",
-    "category": "lunch",
-    "image": "/images/meals/pl037.webp",
-    "alt": "Orzo con fagioli borlotti e zucchine"
-  },
-  {
-    "id": "pl038",
-    "name": "Salmone al forno con riso e asparagi",
-    "category": "dinner",
-    "image": "/images/meals/pl038.webp",
-    "alt": "Salmone al forno con riso e asparagi"
-  },
-  {
-    "id": "pl039",
-    "name": "Gnocchi al pomodoro con mozzarella e melanzane",
-    "category": "lunch",
-    "image": "/images/meals/pl039.webp",
-    "alt": "Gnocchi al pomodoro con mozzarella e melanzane"
-  },
-  {
-    "id": "pl040",
-    "name": "Lenticchie in umido con pane integrale e cavolfiore",
-    "category": "dinner",
-    "image": "/images/meals/pl040.webp",
-    "alt": "Lenticchie in umido con pane integrale e cavolfiore"
-  },
-  {
-    "id": "pl041",
-    "name": "Riso rosso con tacchino e carote",
-    "category": "lunch",
-    "image": "/images/meals/pl041.webp",
-    "alt": "Riso rosso con tacchino e carote"
-  },
-  {
-    "id": "pl042",
-    "name": "Quinoa con ceci, zucca e spinaci",
-    "category": "lunch",
-    "image": "/images/meals/pl042.webp",
-    "alt": "Quinoa con ceci, zucca e spinaci"
-  },
-  {
-    "id": "pl043",
-    "name": "Lonza magra con patate e cavolini di Bruxelles",
-    "category": "dinner",
-    "image": "/images/meals/pl043.webp",
-    "alt": "Lonza magra con patate e cavolini di Bruxelles"
-  },
-  {
-    "id": "pl044",
-    "name": "Pasta di legumi con pomodoro e contorno di zucchine",
-    "category": "lunch",
-    "image": "/images/meals/pl044.webp",
-    "alt": "Pasta di legumi con pomodoro e contorno di zucchine"
-  },
-  {
-    "id": "pl045",
-    "name": "Merluzzo al forno con cous cous e peperoni",
-    "category": "dinner",
-    "image": "/images/meals/pl045.webp",
-    "alt": "Merluzzo al forno con cous cous e peperoni"
-  },
-  {
-    "id": "pl046",
-    "name": "Farro con fagioli cannellini e carciofi",
-    "category": "lunch",
-    "image": "/images/meals/pl046.webp",
-    "alt": "Farro con fagioli cannellini e carciofi"
-  },
-  {
-    "id": "pl048",
-    "name": "Pasta al tonno con pomodori e contorno di lattuga",
-    "category": "lunch",
-    "image": "/images/meals/pl048.webp",
-    "alt": "Pasta al tonno con pomodori e contorno di lattuga"
-  },
-  {
-    "id": "pl034-sgombro",
-    "name": "Riso venere con tonno e zucchine (con sgombro)",
-    "category": "dinner",
-    "image": "/images/meals/pl034-sgombro.webp",
-    "alt": "Riso venere con tonno e zucchine (con sgombro)"
-  },
-  {
-    "id": "pl036-tacchino",
-    "name": "Patate dolci con hamburger di pollo e insalata (con hamburger di tacchino)",
-    "category": "dinner",
-    "image": "/images/meals/pl036-tacchino.webp",
-    "alt": "Patate dolci con hamburger di pollo e insalata (con hamburger di tacchino)"
-  },
-  {
-    "id": "pl038-trota",
-    "name": "Salmone al forno con riso e asparagi (con trota)",
-    "category": "dinner",
-    "image": "/images/meals/pl038-trota.webp",
-    "alt": "Salmone al forno con riso e asparagi (con trota)"
-  },
-  {
-    "id": "pl043-tacchino",
-    "name": "Lonza magra con patate e cavolini di Bruxelles (con tacchino)",
-    "category": "dinner",
-    "image": "/images/meals/pl043-tacchino.webp",
-    "alt": "Lonza magra con patate e cavolini di Bruxelles (con tacchino)"
-  },
-  {
-    "id": "pl045-orata",
-    "name": "Merluzzo al forno con cous cous e peperoni (con orata)",
-    "category": "dinner",
-    "image": "/images/meals/pl045-orata.webp",
-    "alt": "Merluzzo al forno con cous cous e peperoni (con orata)"
-  },
-  {
-    "id": "pl048-sgombro",
-    "name": "Pasta al tonno con pomodori e contorno di lattuga (con sgombro)",
-    "category": "lunch",
-    "image": "/images/meals/pl048-sgombro.webp",
-    "alt": "Pasta al tonno con pomodori e contorno di lattuga (con sgombro)"
-  },
-  {
-    "id": "x102",
-    "name": "Gallette di riso con ricotta e banana",
+    "name": "Avocado toast con uova",
     "category": "breakfast",
-    "image": "/images/meals/x102.webp",
-    "alt": "Gallette di riso con ricotta e banana"
+    "image": "/images/meals/pl021.webp",
+    "alt": "Avocado toast con uova"
   },
   {
     "id": "x103",
@@ -462,46 +35,130 @@
     "alt": "Uova strapazzate con pane integrale e arancia"
   },
   {
+    "id": "b06",
+    "name": "Frittata di albumi con pane integrale",
+    "category": "breakfast",
+    "image": "/images/meals/b06.webp",
+    "alt": "Frittata di albumi con pane integrale"
+  },
+  {
+    "id": "pl005",
+    "name": "Pane integrale con ricotta e marmellata",
+    "category": "breakfast",
+    "image": "/images/meals/pl005.webp",
+    "alt": "Pane integrale con ricotta e marmellata"
+  },
+  {
+    "id": "pl009",
+    "name": "Fette biscottate con yogurt greco e marmellata",
+    "category": "breakfast",
+    "image": "/images/meals/pl009.webp",
+    "alt": "Fette biscottate con yogurt greco e marmellata"
+  },
+  {
+    "id": "pl004",
+    "name": "Yogurt greco con muesli e kiwi",
+    "category": "breakfast",
+    "image": "/images/meals/pl004.webp",
+    "alt": "Yogurt greco con muesli e kiwi"
+  },
+  {
+    "id": "b10",
+    "name": "Yogurt greco con cereali integrali e fragole",
+    "category": "breakfast",
+    "image": "/images/meals/b10.webp",
+    "alt": "Yogurt greco con cereali integrali e fragole"
+  },
+  {
     "id": "x104",
-    "name": "Overnight oats con skyr e banana",
+    "name": "Overnight oats con yogurt greco e banana",
     "category": "breakfast",
     "image": "/images/meals/x104.webp",
-    "alt": "Overnight oats con skyr e banana"
+    "alt": "Overnight oats con yogurt greco e banana"
   },
   {
-    "id": "x305",
-    "name": "Insalata di riso con tonno, pomodori e carote",
-    "category": "lunch",
-    "image": "/images/meals/x305.webp",
-    "alt": "Insalata di riso con tonno, pomodori e carote"
+    "id": "b12",
+    "name": "Latte con cereali integrali, banana e mandorle",
+    "category": "breakfast",
+    "image": "/images/meals/b12.webp",
+    "alt": "Latte con cereali integrali, banana e mandorle"
   },
   {
-    "id": "x307",
-    "name": "Insalata di pasta con mozzarella, pomodori e rucola",
-    "category": "lunch",
-    "image": "/images/meals/x307.webp",
-    "alt": "Insalata di pasta con mozzarella, pomodori e rucola"
+    "id": "pl007",
+    "name": "Pancake d’avena con yogurt e banana",
+    "category": "breakfast",
+    "image": "/images/meals/pl007.webp",
+    "alt": "Pancake d’avena con yogurt e banana"
   },
   {
-    "id": "x317",
-    "name": "Pasta con sardine e finocchi",
-    "category": "lunch",
-    "image": "/images/meals/x317.webp",
-    "alt": "Pasta con sardine e finocchi"
+    "id": "pl008",
+    "name": "Pane di segale con fiocchi di latte e marmellata",
+    "category": "breakfast",
+    "image": "/images/meals/pl008.webp",
+    "alt": "Pane di segale con fiocchi di latte e marmellata"
   },
   {
-    "id": "x322",
-    "name": "Riso con pollo e verdure grigliate",
-    "category": "lunch",
-    "image": "/images/meals/x322.webp",
-    "alt": "Riso con pollo e verdure grigliate"
+    "id": "pl013",
+    "name": "Skyr con banana e semi di chia",
+    "category": "breakfast",
+    "image": "/images/meals/pl013.webp",
+    "alt": "Skyr con banana e semi di chia"
   },
   {
-    "id": "x323",
-    "name": "Bowl di riso con tonno, cetrioli e rucola",
-    "category": "lunch",
-    "image": "/images/meals/x323.webp",
-    "alt": "Bowl di riso con tonno, cetrioli e rucola"
+    "id": "pl010",
+    "name": "Kefir con avena, mela e noci",
+    "category": "breakfast",
+    "image": "/images/meals/pl010.webp",
+    "alt": "Kefir con avena, mela e noci"
+  },
+  {
+    "id": "x102",
+    "name": "Gallette di riso con ricotta, banana e burro di mandorle",
+    "category": "breakfast",
+    "image": "/images/meals/x102.webp",
+    "alt": "Gallette di riso con ricotta, banana e burro di mandorle"
+  },
+  {
+    "id": "b18",
+    "name": "Yogurt greco con avena e frutti di bosco",
+    "category": "breakfast",
+    "image": "/images/meals/b18.webp",
+    "alt": "Yogurt greco con avena e frutti di bosco"
+  },
+  {
+    "id": "x106",
+    "name": "Porridge con bevanda di soia, banana e burro di arachidi",
+    "category": "breakfast",
+    "image": "/images/meals/x106.webp",
+    "alt": "Porridge con bevanda di soia, banana e burro di arachidi"
+  },
+  {
+    "id": "b20",
+    "name": "Pane integrale con burro di arachidi e mela",
+    "category": "breakfast",
+    "image": "/images/meals/b20.webp",
+    "alt": "Pane integrale con burro di arachidi e mela"
+  },
+  {
+    "id": "pl012",
+    "name": "Yogurt greco con frutti di bosco e mandorle",
+    "category": "snack",
+    "image": "/images/meals/pl012.webp",
+    "alt": "Yogurt greco con frutti di bosco e mandorle"
+  },
+  {
+    "id": "s02",
+    "name": "Yogurt greco con mela e noci",
+    "category": "snack",
+    "image": "/images/meals/s02.webp",
+    "alt": "Yogurt greco con mela e noci"
+  },
+  {
+    "id": "s03",
+    "name": "Yogurt greco con avena e cannella",
+    "category": "snack",
+    "image": "/images/meals/s03.webp",
+    "alt": "Yogurt greco con avena e cannella"
   },
   {
     "id": "x202",
@@ -509,6 +166,41 @@
     "category": "snack",
     "image": "/images/meals/x202.webp",
     "alt": "Yogurt greco con noci e miele"
+  },
+  {
+    "id": "pl020",
+    "name": "Kefir con frutti di bosco e semi di lino",
+    "category": "snack",
+    "image": "/images/meals/pl020.webp",
+    "alt": "Kefir con frutti di bosco e semi di lino"
+  },
+  {
+    "id": "s06",
+    "name": "Pan bauletto con marmellata",
+    "category": "snack",
+    "image": "/images/meals/s06.webp",
+    "alt": "Pan bauletto con marmellata"
+  },
+  {
+    "id": "s07",
+    "name": "Panino con fesa di tacchino",
+    "category": "snack",
+    "image": "/images/meals/s07.webp",
+    "alt": "Panino con fesa di tacchino"
+  },
+  {
+    "id": "pl015",
+    "name": "Bresaola con pane e rucola",
+    "category": "snack",
+    "image": "/images/meals/pl015.webp",
+    "alt": "Bresaola con pane e rucola"
+  },
+  {
+    "id": "pl014",
+    "name": "Pane integrale con ricotta",
+    "category": "snack",
+    "image": "/images/meals/pl014.webp",
+    "alt": "Pane integrale con ricotta"
   },
   {
     "id": "x204",
@@ -525,88 +217,18 @@
     "alt": "Pane integrale con fesa di tacchino e avocado"
   },
   {
-    "id": "x301",
-    "name": "Risotto con zucca e gamberi",
-    "category": "lunch",
-    "image": "/images/meals/x301.webp",
-    "alt": "Risotto con zucca e gamberi"
-  },
-  {
-    "id": "x303",
-    "name": "Pasta al pesto con pollo e fagiolini",
-    "category": "lunch",
-    "image": "/images/meals/x303.webp",
-    "alt": "Pasta al pesto con pollo e fagiolini"
-  },
-  {
-    "id": "x304",
-    "name": "Pasta alla Norma leggera con ricotta",
-    "category": "lunch",
-    "image": "/images/meals/x304.webp",
-    "alt": "Pasta alla Norma leggera con ricotta"
-  },
-  {
-    "id": "x318",
-    "name": "Cous cous con pollo, zucchine e peperoni",
-    "category": "lunch",
-    "image": "/images/meals/x318.webp",
-    "alt": "Cous cous con pollo, zucchine e peperoni"
-  },
-  {
-    "id": "x319",
-    "name": "Hamburger di merluzzo con patate e insalata",
-    "category": "dinner",
-    "image": "/images/meals/x319.webp",
-    "alt": "Hamburger di merluzzo con patate e insalata"
-  },
-  {
-    "id": "x321",
-    "name": "Pasta con gamberi e zucchine",
-    "category": "lunch",
-    "image": "/images/meals/x321.webp",
-    "alt": "Pasta con gamberi e zucchine"
-  },
-  {
-    "id": "x330",
-    "name": "Insalata di riso con pollo, pomodori e rucola",
-    "category": "lunch",
-    "image": "/images/meals/x330.webp",
-    "alt": "Insalata di riso con pollo, pomodori e rucola"
-  },
-  {
-    "id": "x332",
-    "name": "Pasta fredda con fesa di tacchino, pomodori e rucola",
-    "category": "lunch",
-    "image": "/images/meals/x332.webp",
-    "alt": "Pasta fredda con fesa di tacchino, pomodori e rucola"
-  },
-  {
-    "id": "x333",
-    "name": "Riso con lenticchie, pomodori e spinaci",
-    "category": "lunch",
-    "image": "/images/meals/x333.webp",
-    "alt": "Riso con lenticchie, pomodori e spinaci"
-  },
-  {
-    "id": "x101",
-    "name": "Latte con cereali integrali, banana e mandorle",
-    "category": "breakfast",
-    "image": "/images/meals/x101.webp",
-    "alt": "Latte con cereali integrali, banana e mandorle"
-  },
-  {
-    "id": "x106",
-    "name": "Porridge d'avena con banana e burro di arachidi",
-    "category": "breakfast",
-    "image": "/images/meals/x106.webp",
-    "alt": "Porridge d'avena con banana e burro di arachidi"
+    "id": "pl018",
+    "name": "Hummus di ceci con carote e crackers",
+    "category": "snack",
+    "image": "/images/meals/pl018.webp",
+    "alt": "Hummus di ceci con carote e crackers"
   },
   {
     "id": "x201",
-    "name": "Pera con scaglie di parmigiano e noci",
+    "name": "Pera con parmigiano e noci",
     "category": "snack",
     "image": "/images/meals/x201.webp",
-    "alt": "Pera con scaglie di parmigiano e noci"
+    "alt": "Pera con parmigiano e noci"
   },
   {
     "id": "x206",
@@ -623,11 +245,410 @@
     "alt": "Bevanda proteica con banana e mandorle"
   },
   {
-    "id": "x306",
-    "name": "Insalata di farro con ceci e verdure",
+    "id": "x208",
+    "name": "Bruschetta con mozzarella e pomodori",
+    "category": "snack",
+    "image": "/images/meals/x208.webp",
+    "alt": "Bruschetta con mozzarella e pomodori"
+  },
+  {
+    "id": "pl022",
+    "name": "Budino proteico con fragole e mandorle",
+    "category": "snack",
+    "image": "/images/meals/pl022.webp",
+    "alt": "Budino proteico con fragole e mandorle"
+  },
+  {
+    "id": "pl019",
+    "name": "Frutta fresca e frutta secca",
+    "category": "snack",
+    "image": "/images/meals/pl019.webp",
+    "alt": "Frutta fresca e frutta secca"
+  },
+  {
+    "id": "s19",
+    "name": "Uova sode con pane integrale",
+    "category": "snack",
+    "image": "/images/meals/s19.webp",
+    "alt": "Uova sode con pane integrale"
+  },
+  {
+    "id": "s20",
+    "name": "Latte senza lattosio con cereali integrali",
+    "category": "snack",
+    "image": "/images/meals/s20.webp",
+    "alt": "Latte senza lattosio con cereali integrali"
+  },
+  {
+    "id": "pl023",
+    "name": "Pasta al pomodoro con pollo e zucchine",
     "category": "lunch",
-    "image": "/images/meals/x306.webp",
-    "alt": "Insalata di farro con ceci e verdure"
+    "image": "/images/meals/pl023.webp",
+    "alt": "Pasta al pomodoro con pollo e zucchine"
+  },
+  {
+    "id": "l02",
+    "name": "Pasta con tonno e pomodorini",
+    "category": "lunch",
+    "image": "/images/meals/l02.webp",
+    "alt": "Pasta con tonno e pomodorini"
+  },
+  {
+    "id": "x304",
+    "name": "Pasta al pomodoro con ricotta e melanzane",
+    "category": "lunch",
+    "image": "/images/meals/x304.webp",
+    "alt": "Pasta al pomodoro con ricotta e melanzane"
+  },
+  {
+    "id": "l04",
+    "name": "Pasta al ragù di manzo con insalata",
+    "category": "lunch",
+    "image": "/images/meals/l04.webp",
+    "alt": "Pasta al ragù di manzo con insalata"
+  },
+  {
+    "id": "l05",
+    "name": "Pasta con tacchino e broccoli",
+    "category": "lunch",
+    "image": "/images/meals/l05.webp",
+    "alt": "Pasta con tacchino e broccoli"
+  },
+  {
+    "id": "l06",
+    "name": "Insalata di pasta con mozzarella e pomodorini",
+    "category": "lunch",
+    "image": "/images/meals/l06.webp",
+    "alt": "Insalata di pasta con mozzarella e pomodorini"
+  },
+  {
+    "id": "l07",
+    "name": "Pasta integrale con pollo e peperoni",
+    "category": "lunch",
+    "image": "/images/meals/l07.webp",
+    "alt": "Pasta integrale con pollo e peperoni"
+  },
+  {
+    "id": "l08",
+    "name": "Pasta integrale con tonno e fagiolini",
+    "category": "lunch",
+    "image": "/images/meals/l08.webp",
+    "alt": "Pasta integrale con tonno e fagiolini"
+  },
+  {
+    "id": "l09",
+    "name": "Riso con pollo e zucchine",
+    "category": "lunch",
+    "image": "/images/meals/l09.webp",
+    "alt": "Riso con pollo e zucchine"
+  },
+  {
+    "id": "l10",
+    "name": "Insalata di riso con tonno e pomodorini",
+    "category": "lunch",
+    "image": "/images/meals/l10.webp",
+    "alt": "Insalata di riso con tonno e pomodorini"
+  },
+  {
+    "id": "l11",
+    "name": "Riso con tacchino e carote",
+    "category": "lunch",
+    "image": "/images/meals/l11.webp",
+    "alt": "Riso con tacchino e carote"
+  },
+  {
+    "id": "l12",
+    "name": "Riso con manzo e peperoni",
+    "category": "lunch",
+    "image": "/images/meals/l12.webp",
+    "alt": "Riso con manzo e peperoni"
+  },
+  {
+    "id": "l13",
+    "name": "Insalata di riso con mozzarella e pomodorini",
+    "category": "lunch",
+    "image": "/images/meals/l13.webp",
+    "alt": "Insalata di riso con mozzarella e pomodorini"
+  },
+  {
+    "id": "l14",
+    "name": "Riso basmati con pollo al curry e zucchine",
+    "category": "lunch",
+    "image": "/images/meals/l14.webp",
+    "alt": "Riso basmati con pollo al curry e zucchine"
+  },
+  {
+    "id": "l15",
+    "name": "Riso integrale con hamburger di pollo e insalata",
+    "category": "lunch",
+    "image": "/images/meals/l15.webp",
+    "alt": "Riso integrale con hamburger di pollo e insalata"
+  },
+  {
+    "id": "l16",
+    "name": "Cous cous con pollo e peperoni",
+    "category": "lunch",
+    "image": "/images/meals/l16.webp",
+    "alt": "Cous cous con pollo e peperoni"
+  },
+  {
+    "id": "l17",
+    "name": "Cous cous con tonno e zucchine",
+    "category": "lunch",
+    "image": "/images/meals/l17.webp",
+    "alt": "Cous cous con tonno e zucchine"
+  },
+  {
+    "id": "l18",
+    "name": "Cous cous con tacchino e melanzane",
+    "category": "lunch",
+    "image": "/images/meals/l18.webp",
+    "alt": "Cous cous con tacchino e melanzane"
+  },
+  {
+    "id": "l19",
+    "name": "Farro con tonno e pomodorini",
+    "category": "lunch",
+    "image": "/images/meals/l19.webp",
+    "alt": "Farro con tonno e pomodorini"
+  },
+  {
+    "id": "l20",
+    "name": "Farro con pollo e zucchine",
+    "category": "lunch",
+    "image": "/images/meals/l20.webp",
+    "alt": "Farro con pollo e zucchine"
+  },
+  {
+    "id": "l21",
+    "name": "Orzo con tacchino e carote",
+    "category": "lunch",
+    "image": "/images/meals/l21.webp",
+    "alt": "Orzo con tacchino e carote"
+  },
+  {
+    "id": "l22",
+    "name": "Insalata di orzo con mozzarella e pomodorini",
+    "category": "lunch",
+    "image": "/images/meals/l22.webp",
+    "alt": "Insalata di orzo con mozzarella e pomodorini"
+  },
+  {
+    "id": "x320",
+    "name": "Frittata di zucchine con patate",
+    "category": "lunch",
+    "image": "/images/meals/x320.webp",
+    "alt": "Frittata di zucchine con patate"
+  },
+  {
+    "id": "pollo-patate-insalata",
+    "name": "Pollo al limone con patate e fagiolini",
+    "category": "lunch",
+    "image": "/images/meals/pollo-patate-insalata.webp",
+    "alt": "Pollo al limone con patate e fagiolini"
+  },
+  {
+    "id": "l25",
+    "name": "Hamburger di manzo con patate e insalata",
+    "category": "lunch",
+    "image": "/images/meals/l25.webp",
+    "alt": "Hamburger di manzo con patate e insalata"
+  },
+  {
+    "id": "l26",
+    "name": "Lonza con patate e spinaci",
+    "category": "lunch",
+    "image": "/images/meals/l26.webp",
+    "alt": "Lonza con patate e spinaci"
+  },
+  {
+    "id": "l27",
+    "name": "Tacchino con patate e carote",
+    "category": "lunch",
+    "image": "/images/meals/l27.webp",
+    "alt": "Tacchino con patate e carote"
+  },
+  {
+    "id": "x315",
+    "name": "Hamburger di tacchino al pomodoro con pane e spinaci",
+    "category": "lunch",
+    "image": "/images/meals/x315.webp",
+    "alt": "Hamburger di tacchino al pomodoro con pane e spinaci"
+  },
+  {
+    "id": "l29",
+    "name": "Pollo alla griglia con pane integrale e insalata",
+    "category": "lunch",
+    "image": "/images/meals/l29.webp",
+    "alt": "Pollo alla griglia con pane integrale e insalata"
+  },
+  {
+    "id": "l30",
+    "name": "Tonno con pane integrale e pomodori",
+    "category": "lunch",
+    "image": "/images/meals/l30.webp",
+    "alt": "Tonno con pane integrale e pomodori"
+  },
+  {
+    "id": "l31",
+    "name": "Uova strapazzate con pane integrale e spinaci",
+    "category": "lunch",
+    "image": "/images/meals/l31.webp",
+    "alt": "Uova strapazzate con pane integrale e spinaci"
+  },
+  {
+    "id": "l32",
+    "name": "Fiocchi di latte con pane di segale e cetrioli",
+    "category": "lunch",
+    "image": "/images/meals/l32.webp",
+    "alt": "Fiocchi di latte con pane di segale e cetrioli"
+  },
+  {
+    "id": "l33",
+    "name": "Gallette di riso con tonno e pomodori",
+    "category": "lunch",
+    "image": "/images/meals/l33.webp",
+    "alt": "Gallette di riso con tonno e pomodori"
+  },
+  {
+    "id": "l34",
+    "name": "Gallette di riso con pollo e insalata",
+    "category": "lunch",
+    "image": "/images/meals/l34.webp",
+    "alt": "Gallette di riso con pollo e insalata"
+  },
+  {
+    "id": "l35",
+    "name": "Insalata di ceci con tonno e pomodori",
+    "category": "lunch",
+    "image": "/images/meals/l35.webp",
+    "alt": "Insalata di ceci con tonno e pomodori"
+  },
+  {
+    "id": "l36",
+    "name": "Ceci con pollo e spinaci",
+    "category": "lunch",
+    "image": "/images/meals/l36.webp",
+    "alt": "Ceci con pollo e spinaci"
+  },
+  {
+    "id": "l37",
+    "name": "Lenticchie con uova sode e carote",
+    "category": "lunch",
+    "image": "/images/meals/l37.webp",
+    "alt": "Lenticchie con uova sode e carote"
+  },
+  {
+    "id": "l38",
+    "name": "Fagioli cannellini con tonno e insalata",
+    "category": "lunch",
+    "image": "/images/meals/l38.webp",
+    "alt": "Fagioli cannellini con tonno e insalata"
+  },
+  {
+    "id": "l39",
+    "name": "Fagioli borlotti con tacchino e zucchine",
+    "category": "lunch",
+    "image": "/images/meals/l39.webp",
+    "alt": "Fagioli borlotti con tacchino e zucchine"
+  },
+  {
+    "id": "l40",
+    "name": "Patate dolci con pollo e broccoli",
+    "category": "lunch",
+    "image": "/images/meals/l40.webp",
+    "alt": "Patate dolci con pollo e broccoli"
+  },
+  {
+    "id": "l41",
+    "name": "Riso con vitello e funghi",
+    "category": "lunch",
+    "image": "/images/meals/l41.webp",
+    "alt": "Riso con vitello e funghi"
+  },
+  {
+    "id": "l42",
+    "name": "Pasta integrale con ricotta e spinaci",
+    "category": "lunch",
+    "image": "/images/meals/l42.webp",
+    "alt": "Pasta integrale con ricotta e spinaci"
+  },
+  {
+    "id": "l43",
+    "name": "Farro con fiocchi di latte e pomodorini",
+    "category": "lunch",
+    "image": "/images/meals/l43.webp",
+    "alt": "Farro con fiocchi di latte e pomodorini"
+  },
+  {
+    "id": "x325",
+    "name": "Straccetti di manzo con patate e rucola",
+    "category": "lunch",
+    "image": "/images/meals/x325.webp",
+    "alt": "Straccetti di manzo con patate e rucola"
+  },
+  {
+    "id": "l45",
+    "name": "Riso con lonza e peperoni",
+    "category": "lunch",
+    "image": "/images/meals/l45.webp",
+    "alt": "Riso con lonza e peperoni"
+  },
+  {
+    "id": "l46",
+    "name": "Cous cous con hamburger di pollo e pomodori",
+    "category": "lunch",
+    "image": "/images/meals/l46.webp",
+    "alt": "Cous cous con hamburger di pollo e pomodori"
+  },
+  {
+    "id": "l47",
+    "name": "Gallette di mais con mozzarella e pomodori",
+    "category": "lunch",
+    "image": "/images/meals/l47.webp",
+    "alt": "Gallette di mais con mozzarella e pomodori"
+  },
+  {
+    "id": "l48",
+    "name": "Pasta con pollo e funghi",
+    "category": "lunch",
+    "image": "/images/meals/l48.webp",
+    "alt": "Pasta con pollo e funghi"
+  },
+  {
+    "id": "l49",
+    "name": "Riso con tacchino e asparagi",
+    "category": "lunch",
+    "image": "/images/meals/l49.webp",
+    "alt": "Riso con tacchino e asparagi"
+  },
+  {
+    "id": "l50",
+    "name": "Uova sode con patate e fagiolini",
+    "category": "lunch",
+    "image": "/images/meals/l50.webp",
+    "alt": "Uova sode con patate e fagiolini"
+  },
+  {
+    "id": "pl028",
+    "name": "Orata al forno con patate e fagiolini",
+    "category": "dinner",
+    "image": "/images/meals/pl028.webp",
+    "alt": "Orata al forno con patate e fagiolini"
+  },
+  {
+    "id": "pl030",
+    "name": "Manzo con patate al forno e cavolo nero",
+    "category": "dinner",
+    "image": "/images/meals/pl030.webp",
+    "alt": "Manzo con patate al forno e cavolo nero"
+  },
+  {
+    "id": "pl031",
+    "name": "Cous cous con gamberi e zucchine",
+    "category": "dinner",
+    "image": "/images/meals/pl031.webp",
+    "alt": "Cous cous con gamberi e zucchine"
   },
   {
     "id": "x309",
@@ -637,80 +658,353 @@
     "alt": "Spezzatino di manzo con patate e carote"
   },
   {
-    "id": "x310",
-    "name": "Merluzzo alla livornese con patate",
+    "id": "salmone-cereali-zucchine",
+    "name": "Salmone con cous cous e zucchine",
     "category": "dinner",
-    "image": "/images/meals/x310.webp",
-    "alt": "Merluzzo alla livornese con patate"
+    "image": "/images/meals/salmone-cereali-zucchine.webp",
+    "alt": "Salmone con cous cous e zucchine"
   },
   {
-    "id": "x311",
-    "name": "Zuppa di ceci e farro",
+    "id": "x319",
+    "name": "Hamburger di merluzzo con patate e insalata",
     "category": "dinner",
-    "image": "/images/meals/x311.webp",
-    "alt": "Zuppa di ceci e farro"
+    "image": "/images/meals/x319.webp",
+    "alt": "Hamburger di merluzzo con patate e insalata"
   },
   {
-    "id": "x312",
-    "name": "Minestrone con orzo e fagioli",
+    "id": "x321",
+    "name": "Pasta con gamberi e zucchine",
     "category": "dinner",
-    "image": "/images/meals/x312.webp",
-    "alt": "Minestrone con orzo e fagioli"
-  },
-  {
-    "id": "x314",
-    "name": "Tacchino alla pizzaiola con riso",
-    "category": "dinner",
-    "image": "/images/meals/x314.webp",
-    "alt": "Tacchino alla pizzaiola con riso"
-  },
-  {
-    "id": "x315",
-    "name": "Hamburger di tacchino al pomodoro con pane e spinaci",
-    "category": "dinner",
-    "image": "/images/meals/x315.webp",
-    "alt": "Hamburger di tacchino al pomodoro con pane e spinaci"
-  },
-  {
-    "id": "x316",
-    "name": "Pasta e fagioli con sedano e carote",
-    "category": "dinner",
-    "image": "/images/meals/x316.webp",
-    "alt": "Pasta e fagioli con sedano e carote"
-  },
-  {
-    "id": "x325",
-    "name": "Straccetti di manzo con rucola e patate",
-    "category": "dinner",
-    "image": "/images/meals/x325.webp",
-    "alt": "Straccetti di manzo con rucola e patate"
-  },
-  {
-    "id": "x331",
-    "name": "Pane integrale con bresaola, rucola e carote",
-    "category": "lunch",
-    "image": "/images/meals/x331.webp",
-    "alt": "Pane integrale con bresaola, rucola e carote"
-  },
-  {
-    "id": "x208",
-    "name": "Bruschetta con mozzarella e pomodori",
-    "category": "snack",
-    "image": "/images/meals/x208.webp",
-    "alt": "Bruschetta con mozzarella e pomodori"
-  },
-  {
-    "id": "x320",
-    "name": "Frittata con patate e zucchine",
-    "category": "dinner",
-    "image": "/images/meals/x320.webp",
-    "alt": "Frittata con patate e zucchine"
+    "image": "/images/meals/x321.webp",
+    "alt": "Pasta con gamberi e zucchine"
   },
   {
     "id": "x327",
-    "name": "Lonza di maiale con patate e cavolo nero",
+    "name": "Lonza con patate e cavolo nero",
     "category": "dinner",
     "image": "/images/meals/x327.webp",
-    "alt": "Lonza di maiale con patate e cavolo nero"
+    "alt": "Lonza con patate e cavolo nero"
+  },
+  {
+    "id": "x317",
+    "name": "Pasta con sardine e finocchi",
+    "category": "dinner",
+    "image": "/images/meals/x317.webp",
+    "alt": "Pasta con sardine e finocchi"
+  },
+  {
+    "id": "x301",
+    "name": "Risotto alla zucca con gamberi",
+    "category": "dinner",
+    "image": "/images/meals/x301.webp",
+    "alt": "Risotto alla zucca con gamberi"
+  },
+  {
+    "id": "pl024",
+    "name": "Riso integrale con salmone e broccoli",
+    "category": "dinner",
+    "image": "/images/meals/pl024.webp",
+    "alt": "Riso integrale con salmone e broccoli"
+  },
+  {
+    "id": "d12",
+    "name": "Merluzzo con patate e spinaci",
+    "category": "dinner",
+    "image": "/images/meals/d12.webp",
+    "alt": "Merluzzo con patate e spinaci"
+  },
+  {
+    "id": "d13",
+    "name": "Riso con merluzzo e zucchine",
+    "category": "dinner",
+    "image": "/images/meals/d13.webp",
+    "alt": "Riso con merluzzo e zucchine"
+  },
+  {
+    "id": "d14",
+    "name": "Pasta con salmone e zucchine",
+    "category": "dinner",
+    "image": "/images/meals/d14.webp",
+    "alt": "Pasta con salmone e zucchine"
+  },
+  {
+    "id": "d15",
+    "name": "Pasta con merluzzo e pomodorini",
+    "category": "dinner",
+    "image": "/images/meals/d15.webp",
+    "alt": "Pasta con merluzzo e pomodorini"
+  },
+  {
+    "id": "d16",
+    "name": "Trota al forno con patate e fagiolini",
+    "category": "dinner",
+    "image": "/images/meals/d16.webp",
+    "alt": "Trota al forno con patate e fagiolini"
+  },
+  {
+    "id": "d17",
+    "name": "Trota con riso basmati e asparagi",
+    "category": "dinner",
+    "image": "/images/meals/d17.webp",
+    "alt": "Trota con riso basmati e asparagi"
+  },
+  {
+    "id": "d18",
+    "name": "Salmone con patate dolci e spinaci",
+    "category": "dinner",
+    "image": "/images/meals/d18.webp",
+    "alt": "Salmone con patate dolci e spinaci"
+  },
+  {
+    "id": "d19",
+    "name": "Sgombro con patate e insalata",
+    "category": "dinner",
+    "image": "/images/meals/d19.webp",
+    "alt": "Sgombro con patate e insalata"
+  },
+  {
+    "id": "d20",
+    "name": "Orata con riso e zucchine",
+    "category": "dinner",
+    "image": "/images/meals/d20.webp",
+    "alt": "Orata con riso e zucchine"
+  },
+  {
+    "id": "d21",
+    "name": "Gnocchi al pomodoro con mozzarella e melanzane",
+    "category": "dinner",
+    "image": "/images/meals/d21.webp",
+    "alt": "Gnocchi al pomodoro con mozzarella e melanzane"
+  },
+  {
+    "id": "d22",
+    "name": "Pasta con tacchino e cavolfiore",
+    "category": "dinner",
+    "image": "/images/meals/d22.webp",
+    "alt": "Pasta con tacchino e cavolfiore"
+  },
+  {
+    "id": "d23",
+    "name": "Riso con pollo e broccoli",
+    "category": "dinner",
+    "image": "/images/meals/d23.webp",
+    "alt": "Riso con pollo e broccoli"
+  },
+  {
+    "id": "d24",
+    "name": "Vitello con patate e funghi",
+    "category": "dinner",
+    "image": "/images/meals/d24.webp",
+    "alt": "Vitello con patate e funghi"
+  },
+  {
+    "id": "d25",
+    "name": "Pasta al ragù di manzo con melanzane",
+    "category": "dinner",
+    "image": "/images/meals/d25.webp",
+    "alt": "Pasta al ragù di manzo con melanzane"
+  },
+  {
+    "id": "d26",
+    "name": "Ceci con merluzzo e pomodori",
+    "category": "dinner",
+    "image": "/images/meals/d26.webp",
+    "alt": "Ceci con merluzzo e pomodori"
+  },
+  {
+    "id": "d27",
+    "name": "Lenticchie con tacchino e carote",
+    "category": "dinner",
+    "image": "/images/meals/d27.webp",
+    "alt": "Lenticchie con tacchino e carote"
+  },
+  {
+    "id": "d28",
+    "name": "Fagioli cannellini con gamberi e zucchine",
+    "category": "dinner",
+    "image": "/images/meals/d28.webp",
+    "alt": "Fagioli cannellini con gamberi e zucchine"
+  },
+  {
+    "id": "d29",
+    "name": "Farro con salmone e asparagi",
+    "category": "dinner",
+    "image": "/images/meals/d29.webp",
+    "alt": "Farro con salmone e asparagi"
+  },
+  {
+    "id": "d30",
+    "name": "Orzo con merluzzo e zucchine",
+    "category": "dinner",
+    "image": "/images/meals/d30.webp",
+    "alt": "Orzo con merluzzo e zucchine"
+  },
+  {
+    "id": "d31",
+    "name": "Hamburger di salmone con patate e insalata",
+    "category": "dinner",
+    "image": "/images/meals/d31.webp",
+    "alt": "Hamburger di salmone con patate e insalata"
+  },
+  {
+    "id": "d32",
+    "name": "Frittata di spinaci con patate",
+    "category": "dinner",
+    "image": "/images/meals/d32.webp",
+    "alt": "Frittata di spinaci con patate"
+  },
+  {
+    "id": "d33",
+    "name": "Pasta con uova e zucchine",
+    "category": "dinner",
+    "image": "/images/meals/d33.webp",
+    "alt": "Pasta con uova e zucchine"
+  },
+  {
+    "id": "d34",
+    "name": "Pasta integrale con tonno e broccoli",
+    "category": "dinner",
+    "image": "/images/meals/d34.webp",
+    "alt": "Pasta integrale con tonno e broccoli"
+  },
+  {
+    "id": "d35",
+    "name": "Pollo con patate e peperoni",
+    "category": "dinner",
+    "image": "/images/meals/d35.webp",
+    "alt": "Pollo con patate e peperoni"
+  },
+  {
+    "id": "d36",
+    "name": "Tacchino con patate dolci e cavolini",
+    "category": "dinner",
+    "image": "/images/meals/d36.webp",
+    "alt": "Tacchino con patate dolci e cavolini"
+  },
+  {
+    "id": "d37",
+    "name": "Hamburger di manzo con riso e insalata",
+    "category": "dinner",
+    "image": "/images/meals/d37.webp",
+    "alt": "Hamburger di manzo con riso e insalata"
+  },
+  {
+    "id": "d38",
+    "name": "Merluzzo con cous cous e pomodorini",
+    "category": "dinner",
+    "image": "/images/meals/d38.webp",
+    "alt": "Merluzzo con cous cous e pomodorini"
+  },
+  {
+    "id": "d39",
+    "name": "Tagliata di manzo con patate e rucola",
+    "category": "dinner",
+    "image": "/images/meals/d39.webp",
+    "alt": "Tagliata di manzo con patate e rucola"
+  },
+  {
+    "id": "d40",
+    "name": "Gnocchi con salmone e spinaci",
+    "category": "dinner",
+    "image": "/images/meals/d40.webp",
+    "alt": "Gnocchi con salmone e spinaci"
+  },
+  {
+    "id": "d41",
+    "name": "Pasta con orata e pomodorini",
+    "category": "dinner",
+    "image": "/images/meals/d41.webp",
+    "alt": "Pasta con orata e pomodorini"
+  },
+  {
+    "id": "d42",
+    "name": "Riso con gamberi e asparagi",
+    "category": "dinner",
+    "image": "/images/meals/d42.webp",
+    "alt": "Riso con gamberi e asparagi"
+  },
+  {
+    "id": "d43",
+    "name": "Pasta con ricotta e zucchine",
+    "category": "dinner",
+    "image": "/images/meals/d43.webp",
+    "alt": "Pasta con ricotta e zucchine"
+  },
+  {
+    "id": "d44",
+    "name": "Pollo arrosto con patate e carote",
+    "category": "dinner",
+    "image": "/images/meals/d44.webp",
+    "alt": "Pollo arrosto con patate e carote"
+  },
+  {
+    "id": "d45",
+    "name": "Lonza con riso e spinaci",
+    "category": "dinner",
+    "image": "/images/meals/d45.webp",
+    "alt": "Lonza con riso e spinaci"
+  },
+  {
+    "id": "d46",
+    "name": "Hamburger di pollo con patate dolci e zucchine",
+    "category": "dinner",
+    "image": "/images/meals/d46.webp",
+    "alt": "Hamburger di pollo con patate dolci e zucchine"
+  },
+  {
+    "id": "d47",
+    "name": "Farro con tacchino e melanzane",
+    "category": "dinner",
+    "image": "/images/meals/d47.webp",
+    "alt": "Farro con tacchino e melanzane"
+  },
+  {
+    "id": "d48",
+    "name": "Orzo con pollo e carote",
+    "category": "dinner",
+    "image": "/images/meals/d48.webp",
+    "alt": "Orzo con pollo e carote"
+  },
+  {
+    "id": "d49",
+    "name": "Pasta con sgombro e pomodorini",
+    "category": "dinner",
+    "image": "/images/meals/d49.webp",
+    "alt": "Pasta con sgombro e pomodorini"
+  },
+  {
+    "id": "d50",
+    "name": "Merluzzo con riso basmati e carote",
+    "category": "dinner",
+    "image": "/images/meals/d50.webp",
+    "alt": "Merluzzo con riso basmati e carote"
+  },
+  {
+    "id": "r01",
+    "name": "Riso con lenticchie e spinaci",
+    "category": "lunch",
+    "image": "/images/meals/r01.webp",
+    "alt": "Riso con lenticchie e spinaci"
+  },
+  {
+    "id": "r02",
+    "name": "Pasta e ceci con zucchine",
+    "category": "lunch",
+    "image": "/images/meals/r02.webp",
+    "alt": "Pasta e ceci con zucchine"
+  },
+  {
+    "id": "r03",
+    "name": "Cous cous con ceci e peperoni",
+    "category": "lunch",
+    "image": "/images/meals/r03.webp",
+    "alt": "Cous cous con ceci e peperoni"
+  },
+  {
+    "id": "r04",
+    "name": "Farro con fagioli e pomodori",
+    "category": "lunch",
+    "image": "/images/meals/r04.webp",
+    "alt": "Farro con fagioli e pomodori"
   }
 ]
