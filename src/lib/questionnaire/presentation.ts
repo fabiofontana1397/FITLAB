@@ -188,8 +188,6 @@ const MEDIA_ICON: Record<string, IconName> = {
   dinnerTime: 'mealMoon',
   preSleepSnackTime: 'moon',
   allergiesIntolerances: 'alert',
-  excludedFoods: 'close',
-  includedFoods: 'checkCircle',
   usualBreakfast: 'mealSun',
   usualMorningSnack: 'mealSnack',
   usualLunch: 'mealMidday',
