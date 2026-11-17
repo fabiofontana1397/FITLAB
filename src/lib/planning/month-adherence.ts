@@ -3,7 +3,7 @@
  * recalibration (domain/recalibration.ts) works from. Pure: callers pass in the
  * logged data from the stores.
  */
-import type { Adherence, CheckinSignals, WeightPoint } from '@/domain/recalibration';
+import type { Adherence, WeightPoint } from '@/domain/recalibration';
 import { addDaysISO, isoMondayIndex } from '@/lib/mock/dates';
 import type { LoggedActivity } from '@/lib/api/activity-log';
 import type { BodyMetricSnapshot } from '@/lib/mock/types';

@@ -92,28 +92,51 @@ export function TrainingPlanView({ plan, goal, checkinPendingMonth, onCheckin }:
       renderDay={(monthIndex, weekday) => {
         const day = monthOf(monthIndex).weeklySplit.find((d) => d.weekday === weekday);
         if (day?.type === 'workout') {
+          const exercises = day.exercises ?? [];
           return (
             <>
               <ThemedText style={styles.dayTitle}>{day.title}</ThemedText>
-              {(day.exercises ?? []).map((ex) => (
-                <ExerciseSummaryCard
-                  key={ex.id}
-                  item={{
-                    key: ex.id,
-                    exerciseId: ex.id,
-                    name: ex.name,
-                    subtitle: `${ex.sets}×${ex.reps} · recupero ${restLabel(ex.restSec)}`,
-                    sets: ex.sets,
-                    reps: ex.reps,
-                    tempo: ex.tempo,
-                    restLabel: restLabel(ex.restSec),
-                  }}
-                />
+              {day.focus ? (
+                <ThemedText type="caption" themeColor="textSecondary">
+                  {day.focus}
+                  {day.estimatedMinutes ? ` · circa ${day.estimatedMinutes} min` : ''}
+                </ThemedText>
+              ) : null}
+              {exercises.map((ex, i) => (
+                <View key={ex.id} style={styles.exerciseBlock}>
+                  {ex.blockName && ex.blockName !== exercises[i - 1]?.blockName ? (
+                    <ThemedText type="label" themeColor="textSecondary" style={styles.blockLabel}>
+                      {ex.blockName}
+                    </ThemedText>
+                  ) : null}
+                  <ExerciseSummaryCard
+                    item={{
+                      key: ex.id,
+                      exerciseId: ex.id,
+                      name: ex.name,
+                      subtitle: `${ex.sets}×${ex.reps}${ex.rir != null ? ` · RIR ${ex.rir}` : ''} · recupero ${restLabel(ex.restSec)}${ex.technique ? ` · ${ex.technique.label}` : ''}`,
+                      sets: ex.sets,
+                      reps: ex.reps,
+                      tempo: ex.tempo,
+                      restLabel: restLabel(ex.restSec),
+                      programming: {
+                        rir: ex.rir,
+                        muscles: ex.primaryMuscle,
+                        progression: ex.progression,
+                        technique: ex.technique,
+                        loadNote: ex.loadNote,
+                        reason: ex.orderingReason,
+                        cues: ex.cues,
+                      },
+                    }}
+                  />
+                </View>
               ))}
             </>
           );
         }
-        if (day?.type === 'cardio') return <ExerciseSummaryCard item={{ key: day.weekday, name: day.title, subtitle: day.note ?? '' }} />;
+        if (day?.type === 'cardio')
+          return <ExerciseSummaryCard item={{ key: day.weekday, name: day.title, subtitle: day.run ? `${day.note ?? ''}\n${day.run.structure}\nIntensità: ${day.run.intensity}` : (day.note ?? '') }} />;
         if (day?.type === 'rest') {
           return (
             <FlatCard radius={24} style={styles.restCard}>
@@ -131,7 +154,34 @@ export function TrainingPlanView({ plan, goal, checkinPendingMonth, onCheckin }:
       }}
       exportPdf={exportPdf}
       notice={
-        plan.needsManualReview ? (
+        plan.rationale && plan.source !== 'custom' ? (
+          <View style={{ gap: Spacing.three }}>
+            <GlassSurface level="card" radius={Radius.large} style={styles.notice}>
+              <ThemedText style={styles.dayTitle}>Perché questa scheda</ThemedText>
+              <ThemedText type="caption" themeColor="textSecondary">
+                {[plan.rationale.level, plan.rationale.model, plan.rationale.split].filter(Boolean).join(' · ')}
+              </ThemedText>
+              {plan.rationale.reasons.map((r) => (
+                <ThemedText key={r} type="caption">
+                  {r}
+                </ThemedText>
+              ))}
+              {plan.rationale.notices.map((n) => (
+                <ThemedText key={n} type="caption" style={{ color: theme.danger }}>
+                  {n}
+                </ThemedText>
+              ))}
+            </GlassSurface>
+            {plan.needsManualReview ? (
+              <GlassSurface level="card" radius={Radius.large} style={[styles.notice, { borderColor: theme.danger, borderWidth: 1 }]}>
+                <ThemedText style={[styles.dayTitle, { color: theme.danger }]}>Revisione consigliata</ThemedText>
+                <ThemedText type="caption" themeColor="textSecondary">
+                  Per alcuni gruppi muscolari non c&apos;è un esercizio compatibile con dolori, infortuni o attrezzatura che hai indicato. Parlane con un professionista, o rifai il questionario indicando l&apos;attrezzatura o i vincoli in modo più preciso.
+                </ThemedText>
+              </GlassSurface>
+            ) : null}
+          </View>
+        ) : plan.needsManualReview ? (
           <GlassSurface level="card" radius={Radius.large} style={[styles.notice, { borderColor: theme.danger, borderWidth: 1 }]}>
             <ThemedText style={[styles.dayTitle, { color: theme.danger }]}>Revisione consigliata</ThemedText>
             <ThemedText type="caption" themeColor="textSecondary">
@@ -234,6 +284,8 @@ export function DietPlanView({ plan, goal, checkinPendingMonth, onCheckin }: Pla
 
 const styles = StyleSheet.create({
   dayTitle: { fontSize: 15, lineHeight: 19, fontWeight: '700' },
+  exerciseBlock: { gap: Spacing.two },
+  blockLabel: { marginTop: Spacing.two },
   sectionTitle: { fontSize: 20, lineHeight: 25, fontWeight: '700', letterSpacing: -0.3 },
   notice: { padding: Spacing.four, gap: Spacing.two },
   restCard: { alignItems: 'center', gap: Spacing.two, padding: Spacing.five },

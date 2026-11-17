@@ -31,7 +31,7 @@ non ricalcolano nulla: chiamano il dominio.
 | `domain/recalibration.ts` | `recalibrate(input)` → verdetto, nuova calibrazione, cambi spiegati; `applyGuardrails` |
 | `domain/profile.ts` | `profileFromContext` per il profilo utente |
 | `lib/planning/diet-planner.ts` + `lib/planning/fitlab/*` | Dieta secondo il framework Fit Lab: catalogo per pasto → ricette → quantità risolte su calorie e macro (vedi `docs/DIET-ENGINE.md`) |
-| `lib/planning/training-planner.ts` | Split, progressione, rotazione, `tuning` dalla calibrazione |
+| `lib/planning/training-planner.ts` + `lib/planning/training/*` | Programmazione dell'allenamento: profilo, split, volume per gruppo muscolare, blocchi, prescrizioni con RIR, carichi da calibrare, doppia progressione, mesocicli, corsa, sicurezza (vedi `docs/TRAINING-ENGINE.md`) |
 | `lib/planning/month-adherence.ts` | Fatti del mese: sedute fatte, giorni tracciati, calorie medie, segnali del check-in |
 
 ## Il ciclo mensile
@@ -44,8 +44,10 @@ Alla fine di ogni mese del piano (anche il primo) l'utente fa il check-in (`app/
    - verdetti: `on_track`, `too_slow`, `plateau`, `wrong_direction`, `too_fast`, `low_adherence`,
      `insufficient_data`;
    - **bassa aderenza → non si cambiano i numeri** (il problema è seguire il piano, non il piano);
-   - altrimenti aggiorna `PlanCalibration` (`calorieAdjustment`, `setsDelta`, `loadFactor`, `mealVariant`)
-     con passo massimo `MAX_MONTHLY_STEP` (150 kcal) e tetto `MAX_TOTAL_ADJUSTMENT` (500 kcal).
+   - altrimenti aggiorna `PlanCalibration` (`calorieAdjustment`, `mealVariant`)
+     con passo massimo `MAX_MONTHLY_STEP` (150 kcal) e tetto `MAX_TOTAL_ADJUSTMENT` (500 kcal);
+   - l'allenamento ha il suo adattamento (`lib/planning/training/adaptation.ts` → `PlanCalibration.training`):
+     prestazioni registrate, recupero, dolore, tempo e richieste decidono volume, RIR, scarico, giorni e split.
 3. `buildPlans` rigenera dieta e allenamento **dal mese successivo**, con la nuova calibrazione.
 4. Calibrazione e storico stanno nel jsonb dei piani (`DietPlan.calibration`, `recalibrations`): nessuna migrazione.
 

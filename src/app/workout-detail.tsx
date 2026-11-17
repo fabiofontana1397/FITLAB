@@ -56,10 +56,21 @@ export default function WorkoutDetailScreen() {
       leading={day?.type === 'workout' ? <WorkoutBadge size={64} /> : undefined}>
       {day?.type === 'cardio' ? (
         <FlatCard radius={24} style={styles.sessionCard}>
-          <ThemedText style={styles.sessionTitle}>Sessione di cardio</ThemedText>
+          <ThemedText style={styles.sessionTitle}>{day.run ? day.title : 'Sessione di cardio'}</ThemedText>
           <ThemedText style={styles.sessionSub} themeColor="textSecondary">
             {day.note}
           </ThemedText>
+          {day.run ? (
+            <>
+              <ThemedText style={styles.sessionSub}>{day.run.structure}</ThemedText>
+              <ThemedText style={styles.sessionSub} themeColor="textSecondary">
+                Intensità: {day.run.intensity}
+              </ThemedText>
+              <ThemedText style={styles.sessionSub} themeColor="textSecondary">
+                Progressione: {day.run.progression}
+              </ThemedText>
+            </>
+          ) : null}
         </FlatCard>
       ) : (
         <>
@@ -83,6 +94,11 @@ export default function WorkoutDetailScreen() {
                 </View>
               </View>
             </View>
+            {day?.focus ? (
+              <ThemedText style={styles.sessionSub} themeColor="textSecondary">
+                {day.focus}
+              </ThemedText>
+            ) : null}
           </FlatCard>
 
           <View>
@@ -94,17 +110,28 @@ export default function WorkoutDetailScreen() {
             </View>
 
             <View style={styles.list}>
-              {exercises.map((exercise) => (
-                <PlanExerciseRow
-                  key={exercise.id}
-                  exercise={exercise}
-                  history={historyForExercise(progressSets, exercise.id)}
-                  latestWeightKg={latestWeightForExercise(progressSets, exercise.id)}
-                  completed={isExerciseCompleted(completedExercises, exercise.id, date)}
-                  onToggleCompleted={() => toggleCompleted(exercise.id, date)}
-                  onAddLoad={(reps, weightKg, rir) => logSet(exercise.id, exercise.name, reps, weightKg, date, rir)}
-                />
+              {exercises.map((exercise, i) => (
+                <View key={exercise.id} style={styles.list}>
+                  {exercise.blockName && exercise.blockName !== exercises[i - 1]?.blockName ? (
+                    <ThemedText style={styles.blockTitle} themeColor="textSecondary">
+                      {exercise.blockOrder ? `Blocco ${exercise.blockOrder} · ${exercise.blockName}` : exercise.blockName}
+                    </ThemedText>
+                  ) : null}
+                  <PlanExerciseRow
+                    exercise={exercise}
+                    history={historyForExercise(progressSets, exercise.id)}
+                    latestWeightKg={latestWeightForExercise(progressSets, exercise.id)}
+                    completed={isExerciseCompleted(completedExercises, exercise.id, date)}
+                    onToggleCompleted={() => toggleCompleted(exercise.id, date)}
+                    onAddLoad={(reps, weightKg, rir) => logSet(exercise.id, exercise.name, reps, weightKg, date, rir)}
+                  />
+                </View>
               ))}
+              {day?.notes?.length ? (
+                <ThemedText style={styles.sessionSub} themeColor="textTertiary">
+                  {day.notes.join(' ')}
+                </ThemedText>
+              ) : null}
             </View>
           </View>
         </>
@@ -168,5 +195,13 @@ const styles = StyleSheet.create({
   },
   list: {
     gap: 12,
+  },
+  blockTitle: {
+    marginTop: 4,
+    fontSize: 13,
+    lineHeight: 17,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
   },
 });

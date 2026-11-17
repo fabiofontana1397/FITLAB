@@ -13,7 +13,7 @@
  *    across a wide RIR range → RIR 1–3, never failure on heavy compounds, RIR 0
  *    only on the last set of an isolation for advanced lifters;
  *  - RIR estimates are imprecise, especially for novices (Zourdos et al. 2016;
- *    Halperin et al. 2022) → beginners start at RIR 3 with a calibration week;
+ *    Steele et al. 2017) → beginners start at RIR 3 with a calibration week;
  *  - longer rests preserve the reps of later sets (Schoenfeld et al. 2016) →
  *    2–4 min on heavy compounds, shorter only on isolations.
  */

@@ -17,15 +17,27 @@ const EXERCISE_IMAGE = 232;
  * custom/free-text tempo just renders as-is with no breakdown rather
  * than a broken one. */
 const TEMPO_PHASE_LABELS: Record<3 | 4, string[]> = {
-  3: ['Fase eccentrica (discesa)', 'Pausa in basso', 'Fase concentrica (spinta)'],
-  4: ['Fase eccentrica (discesa)', 'Pausa in basso', 'Fase concentrica (spinta)', 'Pausa in alto'],
+  3: ['Fase eccentrica (discesa)', 'Pausa in allungamento', 'Fase concentrica (spinta)'],
+  4: ['Fase eccentrica (discesa)', 'Pausa in allungamento', 'Fase concentrica (spinta)', 'Pausa in contrazione'],
 };
+/** "X" = explosive intent on the concentric, without giving up technique. */
 function describeTempo(tempo: string): { phase: string; seconds: string }[] | null {
   const parts = tempo.split('-').map((p) => p.trim());
-  if ((parts.length !== 3 && parts.length !== 4) || parts.some((p) => p === '' || Number.isNaN(Number(p)))) return null;
+  if ((parts.length !== 3 && parts.length !== 4) || parts.some((p) => p === '' || (Number.isNaN(Number(p)) && p.toUpperCase() !== 'X'))) return null;
   const labels = TEMPO_PHASE_LABELS[parts.length as 3 | 4];
-  return parts.map((seconds, i) => ({ phase: labels[i], seconds }));
+  return parts.map((seconds, i) => ({ phase: labels[i], seconds: seconds.toUpperCase() === 'X' ? 'esplosiva' : `${seconds} s` }));
 }
+
+/** Programming details of the exercise (training engine v3): shown in the sheet, not on the list, so a beginner's list stays simple. */
+export type ExerciseProgramming = {
+  rir?: number;
+  muscles?: string;
+  progression?: string;
+  technique?: { label: string; how: string };
+  loadNote?: string;
+  reason?: string;
+  cues?: string[];
+};
 
 export type ExerciseInfoModalProps = {
   visible: boolean;
@@ -35,6 +47,7 @@ export type ExerciseInfoModalProps = {
   reps: string;
   tempo: string;
   restLabel: string;
+  programming?: ExerciseProgramming;
   onClose: () => void;
 };
 
@@ -51,14 +64,24 @@ export function ExerciseInfoModal({ visible, onClose, ...content }: ExerciseInfo
   );
 }
 
-function ExerciseInfoContent({ exerciseName, media, sets, reps, tempo, restLabel, onClose }: Omit<ExerciseInfoModalProps, 'visible'>) {
+function ExerciseInfoContent({ exerciseName, media, sets, reps, tempo, restLabel, programming, onClose }: Omit<ExerciseInfoModalProps, 'visible'>) {
   const theme = useTheme();
   const tempoPhases = describeTempo(tempo);
   const numbers: { label: string; value: string }[] = [
     ...(sets > 0 ? [{ label: 'serie', value: String(sets) }] : []),
     ...(reps ? [{ label: 'ripetizioni', value: reps }] : []),
+    ...(programming?.rir != null ? [{ label: 'in riserva', value: `RIR ${programming.rir}` }] : []),
     ...(restLabel ? [{ label: 'recupero', value: restLabel }] : []),
   ];
+  const plan = programming
+    ? [
+        ...(programming.muscles ? [{ title: 'Muscoli', text: programming.muscles }] : []),
+        ...(programming.loadNote ? [{ title: 'Carico', text: programming.loadNote }] : []),
+        ...(programming.progression ? [{ title: 'Progressione', text: programming.progression }] : []),
+        ...(programming.technique ? [{ title: programming.technique.label, text: programming.technique.how }] : []),
+        ...(programming.reason ? [{ title: 'Perché in questa posizione', text: programming.reason }] : []),
+      ]
+    : [];
 
   return (
     <SheetScreen title={exerciseName} eyebrow={media?.target} onClose={onClose} contentContainerStyle={styles.content}>
@@ -91,7 +114,7 @@ function ExerciseInfoContent({ exerciseName, media, sets, reps, tempo, restLabel
               <View key={p.phase} style={styles.row}>
                 <ThemedText style={styles.rowTitle}>{p.phase}</ThemedText>
                 <ThemedText style={styles.rowValue} themeColor="textSecondary">
-                  {p.seconds} s
+                  {p.seconds}
                 </ThemedText>
               </View>
             ))
@@ -100,6 +123,27 @@ function ExerciseInfoContent({ exerciseName, media, sets, reps, tempo, restLabel
               <ThemedText style={styles.rowTitle}>{tempo}</ThemedText>
             </View>
           )}
+        </ListGroup>
+      ) : null}
+
+      {plan.length > 0 ? (
+        <ListGroup header="Programmazione">
+          {plan.map((row) => (
+            <View key={row.title} style={[styles.row, styles.planRow]}>
+              <ThemedText style={styles.planTitle}>{row.title}</ThemedText>
+              <ThemedText style={styles.planText} themeColor="textSecondary">
+                {row.text}
+              </ThemedText>
+            </View>
+          ))}
+        </ListGroup>
+      ) : null}
+
+      {programming?.cues?.length && !media ? (
+        <ListGroup header="Cosa fare">
+          {programming.cues.map((tip) => (
+            <TipRow key={tip} icon="checkCircle" color={theme.success} text={tip} />
+          ))}
         </ListGroup>
       ) : null}
 
@@ -168,4 +212,7 @@ const styles = StyleSheet.create({
   tipIcon: { height: 22, justifyContent: 'center' },
   tipText: { flex: 1, minWidth: 0, fontSize: 16, lineHeight: 22 },
   note: { paddingHorizontal: Spacing.four },
+  planRow: { flexDirection: 'column', alignItems: 'flex-start', gap: 2 },
+  planTitle: { fontSize: 15, lineHeight: 20, fontWeight: '600' },
+  planText: { fontSize: 15, lineHeight: 21 },
 });
