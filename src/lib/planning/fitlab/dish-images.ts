@@ -45,7 +45,7 @@ export const DISH_IMAGE_IDS: Record<string, string> = {
   B09: 'pl004',
   B10: 'b10',
   B11: 'x104',
-  B12: 'x101',
+  B12: 'b12',
   B13: 'pl007',
   B14: 'pl008',
   B15: 'pl013',
