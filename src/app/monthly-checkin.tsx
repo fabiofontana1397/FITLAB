@@ -13,9 +13,10 @@ import { useTheme } from '@/hooks/use-theme';
 import { useUserContext } from '@/hooks/use-user-context';
 import { daysAgoISO } from '@/lib/mock/dates';
 import { goBackOr } from '@/lib/navigation/go-back';
-import { checkinSignals, computeMonthAdherence, monthWindow, weightsInMonth } from '@/lib/planning/month-adherence';
+import { checkinSignals, computeMonthAdherence, exercisePerformanceInMonth, monthWindow, weightsInMonth } from '@/lib/planning/month-adherence';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
 import { MONTHLY_CHECKIN_QUESTIONS } from '@/lib/questionnaire/monthly-checkin-schema';
+import { isQuestionVisible } from '@/lib/questionnaire/schema';
 import { useActivityLogStore } from '@/store/activity-log-store';
 import { useBodyStore } from '@/store/body-store';
 import { useMonthlyCheckinStore } from '@/store/monthly-checkin-store';
@@ -56,6 +57,7 @@ export default function MonthlyCheckinScreen() {
   const bodyEntries = useBodyStore((s) => s.entries);
   const nutritionEntries = useNutritionStore((s) => s.entries);
   const completedExercises = useTrainingProgressStore((s) => s.completed);
+  const loggedSets = useTrainingProgressStore((s) => s.sets);
   const activityLog = useActivityLogStore((s) => s.entries);
   const dietPlan = usePlanStore((s) => s.dietPlan);
   const trainingPlan = usePlanStore((s) => s.trainingPlan);
@@ -73,7 +75,8 @@ export default function MonthlyCheckinScreen() {
   const endedMonth = plan ? currentMonthIndex(plan) - 1 : 0;
   const alreadyDone = completedMonths.includes(endedMonth);
   const available = endedMonth >= 1 && !alreadyDone;
-  const canContinue = useMemo(() => MONTHLY_CHECKIN_QUESTIONS.every((q) => q.optional || isAnswered(answers[q.id])), [answers]);
+  const visibleQuestions = useMemo(() => MONTHLY_CHECKIN_QUESTIONS.filter((q) => isQuestionVisible(q, answers)), [answers]);
+  const canContinue = useMemo(() => visibleQuestions.every((q) => q.optional || isAnswered(answers[q.id])), [answers, visibleQuestions]);
 
   const handleSubmit = async () => {
     if (!canContinue || submitting || !plan || !available) return;
@@ -99,6 +102,7 @@ export default function MonthlyCheckinScreen() {
           activityLog,
         }),
         checkin: checkinSignals(answers),
+        performance: exercisePerformanceInMonth(loggedSets, window),
       });
       await submitCheckin(endedMonth, answers, trendKg);
 
@@ -168,7 +172,7 @@ export default function MonthlyCheckinScreen() {
       ) : (
         <>
           <GlassSurface level="card" radius={Radius.large} style={{ padding: Spacing.four, gap: Spacing.four }}>
-            {MONTHLY_CHECKIN_QUESTIONS.map((question) => (
+            {visibleQuestions.map((question) => (
               <QuestionBlock
                 key={question.id}
                 question={question}

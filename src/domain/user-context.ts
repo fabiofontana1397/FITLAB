@@ -62,6 +62,8 @@ export type TrainingProfile = {
   sessionBucket: 'lt30' | '30-45' | '45-60' | '60-90' | 'gt90';
   location: 'gym' | 'home' | 'outdoor' | 'mixed';
   equipment: string[];
+  /** Which activity keeps its sessions when gym + running do not fit the available days (answer `trainingPriority`). */
+  priority: 'gym' | 'running' | 'balanced' | null;
 };
 
 export type UserContext = {
@@ -175,6 +177,7 @@ export function buildUserContext(answers: Answers): UserContext {
       sessionBucket: bucket,
       location: oneOf(answers.trainingLocation, ['gym', 'home', 'outdoor', 'mixed'], 'gym'),
       equipment: Array.isArray(answers.equipment) ? (answers.equipment as string[]) : [],
+      priority: answers.trainingPriority === 'gym' || answers.trainingPriority === 'running' || answers.trainingPriority === 'balanced' ? answers.trainingPriority : null,
     };
     if (!gym && !running) issues.push({ field: 'activitiesPracticed', severity: 'warning', message: 'Nessuna attività selezionata: nessun piano di allenamento' });
   }

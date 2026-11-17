@@ -21,7 +21,8 @@ export type QuestionOption = { value: string; label: string; group?: string };
 
 /** Shows this question only when another question's answer matches `equals`
  * (array-includes for multi-select answers, strict equality otherwise). */
-export type QuestionDependency = { questionId: string; equals: string };
+/** Shown when the answer equals (or, for multi answers, includes) `equals`, or any of `anyOf`. An array = all must hold. */
+export type QuestionDependency = { questionId: string; equals?: string; anyOf?: string[] };
 
 export type Question = {
   id: string;
@@ -36,7 +37,7 @@ export type Question = {
   unit?: string;
   placeholder?: string;
   optional?: boolean;
-  dependsOn?: QuestionDependency;
+  dependsOn?: QuestionDependency | QuestionDependency[];
 };
 
 const PICKER_LABEL: Record<FoodComponent, string> = {
@@ -70,11 +71,17 @@ export function labelFor(question: Question | undefined, value: unknown): string
   return question.options.find((o) => o.value === value)?.label;
 }
 
+function dependencyHolds(dep: QuestionDependency, answers: Record<string, unknown>): boolean {
+  const value = answers[dep.questionId];
+  const wanted = dep.anyOf ?? (dep.equals != null ? [dep.equals] : []);
+  if (Array.isArray(value)) return wanted.some((w) => value.includes(w));
+  return wanted.includes(value as string);
+}
+
 export function isQuestionVisible(question: Question, answers: Record<string, unknown>): boolean {
   if (!question.dependsOn) return true;
-  const value = answers[question.dependsOn.questionId];
-  if (Array.isArray(value)) return value.includes(question.dependsOn.equals);
-  return value === question.dependsOn.equals;
+  const deps = Array.isArray(question.dependsOn) ? question.dependsOn : [question.dependsOn];
+  return deps.every((d) => dependencyHolds(d, answers));
 }
 
 /**
@@ -523,8 +530,12 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
       {
         id: 'equipment',
         type: 'multi',
-        label: 'Quale attrezzatura hai a casa?',
-        dependsOn: { questionId: 'trainingLocation', equals: 'home' },
+        label: 'Quale attrezzatura hai a disposizione?',
+        helper: 'Fuori dalla palestra la scheda usa solo quello che indichi qui.',
+        dependsOn: [
+          { questionId: 'trainingLocation', anyOf: ['home', 'outdoor', 'mixed'] },
+          { questionId: 'activitiesPracticed', equals: 'gym' },
+        ],
         options: [
           { value: 'none', label: 'Nessuna' },
           { value: 'dumbbells', label: 'Manubri' },
@@ -535,7 +546,23 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
           { value: 'cables', label: 'Cavi' },
           { value: 'kettlebell', label: 'Kettlebell' },
           { value: 'bands', label: 'Elastici' },
+          { value: 'pullupBar', label: 'Sbarra per trazioni' },
+          { value: 'dipBars', label: 'Parallele' },
           { value: 'cardioMachine', label: 'Cardio machine' },
+        ],
+      },
+      {
+        id: 'trainingPriority',
+        type: 'single',
+        label: 'Se palestra e corsa non stanno tutte nei tuoi giorni, cosa ha la precedenza?',
+        dependsOn: [
+          { questionId: 'activitiesPracticed', equals: 'gym' },
+          { questionId: 'activitiesPracticed', equals: 'running' },
+        ],
+        options: [
+          { value: 'gym', label: 'La palestra' },
+          { value: 'running', label: 'La corsa' },
+          { value: 'balanced', label: 'Dividi i giorni in proporzione' },
         ],
       },
     ],

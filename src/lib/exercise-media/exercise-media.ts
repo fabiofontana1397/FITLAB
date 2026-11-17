@@ -10,6 +10,10 @@
  * this mapping exists.
  */
 
+import { CATALOG_BY_ID, MUSCLE_LABEL } from '@/lib/planning/training/catalog';
+
+import { EXTRA_MEDIA } from './exercise-media-extra';
+
 const RAW_BASE = 'https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/';
 const ATTRIBUTION = '© Gym visual — gymvisual.com (via hasaneyldrm/exercises-dataset su GitHub)';
 
@@ -525,5 +529,10 @@ export const EXERCISE_MEDIA: Record<string, ExerciseMedia> = {
 };
 
 export function getExerciseMedia(exerciseId: string): ExerciseMedia | undefined {
-  return EXERCISE_MEDIA[exerciseId];
+  const known = EXERCISE_MEDIA[exerciseId];
+  if (known) return known;
+  const extra = EXTRA_MEDIA[exerciseId];
+  const def = CATALOG_BY_ID.get(exerciseId);
+  if (!extra || !def) return undefined;
+  return entry(extra.gif, [MUSCLE_LABEL[def.primary], ...def.secondary.map((g) => MUSCLE_LABEL[g])].join(', '), extra.instructions, def.cues, []);
 }

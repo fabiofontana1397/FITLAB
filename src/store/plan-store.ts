@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 import { buildPlans } from '@/domain/plan-engine';
+import type { ExercisePerformance } from '@/lib/planning/training/types';
 import { NEUTRAL_CALIBRATION, recalibrate, type Adherence, type CheckinSignals, type RecalibrationRecord, type RecalibrationResult, type WeightPoint } from '@/domain/recalibration';
 import { computeTargets } from '@/domain/targets';
 import { buildUserContext } from '@/domain/user-context';
@@ -45,6 +46,8 @@ export type RecalibrateMonthInput = {
   weights: WeightPoint[];
   adherence: Adherence;
   checkin: CheckinSignals;
+  /** Logged performance of the month (lib/planning/month-adherence.ts → exercisePerformanceInMonth). */
+  performance?: ExercisePerformance[];
 };
 
 type PlanState = {
@@ -226,6 +229,7 @@ export const usePlanStore = create<PlanState>()(
           adherence: input.adherence,
           checkin: input.checkin,
           calibration,
+          performance: input.performance,
         });
 
         const bundle = buildPlans(ctx, {

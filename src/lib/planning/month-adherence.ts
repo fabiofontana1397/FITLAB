@@ -8,6 +8,8 @@ import { addDaysISO, isoMondayIndex } from '@/lib/mock/dates';
 import type { LoggedActivity } from '@/lib/api/activity-log';
 import type { BodyMetricSnapshot } from '@/lib/mock/types';
 import type { TrainingPlan } from '@/lib/planning/types';
+import { sessionE1rm } from '@/lib/planning/training/loads';
+import type { ExercisePerformance } from '@/lib/planning/training/types';
 import { macrosForEntry, type MealFoodEntry } from '@/store/nutrition-store';
 import { isExerciseCompleted } from '@/store/training-progress-store';
 
@@ -70,15 +72,32 @@ export function computeMonthAdherence(input: {
   };
 }
 
-/** Maps the check-in questionnaire's stored answers onto the signals the engine reads. */
-export function checkinSignals(answers: Record<string, unknown>): CheckinSignals {
-  const asArray = (v: unknown) => (Array.isArray(v) ? (v as string[]) : undefined);
-  const adherence = Number(answers.checkinAdherence);
-  return {
-    adherence: Number.isFinite(adherence) && adherence > 0 ? adherence : undefined,
-    energy: answers.checkinEnergyLevel as CheckinSignals['energy'],
-    hunger: answers.checkinHungerLevel as CheckinSignals['hunger'],
-    difficulty: asArray(answers.checkinDifficulty),
-    wantsChange: asArray(answers.checkinWantsChange),
-  };
+export { checkinSignals } from './checkin-signals';
+
+/**
+ * How each exercise's performance moved during the month, from the logged sets:
+ * best estimated 1RM (Epley, reps + logged RIR) of the first and of the last
+ * session, and the average logged RIR. Feeds the training adaptation.
+ */
+export function exercisePerformanceInMonth(sets: { exerciseId: string; exerciseName: string; date: string; reps: number; weightKg: number; rir?: number }[], window: { start: string; end: string }): ExercisePerformance[] {
+  const byExercise = new Map<string, typeof sets>();
+  for (const s of sets) {
+    if (s.date < window.start || s.date > window.end || s.weightKg <= 0) continue;
+    byExercise.set(s.exerciseId, [...(byExercise.get(s.exerciseId) ?? []), s]);
+  }
+  const out: ExercisePerformance[] = [];
+  for (const [exerciseId, list] of byExercise) {
+    const dates = [...new Set(list.map((s) => s.date))].sort();
+    const best = (d: string) => sessionE1rm(list.filter((s) => s.date === d));
+    const rirs = list.map((s) => s.rir).filter((r): r is number => r != null);
+    out.push({
+      exerciseId,
+      name: list[0].exerciseName,
+      firstE1rm: best(dates[0]),
+      lastE1rm: best(dates[dates.length - 1]),
+      sessions: dates.length,
+      avgRir: rirs.length ? rirs.reduce((a, b) => a + b, 0) / rirs.length : null,
+    });
+  }
+  return out;
 }

@@ -45,7 +45,7 @@ export function initialTargets(ctx: UserContext, calibration?: PlanCalibration):
 export function buildPlans(ctx: UserContext, opts: BuildPlansOptions = {}): PlanBundle {
   const { strategy, preserveMonthsBefore, existing } = opts;
   const calibration = opts.calibration ?? existing?.diet?.calibration ?? existing?.training?.calibration ?? NEUTRAL_CALIBRATION;
-  const tuning: TrainingTuning = { setsDelta: calibration.setsDelta, loadFactor: calibration.loadFactor, fromMonth: calibration.fromMonth };
+  const tuning: TrainingTuning = { training: calibration.training, fromMonth: calibration.training?.fromMonth ?? calibration.fromMonth };
 
   const durationMonths = existing?.diet?.durationMonths ?? existing?.training?.durationMonths ?? planDurationMonths(ctx, initialTargets(ctx, calibration));
 

@@ -26,6 +26,7 @@ const DEMO_PERSON: Pick<UserContext, 'sex' | 'age' | 'heightCm' | 'weightKg' | '
     sessionBucket: '45-60',
     location: 'gym',
     equipment: [],
+    priority: null,
   },
 };
 

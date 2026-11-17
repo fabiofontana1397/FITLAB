@@ -17,6 +17,10 @@
  *    hundreds of kcal in a month, whatever it answers;
  *  - the test harness simulates months of virtual bodies through it.
  */
+import { adaptTraining } from '@/lib/planning/training/adaptation';
+import type { BodyArea } from '@/lib/planning/exercise-library';
+import type { ExercisePerformance, TrainingCalibration } from '@/lib/planning/training/types';
+
 import { MIN_CALORIES, type PlanTargets } from './targets';
 import type { UserContext } from './user-context';
 
@@ -24,14 +28,16 @@ import type { UserContext } from './user-context';
 export type PlanCalibration = {
   /** Extra daily kcal on top of the energy model (negative = fewer). Bounded ±MAX_TOTAL_ADJUSTMENT. */
   calorieAdjustment: number;
-  /** Extra sets per exercise (−1 / 0 / +1). */
+  /** @deprecated training engine ≤2 (one set more/less on every exercise); kept for stored plans, always 0 now — see `training`. */
   setsDelta: number;
-  /** Multiplier on suggested loads (0.9–1.1). */
+  /** @deprecated training engine ≤2 (flat % on every load); kept for stored plans, always 1 now — see `training`. */
   loadFactor: number;
   /** Rotates which foods are picked, so the diet stays fresh (and changes when the old one is not working). */
   mealVariant: number;
   /** First month the calibration applies to. */
   fromMonth: number;
+  /** Training adaptation decided at the check-ins (volume, effort, deload, days, split, painful areas). */
+  training?: TrainingCalibration;
 };
 
 export const NEUTRAL_CALIBRATION: PlanCalibration = { calorieAdjustment: 0, setsDelta: 0, loadFactor: 1, mealVariant: 0, fromMonth: 1 };
@@ -59,6 +65,11 @@ export type CheckinSignals = {
   hunger?: 'never' | 'rarely' | 'sometimes' | 'often' | 'always';
   difficulty?: string[];
   wantsChange?: string[];
+  /** Follow-ups of the training questions: new days per week, requested split, painful areas, free notes. */
+  newDays?: number;
+  split?: 'fullBody' | 'upperLower' | 'pushPullLegs';
+  painAreas?: BodyArea[];
+  notes?: string;
 };
 
 export type RecalibrationInput = {
@@ -73,6 +84,8 @@ export type RecalibrationInput = {
   adherence: Adherence;
   checkin: CheckinSignals;
   calibration: PlanCalibration;
+  /** Logged performance of the exercises in the month (best e1RM first vs last session, logged RIR). */
+  performance?: ExercisePerformance[];
 };
 
 export type Verdict =
@@ -181,7 +194,9 @@ export function applyGuardrails(
  *       - too fast (>150%, or beyond 1% bodyweight per week when losing) → ∓100.
  *     Maintenance goals: drift beyond ±0.25 kg/week → ∓100.
  *  4. Hunger "often/always" while losing → +50; "never" while gaining → −50 (small, after rule 3).
- *  5. Energy "low/veryLow" or soreness → one set less; "high/veryHigh" with good adherence and progress → +3% load.
+ *  5. Training is adapted by its own engine (lib/planning/training/adaptation.ts): performance from the
+ *     logged sets, recovery, pain, time and explicit requests decide volume, effort, deload, days and split.
+ *     No flat percentage on all loads: loads progress set by set with double progression.
  */
 export function recalibrate(input: RecalibrationInput): RecalibrationResult {
   const { ctx, targets, weights, adherence, checkin, calibration } = input;
@@ -201,21 +216,16 @@ export function recalibrate(input: RecalibrationInput): RecalibrationResult {
 
   let verdict: Verdict;
   let calorieStep = 0;
-  let setsDelta = 0;
-  let loadFactor = 1;
   const mealVariant = calibration.mealVariant + 1; // foods always rotate: the plan is reworked every month
 
   if (lowAdherence) {
     verdict = 'low_adherence';
     reasons.push(intakeOff ? 'Le calorie mangiate si discostano di oltre il 20% dal target: il peso riflette ciò che è stato mangiato, non il piano.' : 'Poca aderenza al piano: il problema è seguirlo, non i numeri.');
-    setsDelta = -1;
-    changes.push({ area: 'allenamento', text: 'Allenamenti più leggeri (una serie in meno per esercizio) per rendere il piano più facile da seguire.' });
     changes.push({ area: 'dieta', text: 'Nuovi alimenti e abbinamenti per i pasti, mantenendo le stesse calorie.' });
   } else if (rate == null) {
     verdict = 'insufficient_data';
     reasons.push('Poche pesate nel mese: le calorie restano invariate finché non ci sono dati affidabili.');
     changes.push({ area: 'dieta', text: 'Calorie invariate (servono più pesate per valutare i progressi). Nuova rotazione degli alimenti.' });
-    setsDelta = 0;
   } else if (goalDirection === 0) {
     const drift = rate;
     if (Math.abs(drift) > 0.25) {
@@ -258,34 +268,31 @@ export function recalibrate(input: RecalibrationInput): RecalibrationResult {
     calorieStep -= 50;
     reasons.push('Nessuna fame in fase di surplus: −50 kcal.');
   }
-  const sore = checkin.difficulty?.includes('soreness') ?? false;
-  if (verdict !== 'low_adherence') {
-    if (checkin.energy === 'low' || checkin.energy === 'veryLow' || sore) {
-      setsDelta = -1;
-      reasons.push('Energia bassa o recupero difficile: una serie in meno.');
-      changes.push({ area: 'allenamento', text: 'Allenamenti più leggeri per recuperare meglio (una serie in meno per esercizio).' });
-    } else if ((checkin.energy === 'high' || checkin.energy === 'veryHigh') && (adherence.trainingCompletion ?? 0) >= 0.8 && (verdict === 'on_track' || verdict === 'too_slow')) {
-      loadFactor = 1.03;
-      reasons.push('Energia alta e allenamenti completati: carichi +3%.');
-    }
-    if (checkin.wantsChange?.includes('trainingIntensity') && setsDelta === 0 && loadFactor === 1) {
-      loadFactor = checkin.energy === 'low' || checkin.energy === 'veryLow' ? 0.97 : 1.03;
-      reasons.push('Richiesta di cambiare l’intensità degli allenamenti.');
-    }
-  }
-  if (verdict !== 'low_adherence' && setsDelta === 0 && loadFactor === 1) {
-    changes.push({ area: 'allenamento', text: 'Progressione normale: carichi in salita graduale e rotazione degli esercizi di supporto.' });
+  // training: its own adaptation engine (performance, recovery, pain, requests) — see lib/planning/training/adaptation.ts
+  let training: TrainingCalibration | undefined = calibration.training;
+  if (ctx.training) {
+    const adaptation = adaptTraining({
+      monthIndex: input.monthIndex,
+      previous: calibration.training,
+      trainingCompletion: adherence.trainingCompletion,
+      checkin,
+      performance: input.performance,
+      plannedRir: 2,
+      hasGym: !!ctx.training.gym,
+      sessionBucket: ctx.training.sessionBucket,
+    });
+    training = adaptation.calibration;
+    for (const text of adaptation.changes) changes.push({ area: 'allenamento', text });
+    reasons.push(...adaptation.reasons);
   }
 
   // build the proposal and clamp it
-  const proposal: RecalibrationProposal = {
-    calorieAdjustment: calibration.calorieAdjustment + calorieStep,
-    setsDelta,
-    loadFactor: loadFactor === 1 ? 1 : loadFactor,
-  };
+  // sets and loads are no longer changed by a flat percentage on the whole plan: training has its own calibration
+  const proposal: RecalibrationProposal = { calorieAdjustment: calibration.calorieAdjustment + calorieStep, setsDelta: 0, loadFactor: 1 };
   const next = applyGuardrails(ctx, targets, calibration, proposal);
   next.mealVariant = mealVariant;
   next.fromMonth = input.monthIndex + 1;
+  next.training = training;
 
   const realStep = next.calorieAdjustment - calibration.calorieAdjustment;
   if (realStep !== 0) {

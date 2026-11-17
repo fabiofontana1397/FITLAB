@@ -82,7 +82,7 @@ export type TrainingExerciseEntry = {
   restSec: number;
   /** Conservative starting point in kg, or null for bodyweight/band exercises with no load to suggest. */
   suggestedKg: number | null;
-  /** Execution cadence in seconds as "eccentric-isometric-concentric", e.g. "3-0-1". */
+  /** Execution cadence: eccentric – pause in the stretch – concentric – pause at the top ("X" = explosive intent), e.g. "3-1-1-0". */
   tempo: string;
   /** True when no exercise in this split (or the wider catalog) was
    * compatible with the user's stated pain/injury/equipment constraints, so
@@ -90,6 +90,36 @@ export type TrainingExerciseEntry = {
    * recommendation — spec §4.3/§13 edge case table: this should never be
    * silently presented as an ordinary pick. */
   needsManualReview?: boolean;
+  // ---- training engine v3 (all optional: custom cards and older plans do not have them)
+  repsMin?: number;
+  repsMax?: number;
+  /** Reps in reserve to stop at (0 = failure). */
+  rir?: number;
+  /** RIR-based RPE (10 − RIR). */
+  rpe?: number;
+  /** 'calibrate' = first-month estimate to adjust in the first sessions; 'estimate' = projection until history exists. */
+  loadStatus?: 'calibrate' | 'estimate' | 'bodyweight';
+  loadNote?: string;
+  /** Smallest load jump for this exercise (kg). */
+  loadIncrementKg?: number;
+  role?: 'main' | 'secondary' | 'isolation' | 'core';
+  primaryMuscle?: string;
+  primaryRegion?: string;
+  secondaryMuscles?: string[];
+  muscleGroup?: string;
+  sessionBlockId?: string;
+  blockName?: string;
+  blockOrder?: number;
+  exerciseOrder?: number;
+  orderingReason?: string;
+  /** Execution cues. */
+  cues?: string[];
+  /** How this exercise progresses (double progression, reps, time). */
+  progression?: string;
+  /** Intensification technique, when appropriate. */
+  technique?: { kind: string; label: string; how: string };
+  /** Id of the exercise this one alternates with in an antagonist superset. */
+  supersetWith?: string;
 };
 
 export type TrainingDayPlan = {
@@ -98,6 +128,16 @@ export type TrainingDayPlan = {
   title: string;
   exercises?: TrainingExerciseEntry[];
   note?: string;
+  // ---- training engine v3
+  /** What the session is about ("Squat e spinta orizzontale"). */
+  focus?: string;
+  muscleGroups?: string[];
+  blocks?: { id: string; name: string; order: number }[];
+  estimatedMinutes?: number;
+  /** Decisions taken while building the session (supersets, cuts to fit the time). */
+  notes?: string[];
+  /** Structured running session. */
+  run?: { kind: string; minutes: number; intensity: string; structure: string; progression: string };
 };
 
 export type TrainingMonthPlan = {
@@ -106,6 +146,19 @@ export type TrainingMonthPlan = {
   title: string;
   focusNote: string;
   weeklySplit: TrainingDayPlan[];
+  // ---- training engine v3
+  /** Mesocycle block: adattamento, accumulo, intensificazione, consolidamento. */
+  block?: string;
+  mesocycle?: {
+    goal: string;
+    progression: string;
+    exitCriteria: string;
+    weeks: { week: number; label: string; rirOffset: number; setsFactor: number; note: string }[];
+  };
+  /** True when the time the person has, not the programme, limited the weekly volume this month. */
+  timeCapped?: boolean;
+  /** Weekly volume per muscle group (fractional sets: direct + half of the indirect ones). */
+  weeklyVolume?: { group: string; label: string; direct: number; indirect: number; fractional: number; frequency: number; target: number }[];
 };
 
 export type TrainingPlan = {
@@ -122,4 +175,6 @@ export type TrainingPlan = {
    * substitution (see TrainingExerciseEntry.needsManualReview) — surfaced
    * as a plan-level banner rather than requiring the UI to scan every day. */
   needsManualReview?: boolean;
+  /** Why the plan is built the way it is: level, model, split, decisions on conflicts. */
+  rationale?: { level: string; model: string; split: string; reasons: string[]; notices: string[] };
 };
