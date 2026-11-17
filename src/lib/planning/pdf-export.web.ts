@@ -227,13 +227,15 @@ export async function exportDietPlanPdf(input: DietPlanPdfInput) {
     [{ content: day.weekday, colSpan: 3, styles: { fontStyle: 'bold' as const, fillColor: [255, 248, 245] as [number, number, number], textColor: INK } }],
     ...day.meals.map((meal) => {
       const key = `${day.weekday}|${meal.time}|${meal.label}`;
-      const paragraphs = meal.isFreeMeal
+      const paragraphs = meal.eatOut
+        ? [{ indent: 0, hang: 0, runs: [{ text: `Fuori casa — ${meal.eatOut.guidance.join(' ')}`, style: 'italic' as const }] }]
+        : meal.isFreeMeal
         ? [{ indent: 0, hang: 0, runs: [{ text: 'Pasto libero — scegli tu, senza eccessi', style: 'italic' as const }] }]
         : mealParagraphs(meal.items);
       const lines = layoutRich(doc, paragraphs, itemsInner);
       mealLines.set(key, lines);
       return [
-        { content: `${meal.time}\n${meal.label}`, styles: { fontStyle: 'bold' as const, textColor: INK }, key },
+        { content: `${meal.timeWindow ?? meal.time}\n${meal.label}`, styles: { fontStyle: 'bold' as const, textColor: INK }, key },
         { content: lines.map(() => ' ').join('\n'), key },
         { content: `${meal.totalKcal} kcal`, styles: { fontStyle: 'bold' as const, textColor: INK } },
       ];

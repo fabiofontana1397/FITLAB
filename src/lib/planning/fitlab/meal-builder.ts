@@ -13,6 +13,8 @@
  *
  * Quantities are in the catalog's state: dry pasta and rice, raw meat and fish, cooked legumes.
  */
+import { NUTRITION_PARAMS } from '@/domain/nutrition/params';
+
 import { formatFoodQuantity } from '../food-quantity';
 import type { PlanMealItem } from '../types';
 import { short, UNITS, type Role, type SlotKind } from './catalog';
@@ -28,7 +30,12 @@ export type WeekUsage = {
   slot: Map<string, number>;
   /** Recipes of the previous month: the pool rotates, so a new month (or an updated plan) brings mostly other recipes. */
   previous?: Set<string>;
+  /** The person asked for different foods: last month's recipes and repeated proteins cost much more. */
+  strongVariety?: boolean;
 };
+
+/** The meal-level part of the check-in adaptations (domain/nutrition DietAdaptations). */
+export type MealAdaptations = { energyDense?: boolean; highVolume?: boolean; simplify?: boolean };
 export type DayState = { eggGrams: number; families: Set<string>; dishes: Set<string> };
 
 export type BuiltMeal = {
@@ -74,6 +81,7 @@ function resolve(dish: Dish): ResolvedDish {
 }
 
 const OIL = foodByName('Olio extravergine di oliva');
+const TUNA = foodByName('Tonno al naturale');
 /** Cold cuts in the week so far (key in `WeekUsage.food`): once a week at most. */
 const CURED_KEY = 'family:cured';
 const CURED_PER_WEEK = 1;
@@ -92,7 +100,7 @@ type Candidate = {
   cost: number;
 };
 
-function candidateDishes(kind: SlotKind, slotId: string, pools: FitLabPools, seed: number, day: DayState, week: WeekUsage): Candidate[] {
+function candidateDishes(kind: SlotKind, slotId: string, pools: FitLabPools, seed: number, day: DayState, week: WeekUsage, adapt?: MealAdaptations): Candidate[] {
   const out: Candidate[] = [];
   const ok = (foods: FitLabFood[]) => foods.filter(pools.allowed);
   for (const dish of DISHES) {
@@ -107,6 +115,8 @@ function candidateDishes(kind: SlotKind, slotId: string, pools: FitLabPools, see
     let protein = lunchOk(ok(r.protein));
     // cold cuts once a week: after that, the meals built on them wait for next week
     if (used(week.food, CURED_KEY) >= CURED_PER_WEEK) protein = protein.filter((f) => !isCured(f));
+    // canned tuna twice a week at most: after that, the meals built on it wait for next week
+    if (used(week.food, TUNA.id) >= NUTRITION_PARAMS.planning.maxTunaPerWeek) protein = protein.filter((f) => f.id !== TUNA.id);
     if (dish.base && base.length === 0) continue;
     if (dish.protein.length > 0 && protein.length === 0) continue;
     // a side nobody can eat (excluded) is dropped when the dish has another; a dish with a single side needs it
@@ -124,13 +134,16 @@ function candidateDishes(kind: SlotKind, slotId: string, pools: FitLabPools, see
     // lunch and dinner of the same day do not share a protein family (chicken twice, fish twice)
     const sameFamily = isMain && protein[0] && day.families.has(familyOf(protein[0])) ? 80 : 0;
     const inSlot = used(week.slot, `${slotId}|dish|${dish.id}`);
+    // a simpler week: breakfasts and snacks recur on purpose, quick or portable mains come first
+    const recurring = !!adapt?.simplify && !isMain;
     const cost =
-      used(week.dish, dish.id) * 3 +
-      inSlot * 8 +
+      used(week.dish, dish.id) * (recurring ? 0 : 3) +
+      (recurring ? (inSlot > 0 ? -4 : 0) : inSlot * 8) +
       // rotation: last month's recipes wait (they come back when the pool for this person is small)
-      (week.previous?.has(dish.id) ? 14 : 0) +
-      (inSlot >= 2 ? 150 : 0) +
-      (inSlot >= 3 ? 600 : 0) +
+      (week.previous?.has(dish.id) ? (week.strongVariety ? 60 : 14) : 0) +
+      (!recurring && inSlot >= 2 ? 150 : 0) +
+      (!recurring && inSlot >= 3 ? 600 : 0) +
+      (adapt?.simplify && isMain && dish.portable ? -3 : 0) +
       (day.dishes.has(dish.id) ? 300 : 0) +
       hash(seed, dish.id) * 2 +
       // legumes once a day: as primo or as a vegetarian's secondo, not at both lunch and dinner
@@ -148,7 +161,8 @@ function candidateDishes(kind: SlotKind, slotId: string, pools: FitLabPools, see
       sides,
       spread,
       fat: ok(r.fat).slice(0, 1),
-      optionalFat: ok(r.fatIfPreferred).filter((f) => pools.isPreferred(f)),
+      // nuts on yogurt or porridge: when picked, or when the meals must be denser
+      optionalFat: ok(r.fatIfPreferred).filter((f) => pools.isPreferred(f) || !!adapt?.energyDense),
       oil: !!dish.oil && pools.allowed(OIL),
       cost,
     });
@@ -161,13 +175,19 @@ function candidateDishes(kind: SlotKind, slotId: string, pools: FitLabPools, see
 const FISH_SUBS = new Set(['Pesce', 'Crostacei', 'Preparazioni di pesce']);
 const isFish = (food: FitLabFood) => FISH_SUBS.has(food.sub);
 
-function foodCost(food: FitLabFood, role: Role, kind: SlotKind, seed: number, pools: FitLabPools, day: DayState, week: WeekUsage): number {
+function foodCost(food: FitLabFood, role: Role, kind: SlotKind, seed: number, pools: FitLabPools, day: DayState, week: WeekUsage, adapt?: MealAdaptations): number {
+  const main = kind === 'lunch' || kind === 'dinner';
+  const maxSame = week.strongVariety ? NUTRITION_PARAMS.planning.maxSameProteinPerWeek - 1 : NUTRITION_PARAMS.planning.maxSameProteinPerWeek;
   return (
     used(week.food, food.id) * 2.2 +
+    // canned tuna twice a week at most (mercury), whatever the regime
+    (role === 'protein' && food.name === 'Tonno al naturale' && used(week.food, food.id) >= NUTRITION_PARAMS.planning.maxTunaPerWeek ? 400 : 0) +
+    // denser meals: carbohydrate sources with little energy per gram (potatoes, cooked legumes) step back
+    (adapt?.energyDense && role === 'carb' && food.kcal < 150 ? 3 : 0) +
     // every preferred food should reach the week's table: one not used yet is favoured
     (pools.isPreferred(food) && used(week.food, food.id) === 0 ? -2.5 : 0) +
     // the same protein across the week's lunches and dinners: 3 times at most when there is any alternative
-    (role === 'protein' && (kind === 'lunch' || kind === 'dinner') ? (used(week.food, food.id) >= 4 ? 150 : used(week.food, food.id) >= 3 ? 45 : 0) : 0) +
+    (role === 'protein' && main ? (used(week.food, food.id) >= maxSame + 1 ? 150 : used(week.food, food.id) >= maxSame ? 45 : 0) : 0) +
     (role === 'protein' && day.families.has(familyOf(food)) ? 12 : 0) +
     (role === 'protein' && food.name === 'Uova intere' && (kind === 'lunch' || kind === 'dinner') ? 1.2 : 0) +
     // plant proteins (none in the catalog at the moment) would stay occasional for someone who did not ask for them
@@ -245,14 +265,14 @@ const SWAP_GROUPS: FitLabFood[][] = [
 
 /** Swaps of the same role, re-sized to deliver the same amount of the nutrient the item is there for. At lunch and dinner
  * they are the standard lists (primo for primo, secondo for secondo); elsewhere, foods of the same kind (SWAP_GROUPS). */
-function substitutesFor(item: { food: FitLabFood; grams: number; role: Role }, kind: SlotKind, pools: FitLabPools, kcalTarget: number): PlanMealItem['substitutes'] {
+function substitutesFor(item: { food: FitLabFood; grams: number; role: Role }, kind: SlotKind, pools: FitLabPools, kcalTarget: number, adapt?: MealAdaptations): PlanMealItem['substitutes'] {
   const isMain = kind === 'lunch' || kind === 'dinner';
   if (item.role === 'veg') {
     if (!isMain) return undefined;
     const out = CONTORNI_SWAPS.filter((f) => f.id !== item.food.id && pools.allowed(f))
       .slice(0, 4)
       .map((f) => {
-        const grams = vegGrams(f, 1, kind, kcalTarget);
+        const grams = vegGrams(f, 1, kind, kcalTarget, adapt);
         return { name: f.name, grams, foodId: f.id, quantityLabel: formatFoodQuantity(f.id, grams) };
       });
     return out.length > 0 ? out : undefined;
@@ -310,9 +330,11 @@ const accessoryGrams = (grams: number, step: number, kcalTarget: number, refKcal
   const scale = Math.min(Math.max(kcalTarget / refKcal, 0.4), 1.5);
   return Math.max(step, Math.round((grams * scale) / step) * step);
 };
-const vegGrams = (food: FitLabFood, sides: number, kind: SlotKind, kcalTarget: number): number => {
+const vegGrams = (food: FitLabFood, sides: number, kind: SlotKind, kcalTarget: number, adapt?: MealAdaptations): number => {
   const base = VEG_GRAMS[food.name] ?? 150;
-  const factor = (kind === 'snack' || kind === 'breakfast' ? 0.6 : 1) * (sides > 1 ? 0.8 : 1) * (kcalTarget < 350 ? 0.7 : 1);
+  const main = kind === 'lunch' || kind === 'dinner';
+  const volume = main && adapt?.highVolume ? 1.5 : main && adapt?.energyDense ? 0.6 : 1;
+  const factor = (kind === 'snack' || kind === 'breakfast' ? 0.6 : 1) * (sides > 1 ? 0.8 : 1) * (kcalTarget < 350 ? 0.7 : 1) * volume;
   return Math.max(30, Math.round((base * factor) / 10) * 10);
 };
 
@@ -321,15 +343,15 @@ const vegGrams = (food: FitLabFood, sides: number, kind: SlotKind, kcalTarget: n
 type Solved = { vars: PortionVar[]; total: Macros; error: number; score: number };
 type Fixed = { food: FitLabFood; grams: number; kind: 'veg' | 'spread' | 'accessory' };
 
-export function buildFitLabMeal(args: { kind: SlotKind; slotId: string; target: Macros; pools: FitLabPools; seed: number; day: DayState; week: WeekUsage }): BuiltMeal {
-  const { kind, slotId, target, pools, seed, day, week } = args;
+export function buildFitLabMeal(args: { kind: SlotKind; slotId: string; target: Macros; pools: FitLabPools; seed: number; day: DayState; week: WeekUsage; adapt?: MealAdaptations }): BuiltMeal {
+  const { kind, slotId, target, pools, seed, day, week, adapt } = args;
   const kcalTarget = kcalOfMacros(target);
-  const candidates = candidateDishes(kind, slotId, pools, seed, day, week);
+  const candidates = candidateDishes(kind, slotId, pools, seed, day, week, adapt);
   if (candidates.length === 0) throw new Error(`No dish can be built for ${kind}`);
   const isMain = kind === 'lunch' || kind === 'dinner';
   const eggRoom = Math.max(200 - day.eggGrams, 0);
 
-  const rank = (foods: FitLabFood[], role: Role, n: number) => sortedBy(foods, (f) => foodCost(f, role, kind, seed, pools, day, week)).slice(0, n);
+  const rank = (foods: FitLabFood[], role: Role, n: number) => sortedBy(foods, (f) => foodCost(f, role, kind, seed, pools, day, week, adapt)).slice(0, n);
 
   let best: (Solved & { cand: Candidate; picks: Picks; fixed: Fixed[] }) | null = null;
 
@@ -375,7 +397,7 @@ export function buildFitLabMeal(args: { kind: SlotKind; slotId: string; target: 
             for (const s of sides) {
               if (s.category === 'Frutta') vars.push({ food: s, role: 'fruit', ...portionBounds(s, 'fruit'), grams: 0 });
               else if (s.category === 'Verdure') {
-                const g = vegGrams(s, nVeg, kind, kcalTarget);
+                const g = vegGrams(s, nVeg, kind, kcalTarget, adapt);
                 fixed.push({ food: s, grams: g, kind: 'veg' });
                 fixedMacros = addMacros(fixedMacros, macrosOfGrams(s, g));
               }
@@ -393,7 +415,10 @@ export function buildFitLabMeal(args: { kind: SlotKind; slotId: string; target: 
               fixed.push({ food, grams, kind: 'accessory' });
               fixedMacros = addMacros(fixedMacros, macrosOfGrams(food, grams));
             }
-            if (cand.oil) vars.push({ food: OIL, role: 'fat', ...oilBounds(kcalTarget), grams: 0 });
+            if (cand.oil) {
+              const ob = oilBounds(kcalTarget);
+              vars.push({ food: OIL, role: 'fat', ...ob, max: adapt?.energyDense ? ob.max + 5 : ob.max, grams: 0 });
+            }
             for (const f of fats) {
               const pb = portionBounds(f, 'fat', { bigMeal: kcalTarget > 900 });
               vars.push({ food: f, role: 'fat', ...pb, min: cand.r.dish.fatRequired || optional.includes(f) ? pb.minUse : pb.min, grams: 0 });
@@ -408,14 +433,14 @@ export function buildFitLabMeal(args: { kind: SlotKind; slotId: string; target: 
             const picks: Picks = { base: bf ?? undefined, protein: pf ?? undefined, sides, fat: fats[0], spread: spreadPick ?? undefined, fruit };
             const variety =
               cand.cost +
-              (pf ? foodCost(pf, 'protein', kind, seed, pools, day, week) : 0) +
-              (bf ? foodCost(bf, 'carb', kind, seed, pools, day, week) * 0.7 : 0) +
-              fats.reduce((sum, f) => sum + foodCost(f, 'fat', kind, seed, pools, day, week) * 0.4, 0) +
-              sides.reduce((sum, s) => sum + foodCost(s, s.category === 'Frutta' ? 'fruit' : 'veg', kind, seed, pools, day, week) * 0.5, 0);
+              (pf ? foodCost(pf, 'protein', kind, seed, pools, day, week, adapt) : 0) +
+              (bf ? foodCost(bf, 'carb', kind, seed, pools, day, week, adapt) * 0.7 : 0) +
+              fats.reduce((sum, f) => sum + foodCost(f, 'fat', kind, seed, pools, day, week, adapt) * 0.4, 0) +
+              sides.reduce((sum, s) => sum + foodCost(s, s.category === 'Frutta' ? 'fruit' : 'veg', kind, seed, pools, day, week, adapt) * 0.5, 0);
             const proteinShort = Math.max(target.protein - solved.total.protein, 0);
             const name = recipeNameFor(cand.r.dish, { base: bf ?? undefined, protein: pf ?? undefined, sides, fat: fats[0], spread: spreadPick ?? undefined });
             const repeats =
-              repeatPenalty(used(week.slot, `${slotId}|name|${name}`), 70, 600) +
+              (adapt?.simplify && !isMain ? 0 : repeatPenalty(used(week.slot, `${slotId}|name|${name}`), 70, 600)) +
               (pf ? repeatPenalty(used(week.slot, `${slotId}|food|${pf.id}`), 10, 300) : 0) +
               (bf ? repeatPenalty(used(week.slot, `${slotId}|food|${bf.id}`), 0, 40) : 0);
             const score = solved.error / 6 + variety + kcalOff * 500 + proteinShort * 8 + repeats;
@@ -451,7 +476,7 @@ export function buildFitLabMeal(args: { kind: SlotKind; slotId: string; target: 
     spread: picks.spread,
   });
 
-  const sub = (v: { food: FitLabFood; grams: number; role: Role }) => substitutesFor(v, kind, pools, kcalTarget);
+  const sub = (v: { food: FitLabFood; grams: number; role: Role }) => substitutesFor(v, kind, pools, kcalTarget, adapt);
   const items: PlanMealItem[] = [];
   for (const v of proteinKept) items.push(toItem(v.food, v.grams, 'protein', sub(v)));
   for (const v of carbKept) items.push(toItem(v.food, v.grams, 'carb', sub(v)));

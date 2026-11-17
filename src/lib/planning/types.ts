@@ -39,6 +39,10 @@ export type PlanMeal = {
   /** True for the one weekly unprescribed meal ("pasto libero") — items is
    * empty and totalKcal is only the reference budget, not a real total. */
   isFreeMeal?: boolean;
+  /** A meal eaten out (work, restaurant): unprescribed like a free meal, with its budget and practical guidance. */
+  eatOut?: { guidance: string[] };
+  /** Flexible time, e.g. "12:00–14:00" (the check-in asked for flexible times); `time` stays the reference. */
+  timeWindow?: string;
 };
 
 export type DietDayPlan = {

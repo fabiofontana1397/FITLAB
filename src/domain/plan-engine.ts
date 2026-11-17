@@ -78,6 +78,7 @@ export function buildPlans(ctx: UserContext, opts: BuildPlansOptions = {}): Plan
           monthTargets,
           strategy: strategy?.diet ?? null,
           variant: calibration.mealVariant,
+          adapt: calibration.diet,
           preserveMonthsBefore,
           existingMonths: existing?.diet?.months as DietMonthPlan[] | undefined,
         });

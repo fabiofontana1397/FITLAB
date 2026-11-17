@@ -16,6 +16,7 @@ import { goBackOr } from '@/lib/navigation/go-back';
 import { checkinSignals, computeMonthAdherence, monthWindow, weightsInMonth } from '@/lib/planning/month-adherence';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
 import { MONTHLY_CHECKIN_QUESTIONS } from '@/lib/questionnaire/monthly-checkin-schema';
+import { isQuestionVisible } from '@/lib/questionnaire/schema';
 import { useActivityLogStore } from '@/store/activity-log-store';
 import { useBodyStore } from '@/store/body-store';
 import { useMonthlyCheckinStore } from '@/store/monthly-checkin-store';
@@ -39,6 +40,10 @@ const VERDICT_TITLE: Record<Verdict, string> = {
   too_fast: 'Progressi troppo rapidi',
   low_adherence: 'Il piano è stato seguito solo in parte',
   insufficient_data: 'Dati insufficienti per valutare i progressi',
+  weight_up: 'Il peso sta salendo',
+  weight_down: 'Il peso sta scendendo',
+  temporary_variation: 'Una variazione temporanea',
+  professional_review: 'Serve la valutazione di un professionista',
 };
 
 /**
@@ -73,7 +78,8 @@ export default function MonthlyCheckinScreen() {
   const endedMonth = plan ? currentMonthIndex(plan) - 1 : 0;
   const alreadyDone = completedMonths.includes(endedMonth);
   const available = endedMonth >= 1 && !alreadyDone;
-  const canContinue = useMemo(() => MONTHLY_CHECKIN_QUESTIONS.every((q) => q.optional || isAnswered(answers[q.id])), [answers]);
+  const visibleQuestions = useMemo(() => MONTHLY_CHECKIN_QUESTIONS.filter((q) => isQuestionVisible(q, answers)), [answers]);
+  const canContinue = useMemo(() => visibleQuestions.every((q) => q.optional || isAnswered(answers[q.id])), [visibleQuestions, answers]);
 
   const handleSubmit = async () => {
     if (!canContinue || submitting || !plan || !available) return;
@@ -153,6 +159,16 @@ export default function MonthlyCheckinScreen() {
                 </ThemedText>
               </View>
             ))}
+            {result.clarifications.length > 0 ? (
+              <>
+                <ThemedText type="smallBold">Mi serve qualche informazione in più</ThemedText>
+                {result.clarifications.map((q, i) => (
+                  <ThemedText key={i} type="small" themeColor="textSecondary">
+                    {q}
+                  </ThemedText>
+                ))}
+              </>
+            ) : null}
           </GlassSurface>
           <PrimaryButton label="Fatto" onPress={() => goBackOr('/')} />
         </>
@@ -168,7 +184,7 @@ export default function MonthlyCheckinScreen() {
       ) : (
         <>
           <GlassSurface level="card" radius={Radius.large} style={{ padding: Spacing.four, gap: Spacing.four }}>
-            {MONTHLY_CHECKIN_QUESTIONS.map((question) => (
+            {visibleQuestions.map((question) => (
               <QuestionBlock
                 key={question.id}
                 question={question}

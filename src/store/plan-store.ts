@@ -5,6 +5,7 @@ import { buildPlans } from '@/domain/plan-engine';
 import { NEUTRAL_CALIBRATION, recalibrate, type Adherence, type CheckinSignals, type RecalibrationRecord, type RecalibrationResult, type WeightPoint } from '@/domain/recalibration';
 import { computeTargets } from '@/domain/targets';
 import { buildUserContext } from '@/domain/user-context';
+import { buildMealSlotsFromAnswers } from '@/lib/planning/meal-slots';
 import { deleteDietPlan, deleteTrainingPlan, fetchDietPlan, fetchTrainingPlan, insertPlanVersion, type PlanVersionTrigger, upsertDietPlan, upsertTrainingPlan } from '@/lib/api/plans';
 import { fetchPlanStrategy } from '@/lib/api/plan-strategy';
 import { DIET_ENGINE_VERSION } from '@/lib/planning/diet-planner';
@@ -212,10 +213,12 @@ export const usePlanStore = create<PlanState>()(
         const ctx = { ...buildUserContext(input.answers), weightKg: input.currentWeightKg };
         const calibration = dietPlan?.calibration ?? trainingPlan?.calibration ?? NEUTRAL_CALIBRATION;
 
-        // The targets the person actually followed that month (calories as stored in the plan).
+        // The targets the person actually followed that month: calories and macros exactly as stored in the plan
+        // (the model is only used for the pace and the expenditure, at the current weight).
         const followed = computeTargets(ctx, trainingPlan?.months[input.monthIndex - 1]?.weeklySplit ?? null, calibration);
         const storedMonth = dietPlan?.months.find((m) => m.monthIndex === input.monthIndex);
         const targets = storedMonth ? { ...followed, calories: storedMonth.calorieTarget, macros: storedMonth.macroTargetsG } : followed;
+        const history = [...(plan.recalibrations ?? [])].filter((r) => r.monthIndex < input.monthIndex).sort((a, b) => a.monthIndex - b.monthIndex);
 
         const result = recalibrate({
           ctx,
@@ -226,6 +229,12 @@ export const usePlanStore = create<PlanState>()(
           adherence: input.adherence,
           checkin: input.checkin,
           calibration,
+          weeks: {
+            current: trainingPlan?.months[input.monthIndex - 1]?.weeklySplit ?? null,
+            next: trainingPlan?.months[input.monthIndex]?.weeklySplit ?? null,
+          },
+          history,
+          slots: buildMealSlotsFromAnswers(input.answers).map((sl) => sl.id),
         });
 
         const bundle = buildPlans(ctx, {
@@ -241,10 +250,15 @@ export const usePlanStore = create<PlanState>()(
           expectedWeeklyKg: result.expectedWeeklyKg,
           changes: result.changes,
           calibration: result.calibration,
+          decision: result.decision,
         };
-        const history = [...(plan.recalibrations ?? []).filter((r) => r.monthIndex !== input.monthIndex), record];
-        if (bundle.diet) bundle.diet.recalibrations = history;
-        if (bundle.training) bundle.training.recalibrations = history;
+        // the previous decision gets what really happened after it (memory of the interventions)
+        const previous = history.map((r, i) =>
+          i === history.length - 1 && r.decision && result.previousOutcome ? { ...r, decision: { ...r.decision, observedOutcome: result.previousOutcome } } : r
+        );
+        const updatedHistory = [...previous, ...(plan.recalibrations ?? []).filter((r) => r.monthIndex > input.monthIndex), record].sort((a, b) => a.monthIndex - b.monthIndex);
+        if (bundle.diet) bundle.diet.recalibrations = updatedHistory;
+        if (bundle.training) bundle.training.recalibrations = updatedHistory;
 
         set({ dietPlan: bundle.diet ?? dietPlan, trainingPlan: bundle.training ?? trainingPlan });
         persistPlans(bundle.diet, bundle.training, 'monthly_checkin', false);

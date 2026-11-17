@@ -80,8 +80,9 @@ export function MealCard({ meal }: { meal: PlanMeal }) {
   const preparation = recipeForDish(meal.recipe?.dishId);
   const [detailOpen, setDetailOpen] = useState(false);
 
-  const title = meal.isFreeMeal ? 'Pasto libero' : (meal.recipe?.name ?? meal.label);
-  const overline = meal.isFreeMeal || meal.recipe ? `${meal.label} · ${meal.time}` : meal.time;
+  const title = meal.eatOut ? 'Pasto fuori casa' : meal.isFreeMeal ? 'Pasto libero' : (meal.recipe?.name ?? meal.label);
+  const when = meal.timeWindow ?? meal.time;
+  const overline = meal.isFreeMeal || meal.recipe ? `${meal.label} · ${when}` : when;
   const numbers = meal.isFreeMeal
     ? `Circa ${round(meal.totalKcal)} kcal`
     : [meal.totalKcal > 0 ? `${round(meal.totalKcal)} kcal` : null, meal.macros ? `P ${round(meal.macros.protein)} · C ${round(meal.macros.carbs)} · G ${round(meal.macros.fats)}` : null].filter(Boolean).join('  ·  ');
@@ -121,7 +122,15 @@ export function MealCard({ meal }: { meal: PlanMeal }) {
         <View style={styles.mealHeader}>{header}</View>
       )}
 
-      {meal.isFreeMeal ? (
+      {meal.eatOut ? (
+        <View style={styles.mealItems}>
+          {meal.eatOut.guidance.map((line, index) => (
+            <ThemedText key={index} style={styles.freeMeal} themeColor="textSecondary">
+              {line}
+            </ThemedText>
+          ))}
+        </View>
+      ) : meal.isFreeMeal ? (
         <ThemedText style={styles.freeMeal} themeColor="textSecondary">
           Scegli tu cosa mangiare, senza eccessi e restando vicino alle calorie indicate. Nelle note del piano trovi qualche indicazione.
         </ThemedText>
