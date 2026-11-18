@@ -1,6 +1,6 @@
 /**
  * Browser tests for the four main tabs' top bar: the logo, title and the
- * notification / calendar / profile buttons stay put while the page scrolls,
+ * calendar / menu buttons stay put while the page scrolls,
  * and what scrolls under them dissolves into a fade.
  *
  *   EXPO_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321 EXPO_PUBLIC_SUPABASE_ANON_KEY=test \
@@ -47,14 +47,13 @@ async function main() {
   try {
     for (const tab of TABS) {
       const page = await openApp(browser, server.url, { path: tab.path, storage: tab.storage });
-      await page.getByRole('button', { name: 'Notifiche' }).waitFor({ timeout: 30000 });
+      await page.getByRole('button', { name: 'Apri menu' }).waitFor({ timeout: 30000 });
       await pause(1500);
 
       await test(`${tab.name}: the top bar stays put while the page scrolls, and the content fades under it`, async () => {
         const bar = async () => {
-          const bell = await page.getByRole('button', { name: 'Notifiche' }).boundingBox();
-          const profile = await page.getByRole('button', { name: 'Profilo' }).boundingBox();
-          return [Math.round(bell.y), Math.round(bell.x), Math.round(profile.y), Math.round(profile.x)];
+          const menu = await page.getByRole('button', { name: 'Apri menu' }).boundingBox();
+          return [Math.round(menu.y), Math.round(menu.x)];
         };
         const scroller = page.getByTestId(tab.scrollId);
         const opacity = () => page.getByTestId('screen-top-fade').evaluate((el: HTMLElement) => Number(getComputedStyle(el).opacity));
@@ -75,6 +74,20 @@ async function main() {
         await scroller.evaluate((el: HTMLElement) => { el.scrollTop = 0; });
         await pause(300);
         assert.deepEqual(await bar(), before);
+      });
+
+      await test(`${tab.name}: the menu opens under its button with Profilo, Notifiche and Impostazioni, and closes on a tap outside`, async () => {
+        const button = await page.getByRole('button', { name: 'Apri menu' }).boundingBox();
+        await page.getByRole('button', { name: 'Apri menu' }).click();
+        await pause(700);
+        for (const name of ['Profilo', 'Notifiche', 'Impostazioni']) await page.getByRole('button', { name, exact: true }).waitFor({ timeout: 3000 });
+        const profile = await page.getByRole('button', { name: 'Profilo', exact: true }).boundingBox();
+        assert.ok(profile.y > button.y + button.height, 'the panel hangs under the button');
+        assert.ok(Math.abs(profile.x + profile.width - (button.x + button.width)) < 24, 'right-aligned with the button');
+        if (shots) await page.screenshot({ path: join(shots, `menu-${tab.path.replace('/', '') || 'home'}.png`) });
+        await page.mouse.click(30, 600);
+        await pause(500);
+        assert.equal(await page.getByRole('button', { name: 'Impostazioni', exact: true }).count(), 0, 'the menu closed');
       });
       await page.context().close();
     }

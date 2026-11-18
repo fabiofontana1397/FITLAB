@@ -1,11 +1,10 @@
-import { router, type Href } from 'expo-router';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 
 import { LiquidGlassButton } from '@/components/glass/liquid-glass';
 import { ThemedText } from '@/components/themed-text';
 import { BrandMark } from '@/components/ui/brand-mark';
 import { Icon } from '@/components/ui/icon';
-import { ProfileAvatarButton } from '@/components/ui/profile-avatar-button';
+import { HeaderMenu } from '@/components/ui/header-menu';
 import { useTheme } from '@/hooks/use-theme';
 
 /** Below this width everything on the line steps down so the title still fits. */
@@ -15,14 +14,14 @@ export type TabHeaderProps = {
   title: string;
   /** Small grey line under the title (Home: the selected day's full date). */
   subtitle?: string;
-  /** Shows the calendar button before notifications and profile; omit it on pages with no calendar. */
+  /** Shows the calendar button before the menu; omit it on pages with no calendar. */
   onCalendarPress?: () => void;
 };
 
 /**
  * The top bar of every main page, all on one line: the FitLab mark and the
- * page title (with an optional line under it) on the left; on the right, in
- * this order, calendar (when the page has one), notifications and profile.
+ * page title (with an optional line under it) on the left; on the right the
+ * calendar (when the page has one) and the menu (Profilo, Notifiche, Impostazioni).
  */
 export function TabHeader({ title, subtitle, onCalendarPress }: TabHeaderProps) {
   const theme = useTheme();
@@ -48,10 +47,7 @@ export function TabHeader({ title, subtitle, onCalendarPress }: TabHeaderProps) 
             <Icon name="calendar" size={iconSize} color={theme.text} />
           </LiquidGlassButton>
         ) : null}
-        <LiquidGlassButton onPress={() => router.push('/notification-settings' as Href)} hitSlop={8} scaleTo={0.9} accessibilityLabel="Notifiche" size={size}>
-          <Icon name="bell" size={iconSize} color={theme.text} />
-        </LiquidGlassButton>
-        <ProfileAvatarButton size={size} />
+        <HeaderMenu size={size} />
       </View>
     </View>
   );
