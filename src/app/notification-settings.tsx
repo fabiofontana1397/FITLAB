@@ -6,7 +6,7 @@ import { Icon } from '@/components/ui/icon';
 import { ListGroup, ListRow } from '@/components/ui/list-group';
 import { PrimaryButton } from '@/components/ui/primary-button';
 import { IosSwitch } from '@/components/ui/ios-switch';
-import { SheetScreen } from '@/components/ui/sheet-screen';
+import { PageScreen } from '@/components/ui/page-screen';
 import { Layout, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import {
@@ -79,56 +79,54 @@ export default function NotificationSettingsScreen() {
   };
 
   return (
-    <SheetScreen title="Promemoria" eyebrow="Scegli quando FitLab ti accompagna durante la giornata.">
-      <View style={styles.groups}>
-        <ListGroup header="Pasti" insetSeparators>
-          <ListRow
-            icon="nutrition"
-            title="Promemoria pasti"
-            subtitle="Un avviso per i pasti principali."
-            trailing={<IosSwitch value={preferences.meal_enabled} onValueChange={(value) => update('meal_enabled', value)} />}
-          />
-          {TIME_FIELDS.slice(0, 3).map(({ key, label }) => (
-            <TimeRow key={key} label={label} value={String(preferences[key])} disabled={!preferences.meal_enabled} onChange={(value) => update(key, value)} />
-          ))}
-        </ListGroup>
+    <PageScreen title="Notifiche" subtitle="Promemoria e riepiloghi">
+      <ListGroup header="Pasti" insetSeparators>
+        <ListRow
+          icon="nutrition"
+          title="Promemoria pasti"
+          subtitle="Un avviso per i pasti principali."
+          trailing={<IosSwitch value={preferences.meal_enabled} onValueChange={(value) => update('meal_enabled', value)} />}
+        />
+        {TIME_FIELDS.slice(0, 3).map(({ key, label }) => (
+          <TimeRow key={key} label={label} value={String(preferences[key])} disabled={!preferences.meal_enabled} onChange={(value) => update(key, value)} />
+        ))}
+      </ListGroup>
 
-        <ListGroup header="Allenamento" insetSeparators>
-          <ListRow
-            icon="training"
-            title="Promemoria allenamento"
-            subtitle="All’ora che preferisci."
-            trailing={<IosSwitch value={preferences.training_enabled} onValueChange={(value) => update('training_enabled', value)} />}
-          />
-          <TimeRow label="Orario" value={preferences.training_time} disabled={!preferences.training_enabled} onChange={(value) => update('training_time', value)} />
-        </ListGroup>
+      <ListGroup header="Allenamento" insetSeparators>
+        <ListRow
+          icon="training"
+          title="Promemoria allenamento"
+          subtitle="All’ora che preferisci."
+          trailing={<IosSwitch value={preferences.training_enabled} onValueChange={(value) => update('training_enabled', value)} />}
+        />
+        <TimeRow label="Orario" value={preferences.training_time} disabled={!preferences.training_enabled} onChange={(value) => update('training_time', value)} />
+      </ListGroup>
 
-        <ListGroup header="Riepiloghi">
-          <ListRow
-            title="Settimanale"
-            subtitle="I progressi della settimana, ogni domenica."
-            trailing={<IosSwitch value={preferences.weekly_enabled} onValueChange={(value) => update('weekly_enabled', value)} />}
-          />
-          <ListRow
-            title="Mensile"
-            subtitle="Check-in e ricalibrazione del piano."
-            trailing={<IosSwitch value={preferences.monthly_enabled} onValueChange={(value) => update('monthly_enabled', value)} />}
-          />
-        </ListGroup>
+      <ListGroup header="Riepiloghi">
+        <ListRow
+          title="Settimanale"
+          subtitle="I progressi della settimana, ogni domenica."
+          trailing={<IosSwitch value={preferences.weekly_enabled} onValueChange={(value) => update('weekly_enabled', value)} />}
+        />
+        <ListRow
+          title="Mensile"
+          subtitle="Check-in e ricalibrazione del piano."
+          trailing={<IosSwitch value={preferences.monthly_enabled} onValueChange={(value) => update('monthly_enabled', value)} />}
+        />
+      </ListGroup>
 
-        <ListGroup
-          header="Su questo iPhone"
-          footer="Per riceverle con FitLab chiusa, apri il sito da Safari, aggiungilo alla schermata Home e concedi il permesso.">
-          <ListRow
-            icon="bell"
-            title={pushEnabled ? 'Notifiche abilitate' : 'Abilita notifiche'}
-            iconTint={pushEnabled ? theme.successSoft : undefined}
-            iconColor={pushEnabled ? theme.success : undefined}
-            onPress={busy || pushEnabled ? undefined : onEnablePush}
-            trailing={pushEnabled ? <Icon name="checkCircle" size={20} color={theme.success} /> : undefined}
-          />
-        </ListGroup>
-      </View>
+      <ListGroup
+        header="Su questo iPhone"
+        footer="Per riceverle con FitLab chiusa, apri il sito da Safari, aggiungilo alla schermata Home e concedi il permesso.">
+        <ListRow
+          icon="bell"
+          title={pushEnabled ? 'Notifiche abilitate' : 'Abilita notifiche'}
+          iconTint={pushEnabled ? theme.successSoft : undefined}
+          iconColor={pushEnabled ? theme.success : undefined}
+          onPress={busy || pushEnabled ? undefined : onEnablePush}
+          trailing={pushEnabled ? <Icon name="checkCircle" size={20} color={theme.success} /> : undefined}
+        />
+      </ListGroup>
 
       <View style={styles.actions}>
         <PrimaryButton label={busy ? 'Salvataggio…' : 'Salva preferenze'} disabled={busy} onPress={onSave} />
@@ -136,7 +134,7 @@ export default function NotificationSettingsScreen() {
           Gli orari seguono il fuso orario del dispositivo. Puoi modificare o revocare il permesso dalle impostazioni di iPhone.
         </ThemedText>
       </View>
-    </SheetScreen>
+    </PageScreen>
   );
 }
 
@@ -166,7 +164,6 @@ function TimeRow({ label, value, disabled, onChange }: { label: string; value: s
 }
 
 const styles = StyleSheet.create({
-  groups: { gap: Layout.sectionGap },
   actions: { gap: Spacing.three },
   timeRow: { minHeight: Layout.minTouch + 8, flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingHorizontal: Spacing.three, paddingVertical: 6 },
   timeIcon: { width: 30, alignItems: 'center' },

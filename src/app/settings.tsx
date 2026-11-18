@@ -5,7 +5,7 @@ import { IntegrationsSection } from '@/components/profile/integrations-section';
 import { ListGroup, ListRow } from '@/components/ui/list-group';
 import { SectionHeader } from '@/components/ui/section-header';
 import { SegmentedControl } from '@/components/ui/segmented-control';
-import { SheetScreen } from '@/components/ui/sheet-screen';
+import { PageScreen } from '@/components/ui/page-screen';
 import { useTheme } from '@/hooks/use-theme';
 import { hapticWarning } from '@/lib/haptics';
 import { useAppStore, type AppearanceMode } from '@/store/app-store';
@@ -31,7 +31,7 @@ export default function SettingsScreen() {
   };
 
   return (
-    <SheetScreen title="Impostazioni">
+    <PageScreen title="Impostazioni" subtitle="Tema e dispositivi salute">
       <View>
         <SectionHeader title="Tema" />
         <SegmentedControl options={APPEARANCE_OPTIONS} value={appearance} onChange={setAppearance} />
@@ -42,6 +42,6 @@ export default function SettingsScreen() {
       <ListGroup footer="FITLAB · v0.1.0 prototype">
         <ListRow icon="logout" title="Esci" destructive iconTint={theme.backgroundElement} onPress={handleLogout} />
       </ListGroup>
-    </SheetScreen>
+    </PageScreen>
   );
 }

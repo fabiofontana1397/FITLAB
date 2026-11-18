@@ -157,9 +157,10 @@ export default function RootLayout() {
               itself (it owns the slide-up, the backdrop and the drag-down),
               so the route only has to get out of its way: transparent, with
               no presentation animation of its own. */}
-          <Stack.Screen name="profile" options={{ presentation: 'transparentModal', animation: 'none' }} />
-          <Stack.Screen name="notification-settings" options={{ presentation: 'transparentModal', animation: 'none' }} />
-          <Stack.Screen name="settings" options={{ presentation: 'transparentModal', animation: 'none' }} />
+          {/* Pages opened from the header menu: full pages whose sections enter one by one, like the tabs. */}
+          <Stack.Screen name="profile" options={{ animation: 'none' }} />
+          <Stack.Screen name="notification-settings" options={{ animation: 'none' }} />
+          <Stack.Screen name="settings" options={{ animation: 'none' }} />
           <Stack.Screen name="workout-detail" options={{ presentation: 'transparentModal', animation: 'none' }} />
           <Stack.Screen name="logged-activity" options={{ presentation: 'transparentModal', animation: 'none' }} />
           <Stack.Screen name="chat" options={{ presentation: 'transparentModal', animation: 'none' }} />
