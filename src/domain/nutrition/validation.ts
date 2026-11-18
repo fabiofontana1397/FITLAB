@@ -13,7 +13,7 @@
  */
 import { FITLAB_FOODS } from '@/lib/planning/fitlab/foods';
 import { buildFitLabPools, familyOf, proteinCategory as proteinCategoryOf } from '@/lib/planning/fitlab/pools';
-import { slotPoolSize } from '@/lib/planning/fitlab/meal-builder';
+import { slotDishCategories, slotPoolSize, slotProteinFamilies } from '@/lib/planning/fitlab/meal-builder';
 import { SLOT_KIND } from '@/lib/planning/fitlab/catalog';
 import type { DietMonthPlan, PlanMeal } from '@/lib/planning/types';
 
@@ -25,7 +25,13 @@ import { calorieLimits, SEX_FLOOR } from './safety';
 import type { DecisionLog, DietAdaptations } from './types';
 
 export type ValidationLevel = 'BLOCKER' | 'WARNING' | 'INFO';
-export type ValidationIssue = { level: ValidationLevel; code: string; message: string };
+export type ValidationIssue = {
+  level: ValidationLevel;
+  code: string;
+  message: string;
+  /** Finer classification inside a code (e.g. V14 'proposed_tradeoff', V16 'protein_low'): used by the report. */
+  kind?: string;
+};
 
 const FOOD = new Map(FITLAB_FOODS.map((f) => [f.id, f]));
 const V = P.validation;
@@ -35,11 +41,28 @@ const BASE_FOODS = new Set(['Pasta', 'Riso', 'Riso basmati', 'Olio extravergine 
 /** Protein category of a food (for rotation): see lib/planning/fitlab/pools.ts. */
 export const proteinCategory = (foodId: string) => proteinCategoryOf(FOOD.get(foodId));
 
-/** Day nutrition as the person reads it: prescribed meals from their items, free / eaten-out meals at their budget. */
-export function dayNutrition(meals: PlanMeal[]): { kcal: number; prescribedKcal: number; budgetKcal: number; protein: number; carbs: number; fats: number; fiber: number; derivedKcal: number; budgetShare: number } {
-  let prescribedKcal = 0, budgetKcal = 0, protein = 0, carbs = 0, fats = 0, fiber = 0;
+/**
+ * Day nutrition as the person reads it. Prescribed meals count with their items. A free or eaten-out meal counts:
+ *  - not logged: with its budget, macros NOT available;
+ *  - logged with calories only: with the logged calories, macros NOT available;
+ *  - logged with foods (measured) or estimated: with the logged calories and macros (estimated ones flagged).
+ * Macros that are not available are never counted as zero: `budgetKcal` is the energy whose macros are unknown,
+ * and the day is 'partial' when there is any.
+ */
+export function dayNutrition(meals: PlanMeal[]) {
+  let prescribedKcal = 0, budgetKcal = 0, loggedKcal = 0, estimatedKcal = 0, protein = 0, carbs = 0, fats = 0, fiber = 0, freeMeals = 0, freeLogged = 0;
   for (const m of meals) {
-    if (m.isFreeMeal) { budgetKcal += m.totalKcal; continue; }
+    if (m.isFreeMeal) {
+      freeMeals++;
+      const log = m.freeMealLog;
+      if (!log) { budgetKcal += m.totalKcal; continue; }
+      freeLogged++;
+      loggedKcal += log.kcal;
+      if (!log.macros) { budgetKcal += log.kcal; continue; }
+      if (log.status === 'estimated') estimatedKcal += log.kcal;
+      protein += log.macros.protein; carbs += log.macros.carbs; fats += log.macros.fats; fiber += log.macros.fiber;
+      continue;
+    }
     for (const i of m.items) {
       const food = FOOD.get(i.foodId);
       const k = i.grams / 100;
@@ -50,8 +73,30 @@ export function dayNutrition(meals: PlanMeal[]): { kcal: number; prescribedKcal:
       fiber += i.fiber ?? (food ? food.fib * k : NaN);
     }
   }
-  const kcal = prescribedKcal + budgetKcal;
-  return { kcal, prescribedKcal, budgetKcal, protein, carbs, fats, fiber, derivedKcal: protein * 4 + carbs * 4 + fats * 9 + fiber * 2, budgetShare: kcal ? budgetKcal / kcal : 0 };
+  // budgetKcal already holds the free meals without macros (budget or logged calories); the logged ones with macros add here
+  const kcal = prescribedKcal + budgetKcal + meals.reduce((s2, m) => s2 + (m.isFreeMeal && m.freeMealLog?.macros ? m.freeMealLog.kcal : 0), 0);
+  return {
+    kcal,
+    prescribedKcal,
+    /** energy whose macros are not available (free meals not logged, or logged with calories only) */
+    budgetKcal,
+    loggedKcal,
+    estimatedKcal,
+    protein, carbs, fats, fiber,
+    /** energy derived from the macros of the prescribed meals only (V15 compares it with their label energy) */
+    derivedKcal: prescribedDerivedKcal(meals),
+    budgetShare: kcal ? budgetKcal / kcal : 0,
+    observed: budgetKcal > 0 ? ('partial' as const) : ('complete' as const),
+    freeMeals,
+    freeLogged,
+  };
+}
+
+/** Energy derived from the macros of the prescribed meals (EU factors), for V15. */
+function prescribedDerivedKcal(meals: PlanMeal[]): number {
+  let d = 0;
+  for (const m of meals) if (!m.isFreeMeal) for (const i of m.items) d += (i.protein ?? 0) * 4 + (i.carbs ?? 0) * 4 + (i.fats ?? 0) * 9 + (i.fiber ?? 0) * 2;
+  return d;
 }
 
 /** Variety metrics of a month (and against the previous month). Base foods (pasta, rice, oil…) are not counted as repetition. */
@@ -111,6 +156,8 @@ export function validateDietMonth(
   const pools = buildFitLabPools(ctx.answers, opts.adapt);
 
   // ------------------------------------------------ values, single source of truth (item → meal)
+  let proposed = 0;
+  const proposedTradeoffs: string[] = [];
   for (const d of days) {
     for (const m of d.meals) {
       if (m.isFreeMeal) {
@@ -126,29 +173,57 @@ export function validateDietMonth(
           continue;
         }
         const k = i.grams / 100;
-        if (Math.abs(i.kcal - food.kcal * k) > 1.5 || Math.abs(i.protein! - food.p * k) > 0.2 || Math.abs(i.carbs! - food.c * k) > 0.2 || Math.abs(i.fats! - food.f * k) > 0.2)
+        const stale = Math.abs(i.kcal - food.kcal * k) > 1.5 || Math.abs(i.protein! - food.p * k) > 0.2 || Math.abs(i.carbs! - food.c * k) > 0.2 || Math.abs(i.fats! - food.f * k) > 0.2;
+        if (stale && i.substitutedFrom)
+          // an applied substitution whose values were not recalculated: the item keeps the old food's numbers
+          out.push({ level: 'WARNING', code: 'V14', kind: 'applied_stale', message: `${M}, ${d.weekday}, ${m.label}: sostituzione ${i.substitutedFrom.name} → ${i.name} applicata senza ricalcolo (${i.kcal} kcal dichiarate, ${Math.round(food.kcal * k)} dal catalogo).` });
+        else if (stale)
           out.push({ level: 'BLOCKER', code: 'V5', message: `${M}, ${d.weekday}, ${m.label}: ${i.name} ${i.grams} g ha valori diversi dal catalogo (${i.kcal} kcal invece di ${Math.round(food.kcal * k)}).` });
-        if (!pools.allowed(food)) out.push({ level: 'BLOCKER', code: 'V7', message: `${M}, ${d.weekday}, ${m.label}: ${i.name} non è ammesso (regime, allergie, intolleranze o esclusioni).` });
+        if (!pools.allowed(food)) out.push({ level: 'BLOCKER', code: i.substitutedFrom ? 'V14' : 'V7', kind: i.substitutedFrom ? 'incompatible' : undefined, message: `${M}, ${d.weekday}, ${m.label}: ${i.name} non è ammesso (regime, allergie, intolleranze o esclusioni).` });
         if (opts.adapt?.dislikedFoodIds?.includes(food.id)) out.push({ level: 'BLOCKER', code: 'V13', message: `${M}, ${d.weekday}: ${i.name} è tra gli alimenti che l'utente ha chiesto di togliere.` });
+        // (an applied substitution with recalculated values raises nothing: it is a normal item)
+        // suggested alternatives (not applied): allowed, values from the catalog, compromise flagged
         for (const s of i.substitutes ?? []) {
           const sf = FOOD.get(s.foodId);
-          if (!sf || !pools.allowed(sf)) { out.push({ level: 'BLOCKER', code: 'V7', message: `${M}, ${d.weekday}: sostituto non ammesso (${s.name}) per ${i.name}.` }); continue; }
-          const off = (sf.kcal * s.grams) / 100 / Math.max(i.kcal, 1) - 1;
-          // side vegetables swap by portion: a difference of a few dozen kcal is not a change of the meal
-          if (i.role !== 'veg' && Math.abs(off) > V.substituteKcalShare && Math.abs((sf.kcal * s.grams) / 100 - i.kcal) > 40)
-            out.push({ level: 'WARNING', code: 'V14', message: `${M}, ${d.weekday}: il sostituto ${s.name} ${s.quantityLabel} cambia le calorie di ${i.name} del ${pct(off)}.` });
+          if (!sf || !pools.allowed(sf)) { out.push({ level: 'BLOCKER', code: 'V14', kind: 'incompatible', message: `${M}, ${d.weekday}: alternativa non ammessa (${s.name}) per ${i.name}: viola regime, allergie o esclusioni.` }); continue; }
+          const sk = s.grams / 100;
+          if (s.kcal != null && (Math.abs(s.kcal - sf.kcal * sk) > 1.5 || Math.abs((s.protein ?? 0) - sf.p * sk) > 0.2))
+            out.push({ level: 'WARNING', code: 'V14', kind: 'proposed_stale', message: `${M}, ${d.weekday}: i valori mostrati per l'alternativa ${s.name} ${s.quantityLabel} non corrispondono al catalogo.` });
+          const subKcal = s.kcal ?? sf.kcal * sk;
+          const off = subKcal / Math.max(i.kcal, 1) - 1;
+          const tradeoff = s.equivalence ? s.equivalence === 'tradeoff' : i.role !== 'veg' && Math.abs(off) > V.substituteKcalShare && Math.abs(sf.kcal * sk - i.kcal) > 40;
+          const rule = i.role === 'protein' || i.role === 'carb' || i.role === 'fat' ? P.substitution[i.role] : null;
+          if (rule && s.equivalence === 'equivalent' && Math.abs(off) > rule.kcalShare && Math.abs(subKcal - i.kcal) > rule.kcalAbs)
+            out.push({ level: 'WARNING', code: 'V14', kind: 'proposed_mislabelled', message: `${M}, ${d.weekday}: l'alternativa ${s.name} ${s.quantityLabel} è presentata come equivalente a ${i.name} ma cambia le calorie del ${pct(off)}.` });
+          if (tradeoff) proposedTradeoffs.push(`${i.name} → ${s.name} ${s.quantityLabel} (${pct(off)} kcal${s.note && !s.note.endsWith('kcal') ? `; ${s.note}` : ''})`);
+          proposed++;
         }
       }
       const n = m.items.reduce((acc, i) => ({ kcal: acc.kcal + i.kcal, p: acc.p + (i.protein ?? 0), c: acc.c + (i.carbs ?? 0), f: acc.f + (i.fats ?? 0) }), { kcal: 0, p: 0, c: 0, f: 0 });
-      if (m.totalKcal !== n.kcal) out.push({ level: 'BLOCKER', code: 'V5', message: `${M}, ${d.weekday}, ${m.label}: calorie del pasto ${m.totalKcal} diverse dalla somma degli alimenti (${n.kcal}).` });
+      const substituted = m.items.some((i) => i.substitutedFrom);
+      if (m.totalKcal !== n.kcal)
+        out.push(substituted
+          ? { level: 'WARNING', code: 'V14', kind: 'applied_stale', message: `${M}, ${d.weekday}, ${m.label}: dopo la sostituzione il totale del pasto (${m.totalKcal} kcal) non è stato ricalcolato (somma degli alimenti ${n.kcal}).` }
+          : { level: 'BLOCKER', code: 'V5', message: `${M}, ${d.weekday}, ${m.label}: calorie del pasto ${m.totalKcal} diverse dalla somma degli alimenti (${n.kcal}).` });
       if (m.macros && (Math.abs(m.macros.protein - n.p) > 1 || Math.abs(m.macros.carbs - n.c) > 1 || Math.abs(m.macros.fats - n.f) > 1))
         out.push({ level: 'BLOCKER', code: 'V5', message: `${M}, ${d.weekday}, ${m.label}: macro del pasto diversi dalla somma degli alimenti.` });
     }
   }
 
+  // suggested alternatives that are a compromise (same role nutrient, different energy): one INFO for the month —
+  // they are shown to the person with the difference, the menu does not change
+  if (proposedTradeoffs.length > 0)
+    out.push({ level: 'INFO', code: 'V14', kind: 'proposed_tradeoff', message: `${M}: ${proposedTradeoffs.length} alternative proposte su ${proposed} sono un compromesso (stesso ruolo, energia diversa), mostrate con la differenza; il menu non cambia. Es.: ${[...new Set(proposedTradeoffs)].slice(0, 3).join('; ')}.` });
+
   // ------------------------------------------------ day targets and day energy
   const tKcal: number[] = [];
   const actual: number[] = [];
+  const MD = P.macroCheck.day;
+  const LABEL = { protein: 'proteine', carbs: 'carboidrati', fats: 'grassi' } as const;
+  const weekGot = { protein: 0, carbs: 0, fats: 0 };
+  const weekWant = { protein: 0, carbs: 0, fats: 0 };
+  const moderate = { protein: { high: [] as string[], low: [] as string[] }, carbs: { high: [] as string[], low: [] as string[] }, fats: { high: [] as string[], low: [] as string[] } };
+  const partialDays: string[] = [];
   for (const d of days) {
     const target = d.calorieTarget ?? month.calorieTarget;
     tKcal.push(target);
@@ -164,22 +239,57 @@ export function validateDietMonth(
     if (n.kcal < SEX_FLOOR[ctx.sex] && n.budgetKcal === 0) out.push({ level: 'BLOCKER', code: 'V3', message: `${M}, ${d.weekday}: ${n.kcal} kcal, sotto la soglia minima giornaliera di ${SEX_FLOOR[ctx.sex]}.` });
     // declared (label) energy vs energy derived from the macros of the prescribed meals
     if (n.prescribedKcal > 0) {
-      const macroOff = n.prescribedKcal / n.derivedKcal - 1;
-      if (Math.abs(macroOff) > V.macroBlockShare) out.push({ level: 'BLOCKER', code: 'V15', message: `${M}, ${d.weekday}: energia dichiarata ${n.prescribedKcal} kcal contro ${Math.round(n.derivedKcal)} ricavate dai macro (${pct(macroOff)}).` });
-      else if (Math.abs(macroOff) > V.macroWarnShare) out.push({ level: 'WARNING', code: 'V15', message: `${M}, ${d.weekday}: energia dichiarata ${n.prescribedKcal} kcal contro ${Math.round(n.derivedKcal)} ricavate dai macro (${pct(macroOff)}).` });
-      // macros vs the day's targets, on the share of the day that is prescribed
-      const share = 1 - n.budgetShare;
-      const checks: [string, number, number, number][] = [
-        ['proteine', n.protein, t.protein * share, V.proteinWarnShare],
-        ['carboidrati', n.carbs + n.fiber / 2, t.carbs * share, V.carbsWarnShare],
-        ['grassi', n.fats, t.fats * share, V.fatsWarnShare],
-      ];
-      for (const [label, got, want, tol] of checks) {
-        const off = got / want - 1;
-        if (Math.abs(off) > tol) out.push({ level: 'WARNING', code: 'V16', message: `${M}, ${d.weekday}: ${label} ${Math.round(got)} g contro ${Math.round(want)} g di target (${pct(off)}).` });
-      }
+      const derived = n.derivedKcal;
+      const macroOff = n.prescribedKcal / derived - 1;
+      if (Math.abs(macroOff) > V.macroBlockShare) out.push({ level: 'BLOCKER', code: 'V15', message: `${M}, ${d.weekday}: energia dichiarata ${n.prescribedKcal} kcal contro ${Math.round(derived)} ricavate dai macro (${pct(macroOff)}).` });
+      else if (Math.abs(macroOff) > V.macroWarnShare) out.push({ level: 'WARNING', code: 'V15', message: `${M}, ${d.weekday}: energia dichiarata ${n.prescribedKcal} kcal contro ${Math.round(derived)} ricavate dai macro (${pct(macroOff)}).` });
+    }
+    // macros vs the day's targets, on the share of the day whose macros are known (never counting unknown ones as 0)
+    const share = 1 - n.budgetShare;
+    if (n.budgetKcal > 0) partialDays.push(d.weekday);
+    const day = { protein: n.protein, carbs: n.carbs + n.fiber / 2, fats: n.fats };
+    for (const macro of ['protein', 'carbs', 'fats'] as const) {
+      const want = t[macro] * share;
+      if (!(want > 0)) continue;
+      weekGot[macro] += day[macro];
+      weekWant[macro] += want;
+      const off = day[macro] / want - 1;
+      const th = MD[macro];
+      if (Math.abs(off) <= th.tol) continue; // irrelevant daily deviation
+      const dir = off > 0 ? 'high' : 'low';
+      moderate[macro][dir].push(`${d.weekday} ${pct(off)}`);
+      if (Math.abs(off) > th.severe)
+        out.push({ level: 'WARNING', code: 'V16', kind: `day_${macro}_${dir}`, message: `${M}, ${d.weekday}: ${LABEL[macro]} ${Math.round(day[macro])} g contro ${Math.round(want)} g di target (${pct(off)}): scostamento giornaliero significativo.` });
     }
   }
+  // repeated moderate deviations in the same direction, the week's average, and adequacy
+  for (const macro of ['protein', 'carbs', 'fats'] as const) {
+    for (const dir of ['high', 'low'] as const) {
+      const list = moderate[macro][dir];
+      if (list.length >= P.macroCheck.repeatedDays)
+        out.push({ level: 'WARNING', code: 'V16', kind: `repeated_${macro}_${dir}`, message: `${M}: ${LABEL[macro]} ${dir === 'high' ? 'sopra' : 'sotto'} il target in ${list.length} giorni (${list.join(', ')}).` });
+      else if (list.length > 0)
+        out.push({ level: 'INFO', code: 'V16', kind: `day_minor_${macro}_${dir}`, message: `${M}: ${LABEL[macro]} ${dir === 'high' ? 'sopra' : 'sotto'} la tolleranza giornaliera in ${list.length} giorn${list.length === 1 ? 'o' : 'i'} (${list.join(', ')}), media settimanale in linea.` });
+    }
+    const wOff = weekGot[macro] / Math.max(weekWant[macro], 1) - 1;
+    if (Math.abs(wOff) > P.macroCheck.week[macro])
+      out.push({ level: 'WARNING', code: 'V16', kind: `week_${macro}_${wOff > 0 ? 'high' : 'low'}`, message: `${M}: media settimanale di ${LABEL[macro]} ${pct(wOff)} rispetto al target (tolleranza ±${Math.round(P.macroCheck.week[macro] * 100)}%).` });
+  }
+  {
+    const ref = proteinReferenceKg(ctx);
+    // protein actually planned, in g/kg: the ratio to target on the known share of each day, times the target's g/kg
+    const perKg = (weekGot.protein / Math.max(weekWant.protein, 1)) * (month.macroTargetsG.protein / ref);
+    if (perKg < P.safety.minProteinPerKg - 0.05)
+      out.push({ level: 'WARNING', code: 'V16', kind: 'protein_insufficient', message: `${M}: proteine effettive ${perKg.toFixed(2)} g/kg di media, sotto il minimo di ${P.safety.minProteinPerKg} g/kg.` });
+    const fatShare = (weekGot.fats * 9) / Math.max(1, weekGot.protein * 4 + weekGot.carbs * 4 + weekGot.fats * 9);
+    if (fatShare > P.macroCheck.maxFatShare) out.push({ level: 'WARNING', code: 'V16', kind: 'fats_high', message: `${M}: i grassi forniscono il ${Math.round(fatShare * 100)}% dell'energia (massimo ${Math.round(P.macroCheck.maxFatShare * 100)}%).` });
+    if (fatShare < P.macroCheck.minFatShare) out.push({ level: 'WARNING', code: 'V16', kind: 'fats_low', message: `${M}: i grassi forniscono solo il ${Math.round(fatShare * 100)}% dell'energia (minimo ${Math.round(P.macroCheck.minFatShare * 100)}%).` });
+    const carbsPerDay = weekGot.carbs / 7;
+    if (carbsPerDay < P.safety.minCarbsG) out.push({ level: 'WARNING', code: 'V16', kind: 'carbs_low', message: `${M}: carboidrati effettivi ${Math.round(carbsPerDay)} g al giorno, sotto ${P.safety.minCarbsG} g.` });
+  }
+  // free meals: the macros are not known until the person logs them (never counted as zero)
+  if (partialDays.length > 0)
+    out.push({ level: 'INFO', code: 'V20', kind: 'partially_observed', message: `${M}: ${partialDays.join(', ')} parzialmente osservat${partialDays.length === 1 ? 'a' : 'e'}: il pasto libero o fuori casa ha solo il budget calorico, i suoi macro non sono disponibili e i controlli valgono sulla quota prescritta.` });
   const avgTarget = tKcal.reduce((a, b) => a + b, 0) / tKcal.length;
   if (Math.abs(avgTarget - month.calorieTarget) > 10) out.push({ level: 'BLOCKER', code: 'V2', message: `${M}: media dei target giornalieri ${Math.round(avgTarget)} kcal contro ${month.calorieTarget} dichiarate.` });
   const avgActual = actual.reduce((a, b) => a + b, 0) / actual.length;
@@ -203,6 +313,10 @@ export function validateDietMonth(
 
   // ------------------------------------------------ variety
   const vm = varietyMetrics(month, opts.previous);
+  // Repetition thresholds depend on what the person's compatible recipes allow: a repetition the catalog forces
+  // (regime, allergies, exclusions) is an INFO with the reason, an avoidable one is a WARNING.
+  const dinnerFamilies = slotProteinFamilies('dinner', 'cena', pools);
+  const v8: string[] = [], v8Forced: string[] = [];
   for (const d of days) {
     const fam = (slot: string) => {
       const p = d.meals.find((m) => m.slotId === slot)?.items.find((i) => i.role === 'protein');
@@ -211,15 +325,51 @@ export function validateDietMonth(
     };
     const l = fam('pranzo');
     const c = fam('cena');
-    if (l && c && l === c) out.push({ level: 'WARNING', code: 'V8', message: `${M}, ${d.weekday}: stessa fonte proteica a pranzo e cena (${l}).` });
+    if (l && c && l === c) ([...dinnerFamilies].filter((x) => x !== l).length >= 2 ? v8 : v8Forced).push(`${d.weekday} (${l})`);
   }
+  for (const x of v8) out.push({ level: 'WARNING', code: 'V8', message: `${M}, ${x.replace(' (', ': stessa fonte proteica a pranzo e cena (')}.` });
+  if (v8Forced.length) out.push({ level: 'INFO', code: 'V8', kind: 'forced', message: `${M}: stessa fonte proteica a pranzo e cena in ${v8Forced.join(', ')}; le cene compatibili offrono solo ${dinnerFamilies.size} famiglie proteiche.` });
   const tuna = days.reduce((s, d) => s + d.meals.filter((m) => m.items.some((i) => i.name === 'Tonno al naturale')).length, 0);
   if (tuna > P.planning.maxTunaPerWeek) out.push({ level: 'WARNING', code: 'V9', message: `${M}: tonno ${tuna} volte a settimana (massimo ${P.planning.maxTunaPerWeek}).` });
-  for (const [name, n] of vm.topProteins) {
-    if (name !== 'Tonno al naturale' && n > P.planning.maxSameProteinPerWeek + 2) out.push({ level: 'WARNING', code: 'V9', message: `${M}: ${name} ${n} volte nella settimana come fonte proteica.` });
+  // the same protein FOOD over the whole week (all meals): judged against the protein foods this person can eat
+  const proteinFoods = new Set(FITLAB_FOODS.filter((f) => pools.allowed(f) && proteinCategoryOf(f) !== 'altro' && f.p >= 8).map((f) => f.id));
+  const allMealsProtein = new Map<string, number>();
+  for (const d of days) for (const m of d.meals) for (const i of m.items) if (i.role === 'protein') allMealsProtein.set(i.name, (allMealsProtein.get(i.name) ?? 0) + 1);
+  for (const [name, n] of allMealsProtein) {
+    if (name === 'Tonno al naturale' || n <= P.planning.maxSameProteinFoodPerWeek + 1) continue;
+    if (proteinFoods.size >= 6)
+      out.push({ level: 'WARNING', code: 'V9', message: `${M}: ${name} ${n} volte nella settimana come fonte proteica (tra tutti i pasti), con ${proteinFoods.size} alternative compatibili.` });
+    else out.push({ level: 'INFO', code: 'V9', kind: 'forced', message: `${M}: ${name} ${n} volte nella settimana; le fonti proteiche compatibili sono solo ${proteinFoods.size}.` });
+  }
+  // eggs (whole and whites together) over all the week's meals; the minimum the catalog forces is computed from the
+  // compatible recipes of each slot that are NOT built on eggs (each recipe at most twice a week in a slot)
+  const eggMeals = days.reduce((n, d) => n + d.meals.filter((m) => m.items.some((i) => i.role === 'protein' && proteinCategoryOf(FOOD.get(i.foodId)) === 'uova')).length, 0);
+  if (eggMeals > P.planning.maxEggMealsPerWeek + 1) {
+    let forcedEggs = 0;
+    for (const slot of [...new Set(days.flatMap((d) => d.meals.filter((m) => !m.isFreeMeal).map((m) => m.slotId)))]) {
+      const meals = days.filter((d) => d.meals.some((m) => m.slotId === slot && !m.isFreeMeal)).length;
+      const dishes = slotDishCategories(SLOT_KIND[slot as keyof typeof SLOT_KIND], slot, pools);
+      const nonEgg = dishes.filter((x) => [...x.categories].some((c) => c !== 'uova') || x.categories.size === 0).length;
+      forcedEggs += Math.max(0, meals - 2 * nonEgg);
+    }
+    const avoidable = eggMeals - Math.max(P.planning.maxEggMealsPerWeek, forcedEggs);
+    if (avoidable > 1)
+      out.push({ level: 'WARNING', code: 'V9', kind: 'eggs', message: `${M}: uova (intere o albumi) in ${eggMeals} pasti della settimana; ${avoidable} evitabili con le ricette compatibili (minimo imposto dal catalogo: ${forcedEggs}).` });
+    else out.push({ level: 'INFO', code: 'V9', kind: 'eggs_forced', message: `${M}: uova in ${eggMeals} pasti della settimana: con regime ed esclusioni le colazioni e gli spuntini compatibili senza uova sono pochi (varietà limitata dal catalogo).` });
   }
   if (vm.consecutiveSameRecipe > 0) out.push({ level: 'WARNING', code: 'V17', message: `${M}: ${vm.consecutiveSameRecipe} volte lo stesso pranzo o cena in due giorni consecutivi.` });
-  if (vm.maxSameRecipe > 2) out.push({ level: 'WARNING', code: 'V18', message: `${M}: una ricetta torna ${vm.maxSameRecipe} volte nella settimana nello stesso pasto.` });
+  if (vm.maxSameRecipe > 2) {
+    // the slot where the recipe repeats, and how many compatible recipes it has
+    const counts = new Map<string, number>();
+    for (const d of days) for (const m of d.meals) if (m.recipe?.dishId) counts.set(`${m.slotId}|${m.recipe.dishId}|${m.recipe.name}`, (counts.get(`${m.slotId}|${m.recipe.dishId}|${m.recipe.name}`) ?? 0) + 1);
+    for (const [key, n] of counts) {
+      if (n <= 2) continue;
+      const [slot, , name] = key.split('|');
+      const pool = slotPoolSize(SLOT_KIND[slot as keyof typeof SLOT_KIND], slot, pools);
+      if (pool >= 7 || slot === 'pranzo' || slot === 'cena') out.push({ level: 'WARNING', code: 'V18', message: `${M}: ${name} ${n} volte nella settimana (${slot}), con ${pool} ricette compatibili.` });
+      else out.push({ level: 'INFO', code: 'V18', kind: 'forced', message: `${M}: ${name} ${n} volte nella settimana (${slot}): solo ${pool} ricette compatibili per questo pasto.` });
+    }
+  }
   if (vm.repeatedVsPrevious != null && opts.previous) {
     // Repetition between months is judged against what the catalog allows this person: with regime, allergies
     // and exclusions a slot may have fewer recipes than a week needs, and then some repetition is forced.

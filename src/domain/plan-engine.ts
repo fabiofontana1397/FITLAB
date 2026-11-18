@@ -12,6 +12,8 @@
  * `buildPlans`, so there is a single place where plans come from.
  */
 import { generateDietPlan } from '@/lib/planning/diet-planner';
+import { NoCompatibleDishError } from '@/lib/planning/fitlab/meal-builder';
+
 import { generateTrainingPlan, provisionalTrainingWeek, type TrainingTuning } from '@/lib/planning/training-planner';
 import type { PlanStrategy } from '@/lib/planning/strategy-types';
 import type { DietMonthPlan, DietPlan, TrainingMonthPlan, TrainingPlan } from '@/lib/planning/types';
@@ -21,6 +23,8 @@ import { publishable, validateDietMonth, type ValidationIssue } from './nutritio
 import { NEUTRAL_CALIBRATION, type PlanCalibration } from './recalibration';
 import { computeTargets, planDurationMonths, type PlanTargets } from './targets';
 import type { UserContext } from './user-context';
+
+const SLOT_LABEL: Record<string, string> = { colazione: 'la colazione', spuntinoMattina: 'lo spuntino del mattino', pranzo: 'il pranzo', spuntinoPomeriggio: 'lo spuntino del pomeriggio', cena: 'la cena' };
 
 export type PlanBundle = {
   durationMonths: number;
@@ -85,10 +89,11 @@ export function buildPlans(ctx: UserContext, opts: BuildPlansOptions = {}): Plan
 
   // The person's own diet is followed as written, like their own workout card.
   const customDiet = existing?.diet?.source === 'custom' ? existing.diet : null;
-  const generated =
-    ctx.mode === 'training' || frozen || (supervision.length > 0 && !customDiet)
-      ? null
-      : customDiet
+  let dietIssues: ValidationIssue[] = [];
+  let generated: DietPlan | null = null;
+  if (!(ctx.mode === 'training' || frozen || (supervision.length > 0 && !customDiet))) {
+    try {
+      generated = customDiet
         ? { ...customDiet }
         : generateDietPlan({
           ctx,
@@ -99,10 +104,20 @@ export function buildPlans(ctx: UserContext, opts: BuildPlansOptions = {}): Plan
           preserveMonthsBefore,
           existingMonths: existing?.diet?.months as DietMonthPlan[] | undefined,
         });
+    } catch (err) {
+      // restrictions so strict that a meal has no compatible recipe: nothing is invented, the plan is not published
+      if (!(err instanceof NoCompatibleDishError)) throw err;
+      dietIssues.push({
+        level: 'BLOCKER',
+        code: 'V21',
+        kind: 'catalog_insufficient',
+        message: `Nessuna ricetta del catalogo è compatibile con regime, allergie ed esclusioni per ${SLOT_LABEL[err.slotId] ?? err.slotId}: il piano non viene pubblicato. Serve rivedere le esclusioni o i pasti scelti, oppure un piano costruito con un professionista.`,
+      });
+    }
+  }
 
   // Validation before publication: a BLOCKER in a newly generated month keeps the previous diet in place.
   let diet: DietPlan | null = frozen ? { ...frozen } : generated;
-  let dietIssues: ValidationIssue[] = [];
   if (generated && generated.source !== 'custom') {
     const from = preserveMonthsBefore ?? 1;
     for (const month of generated.months.filter((m) => m.monthIndex >= from)) {

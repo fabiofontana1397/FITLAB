@@ -3,12 +3,25 @@ import type { Goal } from '@/lib/mock/types';
 
 export type PlanPhaseKind = 'adattamento' | 'progressione' | 'consolidamento';
 
+/**
+ * A SUGGESTED alternative of a plan item. It does not change the menu until the person picks it
+ * (`applySubstitution`). Its portion is sized for the food's role and its values come from the catalog.
+ */
 export type PlanMealItemSubstitute = {
   name: string;
   grams: number;
   foodId: string;
   /** Human-friendly quantity — "2 uova" for count-based foods, "120g" otherwise. See food-quantity.ts. */
   quantityLabel: string;
+  kcal?: number;
+  protein?: number;
+  carbs?: number;
+  fats?: number;
+  fiber?: number;
+  /** 'equivalent' for the food's role in the meal, or 'tradeoff' (same role nutrient, different energy/macros). */
+  equivalence?: 'equivalent' | 'tradeoff';
+  /** What changes compared with the original (e.g. "−58% kcal, meno grassi"). */
+  note?: string;
 };
 
 export type PlanMealItem = {
@@ -29,6 +42,8 @@ export type PlanMealItem = {
   role?: 'protein' | 'carb' | 'fat' | 'veg' | 'fruit' | 'extra';
   /** Same nutritional role (protein/carb/fat/veg/fruit), swappable 1-for-1. */
   substitutes?: PlanMealItemSubstitute[];
+  /** Set when the person APPLIED a substitution: what was there before (for traceability and the report). */
+  substitutedFrom?: { foodId: string; name: string; grams: number; kcal: number; protein: number; carbs: number; fats: number; fiber: number; at: string };
 };
 
 export type PlanMeal = {
@@ -44,6 +59,19 @@ export type PlanMeal = {
   /** True for the one weekly unprescribed meal ("pasto libero") — items is
    * empty and totalKcal is only the reference budget, not a real total. */
   isFreeMeal?: boolean;
+  /**
+   * What is known of a free (or eaten-out) meal. Without a log: budget only, macros NOT available (never 0).
+   * With a log: 'measured' (foods and grams → catalog values) or 'estimated' (calories only, or foods without
+   * quantities → standard portions scaled to the stated calories), always labelled as such.
+   */
+  freeMealLog?: {
+    status: 'measured' | 'estimated' | 'calories_only';
+    kcal: number;
+    macros?: { protein: number; carbs: number; fats: number; fiber: number };
+    items?: PlanMealItem[];
+    description?: string;
+    method: string;
+  };
   /** A meal eaten out (work, restaurant): unprescribed like a free meal, with its budget and practical guidance. */
   eatOut?: { guidance: string[] };
   /** Flexible time, e.g. "12:00–14:00" (the check-in asked for flexible times); `time` stays the reference. */

@@ -94,16 +94,56 @@ export const NUTRITION_PARAMS = {
     lighterMainsShare: 0.15,
     /** Max times the same main protein food in the week's lunches and dinners (canned tuna: `maxTunaPerWeek`). */
     maxSameProteinPerWeek: 3,
+    /** The same protein FOOD over all the week's meals (eggs at breakfast and as a secondo): beyond this it waits when an alternative exists. */
+    maxSameProteinFoodPerWeek: 4,
+    proteinFoodWeekCost: 30,
+    /** Meals a week built on eggs (whole eggs or whites), over all slots, before they wait for an alternative. */
+    maxEggMealsPerWeek: 4,
+    eggWeekCost: 60,
+    /** Breakfast/snack built on the protein family already eaten that day (two dairy snacks). */
+    sameFamilySnackCost: 18,
     maxTunaPerWeek: 2,
     /** Share of dishes that may repeat last month's (above it the validator warns). */
     maxRepeatedDishShare: 0.5,
     /** Cost of a recipe eaten last month (×1) or the month before (×0.5): normal and "strong variety". */
-    previousMonthCost: 70,
+    previousMonthCost: 110,
     previousMonthCostStrong: 120,
     /** Cost of the same lunch or dinner as the day before. */
     consecutiveDayCost: 40,
     /** Cost per extra use of a protein category in the week's main meals (beyond 2). */
     categoryRepeatCost: 4,
+  },
+  /**
+   * Equivalence of a suggested alternative, by the food's role in the meal. `nutrientShare`: the role's nutrient
+   * must stay within it (otherwise not offered). Equivalent when energy also stays within `kcalShare` (or within
+   * `kcalAbs` kcal); otherwise it is offered as a compromise. `kcalWeight` weighs energy against the nutrient when
+   * sizing the portion. `otherMacroAbs`: grams of difference on another macro worth mentioning.
+   */
+  substitution: {
+    /** With no food within `nutrientShare`, the closest ones up to this share are still offered, as a compromise. */
+    compromiseNutrientShare: 0.25,
+    protein: { nutrientShare: 0.2, kcalShare: 0.25, kcalAbs: 40, kcalWeight: 0.3, otherMacroAbs: 5 },
+    carb: { nutrientShare: 0.2, kcalShare: 0.15, kcalAbs: 40, kcalWeight: 1, otherMacroAbs: 5 },
+    fat: { nutrientShare: 0.15, kcalShare: 0.2, kcalAbs: 30, kcalWeight: 0.5, otherMacroAbs: 4 },
+  },
+  /**
+   * Macronutrient engine (day reconciliation, see diet-planner.reconcileDay): weights of the cost minimised by
+   * single portion moves. Energy outside the band dominates; protein comes before carbohydrates and fats, and a
+   * protein shortfall weighs more than an excess.
+   */
+  macros: { kcalWeight: 400, kcalCentreWeight: 20, proteinUnderWeight: 6, proteinOverWeight: 3, carbsWeight: 1, fatsWeight: 1.5, maxMoves: 60, minGain: 1e-4 },
+  /**
+   * Macro checks of the validator (V16). Daily: a deviation within `tol` is irrelevant; beyond `severe` it is a
+   * significant daily deviation (WARNING); in between it is moderate (INFO, or WARNING when it repeats in the same
+   * direction on `repeatedDays` days). Weekly: the week's average outside `week` is a WARNING. Fat share of energy
+   * outside [minFatShare, maxFatShare] is a WARNING.
+   */
+  macroCheck: {
+    day: { protein: { tol: 0.1, severe: 0.2 }, carbs: { tol: 0.15, severe: 0.3 }, fats: { tol: 0.15, severe: 0.3 } },
+    week: { protein: 0.06, carbs: 0.08, fats: 0.1 },
+    repeatedDays: 3,
+    minFatShare: 0.2,
+    maxFatShare: 0.4,
   },
   validation: {
     /** Day energy vs the day's target: warning beyond, blocker beyond. */

@@ -74,7 +74,7 @@ const round = (n: number) => Math.round(n).toLocaleString('it-IT');
  * One meal of the day, as a quiet white card: the dish with its photo and numbers on top, the foods and their
  * quantities as plain rows, and a single button for the recipe. Substitutions open under the food they belong to.
  */
-export function MealCard({ meal }: { meal: PlanMeal }) {
+export function MealCard({ meal, onSubstitute }: { meal: PlanMeal; /** Applies a suggested alternative (absent: alternatives are only shown). */ onSubstitute?: (itemIndex: number, foodId: string) => void }) {
   const theme = useTheme();
   const photo = dishImage(meal.recipe?.dishId, meal.items.map((i) => i.name));
   const preparation = recipeForDish(meal.recipe?.dishId);
@@ -83,8 +83,11 @@ export function MealCard({ meal }: { meal: PlanMeal }) {
   const title = meal.eatOut ? 'Pasto fuori casa' : meal.isFreeMeal ? 'Pasto libero' : (meal.recipe?.name ?? meal.label);
   const when = meal.timeWindow ?? meal.time;
   const overline = meal.isFreeMeal || meal.recipe ? `${meal.label} · ${when}` : when;
+  const log = meal.freeMealLog;
   const numbers = meal.isFreeMeal
-    ? `Circa ${round(meal.totalKcal)} kcal`
+    ? log
+      ? [`${round(log.kcal)} kcal ${log.status === 'measured' ? 'registrate' : log.status === 'estimated' ? 'stimate' : 'dichiarate'}`, log.macros ? `P ${round(log.macros.protein)} · C ${round(log.macros.carbs)} · G ${round(log.macros.fats)}${log.status === 'estimated' ? ' (stima)' : ''}` : 'macro non disponibili'].join('  ·  ')
+      : `Circa ${round(meal.totalKcal)} kcal`
     : [meal.totalKcal > 0 ? `${round(meal.totalKcal)} kcal` : null, meal.macros ? `P ${round(meal.macros.protein)} · C ${round(meal.macros.carbs)} · G ${round(meal.macros.fats)}` : null].filter(Boolean).join('  ·  ');
   const hasRecipe = !meal.isFreeMeal && meal.recipe != null;
 
@@ -132,14 +135,16 @@ export function MealCard({ meal }: { meal: PlanMeal }) {
         </View>
       ) : meal.isFreeMeal ? (
         <ThemedText style={styles.freeMeal} themeColor="textSecondary">
-          Scegli tu cosa mangiare, senza eccessi e restando vicino alle calorie indicate. Nelle note del piano trovi qualche indicazione.
+          {log
+            ? `${log.description ? `${log.description}. ` : ''}${log.method}`
+            : 'Scegli tu cosa mangiare, senza eccessi e restando vicino alle calorie indicate. Finché non lo registri, i suoi macro non sono disponibili e la giornata risulta osservata solo in parte.'}
         </ThemedText>
       ) : (
         <>
           <View style={[styles.hairline, { backgroundColor: theme.border }]} />
           <View style={styles.mealItems}>
             {meal.items.map((item, index) => (
-              <MealItemRow key={index} item={item} />
+              <MealItemRow key={index} item={item} onApply={onSubstitute ? (foodId) => onSubstitute(index, foodId) : undefined} />
             ))}
           </View>
           {meal.recipe && meal.recipe.flavorings.length > 0 ? (
@@ -170,8 +175,12 @@ export function MealCard({ meal }: { meal: PlanMeal }) {
   );
 }
 
-/** A food and its quantity on one row. When it has alternatives the row is a button that opens them right under it. */
-function MealItemRow({ item }: { item: PlanMeal['items'][number] }) {
+/**
+ * A food and its quantity on one row. When it has alternatives the row is a button that opens them right under it:
+ * each alternative shows its portion, its calories and protein, and whether it is an equivalent or a compromise.
+ * They are only suggestions: the menu changes when the person picks one ("Usa"), and then everything is recalculated.
+ */
+function MealItemRow({ item, onApply }: { item: PlanMeal['items'][number]; onApply?: (foodId: string) => void }) {
   const theme = useTheme();
   const [open, setOpen] = useState(false);
   const substitutes = item.substitutes ?? [];
@@ -179,9 +188,17 @@ function MealItemRow({ item }: { item: PlanMeal['items'][number] }) {
 
   const row = (
     <>
-      <ThemedText style={styles.itemName} numberOfLines={2}>
-        {item.name}
-      </ThemedText>
+      <View style={{ flex: 1 }}>
+        <ThemedText style={styles.itemName} numberOfLines={2}>
+          {item.name}
+        </ThemedText>
+        {item.substitutedFrom ? (
+          <ThemedText style={styles.substituteNote} themeColor="textSecondary" numberOfLines={1}>
+            al posto di {item.substitutedFrom.name.toLowerCase()} · {item.kcal - item.substitutedFrom.kcal >= 0 ? '+' : ''}
+            {item.kcal - item.substitutedFrom.kcal} kcal
+          </ThemedText>
+        ) : null}
+      </View>
       <ThemedText style={styles.itemQuantity} themeColor="textSecondary" numberOfLines={1}>
         {item.quantityLabel}
       </ThemedText>
@@ -199,23 +216,44 @@ function MealItemRow({ item }: { item: PlanMeal['items'][number] }) {
         }}
         accessibilityRole="button"
         accessibilityState={{ expanded: open }}
-        accessibilityLabel={`${item.name}, ${item.quantityLabel}. Sostituzioni`}
+        accessibilityLabel={`${item.name}, ${item.quantityLabel}. Alternative`}
         style={({ pressed }) => [styles.itemRow, { opacity: pressed ? 0.6 : 1 }]}
       >
         {row}
       </Pressable>
       <Collapsible open={open} contentStyle={styles.substitutes}>
         <ThemedText style={styles.substitutesTitle} themeColor="textSecondary">
-          Puoi sostituirlo con
+          Alternative proposte ({item.kcal} kcal, P {Math.round(item.protein ?? 0)} g)
         </ThemedText>
         {substitutes.map((s, i) => (
           <View key={i} style={styles.substituteRow}>
-            <ThemedText style={styles.substituteText} numberOfLines={1}>
-              {s.name}
-            </ThemedText>
+            <View style={{ flex: 1 }}>
+              <ThemedText style={styles.substituteText} numberOfLines={1}>
+                {s.name}
+              </ThemedText>
+              {s.kcal != null ? (
+                <ThemedText style={styles.substituteNote} themeColor="textSecondary" numberOfLines={2}>
+                  {s.kcal} kcal · P {Math.round(s.protein ?? 0)} g{s.equivalence === 'tradeoff' ? ` · compromesso${s.note ? `: ${s.note}` : ''}` : s.note ? ` · ${s.note}` : ''}
+                </ThemedText>
+              ) : null}
+            </View>
             <ThemedText style={styles.substituteQuantity} themeColor="textSecondary">
               {s.quantityLabel}
             </ThemedText>
+            {onApply ? (
+              <Pressable
+                onPress={() => {
+                  hapticTap();
+                  onApply(s.foodId);
+                  setOpen(false);
+                }}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={`Usa ${s.name} al posto di ${item.name}`}
+              >
+                <ThemedText style={[styles.substituteApply, { color: theme.accent }]}>Usa</ThemedText>
+              </Pressable>
+            ) : null}
           </View>
         ))}
       </Collapsible>
@@ -241,6 +279,8 @@ const styles = StyleSheet.create({
   itemQuantity: { fontSize: 15, lineHeight: 20, fontVariant: ['tabular-nums'] },
   substitutes: { paddingBottom: 8, paddingLeft: 12, gap: 4 },
   substitutesTitle: { fontSize: 12, lineHeight: 16, fontWeight: '600' },
+  substituteNote: { fontSize: 11, lineHeight: 14 },
+  substituteApply: { fontSize: 13, lineHeight: 18, fontWeight: '600', paddingLeft: 8 },
   substituteRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   substituteText: { flex: 1, minWidth: 0, fontSize: 14, lineHeight: 19 },
   substituteQuantity: { fontSize: 14, lineHeight: 19, fontVariant: ['tabular-nums'] },

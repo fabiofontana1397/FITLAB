@@ -4,6 +4,38 @@ Alla fine di ogni mese del piano il motore legge **tutte** le risposte del check
 
 Il motore è deterministico: stessi dati, stessa decisione. Calcoli, limiti e controlli di sicurezza non dipendono dall'AI. Un agente AI può solo proporre una lettura strutturata delle note (`NoteFacts`) o una proposta (`RecalibrationProposal`), che passano dagli stessi controlli.
 
+## Novità di fitlab-9
+
+Refactoring mirato su sostituzioni, macronutrienti, pasti liberi e varietà. Architettura, profili, target e motore adattivo sono invariati.
+
+**Sostituzioni** (`lib/planning/fitlab/meal-builder.ts`, `lib/planning/substitution.ts`)
+
+- Un'alternativa proposta (`item.substitutes`) è solo un suggerimento: il menu non cambia. Ogni alternativa porta i valori del catalogo per la sua porzione (kcal, P, C, G, fibre), la classificazione `equivalent` / `tradeoff` e una nota sulle differenze.
+- La porzione è dimensionata per **ruolo**: una fonte proteica mantiene le proteine, una fonte di carboidrati mantiene carboidrati ed energia, un grasso mantiene i grassi, le verdure si scambiano per porzione. Tolleranze in `NUTRITION_PARAMS.substitution` (nutriente del ruolo ±20%; energia ±25% / ±15% / ±20% o entro 40, 40, 30 kcal). Se nessun alimento resta nella tolleranza, i più vicini (entro il 25%) sono proposti come compromesso dichiarato.
+- `applySubstitution(plan, req, person)` applica un'alternativa: rifiuta se non è più compatibile con regime, allergie, esclusioni; ricalcola alimento, pasto, nome della ricetta; giornata e settimana sono derivate dai pasti; se la giornata esce dalla banda ±2,5% ribilancia gli altri alimenti (non quello sostituito). `substitutedFrom` traccia l'originale, che diventa a sua volta un'alternativa. Azione di store: `usePlanStore.applySubstitution`; nell'app il pulsante «Usa» sotto ogni alternativa.
+
+**Motore dei macronutrienti** (`diet-planner.reconcileDay`)
+
+- Ogni giornata è riconciliata da sola (nessuna compensazione tra giorni) con mosse di porzione singole o a coppie (più proteine e meno carboidrati a parità di energia) che minimizzano: energia fuori banda (dominante) ≫ scarto proteico (la carenza pesa il doppio dell'eccesso) > carboidrati e grassi, con una lieve centratura sul target. Pesi in `NUTRITION_PARAMS.macros`.
+- Porzioni entro i limiti dell'alimento nel pasto e tra 60–160% della scelta iniziale (proteine 65–150%); uova ≤ 200 g al giorno; mai sotto la soglia di sicurezza.
+
+**Pasti liberi** (`lib/planning/free-meal.ts`)
+
+- Senza registrazione il pasto libero ha solo il budget: i suoi macro **non sono disponibili** e non valgono mai zero; la giornata è «parzialmente osservata» (V20 INFO) e i controlli sui macro valgono sulla quota con macro noti.
+- `buildFreeMealLog` / `logFreeMeal`: alimenti e grammi → `measured` (valori del catalogo); descrizione con alimenti del catalogo → `estimated` (porzioni standard, scalate alle calorie dichiarate; metodo scritto); sole calorie o alimenti fuori catalogo → `calories_only` (macro non disponibili); niente calorie né alimenti → non registrato.
+- Il diario non inserisce più una pizza fittizia al posto del pasto libero: inserisce solo alimenti registrati con i grammi.
+
+**Varietà e fonti proteiche**
+
+- Tetto settimanale per alimento proteico su **tutti** i pasti (4) e per le uova, intere e albumi insieme (4 pasti), quando esistono alternative; famiglia proteica ripetuta nella stessa giornata penalizzata anche a colazione e negli spuntini; rotazione tra mesi più forte (`previousMonthCost` 110).
+- V8, V9 e V18 valutano le alternative realmente disponibili: una ripetizione imposta da regime ed esclusioni è INFO con il motivo, una evitabile è WARNING.
+- Con restrizioni che non lasciano alcuna ricetta per un pasto il piano non viene pubblicato (V21 BLOCKER con spiegazione): nessun alimento inventato.
+
+**Validatore**
+
+- V14: alternativa proposta con differenze → INFO aggregato; valori mostrati diversi dal catalogo o alternativa presentata come equivalente senza esserlo → WARNING; sostituzione applicata senza ricalcolo → WARNING; alternativa o sostituzione incompatibile → BLOCKER; sostituzione applicata e ricalcolata → nessuna segnalazione.
+- V16: scostamento giornaliero irrilevante (nessuna segnalazione), moderato (INFO aggregato, WARNING se ripetuto 3 giorni nella stessa direzione), significativo (WARNING); media settimanale fuori target; proteine insufficienti in g/kg; grassi oltre il 20–40% dell'energia; carboidrati sotto il minimo. Soglie in `NUTRITION_PARAMS.macroCheck`.
+
 ## Novità di fitlab-8
 
 - **Motore di sicurezza prima di tutto.** `supervisionReasons` (in `nutrition/safety.ts`) viene chiamato per primo da `goalPace`/`computeTargets`, `buildPlans` e `recalibrate`.
@@ -154,24 +186,20 @@ Tra le difficoltà ci sono anche preparazione e organizzazione. Senza la direzio
 
 Sempre: tonno in scatola al massimo 2 volte a settimana in tutto il piano.
 
-## Test (fitlab-8)
+## Test (fitlab-9)
 
-`nutrition-journey.ts` esegue 57 test:
+`nutrition-journey.ts` esegue 71 test: i 57 di fitlab-8 con gli stessi identificativi e 14 nuovi (`t01`–`t14`): uova ↔ albume, yogurt 2% ↔ 0%, kefir ↔ yogurt, alternativa non scelta, sostituzione applicata su tutti i livelli (e rilevazione di quella non ricalcolata), giornata con macro fuori target, settimana in media ma giorni sbilanciati, pasto libero senza macro, pasto libero dettagliato e più pasti liberi, varietà di Elena su 4 mesi contro fitlab-8, ripetizione delle uova, restrizioni molto severe, sostituzione con allergene, cambio del numero di pasti. Ogni profilo ha anche una simulazione di quattro sostituzioni applicate (`substitutions` nel JSON).
 
-- i 6 profili di regressione (21 check-in);
-- 26 scenari: i 18 originali più 8 nuovi (allergia, vegano che chiede alimenti animali, preferenza contro intolleranza, condizione dichiarata al check-in, gravidanza dal questionario, nessuna pesata, cambio del numero di pasti, cambio di regime confermato);
-- 7 test del validatore su piani alterati apposta (valori incompleti, calorie del pasto incoerenti, macro incoerenti, giornate sbilanciate a media corretta, stessa ricetta più giorni, mese identico al precedente, sostituto troppo diverso).
-
-Risultato: 49 superati, 0 falliti, 5 da professionista, 3 non valutabili. Nei piani generati: 0 blocker, 419 warning, 4 info. Banco di prova esistente: 0 errori.
+Risultato: 63 superati, 0 falliti, 5 da professionista, 3 non valutabili. Nei piani generati: 0 blocker, 75 warning, 207 info (fitlab-8: 0, 419, 4). Banco di prova esistente: 0 errori, 10 avvisi (fitlab-8: 14).
 
 ```
-npx tsx scripts/agent-tests/nutrition-journey.ts out.json   # 6 casi di regressione + 18 scenari, exit 1 se fallisce
+npx tsx scripts/agent-tests/nutrition-journey.ts out.json   # regressione, scenari, validatore, test fitlab-9; exit 1 se fallisce
 npx tsx scripts/agent-tests/run.ts                          # banco di prova esistente (22 questionari × scenari)
 ```
 
-I sei utenti di `nutrition-cases.ts` hanno input **congelati**: le nuove decisioni si confrontano sempre con gli stessi dati. Ogni check-in è **superato**, **fallito**, **da valutare con un professionista** o **non valutabile** (dati insufficienti). Su ogni mese generato e su ogni aggiornamento girano `validateDietMonth` e `validateUpdate`.
+I sei utenti di `nutrition-cases.ts` hanno input **congelati**: le nuove decisioni si confrontano sempre con gli stessi dati. Ogni check-in è **superato**, **fallito**, **da valutare con un professionista** o **non valutabile** (dati insufficienti). Su ogni mese generato e su ogni aggiornamento girano `validateDietMonth` e `validateUpdate`. Un test passa solo senza blocker e sui risultati misurati.
 
-Risultati di fitlab-7 (39 check-in): 35 superati, 0 falliti, 2 da professionista, 2 non valutabili; i problemi segnalati come avvisi non bloccavano il test. Da fitlab-8 un test passa solo senza blocker.
+Storico: fitlab-7 35/39 check-in superati; fitlab-8 49/57 test superati, 0 falliti.
 
 ## Eccezioni e limiti noti
 
@@ -181,3 +209,7 @@ Risultati di fitlab-7 (39 check-in): 35 superati, 0 falliti, 2 da professionista
 - Le note sono lette da un riconoscitore di parole chiave italiano. Ciò che non riconosce diventa una domanda. La lettura AI (`aiNoteFacts`) è prevista ma non collegata.
 - Le circonferenze sono registrate ma non usate ancora per la ricomposizione: servono più mesi di dati.
 - I segnali sull'allenamento vengono registrati; il piano di allenamento li applica con le sue regole (serie e carichi).
+- Proteine sotto target per regimi con catalogo limitato (vegetariani e vegani): le proteine prescritte restano dal −9 al −13% sotto target per Giulia e più in basso per il profilo vegano, perché le ricette compatibili hanno fonti proteiche poco dense (legumi, latticini) e la porzione non può crescere oltre i limiti. Il validatore lo segnala (V16 settimana e proteine insufficienti); servono ricette o alimenti proteici vegetali nel catalogo.
+- Elena (pescetariana senza lattosio): 7–8 pasti con uova a settimana, contro 8–9 in fitlab-8. Le colazioni compatibili senza uova sono due su sei e le uova sono tra i suoi alimenti preferiti; le altre ripetizioni sono scelte per non scendere con le proteine (priorità sopra la varietà). La ripetizione tra mesi resta al 59–63%.
+- Il pasto libero si registra dal piano (`logFreeMeal`); il diario non ha ancora una schermata dedicata per descriverlo e mostra il giorno senza quel pasto finché non si inseriscono gli alimenti.
+- In un caso di bassa aderenza con calorie invariate (banco storico, M4) il mese rigenerato coincide con quello precedente: con gli stessi input la scelta dei piatti è deterministica.

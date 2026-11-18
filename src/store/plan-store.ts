@@ -16,6 +16,8 @@ import { TRAINING_ENGINE_VERSION } from '@/lib/planning/training-planner';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
 import { daysAgoISO } from '@/lib/mock/dates';
 import type { DietDayPlan, DietPlan, TrainingDayPlan, TrainingPlan } from '@/lib/planning/types';
+import { applySubstitution as applySubstitutionToPlan, type SubstitutionChange, type SubstitutionRequest } from '@/lib/planning/substitution';
+import { logFreeMeal as logFreeMealOnPlan, type FreeMealLog, type FreeMealLogInput } from '@/lib/planning/free-meal';
 import { withAuthRetry } from '@/lib/supabase/retry';
 import { useAuthStore } from '@/store/auth-store';
 import { useOnboardingStore } from '@/store/onboarding-store';
@@ -84,6 +86,13 @@ type PlanState = {
    * Rebuilds the diet from the current month on; history is kept. Returns the reasons that still block it.
    */
   reactivateNutrition: (answers: Record<string, unknown>, confirmation: { professionalAssessment: boolean }, currentWeightKg?: number) => Promise<string[]>;
+  /**
+   * Applies one of an item's suggested alternatives (see lib/planning/substitution.ts): the item, the meal, the day
+   * and the week are recalculated from the catalog; the alternative must still respect restrictions.
+   */
+  applySubstitution: (answers: Record<string, unknown>, req: SubstitutionRequest) => { ok: true; change: SubstitutionChange } | { ok: false; reason: string };
+  /** Logs what was eaten at a free or eaten-out meal (measured, estimated or calories only, never invented). */
+  logFreeMeal: (at: { monthIndex: number; dayIndex: number; slotId: string }, input: FreeMealLogInput) => { ok: true; log: FreeMealLog } | { ok: false; reason: string };
   syncFromServer: () => Promise<void>;
   /** Local-only reset on logout — see user-store.ts's clearLocal for why. */
   clearLocal: () => void;
@@ -296,6 +305,25 @@ export const usePlanStore = create<PlanState>()(
         set({ dietPlan: unfrozen });
         await get().generatePlans(answers, { only: 'diet', skipAi: true, keepProgress: unfrozen != null, fromMonth: unfrozen ? currentMonthIndex(unfrozen) : undefined, currentWeightKg });
         return [];
+      },
+      applySubstitution: (answers, req) => {
+        const { dietPlan } = get();
+        if (!dietPlan) return { ok: false, reason: 'nessun piano nutrizionale' };
+        const ctx = buildUserContext(answers);
+        const res = applySubstitutionToPlan(dietPlan, req, { answers, sex: ctx.sex, adapt: dietPlan.calibration?.diet });
+        if (!res.ok) return res;
+        set({ dietPlan: res.plan });
+        persistPlans(res.plan, null, 'adaptation', false);
+        return { ok: true, change: res.change };
+      },
+      logFreeMeal: (at, input) => {
+        const { dietPlan } = get();
+        if (!dietPlan) return { ok: false, reason: 'nessun piano nutrizionale' };
+        const res = logFreeMealOnPlan(dietPlan, at, input);
+        if (!res.ok) return res;
+        set({ dietPlan: res.plan });
+        persistPlans(res.plan, null, 'adaptation', false);
+        return { ok: true, log: res.log };
       },
       syncFromServer: async () => {
         const userId = currentUserId();

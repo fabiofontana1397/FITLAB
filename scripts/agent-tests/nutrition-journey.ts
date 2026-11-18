@@ -20,10 +20,17 @@ import type { InterventionKind } from '@/domain/nutrition/types';
 import { buildPlans, type PlanBundle } from '@/domain/plan-engine';
 import { NEUTRAL_CALIBRATION, recalibrate, type CheckinSignals, type PlanCalibration, type RecalibrationRecord } from '@/domain/recalibration';
 import { buildUserContext } from '@/domain/user-context';
-import { DIET_ENGINE_VERSION } from '@/lib/planning/diet-planner';
+import { DIET_ENGINE_VERSION, generateDietPlan, reconcileDay } from '@/lib/planning/diet-planner';
+import { applySubstitution } from '@/lib/planning/substitution';
+import { buildFreeMealLog, logFreeMeal } from '@/lib/planning/free-meal';
+import { resizeItem } from '@/lib/planning/fitlab/meal-builder';
+import { buildFitLabPools } from '@/lib/planning/fitlab/pools';
+import { SLOT_KIND } from '@/lib/planning/fitlab/catalog';
+import { NUTRITION_PARAMS } from '@/domain/nutrition/params';
+import { SEX_FLOOR } from '@/domain/nutrition/safety';
 import { FITLAB_FOODS } from '@/lib/planning/fitlab/foods';
 import { buildMealSlotsFromAnswers } from '@/lib/planning/meal-slots';
-import type { DietMonthPlan } from '@/lib/planning/types';
+import type { DietMonthPlan, DietPlan, PlanMealItem } from '@/lib/planning/types';
 
 import { ck, q, USERS, type Answers, type MonthOutcome, type TestUser } from './nutrition-cases';
 
@@ -252,7 +259,8 @@ function monthView(bundle: PlanBundle, m: number) {
           eatOut: x.eatOut?.guidance ?? null,
           kcal: x.totalKcal,
           macros: x.macros ?? null,
-          items: x.items.map((i) => ({ name: i.name, qty: i.quantityLabel, kcal: Math.round(i.kcal), role: i.role ?? null, subs: (i.substitutes ?? []).map((s) => `${s.name} ${s.quantityLabel}`) })),
+          log: x.freeMealLog ? { status: x.freeMealLog.status, kcal: x.freeMealLog.kcal, macros: x.freeMealLog.macros ?? null, method: x.freeMealLog.method } : null,
+          items: x.items.map((i) => ({ name: i.name, qty: i.quantityLabel, kcal: Math.round(i.kcal), role: i.role ?? null, subs: (i.substitutes ?? []).map((s) => ({ name: s.name, qty: s.quantityLabel, kcal: s.kcal ?? null, p: s.protein ?? null, eq: s.equivalence ?? null, note: s.note ?? null })), from: i.substitutedFrom ? i.substitutedFrom.name : null })),
         })),
       };
     }),
@@ -313,12 +321,91 @@ function nutritionSummary(month: DietMonthPlan, previous?: DietMonthPlan) {
     maxDayDevPct: Math.round(Math.max(...days.map((x) => Math.abs(x.kcal / x.target - 1))) * 1000) / 10,
     maxMacroGapPct: Math.round(Math.max(...days.filter((x) => x.prescribedKcal > 0).map((x) => Math.abs(x.prescribedKcal / x.derivedKcal - 1))) * 1000) / 10,
     days: days.map((x) => ({ target: x.target, kcal: x.kcal, derived: Math.round(x.derivedKcal + x.budgetKcal), protein: Math.round(x.protein), carbs: Math.round(x.carbs), fats: Math.round(x.fats), fiber: Math.round(x.fiber), budget: x.budgetKcal })),
+    // largest daily deviation of each macro from its target, on the share of the day whose macros are known
+    maxMacroDevPct: (['protein', 'carbs', 'fats'] as const).reduce((acc, k) => {
+      acc[k] = Math.round(Math.max(...month.weeklySplit.map((d, i) => {
+        const t = (d.macroTargetsG ?? month.macroTargetsG)[k] * (1 - days[i].budgetShare);
+        const got = k === 'carbs' ? days[i].carbs + days[i].fiber / 2 : days[i][k];
+        return t > 0 ? Math.abs(got / t - 1) : 0;
+      })) * 1000) / 10;
+      return acc;
+    }, {} as Record<'protein' | 'carbs' | 'fats', number>),
+    freeMeals: month.weeklySplit.reduce((n, d) => n + d.meals.filter((m) => m.isFreeMeal).length, 0),
+    mealsWithoutMacros: month.weeklySplit.reduce((n, d) => n + d.meals.filter((m) => m.isFreeMeal && !m.freeMealLog?.macros).length, 0),
+    partialDays: days.filter((x) => x.observed === 'partial').length,
+    alternatives: month.weeklySplit.reduce((n, d) => n + d.meals.reduce((a, m) => a + m.items.reduce((b, i) => b + (i.substitutes?.length ?? 0), 0), 0), 0),
+    alternativesTradeoff: month.weeklySplit.reduce((n, d) => n + d.meals.reduce((a, m) => a + m.items.reduce((b, i) => b + (i.substitutes?.filter((x) => x.equivalence === 'tradeoff').length ?? 0), 0), 0), 0),
+    eggMeals: month.weeklySplit.reduce((n, d) => n + d.meals.filter((x) => x.items.some((it) => it.role === 'protein' && /Uova|Albume/.test(it.name))).length, 0),
     repeatedMeals: vm.repeatedMeals,
     repeatedVsPreviousPct: vm.repeatedVsPrevious == null ? null : Math.round(vm.repeatedVsPrevious * 100),
     consecutiveSameRecipe: vm.consecutiveSameRecipe,
     topProteins: vm.topProteins,
     proteinCategories: vm.proteinCategories,
   };
+}
+
+
+/**
+ * What happens when the person applies alternatives: on the first month of the first plan, up to four of them
+ * (a secondo, a primo, a breakfast/snack protein, and a declared compromise when there is one) are applied in turn
+ * through applySubstitution; each row reports values, differences and the validator's verdict on the month.
+ */
+function simulateSubstitutions(answers: Answers, plan: DietPlan) {
+  const ctx = buildUserContext(answers);
+  const rows: Record<string, unknown>[] = [];
+  let current = plan;
+  const picks: ((i: PlanMealItem, slot: string) => boolean)[] = [
+    (i, slot) => i.role === 'protein' && (slot === 'pranzo' || slot === 'cena'),
+    (i, slot) => i.role === 'carb' && (slot === 'pranzo' || slot === 'cena'),
+    (i, slot) => i.role === 'protein' && slot !== 'pranzo' && slot !== 'cena',
+    (i) => !!i.substitutes?.some((x) => x.equivalence === 'tradeoff'),
+  ];
+  const used = new Set<string>();
+  for (const [k, pick] of picks.entries()) {
+    const month = current.months[0];
+    let at: { dayIndex: number; slotId: string; itemIndex: number; item: PlanMealItem; sub: NonNullable<PlanMealItem['substitutes']>[number] } | null = null;
+    for (const [dayIndex, d] of month.weeklySplit.entries()) {
+      for (const meal of d.meals) {
+        for (const [itemIndex, it] of meal.items.entries()) {
+          if (at || used.has(`${dayIndex}|${meal.slotId}`) || it.substitutedFrom || !it.substitutes?.length || !pick(it, meal.slotId)) continue;
+          const sub = k === 3 ? it.substitutes.find((x) => x.equivalence === 'tradeoff')! : it.substitutes[0];
+          at = { dayIndex, slotId: meal.slotId, itemIndex, item: it, sub };
+        }
+      }
+    }
+    if (!at) continue;
+    used.add(`${at.dayIndex}|${at.slotId}`);
+    const res = applySubstitution(current, { monthIndex: month.monthIndex, dayIndex: at.dayIndex, slotId: at.slotId, itemIndex: at.itemIndex, substituteFoodId: at.sub.foodId }, { answers, sex: ctx.sex }, { now: '2026-11-18T00:00:00Z' });
+    if (!res.ok) { rows.push({ original: at.item.name, substitute: at.sub.name, outcome: 'rifiutata', reason: res.reason }); continue; }
+    current = res.plan;
+    const m = current.months[0];
+    const issues = validateDietMonth(m, ctx, {}).filter((i) => (i.code === 'V14' && i.level !== 'INFO') || i.code === 'V5' || (i.level === 'BLOCKER'));
+    const meal = m.weeklySplit[at.dayIndex].meals.find((x) => x.slotId === at!.slotId)!;
+    const sum = meal.items.reduce((a, i) => a + i.kcal, 0);
+    const recalculated = sum === meal.totalKcal && issues.length === 0;
+    const inBand = Math.abs(res.change.day.afterDevPct) <= NUTRITION_PARAMS.planning.dayKcalTolerance * 100 + 0.05;
+    rows.push({
+      day: m.weeklySplit[at.dayIndex].weekday,
+      meal: meal.label,
+      original: res.change.original.name,
+      substitute: res.change.substitute.name,
+      originalQty: `${res.change.original.grams} g`,
+      newQty: `${res.change.substitute.grams} g`,
+      originalKcal: res.change.original.kcal,
+      newKcal: res.change.substitute.kcal,
+      dP: res.change.delta.protein,
+      dC: res.change.delta.carbs,
+      dF: res.change.delta.fats,
+      equivalence: res.change.equivalence,
+      note: res.change.note ?? null,
+      mealKcal: res.change.meal,
+      dayKcal: res.change.day,
+      week: res.change.week,
+      recalculated,
+      outcome: recalculated && inBand ? 'coerente' : 'da rivedere',
+    });
+  }
+  return rows;
 }
 
 // --------------------------------------------------------------------- run --
@@ -352,6 +439,7 @@ function runUser(u: Scenario['user'], expectations: (m: number) => Expectation |
     return { ...base, preflight: { reasons: bundle.dietSupervision, status, failures, note: bundle.monthTargets[0].adjustments.join(' ') }, weights: [], checkins: [], months: [], monthIssues: {}, nutrition: [], history: [] };
   }
   const preflightFailures = preflight === 'supervision' ? ['il piano è stato generato nonostante una condizione da supervisionare'] : [];
+  const substitutions = simulateSubstitutions(answers, bundle.diet);
 
   const slots = () => buildMealSlotsFromAnswers(answers).map((s) => s.id);
   const months = [monthView(bundle, 1)];
@@ -475,6 +563,7 @@ function runUser(u: Scenario['user'], expectations: (m: number) => Expectation |
     months,
     monthIssues,
     nutrition,
+    substitutions,
     history: history.map((h) => ({ monthIndex: h.monthIndex, step: h.decision?.calorieStep, expected: h.decision?.expectedOutcome, observed: h.decision?.observedOutcome ?? null })),
   };
 }
@@ -519,15 +608,391 @@ function validatorTests() {
   });
 }
 
+
+// ------------------------------------------------------------ fitlab-9 engine tests --
+// The 14 cases of the fitlab-9 review. Each one runs the real engine (generator, substitution, free meals,
+// validator) and passes only on the measured result. `evidence` keeps the numbers shown in the report.
+
+type EngineTest = { id: string; topic: string; status: Status; failures: string[]; evidence: Record<string, unknown> };
+
+/** fitlab-8 reference values (report data.json of fitlab-8): Elena's share of meals repeating the previous month, egg meals a week. */
+const FITLAB8 = { elenaRepeatPct: [67, 63, 63], elenaEggs: [8, 9, 9, 8] };
+
+const userById = (uid: string) => USERS.find((u) => u.id === uid)! as unknown as TestUser;
+const plansFor = (answers: Answers) => {
+  const ctx = buildUserContext(answers);
+  return { ctx, bundle: buildPlans(ctx) };
+};
+/** Every item of a plan with an alternative named `to`, on an item named `from` (first match). */
+function findSwap(plan: DietPlan, from: (i: PlanMealItem) => boolean, to: (name: string) => boolean) {
+  for (const month of plan.months)
+    for (const [dayIndex, d] of month.weeklySplit.entries())
+      for (const meal of d.meals)
+        for (const [itemIndex, it] of meal.items.entries()) {
+          const sub = from(it) ? it.substitutes?.find((x) => to(x.name)) : undefined;
+          if (sub) return { monthIndex: month.monthIndex, dayIndex, slotId: meal.slotId, itemIndex, item: it, sub };
+        }
+  return null;
+}
+const sumItems = (items: PlanMealItem[]) => items.reduce((a, i) => ({ kcal: a.kcal + i.kcal, p: a.p + (i.protein ?? 0), c: a.c + (i.carbs ?? 0), f: a.f + (i.fats ?? 0) }), { kcal: 0, p: 0, c: 0, f: 0 });
+
+/** Applies a substitution and checks every level: item values, meal sums, day and week derived, validator silent. */
+function checkApplied(answers: Answers, plan: DietPlan, at: NonNullable<ReturnType<typeof findSwap>>, failures: string[]) {
+  const ctx = buildUserContext(answers);
+  const res = applySubstitution(plan, { monthIndex: at.monthIndex, dayIndex: at.dayIndex, slotId: at.slotId, itemIndex: at.itemIndex, substituteFoodId: at.sub.foodId }, { answers, sex: ctx.sex }, { now: '2026-11-18T00:00:00Z' });
+  if (!res.ok) { failures.push(`sostituzione rifiutata: ${res.reason}`); return null; }
+  const month = res.plan.months.find((m) => m.monthIndex === at.monthIndex)!;
+  const meal = month.weeklySplit[at.dayIndex].meals.find((m) => m.slotId === at.slotId)!;
+  const it = meal.items[at.itemIndex];
+  const food = FITLAB_FOODS.find((f) => f.id === it.foodId)!;
+  const k = it.grams / 100;
+  if (it.foodId !== at.sub.foodId) failures.push('l’alimento del menu non è cambiato');
+  if (it.grams !== at.sub.grams) failures.push(`grammi ${it.grams} invece dei ${at.sub.grams} proposti`);
+  if (Math.abs(it.kcal - food.kcal * k) > 1 || Math.abs((it.protein ?? -1) - food.p * k) > 0.1 || Math.abs((it.fats ?? -1) - food.f * k) > 0.1) failures.push('valori dell’alimento non ricalcolati dal catalogo');
+  if (!it.substitutedFrom || it.substitutedFrom.foodId !== at.item.foodId) failures.push('manca la traccia dell’alimento originale');
+  const n = sumItems(meal.items);
+  if (meal.totalKcal !== n.kcal || Math.abs((meal.macros?.protein ?? -1) - n.p) > 1 || Math.abs((meal.macros?.fats ?? -1) - n.f) > 1) failures.push('totali del pasto non ricalcolati');
+  if (!it.substitutes?.some((x) => x.foodId === at.item.foodId)) failures.push('l’alimento originale non è tra le alternative per tornare indietro');
+  const issues = validateDietMonth(month, ctx, { expenditure: undefined });
+  const bad = issues.filter((i) => (i.code === 'V14' && i.level !== 'INFO') || i.code === 'V5' || i.level === 'BLOCKER');
+  if (bad.length) failures.push(`validatore: ${bad.map((i) => `${i.level} ${i.code} ${i.kind ?? ''}`).join(', ')}`);
+  if (Math.abs(res.change.day.afterDevPct) > NUTRITION_PARAMS.planning.dayKcalTolerance * 100 + 0.05) failures.push(`giornata a ${res.change.day.afterDevPct}% dal target dopo la sostituzione`);
+  return res;
+}
+
+function engineTests(): EngineTest[] {
+  const out: EngineTest[] = [];
+  const run = (id: string, topic: string, body: (failures: string[], evidence: Record<string, unknown>) => void) => {
+    const failures: string[] = [];
+    const evidence: Record<string, unknown> = {};
+    try { body(failures, evidence); } catch (e) { failures.push(`errore: ${(e as Error).message}`); }
+    out.push({ id, topic, status: failures.length ? 'failed' : 'passed', failures, evidence });
+  };
+  const elena = userById('elena');
+  const giulia = userById('giulia');
+  const marco = userById('marco');
+  const sara = userById('sara');
+
+  run('t01-uova-albume', 'Sostituzione uova ↔ albume', (failures, ev) => {
+    const candidates = [elena, giulia, sara, marco].map((u) => ({ u, ...plansFor(u.answers) }));
+    let at = null as ReturnType<typeof findSwap>, who = candidates[0];
+    for (const c of candidates) { at = findSwap(c.bundle.diet!, (i) => i.name === 'Uova intere', (n) => n === "Albume d'uovo"); if (at) { who = c; break; } }
+    if (!at) { failures.push('nessun piano propone l’albume al posto delle uova'); return; }
+    const res = checkApplied(who.u.answers, who.bundle.diet!, at, failures);
+    if (!res) return;
+    const dp = res.change.substitute.protein / res.change.original.protein - 1;
+    if (Math.abs(dp) > NUTRITION_PARAMS.substitution.protein.nutrientShare + 0.01) failures.push(`proteine ${Math.round(dp * 100)}%: oltre la tolleranza del ruolo`);
+    if (!(res.change.delta.fats < 0)) failures.push('l’albume dovrebbe ridurre i grassi');
+    Object.assign(ev, { user: who.u.name, change: res.change });
+  });
+
+  run('t02-yogurt-2-0', 'Sostituzione yogurt greco 2% ↔ 0%', (failures, ev) => {
+    const candidates = [giulia, sara, marco].map((u) => ({ u, ...plansFor(u.answers) }));
+    let at = null as ReturnType<typeof findSwap>, who = candidates[0];
+    for (const c of candidates) { at = findSwap(c.bundle.diet!, (i) => i.name === 'Yogurt greco 2%' || i.name === 'Yogurt greco 0%', (n) => n === 'Yogurt greco 0%' || n === 'Yogurt greco 2%'); if (at) { who = c; break; } }
+    if (!at) { failures.push('nessun piano propone yogurt greco 2% ↔ 0%'); return; }
+    const res = checkApplied(who.u.answers, who.bundle.diet!, at, failures);
+    if (!res) return;
+    const dp = res.change.substitute.protein / res.change.original.protein - 1;
+    if (Math.abs(dp) > 0.16) failures.push(`proteine ${Math.round(dp * 100)}%`);
+    const toLean = res.change.substitute.name.includes('0%');
+    if (toLean ? !(res.change.delta.fats < 0) : !(res.change.delta.fats > 0)) failures.push('grassi non coerenti con il passaggio 2% ↔ 0%');
+    Object.assign(ev, { user: who.u.name, change: res.change });
+  });
+
+  run('t03-kefir-yogurt', 'Sostituzione kefir ↔ yogurt (classificazione onesta)', (failures, ev) => {
+    const candidates = [giulia, sara, marco].map((u) => ({ u, ...plansFor(u.answers) }));
+    let at = null as ReturnType<typeof findSwap>, who = candidates[0];
+    for (const c of candidates) {
+      at = findSwap(c.bundle.diet!, (i) => i.name === 'Kefir', (n) => n.startsWith('Yogurt')) ?? findSwap(c.bundle.diet!, (i) => i.name.startsWith('Yogurt'), (n) => n === 'Kefir');
+      if (at) { who = c; break; }
+    }
+    if (!at) { failures.push('nessun piano propone kefir ↔ yogurt'); return; }
+    const res = checkApplied(who.u.answers, who.bundle.diet!, at, failures);
+    if (!res) return;
+    const rule = NUTRITION_PARAMS.substitution.protein;
+    const dk = res.change.substitute.kcal / res.change.original.kcal - 1;
+    const shouldTrade = Math.abs(dk) > rule.kcalShare && Math.abs(res.change.delta.kcal) > rule.kcalAbs;
+    if ((res.change.equivalence === 'tradeoff') !== shouldTrade) failures.push(`classificata ${res.change.equivalence} con ${Math.round(dk * 100)}% di energia`);
+    Object.assign(ev, { user: who.u.name, change: res.change, energyPct: Math.round(dk * 100) });
+  });
+
+  run('t04-proposta-non-applicata', 'Alternativa proposta ma non scelta: menu invariato', (failures, ev) => {
+    const { ctx, bundle } = plansFor(giulia.answers);
+    const month = bundle.diet!.months[0];
+    const applied = month.weeklySplit.flatMap((d) => d.meals.flatMap((m) => m.items)).filter((i) => i.substitutedFrom).length;
+    if (applied) failures.push(`${applied} alimenti risultano sostituiti senza scelta`);
+    // the day's numbers are the items only: alternatives never enter them
+    for (const d of month.weeklySplit) {
+      const n = dayNutrition(d.meals);
+      const items = d.meals.filter((m) => !m.isFreeMeal).flatMap((m) => m.items).reduce((s2, i) => s2 + i.kcal, 0);
+      if (n.prescribedKcal !== items) failures.push(`${d.weekday}: calorie della giornata diverse dalla somma degli alimenti del menu`);
+    }
+    const issues = validateDietMonth(month, ctx, {});
+    const v14 = issues.filter((i) => i.code === 'V14');
+    if (v14.some((i) => i.level !== 'INFO')) failures.push(`le alternative proposte producono ${v14.filter((i) => i.level !== 'INFO').length} warning/blocker`);
+    const subs = month.weeklySplit.flatMap((d) => d.meals.flatMap((m) => m.items.flatMap((i) => i.substitutes ?? [])));
+    const withValues = subs.filter((x) => x.kcal != null && x.protein != null && x.equivalence).length;
+    if (withValues !== subs.length) failures.push(`${subs.length - withValues} alternative senza valori o classificazione`);
+    Object.assign(ev, { alternatives: subs.length, tradeoffs: subs.filter((x) => x.equivalence === 'tradeoff').length, v14: v14.map((i) => `${i.level} ${i.kind}`) });
+  });
+
+  run('t05-sostituzione-applicata', 'Sostituzione applicata: alimento, pasto, giorno e settimana aggiornati', (failures, ev) => {
+    const { ctx, bundle } = plansFor(marco.answers);
+    const at = findSwap(bundle.diet!, (i) => i.role === 'protein' && i.kcal >= 120, () => true);
+    if (!at) { failures.push('nessuna alternativa proteica'); return; }
+    const res = checkApplied(marco.answers, bundle.diet!, at, failures);
+    if (!res) return;
+    const month = res.plan.months.find((m) => m.monthIndex === at.monthIndex)!;
+    const dayKcal = dayNutrition(month.weeklySplit[at.dayIndex].meals).kcal;
+    if (dayKcal !== res.change.day.after) failures.push('giornata non derivata dai pasti');
+    const week = Math.round(month.weeklySplit.reduce((s2, d) => s2 + dayNutrition(d.meals).kcal, 0) / 7);
+    if (week !== res.change.week.afterAvg) failures.push('media settimanale non aggiornata');
+    if (res.change.day.rebalanced.length === 0 && res.change.day.after !== res.change.day.before + (res.change.meal.after - res.change.meal.before)) failures.push('variazione della giornata diversa da quella del pasto');
+    // the same substitution WITHOUT recalculation (food changed, old numbers kept) must be detected
+    const stale: DietPlan = JSON.parse(JSON.stringify(bundle.diet));
+    const m2 = stale.months.find((m) => m.monthIndex === at.monthIndex)!;
+    const it = m2.weeklySplit[at.dayIndex].meals.find((m) => m.slotId === at.slotId)!.items[at.itemIndex];
+    Object.assign(it, { foodId: at.sub.foodId, name: at.sub.name, grams: at.sub.grams, substitutedFrom: { foodId: at.item.foodId, name: at.item.name, grams: at.item.grams, kcal: at.item.kcal, protein: 0, carbs: 0, fats: 0, fiber: 0, at: 'x' } });
+    const staleIssues = validateDietMonth(m2, ctx, {}).filter((i) => i.code === 'V14' && i.kind === 'applied_stale');
+    if (staleIssues.length === 0 && Math.abs(at.sub.kcal! - at.item.kcal) > 1) failures.push('sostituzione senza ricalcolo non rilevata');
+    Object.assign(ev, { change: res.change, staleDetected: staleIssues.map((i) => `${i.level} ${i.message}`) });
+  });
+
+  run('t06-macro-giornata', 'Giornata con macro fuori target: rilevata e migliorata', (failures, ev) => {
+    const { ctx, bundle } = plansFor(marco.answers);
+    const month: DietMonthPlan = JSON.parse(JSON.stringify(bundle.diet!.months[0]));
+    const day = month.weeklySplit[1];
+    const pools = buildFitLabPools(marco.answers);
+    const kcalT = (mi: number) => day.meals[mi].totalKcal;
+    // protein portions down by ~35%, carbohydrates up to keep the energy: a day short of protein
+    day.meals = day.meals.map((m, mi) => {
+      if (m.isFreeMeal) return m;
+      const items = m.items.map((i) => (i.role === 'protein' ? resizeItem(i, Math.max(10, Math.round((i.grams * 0.65) / 10) * 10), { kind: SLOT_KIND[m.slotId as keyof typeof SLOT_KIND], pools, kcalTarget: kcalT(mi) }) ?? i : i));
+      const t = sumItems(items);
+      return { ...m, items, totalKcal: t.kcal, macros: { protein: Math.round(t.p), carbs: Math.round(t.c), fats: Math.round(t.f), fiber: m.macros?.fiber } };
+    });
+    const before = validateDietMonth(month, ctx, {}).filter((i) => i.code === 'V16' && /^Mese 1, Mar/.test(i.message));
+    const pBefore = dayNutrition(day.meals).protein;
+    if (!before.some((i) => i.kind === 'day_protein_low')) failures.push('giornata con proteine basse non rilevata');
+    reconcileDay(day.meals, day.calorieTarget!, day.macroTargetsG!, SEX_FLOOR[ctx.sex], (mi, it, g) => resizeItem(it, g, { kind: SLOT_KIND[day.meals[mi].slotId as keyof typeof SLOT_KIND], pools, kcalTarget: kcalT(mi) }));
+    const n = dayNutrition(day.meals);
+    const offBefore = pBefore / day.macroTargetsG!.protein - 1;
+    const offAfter = n.protein / day.macroTargetsG!.protein - 1;
+    if (!(Math.abs(offAfter) < Math.abs(offBefore) - 0.05)) failures.push(`proteine non migliorate (${Math.round(offBefore * 100)}% → ${Math.round(offAfter * 100)}%)`);
+    if (Math.abs(n.kcal / day.calorieTarget! - 1) > NUTRITION_PARAMS.planning.dayKcalTolerance + 0.001) failures.push('energia fuori banda dopo la correzione');
+    Object.assign(ev, { proteinTarget: day.macroTargetsG!.protein, before: Math.round(pBefore), after: Math.round(n.protein), kcal: n.kcal, target: day.calorieTarget, flagged: before.map((i) => i.message) });
+  });
+
+  run('t07-settimana-ok-giorni-sbilanciati', 'Media settimanale corretta ma giornate sbilanciate', (failures, ev) => {
+    const { ctx, bundle } = plansFor(marco.answers);
+    const month: DietMonthPlan = JSON.parse(JSON.stringify(bundle.diet!.months[0]));
+    // Monday and Tuesday swap their main-meal protein foods and carbohydrate portions in opposite directions
+    const pools = buildFitLabPools(marco.answers);
+    const shift = (dayIdx: number, pf: number, cf: number) => {
+      const d = month.weeklySplit[dayIdx];
+      d.meals = d.meals.map((m) => {
+        if (m.isFreeMeal || (m.slotId !== 'pranzo' && m.slotId !== 'cena')) return m;
+        const items = m.items.map((i) => {
+          const f = i.role === 'protein' ? pf : i.role === 'carb' ? cf : 1;
+          if (f === 1) return i;
+          const food = FITLAB_FOODS.find((x) => x.id === i.foodId)!;
+          const g = Math.max(5, Math.round((i.grams * f) / 5) * 5);
+          const k = g / 100;
+          return { ...i, grams: g, kcal: Math.round(food.kcal * k), protein: Math.round(food.p * k * 10) / 10, carbs: Math.round(food.c * k * 10) / 10, fats: Math.round(food.f * k * 10) / 10, fiber: Math.round(food.fib * k * 10) / 10 };
+        });
+        const t = sumItems(items);
+        return { ...m, items, totalKcal: t.kcal, macros: { protein: Math.round(t.p), carbs: Math.round(t.c), fats: Math.round(t.f), fiber: m.macros?.fiber } };
+      });
+      void pools;
+    };
+    shift(0, 1.45, 0.7);
+    shift(1, 0.55, 1.3);
+    const issues = validateDietMonth(month, ctx, {});
+    const v16 = issues.filter((i) => i.code === 'V16');
+    const daily = v16.filter((i) => i.kind?.startsWith('day_') && /Mese 1, (Lun|Mar)/.test(i.message));
+    const weekly = v16.filter((i) => i.kind?.startsWith('week_protein'));
+    const n0 = dayNutrition(month.weeklySplit[0].meals), n1 = dayNutrition(month.weeklySplit[1].meals);
+    if (daily.length < 2) failures.push(`scostamenti giornalieri non rilevati (${daily.length})`);
+    const wp = month.weeklySplit.reduce((s2, d) => s2 + dayNutrition(d.meals).protein, 0) / month.weeklySplit.reduce((s2, d) => s2 + (d.macroTargetsG ?? month.macroTargetsG).protein * (1 - dayNutrition(d.meals).budgetShare), 0) - 1;
+    if (Math.abs(wp) <= NUTRITION_PARAMS.macroCheck.week.protein && weekly.length) failures.push('settimana segnalata fuori target pur essendo in media');
+    if (Math.abs(wp) > NUTRITION_PARAMS.macroCheck.week.protein && !weekly.length) failures.push('media settimanale fuori target non segnalata');
+    Object.assign(ev, { mon: Math.round(n0.protein), tue: Math.round(n1.protein), target: month.macroTargetsG.protein, weekProteinPct: Math.round(wp * 1000) / 10, daily: daily.map((i) => i.message), weekly: weekly.map((i) => i.message) });
+  });
+
+  run('t08-pasto-libero-senza-macro', 'Pasto libero senza macro: mai zero, giornata parzialmente osservata', (failures, ev) => {
+    const { ctx, bundle } = plansFor(marco.answers);
+    const month = bundle.diet!.months[0];
+    const dayIndex = month.weeklySplit.findIndex((d) => d.meals.some((m) => m.isFreeMeal));
+    const d = month.weeklySplit[dayIndex];
+    const free = d.meals.find((m) => m.isFreeMeal)!;
+    const n = dayNutrition(d.meals);
+    if (n.observed !== 'partial' || n.budgetKcal !== free.totalKcal) failures.push('la giornata non risulta parzialmente osservata');
+    const prescribedProtein = d.meals.filter((m) => !m.isFreeMeal).flatMap((m) => m.items).reduce((s2, i) => s2 + (i.protein ?? 0), 0);
+    if (Math.abs(n.protein - prescribedProtein) > 0.01) failures.push('al pasto libero sono attribuiti dei macro');
+    if (!validateDietMonth(month, ctx, {}).some((i) => i.code === 'V20' && i.level === 'INFO')) failures.push('manca l’informazione sulla giornata parzialmente osservata');
+    const none = buildFreeMealLog({});
+    if (none.ok) failures.push('un pasto senza calorie né alimenti è stato registrato');
+    const kcalOnly = logFreeMeal(bundle.diet!, { monthIndex: 1, dayIndex, slotId: free.slotId }, { kcal: 950 });
+    const pizza = buildFreeMealLog({ kcal: 900, description: 'pizza margherita e una birra' });
+    if (!kcalOnly.ok || kcalOnly.log.status !== 'calories_only' || kcalOnly.log.macros) failures.push('pasto con sole calorie: macro inventati o stato errato');
+    if (!pizza.ok || pizza.log.macros) failures.push('alimenti fuori catalogo: macro inventati');
+    if (kcalOnly.ok) {
+      const n2 = dayNutrition(kcalOnly.plan.months[0].weeklySplit[dayIndex].meals);
+      if (n2.kcal !== n.prescribedKcal + 950 || n2.observed !== 'partial') failures.push('calorie registrate non contate o giornata segnata completa');
+      Object.assign(ev, { dayBefore: { kcal: n.kcal, budget: n.budgetKcal, observed: n.observed }, dayAfterKcalOnly: { kcal: n2.kcal, unknownMacroKcal: n2.budgetKcal, observed: n2.observed } });
+    }
+    Object.assign(ev, { emptyLog: none.ok ? 'registrato' : none.reason, pizza: pizza.ok ? pizza.log : null });
+  });
+
+  run('t09-pasto-libero-dettagliato', 'Pasto libero dettagliato: misurato, stimato, più pasti liberi nella settimana', (failures, ev) => {
+    const { bundle } = plansFor(marco.answers);
+    let plan = bundle.diet!;
+    const month = plan.months[0];
+    const dayIndex = month.weeklySplit.findIndex((d) => d.meals.some((m) => m.isFreeMeal));
+    const slotId = month.weeklySplit[dayIndex].meals.find((m) => m.isFreeMeal)!.slotId;
+    const measured = logFreeMeal(plan, { monthIndex: 1, dayIndex, slotId }, { items: [{ foodId: id('Pasta'), grams: 110 }, { foodId: id('Petto di pollo'), grams: 150 }, { foodId: id('Olio extravergine di oliva'), grams: 10 }] });
+    if (!measured.ok) { failures.push(`registrazione rifiutata: ${measured.reason}`); return; }
+    const exp = [['Pasta', 110], ['Petto di pollo', 150], ['Olio extravergine di oliva', 10]].reduce((a, [nm, g]) => { const f = FITLAB_FOODS.find((x) => x.name === nm)!; const k = (g as number) / 100; return { p: a.p + f.p * k, f: a.f + f.f * k }; }, { p: 0, f: 0 });
+    if (measured.log.status !== 'measured' || Math.abs(measured.log.macros!.protein - exp.p) > 0.3 || Math.abs(measured.log.macros!.fats - exp.f) > 0.3) failures.push('valori misurati diversi dal catalogo');
+    const n = dayNutrition(measured.plan.months[0].weeklySplit[dayIndex].meals);
+    if (n.observed !== 'complete') failures.push('giornata con pasto misurato non completa');
+    const est = buildFreeMealLog({ description: 'pasta al pomodoro con petto di pollo', kcal: 800 });
+    if (!est.ok || est.log.status !== 'estimated' || est.log.kcal !== 800 || !/stima/i.test(est.log.method)) failures.push('stima da descrizione non etichettata o calorie non rispettate');
+    // a week with several free meals: a second one on another day, left unlogged
+    plan = measured.plan;
+    const other = (dayIndex + 3) % 7;
+    const m0 = plan.months[0];
+    const day2 = m0.weeklySplit[other];
+    const cena = day2.meals.findIndex((m) => m.slotId === 'cena');
+    const weeklySplit = m0.weeklySplit.map((d, i) => (i === other ? { ...d, meals: d.meals.map((m, j) => (j === cena ? { ...m, items: [], isFreeMeal: true, totalKcal: m.totalKcal, recipe: undefined, macros: undefined } : m)) } : d));
+    const partial = weeklySplit.filter((d) => dayNutrition(d.meals).observed === 'partial').map((d) => d.weekday);
+    if (partial.length !== 1 || partial[0] !== weeklySplit[other].weekday) failures.push(`giornate parziali errate: ${partial.join(', ')}`);
+    Object.assign(ev, { measured: measured.log, estimated: est.ok ? est.log : null, partialDays: partial });
+  });
+
+  run('t10-elena-varieta-4-mesi', 'Pescetariana senza lattosio: più varietà su 4 mesi', (failures, ev) => {
+    const ctx = buildUserContext(elena.answers);
+    const base = buildPlans(ctx);
+    const monthTargets = base.monthTargets;
+    const plan = generateDietPlan({ ctx, monthTargets, variant: 0 });
+    const pools = buildFitLabPools(elena.answers);
+    const repeat: number[] = [], eggs: number[] = [], v10: string[] = [];
+    plan.months.forEach((m, i) => {
+      for (const it of m.weeklySplit.flatMap((d) => d.meals.flatMap((x) => x.items))) if (!pools.allowed(FITLAB_FOODS.find((f) => f.id === it.foodId)!)) failures.push(`${it.name} non ammesso`);
+      eggs.push(m.weeklySplit.reduce((n, d) => n + d.meals.filter((x) => x.items.some((it) => it.role === 'protein' && /Uova|Albume/.test(it.name))).length, 0));
+      if (i > 0) {
+        repeat.push(Math.round((varietyMetrics(m, plan.months[i - 1]).repeatedVsPrevious ?? 0) * 100));
+        v10.push(...validateDietMonth(m, ctx, { previous: plan.months[i - 1] }).filter((x) => x.code === 'V10').map((x) => `${x.level}: ${x.message}`));
+      }
+    });
+    const avg = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / Math.max(1, xs.length);
+    if (!(avg(repeat) < avg(FITLAB8.elenaRepeatPct))) failures.push(`ripetizione media ${Math.round(avg(repeat))}% non inferiore a fitlab-8 (${Math.round(avg(FITLAB8.elenaRepeatPct))}%)`);
+    if (!(avg(eggs) < avg(FITLAB8.elenaEggs))) failures.push(`uova ${eggs.join('/')} non inferiori a fitlab-8`);
+    Object.assign(ev, { repeatPct: repeat, fitlab8RepeatPct: FITLAB8.elenaRepeatPct, eggMeals: eggs, fitlab8Eggs: FITLAB8.elenaEggs, v10 });
+  });
+
+  run('t11-ripetizione-uova', 'Ripetizione delle uova nella settimana', (failures, ev) => {
+    const rows: Record<string, number[]> = {};
+    for (const u of USERS as unknown as TestUser[]) {
+      const { ctx, bundle } = plansFor(u.answers);
+      if (!bundle.diet) continue;
+      rows[u.name] = bundle.diet.months.map((m) => m.weeklySplit.reduce((n, d) => n + d.meals.filter((x) => x.items.some((it) => it.role === 'protein' && /Uova|Albume/.test(it.name))).length, 0));
+      for (const m of bundle.diet.months) {
+        const egg = validateDietMonth(m, ctx, {}).filter((i) => i.code === 'V9' && i.kind?.startsWith('eggs'));
+        const n = rows[u.name][m.monthIndex - 1];
+        if (n > NUTRITION_PARAMS.planning.maxEggMealsPerWeek + 1 && egg.length === 0) failures.push(`${u.name} M${m.monthIndex}: ${n} pasti con uova non segnalati`);
+      }
+      // with alternatives in every slot (omnivores) the cap holds
+      if ((u.answers.dietaryPattern ?? 'none') === 'none' && Math.max(...rows[u.name]) > NUTRITION_PARAMS.planning.maxEggMealsPerWeek + 1) failures.push(`${u.name}: uova ${rows[u.name].join('/')} oltre il tetto pur con alternative`);
+    }
+    Object.assign(ev, { eggMealsPerWeek: rows, cap: NUTRITION_PARAMS.planning.maxEggMealsPerWeek });
+  });
+
+  run('t12-restrizioni-severe', 'Restrizioni molto severe: sicurezza prima della varietà artificiale', (failures, ev) => {
+    const answers = q({ sex: 'female', age: 35, currentWeightKg: 62, targetWeightKg: 60, heightCm: 166, goal: 'loseFat', dietaryPattern: 'vegan', allergiesIntolerances: 'Allergia alla frutta a guscio, celiachia', excludedFoods: 'ceci, soia', mealsSelected: ['colazione', 'pranzo', 'cena'] });
+    const { ctx, bundle } = plansFor(answers);
+    const pools = buildFitLabPools(answers);
+    if (!bundle.diet) {
+      // acceptable only as an explicit, explained refusal: never a crash, never an invented food
+      const why = bundle.dietIssues.filter((i) => i.level === 'BLOCKER');
+      if (!bundle.dietBlocked || why.length === 0) failures.push('nessun piano e nessuna spiegazione');
+      Object.assign(ev, { published: false, blockers: why.map((i) => i.message) });
+      // with the strictest restriction removed (one of the exclusions) the same person gets a valid plan
+      const relaxed = { ...answers, excludedFoods: 'ceci' };
+      const r = plansFor(relaxed);
+      const allR = r.bundle.diet?.months.flatMap((m) => m.weeklySplit.flatMap((d) => d.meals.flatMap((x) => x.items))) ?? [];
+      const poolsR = buildFitLabPools(relaxed);
+      if (allR.some((it) => !poolsR.allowed(FITLAB_FOODS.find((f) => f.id === it.foodId)!))) failures.push('piano meno restrittivo con alimenti vietati');
+      Object.assign(ev, { relaxedPublished: !!r.bundle.diet, relaxedDistinctFoods: new Set(allR.map((x) => x.name)).size, relaxedBlockers: r.bundle.dietIssues.filter((i) => i.level === 'BLOCKER').length });
+      return;
+    }
+    const all = bundle.diet.months.flatMap((m) => m.weeklySplit.flatMap((d) => d.meals.flatMap((x) => x.items)));
+    const forbidden = all.filter((it) => !pools.allowed(FITLAB_FOODS.find((f) => f.id === it.foodId)!));
+    const forbiddenSubs = all.flatMap((it) => it.substitutes ?? []).filter((s2) => !pools.allowed(FITLAB_FOODS.find((f) => f.id === s2.foodId)!));
+    if (forbidden.length) failures.push(`alimenti vietati nel menu: ${[...new Set(forbidden.map((x) => x.name))].join(', ')}`);
+    if (forbiddenSubs.length) failures.push(`alternative vietate: ${[...new Set(forbiddenSubs.map((x) => x.name))].join(', ')}`);
+    const unknown = all.filter((it) => !FITLAB_FOODS.some((f) => f.id === it.foodId));
+    if (unknown.length) failures.push('alimenti fuori catalogo');
+    const issues = bundle.diet.months.flatMap((m) => validateDietMonth(m, ctx, {}));
+    const forced = issues.filter((i) => i.kind === 'forced' || i.kind === 'eggs_forced' || (i.code === 'V10' && i.level === 'INFO') || i.code === 'V19');
+    Object.assign(ev, { distinctFoods: new Set(all.map((x) => x.name)).size, blockers: issues.filter((i) => i.level === 'BLOCKER').map((i) => i.message), limitedVarietyNotes: forced.slice(0, 4).map((i) => i.message), warnings: issues.filter((i) => i.level === 'WARNING').length });
+    if (issues.some((i) => i.level === 'BLOCKER')) failures.push('blocker nel piano');
+  });
+
+  run('t13-sostituzione-allergia', 'Sostituzione con un allergene: rifiutata', (failures, ev) => {
+    const { bundle } = plansFor(marco.answers);
+    const at = findSwap(bundle.diet!, () => true, (n) => /Uova|Albume|Yogurt|Ricotta|Fiocchi/.test(n));
+    if (!at) { failures.push('nessuna alternativa con uova o latticini'); return; }
+    const allergic = { ...marco.answers, allergiesIntolerances: /Uova|Albume/.test(at.sub.name) ? 'Allergia alle uova' : 'Allergia al latte' };
+    const ctx = buildUserContext(allergic);
+    const res = applySubstitution(bundle.diet!, { monthIndex: at.monthIndex, dayIndex: at.dayIndex, slotId: at.slotId, itemIndex: at.itemIndex, substituteFoodId: at.sub.foodId }, { answers: allergic, sex: ctx.sex });
+    if (res.ok) failures.push(`${at.sub.name} applicato nonostante l’allergia`);
+    // and a plan generated with the allergy proposes no such alternative (validator would block it)
+    const fresh = buildPlans(ctx).diet!;
+    const v14 = fresh.months.flatMap((m) => validateDietMonth(m, ctx, {})).filter((i) => i.code === 'V14' && i.kind === 'incompatible');
+    if (v14.length) failures.push(`${v14.length} alternative incompatibili nel piano con allergia`);
+    // the validator blocks an incompatible alternative injected in a plan
+    const injected: DietPlan = JSON.parse(JSON.stringify(fresh));
+    const target = injected.months[0].weeklySplit[0].meals.find((m) => !m.isFreeMeal)!.items[0];
+    target.substitutes = [...(target.substitutes ?? []), { ...at.sub }];
+    const blocked = validateDietMonth(injected.months[0], ctx, {}).filter((i) => i.code === 'V14' && i.level === 'BLOCKER');
+    if (!blocked.length) failures.push('alternativa con allergene non bloccata dal validatore');
+    Object.assign(ev, { refused: res.ok ? null : res.reason, validator: blocked.slice(0, 1).map((i) => i.message) });
+  });
+
+  run('t14-numero-pasti', 'Cambio del numero di pasti', (failures, ev) => {
+    const rows: Record<string, unknown>[] = [];
+    for (const meals of [['colazione', 'pranzo', 'cena'], ['colazione', 'spuntinoMattina', 'pranzo', 'spuntinoPomeriggio', 'cena'], ['pranzo', 'cena']]) {
+      const answers = q({ ...marco.answers, mealsSelected: meals });
+      const { ctx, bundle } = plansFor(answers);
+      const m = bundle.diet!.months[0];
+      const slots: string[] = buildMealSlotsFromAnswers(answers).map((x) => x.id);
+      const devs = m.weeklySplit.map((d) => dayNutrition(d.meals).kcal / (d.calorieTarget ?? m.calorieTarget) - 1);
+      const issues = validateDietMonth(m, ctx, {});
+      if (m.weeklySplit.some((d) => d.meals.length !== slots.length || d.meals.some((x) => !slots.includes(x.slotId)))) failures.push(`${meals.length} pasti: slot del piano diversi da quelli scelti`);
+      if (Math.max(...devs.map(Math.abs)) > NUTRITION_PARAMS.planning.dayKcalTolerance + 0.001) failures.push(`${meals.length} pasti: giornata oltre la tolleranza`);
+      if (issues.some((i) => i.level === 'BLOCKER')) failures.push(`${meals.length} pasti: blocker`);
+      const weekP = m.weeklySplit.reduce((s2, d) => s2 + dayNutrition(d.meals).protein, 0) / 7;
+      rows.push({ meals: meals.length, maxDayDevPct: Math.round(Math.max(...devs.map(Math.abs)) * 1000) / 10, proteinAvg: Math.round(weekP), proteinTarget: m.macroTargetsG.protein, warnings: issues.filter((i) => i.level === 'WARNING').length });
+    }
+    Object.assign(ev, { rows });
+  });
+
+  return out;
+}
+
 // ------------------------------------------------------------------ output --
 
 const users = USERS.map((u) => runUser(u as Scenario['user'], (m) => SPEC_EXPECTATIONS[`${u.id}:${m}`]));
 const scenarios = SCENARIOS.map((s) => ({ topic: s.topic, ...runUser(s.user, (m) => s.expect[m - 1], s.preflight) }));
 const validator = validatorTests();
+const engine = engineTests();
 type Row = { status: Status };
 const evaluations: Row[] = [
   ...[...users, ...scenarios].flatMap((u) => [...(u.preflight ? [u.preflight] : []), ...(u.checkins as { evaluation: Row }[]).map((c) => c.evaluation)]),
   ...validator,
+  ...engine,
 ];
 const counts = { tests: evaluations.length, passed: 0, failed: 0, professional: 0, not_evaluable: 0 } as Record<Status | 'tests', number>;
 for (const e of evaluations) counts[e.status]++;
@@ -536,7 +1001,7 @@ const levels = { BLOCKER: 0, WARNING: 0, INFO: 0 } as Record<string, number>;
 for (const i of allIssues) levels[i.level]++;
 const byCode: Record<string, number> = {};
 for (const i of allIssues) byCode[`${i.level} ${i.code}`] = (byCode[`${i.level} ${i.code}`] ?? 0) + 1;
-const out = { engine: DIET_ENGINE_VERSION, generatedAt: new Date().toISOString(), counts, levels, byCode, users, scenarios, validator };
+const out = { engine: DIET_ENGINE_VERSION, generatedAt: new Date().toISOString(), counts, levels, byCode, users, scenarios, validator, engineTests: engine };
 const path = process.argv[2] ?? 'nutrition-journey.json';
 writeFileSync(path, JSON.stringify(out));
 
@@ -552,6 +1017,8 @@ for (const group of [users, scenarios]) {
 }
 console.log('[Validatore]');
 for (const v of validator) console.log(`   ${icon[v.status]} ${v.topic}${v.failures.length ? `\n       - ${v.failures.join('\n       - ')}` : ''}`);
+console.log('[fitlab-9]');
+for (const v of engine) console.log(`   ${icon[v.status]} ${v.id} ${v.topic}${v.failures.length ? `\n       - ${v.failures.join('\n       - ')}` : ''}`);
 console.log(`\nTest ${counts.tests}: superati ${counts.passed} · falliti ${counts.failed} · valutazione professionale ${counts.professional} · non valutabili ${counts.not_evaluable}`);
 console.log(`Piani generati: ${levels.BLOCKER} blocker · ${levels.WARNING} warning · ${levels.INFO} info`);
 console.log(`→ ${path}`);

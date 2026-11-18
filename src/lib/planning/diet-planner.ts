@@ -16,7 +16,7 @@ import type { DietStrategy } from './strategy-types';
 import type { DietDayPlan, DietMonthPlan, DietPlan, PlanMeal, PlanPhaseKind } from './types';
 
 /** Bump when the generator changes in a way existing plans should pick up (they are rebuilt in place, keeping start date and history). */
-export const DIET_ENGINE_VERSION = 'fitlab-8';
+export const DIET_ENGINE_VERSION = 'fitlab-9';
 
 export type DietPlanInput = {
   ctx: UserContext;
@@ -65,104 +65,114 @@ export function adaptSlots(slots: MealSlotDef[], adapt?: DietAdaptations): (Meal
 }
 
 /** Meal totals are always the sum of the items (energy, macros, fibre): no value is set by hand. */
-function withTotals(meal: PlanMeal): PlanMeal {
+export function withTotals(meal: PlanMeal): PlanMeal {
   if (meal.isFreeMeal) return meal;
   const n = sumNutrition(meal.items);
   return { ...meal, totalKcal: n.kcal, macros: { protein: Math.round(n.protein), carbs: Math.round(n.carbs), fats: Math.round(n.fats), fiber: Math.round(n.fiber) } };
 }
 
 /**
- * Day-level reconciliation. Each meal is solved on its own and rounded to practical portions, so the day can drift
- * from its target. When it drifts beyond the tolerance, the carbohydrate portions (then the olive oil) of the
- * prescribed meals move by practical steps, within ±35% of what the solver chose, until the day is back within
- * it. A free or eaten-out meal counts with its budget and is never touched. Values stay those of the catalog.
+ * Day-level reconciliation (the macronutrient engine). Each meal is solved on its own and rounded to practical
+ * portions, so the day can drift from its energy and macro targets. The day is then improved by single portion
+ * moves (one practical step of one food: a counted food by one unit), each chosen as the one that most reduces
+ *
+ *   cost = energy outside the ±tolerance band (dominant)  ≫  protein deviation  >  carbohydrate / fat deviation
+ *
+ * so the priorities are: energy, then protein (a shortfall weighs more than an excess), then carbohydrates and fats.
+ * Macro targets apply to the prescribed share of the day (a free or eaten-out meal counts with its budget and is
+ * never touched). Every portion stays within its bounds for that meal and within 60–160% of what the solver chose
+ * (proteins 65–150%); eggs ≤ 200 g a day; never under the day's safety floor. Days are reconciled one by one:
+ * there is no compensation between days. Items in `locked` (an applied substitution) are not moved.
+ * Values always come from the catalog (resizeItem → toItem).
  */
-function reconcileDay(
+export function reconcileDay(
   meals: PlanMeal[],
   target: number,
-  proteinTarget: number,
+  macroTarget: Macros,
   floor: number,
-  resize: (mealIndex: number, item: PlanMeal['items'][number], grams: number) => PlanMeal['items'][number] | null
+  resize: (mealIndex: number, item: PlanMeal['items'][number], grams: number) => PlanMeal['items'][number] | null,
+  locked: Set<string> = new Set()
 ): void {
+  const P = NUTRITION_PARAMS.macros;
   const tol = target * NUTRITION_PARAMS.planning.dayKcalTolerance;
-  // never under the day's safety floor, whatever the tolerance
   const lo = Math.max(target - tol, floor);
   const hi = Math.max(target + tol, lo + 10);
-  const total = () => meals.reduce((sum, m) => sum + m.totalKcal, 0);
-  const original = new Map<PlanMeal['items'][number], number>();
-  // the new portion must stay within the food's bounds for that meal; its swaps are sized again on it
-  const replace = (mi: number, idx: number, grams: number): boolean => {
-    const item = meals[mi].items[idx];
-    const next = resize(mi, item, grams);
-    if (!next) return false;
-    original.set(next, original.get(item) ?? item.grams);
-    const items = [...meals[mi].items];
-    items[idx] = next;
-    meals[mi] = withTotals({ ...meals[mi], items });
-    return true;
-  };
-  // protein first: when the meals fall short of the day's protein (on the prescribed share of the day), the
-  // protein portions of lunch and dinner grow by practical steps (≤ +35%), the energy check below then
-  // brings the carbohydrates back to the day's calories
   const budget = meals.filter((m) => m.isFreeMeal).reduce((sum, m) => sum + m.totalKcal, 0);
-  const wantedProtein = proteinTarget * (1 - budget / Math.max(target, 1)) * (1 - NUTRITION_PARAMS.validation.proteinWarnShare / 2);
-  const protein = () => meals.reduce((sum, m) => sum + (m.isFreeMeal ? 0 : m.items.reduce((s, i) => s + (i.protein ?? 0), 0)), 0);
-  for (let pass = 0; pass < 10 && protein() < wantedProtein; pass++) {
-    let moved = false;
-    const eggs = () => meals.reduce((sum, m) => sum + m.items.filter((i) => i.name === 'Uova intere').reduce((s2, i) => s2 + i.grams, 0), 0);
-    // main meals first, then breakfast and snacks; counted foods (eggs) grow by one unit, eggs ≤ 200 g a day
-    const order = [...meals.keys()].sort((a, b) => Number(meals[b].slotId === 'pranzo' || meals[b].slotId === 'cena') - Number(meals[a].slotId === 'pranzo' || meals[a].slotId === 'cena'));
-    for (const mi of order) {
-      if (moved) break;
+  const share = 1 - budget / Math.max(target, 1);
+  const want = { p: macroTarget.protein * share, c: macroTarget.carbs * share, f: macroTarget.fats * share };
+  const original = new Map<PlanMeal['items'][number], number>();
+  const state = () => {
+    let kcal = budget, p = 0, c = 0, f = 0, fib = 0, eggs = 0;
+    for (const m of meals) {
+      if (m.isFreeMeal) continue;
+      for (const i of m.items) {
+        kcal += i.kcal; p += i.protein ?? 0; c += i.carbs ?? 0; f += i.fats ?? 0; fib += i.fiber ?? 0;
+        if (i.name === 'Uova intere') eggs += i.grams;
+      }
+    }
+    return { kcal, p, c: c + fib / 2, f, eggs };
+  };
+  const cost = (x: { kcal: number; p: number; c: number; f: number }) => {
+    const out = Math.max(0, lo - x.kcal, x.kcal - hi) / Math.max(target, 1);
+    const centre = x.kcal / Math.max(target, 1) - 1; // inside the band, closer to the target is better (no weekly drift)
+    const dp = x.p / Math.max(want.p, 1) - 1;
+    const dc = x.c / Math.max(want.c, 1) - 1;
+    const df = x.f / Math.max(want.f, 1) - 1;
+    return P.kcalWeight * out + P.kcalCentreWeight * centre * centre + (dp < 0 ? P.proteinUnderWeight : P.proteinOverWeight) * dp * dp + P.carbsWeight * dc * dc + P.fatsWeight * df * df;
+  };
+  type Move = { mi: number; idx: number; grams: number; d: { kcal: number; p: number; c: number; f: number }; egg: number; main: boolean };
+  for (let pass = 0; pass < P.maxMoves; pass++) {
+    const now = state();
+    const current = cost(now);
+    const moves: Move[] = [];
+    for (let mi = 0; mi < meals.length; mi++) {
       const meal = meals[mi];
       if (meal.isFreeMeal) continue;
-      const idx = meal.items.findIndex((it) => it.role === 'protein');
-      if (idx < 0) continue;
-      const item = meal.items[idx];
-      const base = original.get(item) ?? item.grams;
-      const unit = UNITS[item.name]?.grams;
-      const grams = item.grams + (unit ?? 10);
-      if (unit ? grams > base + unit : grams > base * 1.35) continue;
-      if (item.name === 'Uova intere' && eggs() + (unit ?? 0) > 200) continue;
-      moved = replace(mi, idx, grams);
-    }
-    if (!moved) break;
-  }
-  // energy: carbohydrate portions first (main meals, then breakfast and snacks), then fats, then proteins —
-  // each by its practical step (a counted food by one unit), within its portion bounds and ±35% of the solver's
-  // choice. The move closest to the remaining gap is taken each time.
-  const isMain = (m: PlanMeal) => m.slotId === 'pranzo' || m.slotId === 'cena';
-  for (let pass = 0; pass < 40 && (total() < lo || total() > hi); pass++) {
-    const gap = total() < lo ? lo - total() : hi - total(); // > 0: add energy, < 0: remove
-    let moved = false;
-    for (const role of ['carb', 'fat', 'protein'] as const) {
-      const options: { mi: number; idx: number; grams: number; delta: number }[] = [];
-      for (let mi = 0; mi < meals.length; mi++) {
-        const meal = meals[mi];
-        if (meal.isFreeMeal) continue;
-        meal.items.forEach((item, idx) => {
-          if (item.role !== role) return;
-          const food = fitlabById(item.foodId);
-          if (!food) return;
-          const base = original.get(item) ?? item.grams;
-          const unit = UNITS[item.name]?.grams;
-          const step = unit ?? (role === 'fat' ? 5 : item.grams >= 100 ? 10 : 5);
-          const grams = item.grams + (gap > 0 ? step : -step);
-          if (grams < base * 0.6 || grams > base * 1.6 + (unit ?? 0)) return;
-          options.push({ mi, idx, grams, delta: ((grams - item.grams) * food.kcal) / 100 + (isMain(meal) ? 0 : 0.01) });
-        });
+      for (let idx = 0; idx < meal.items.length; idx++) {
+        const item = meal.items[idx];
+        if (item.role !== 'carb' && item.role !== 'fat' && item.role !== 'protein') continue;
+        if (locked.has(`${mi}|${idx}`) || item.substitutedFrom) continue;
+        const food = fitlabById(item.foodId);
+        if (!food) continue;
+        const base = original.get(item) ?? item.grams;
+        const unit = UNITS[item.name]?.grams;
+        const step = unit ?? (item.role === 'fat' ? 5 : item.grams >= 100 ? 10 : 5);
+        const [minS, maxS] = item.role === 'protein' ? [0.65, 1.5] : [0.6, 1.6];
+        for (const dir of [1, -1]) {
+          const grams = item.grams + dir * step;
+          if (grams < Math.max(step, base * minS) || grams > base * maxS + (unit ?? 0)) continue;
+          const k = (grams - item.grams) / 100;
+          moves.push({ mi, idx, grams, d: { kcal: food.kcal * k, p: food.p * k, c: food.c * k + (food.fib * k) / 2, f: food.f * k }, egg: item.name === 'Uova intere' ? grams - item.grams : 0, main: meal.slotId === 'pranzo' || meal.slotId === 'cena' });
+        }
       }
-      // the move that lands the day inside the band, or else best closes the gap
-      const now = total();
-      const lands = (o: (typeof options)[number]) => now + o.delta >= lo && now + o.delta <= hi;
-      options.sort((a, b) => Number(lands(b)) - Number(lands(a)) || Math.abs(gap - a.delta) - Math.abs(gap - b.delta) || Number(isMain(meals[b.mi])) - Number(isMain(meals[a.mi])));
-      for (const o of options) {
-        if (!lands(o) && Math.abs(gap - o.delta) >= Math.abs(gap)) continue; // would not improve
-        if (replace(o.mi, o.idx, o.grams)) { moved = true; break; }
-      }
-      if (moved) break;
     }
-    if (!moved) break;
+    // single moves, and pairs of moves on two different foods (more protein AND fewer carbohydrates at the same
+    // energy: a single move would leave the band). Breakfast and snacks keep their portions on ties.
+    let best: { moves: Move[]; cost: number } | null = null;
+    const consider = (ms: Move[]) => {
+      if (now.eggs + ms.reduce((s2, m) => s2 + m.egg, 0) > 200 && ms.some((m) => m.egg > 0)) return;
+      const next = { kcal: now.kcal, p: now.p, c: now.c, f: now.f };
+      for (const m of ms) { next.kcal += m.d.kcal; next.p += m.d.p; next.c += m.d.c; next.f += m.d.f; }
+      const c = cost(next) + ms.filter((m) => !m.main).length * 1e-5 + (ms.length - 1) * P.minGain;
+      if (c < current - P.minGain && (!best || c < best.cost)) best = { moves: ms, cost: c };
+    };
+    for (let i = 0; i < moves.length; i++) {
+      consider([moves[i]]);
+      for (let j = i + 1; j < moves.length; j++) if (moves[i].mi !== moves[j].mi || moves[i].idx !== moves[j].idx) consider([moves[i], moves[j]]);
+    }
+    if (!best) break;
+    for (const m of (best as { moves: Move[] }).moves) {
+      const item = meals[m.mi].items[m.idx];
+      const next = resize(m.mi, item, m.grams);
+      if (!next) {
+        locked.add(`${m.mi}|${m.idx}`); // outside the food's bounds for that meal: not a candidate any more
+        continue;
+      }
+      original.set(next, original.get(item) ?? item.grams);
+      const items = [...meals[m.mi].items];
+      items[m.idx] = next;
+      meals[m.mi] = withTotals({ ...meals[m.mi], items });
+    }
   }
 }
 
@@ -242,7 +252,7 @@ function buildDay(
     const { items, recipe } = buildFitLabMeal({ kind: SLOT_KIND[slot.id], slotId: slot.id, target, pools, seed: seed + slotIdx, day, week, adapt });
     return withTotals({ slotId: slot.id, label: slot.label, time: slot.time, ...when, items, totalKcal: 0, recipe });
   });
-  reconcileDay(meals, dayTarget.calories, dayTarget.macros.protein, floor, (mi, item, grams) =>
+  reconcileDay(meals, dayTarget.calories, dayTarget.macros, floor, (mi, item, grams) =>
     resizeItem(item, grams, { kind: SLOT_KIND[slots[mi].id], pools, kcalTarget: dayTarget.calories * slots[mi].sharePct, adapt })
   );
 
