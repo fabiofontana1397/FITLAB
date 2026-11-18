@@ -1,14 +1,14 @@
 # Test dei piani generati dai questionari
 
-Generato il 2026-11-18 11:02 — 22 questionari finti, piani creati con i generatori reali dell’app.
+Generato il 2026-11-18 11:11 — 22 questionari finti, piani creati con i generatori reali dell’app.
 
-**Totale:** 1 errori · 8 avvisi · 34 note
+**Totale:** 0 errori · 9 avvisi · 37 note
 
 | Persona | Target kcal | P/C/G (g) | Mesi | Palestra/Corsa a sett. | Errori | Avvisi |
 |---|---|---|---|---|---|---|
 | Sofia, 16 anni | 1696 | 88/208/57 | 4 | 2/0 | 0 | 0 |
 | Matteo, 17 anni | 2598 | 118/336/87 | 5 | 3/0 | 0 | 0 |
-| Giulia, 24 anni | 1500 | 112/150/50 | 4 | 3/0 | 1 | 4 |
+| Giulia, 24 anni | 1500 | 112/150/50 | 4 | 3/0 | 0 | 6 |
 | Luca, 22 anni | 2730 | 129/349/91 | 9 | 5/0 | 0 | 0 |
 | Alessandro, 29 anni | 3379 | 128/462/113 | 4 | 4/2 | 0 | 0 |
 | Marco, 32 anni | 1904 | 142/190/64 | 6 | 3/0 | 0 | 0 |
@@ -22,7 +22,7 @@ Generato il 2026-11-18 11:02 — 22 questionari finti, piani creati con i genera
 | Tommaso, 35 anni | 2187 | 128/255/73 | 4 | 1/0 | 0 | 0 |
 | Nina, 33 anni | 1579 | 118/158/53 | 4 | 3/0 | 0 | 0 |
 | Omar, 41 anni | 1734 | 130/171/59 | 5 | –/– | 0 | 0 |
-| Elena, 27 anni | 1427 | 107/142/48 | 3 | 3/0 | 0 | 2 |
+| Elena, 27 anni | 1427 | 107/142/48 | 3 | 3/0 | 0 | 1 |
 | Davide, 45 anni | 1814 | 136/182/60 | 4 | 3/0 | 0 | 0 |
 | Paola, 36 anni | 1807 | 106/211/60 | 4 | 3/0 | 0 | 0 |
 | Marta, 30 anni | 1678 | 93/200/56 | 4 | 3/0 | 0 | 0 |
@@ -358,7 +358,7 @@ Totale Sab: **1678 kcal** · P 77 g · C 207 g · G 57 g
 
 ## Giulia, 24 anni — vuole dimagrire qualche kg
 
-**Esito:** ❌ NON SUPERATO (1 errori, 4 avvisi, 1 note)
+**Esito:** ⚠️ SUPERATO CON AVVISI (0 errori, 6 avvisi, 1 note)
 
 - **Chi è:** Studentessa universitaria, 62 kg per 166 cm, vuole scendere a 57 kg. Poco attiva, principiante, 3 allenamenti.
 - **Cosa ci aspettiamo:** Deficit moderato, proteine alte, durata ~5-6 mesi, scheda full body principiante.
@@ -378,19 +378,19 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Yogurt greco 0% 205g, Muesli 40g a secco, Kiwi 2 kiwi, Mandorle 20g | 462 |
+| Colazione 07:30 | Yogurt greco 2% 205g, Fiocchi d'avena 40g a secco, Frutti di bosco 125g, Latte vaccino 170 ml | 460 |
 | Pranzo 13:00 | Fiocchi di latte 265g, Farro 85g a secco, Pomodori 100g, Olio extravergine di oliva 5g | 632 |
 | Cena 20:00 | Uova intere 3 uova, Pasta 85g a secco, Zucchine 150g, Olio extravergine di oliva 5g | 578 |
 
-Totale Lun: **1671 kcal** · P 104 g · C 183 g · G 53 g
+Totale Lun: **1669 kcal** · P 104 g · C 184 g · G 53 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Ricotta magra 250g, Pane integrale 40g, Marmellata light 20g | 382 |
-| Pranzo 13:00 | Mozzarella light 150g, Orzo 65g a secco, Pomodori 100g, Olio extravergine di oliva 5g | 559 |
+| Colazione 07:30 | Fiocchi di latte 260g, Pane di segale 40g, Marmellata light 20g | 386 |
+| Pranzo 13:00 | Uova intere 3 uova, Pane integrale 110g, Spinaci 150g, Olio extravergine di oliva 5g | 564 |
 | Cena 20:00 | _pasto libero_ | 492 |
 
-Totale Sab: **940 kcal** · P 68 g · C 84 g · G 35 g
+Totale Sab: **949 kcal** · P 65 g · C 87 g · G 35 g
 
 **Mese 1 — Mese 1 · Adattamento**
 
@@ -418,18 +418,19 @@ Totale Sab: **940 kcal** · P 68 g · C 84 g · G 35 g
 
 **Controlli**
 
-- ❌ `D5` Proteine: i pasti danno in media il 91% del target (giorno peggiore: 21% di scarto)
+- ⚠️ `D5` Proteine: i pasti danno in media il 93% del target (giorno peggiore: 14% di scarto)
 - ⚠️ `Q6` Mar (mese 1): stessa fonte proteica a pranzo e cena (cheese)
+- ⚠️ `Q6` Gio (mese 1): stessa fonte proteica a pranzo e cena (cheese)
 - ⚠️ `Q6` Gio (mese 2): stessa fonte proteica a pranzo e cena (cheese)
-- ⚠️ `Q6` Mar (mese 3): stessa fonte proteica a pranzo e cena (cheese)
-- ⚠️ `Q6` Gio (mese 4): stessa fonte proteica a pranzo e cena (cheese)
+- ⚠️ `Q6` Ven (mese 3): stessa fonte proteica a pranzo e cena (cheese)
+- ⚠️ `Q6` Ven (mese 4): stessa fonte proteica a pranzo e cena (cheese)
 - ℹ️ `Q2` Risposte non presenti nello schema: excludedFoods, includedFoods
 
 ---
 
 ## Luca, 22 anni — massa muscolare, esperto
 
-**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 1 note)
+**Esito:** ✅ SUPERATO (0 errori, 0 avvisi, 4 note)
 
 - **Chi è:** Studente magro (68 kg per 180 cm), vuole arrivare a 75 kg. Esperto, 5 allenamenti a settimana da 60-90 min, 5 pasti.
 - **Cosa ci aspettiamo:** Surplus controllato, proteine ~1,9 g/kg, split a 5 giorni senza mese di adattamento, progressione di carichi mese dopo mese.
@@ -462,10 +463,10 @@ Totale Lun: **2944 kcal** · P 131 g · C 385 g · G 88 g
 | Colazione 07:30 | Yogurt greco 2% 100g, Fiocchi d'avena 105g a secco, Frutti di bosco 50g, Latte vaccino 230 ml | 635 |
 | Spuntino mattina 10:30 | Mozzarella light 60g, Pane integrale 80g, Pomodori 40g | 311 |
 | Pranzo 13:00 | Lonza di maiale magra 135g a crudo, Riso 135g a secco, Peperoni 150g, Olio extravergine di oliva 20g | 857 |
-| Spuntino pomeriggio 17:00 | Ricotta magra 95g, Pane integrale 80g | 295 |
+| Spuntino pomeriggio 17:00 | Yogurt greco 2% 120g, Mela 2 mele, Noci 10g | 312 |
 | Cena 20:00 | _pasto libero_ | 782 |
 
-Totale Sab: **2096 kcal** · P 107 g · C 269 g · G 59 g
+Totale Sab: **2113 kcal** · P 103 g · C 271 g · G 62 g
 
 **Mese 1 — Mese 1 · Accumulo**
 
@@ -494,6 +495,9 @@ Totale Sab: **2096 kcal** · P 107 g · C 269 g · G 59 g
 **Controlli**
 
 - ℹ️ `Q2` Risposte non presenti nello schema: excludedFoods, includedFoods
+- ℹ️ `Q6` Sab (mese 3): una fonte proteica compare tre volte nel giorno
+- ℹ️ `Q6` Mar (mese 6): una fonte proteica compare tre volte nel giorno
+- ℹ️ `Q6` Ven (mese 6): una fonte proteica compare tre volte nel giorno
 
 ---
 
@@ -588,17 +592,17 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 |---|---|---|
 | Colazione 07:30 | Albume d'uovo 170g a crudo, Fiocchi d'avena 95g a secco, Latte vaccino 140 ml, Burro di arachidi 100% 10g | 588 |
 | Pranzo 13:00 | Petto di pollo 170g a crudo, Pasta 120g a secco, Zucchine 150g, Olio extravergine di oliva 20g | 810 |
-| Cena 20:00 | Petto di tacchino 145g a crudo, Pasta 105g a secco, Cavolfiore 150g, Olio extravergine di oliva 20g | 745 |
+| Cena 20:00 | Merluzzo 230g a crudo, Riso basmati 95g a secco, Carote 100g, Olio extravergine di oliva 20g | 732 |
 
-Totale Lun: **2143 kcal** · P 141 g · C 235 g · G 66 g
+Totale Lun: **2131 kcal** · P 142 g · C 235 g · G 65 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
 | Colazione 07:30 | Yogurt greco 2% 300g, Fiocchi d'avena 35g a secco, Frutti di bosco 50g, Latte vaccino 180 ml | 481 |
-| Pranzo 13:00 | Petto di tacchino 195g a crudo, Riso 75g a secco, Asparagi 150g, Olio extravergine di oliva 20g | 680 |
+| Pranzo 13:00 | Petto di tacchino 205g a crudo, Riso 70g a secco, Carote 100g, Olio extravergine di oliva 20g | 679 |
 | Cena 20:00 | _pasto libero_ | 618 |
 
-Totale Sab: **1160 kcal** · P 92 g · C 107 g · G 38 g
+Totale Sab: **1159 kcal** · P 92 g · C 107 g · G 38 g
 
 **Mese 1 — Mese 1 · Adattamento**
 
@@ -1083,10 +1087,10 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 | Pasto | Alimenti | kcal |
 |---|---|---|
 | Colazione 07:30 | Yogurt greco 0% 190g, Muesli 105g a secco, Kiwi 1 kiwi, Mandorle 25g | 687 |
-| Pranzo 13:00 | Tonno al naturale 145g, Riso 150g a secco, Pomodori 100g, Olio extravergine di oliva 25g | 932 |
+| Pranzo 13:00 | Tonno al naturale 115g, Pasta 160g a secco, Pomodori 100g, Olio extravergine di oliva 25g | 942 |
 | Cena 20:00 | Trota 155g a crudo, Riso basmati 140g a secco, Asparagi 150g, Olio extravergine di oliva 15g | 863 |
 
-Totale Lun: **2480 kcal** · P 129 g · C 318 g · G 72 g
+Totale Lun: **2490 kcal** · P 129 g · C 315 g · G 74 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
@@ -1156,11 +1160,11 @@ Totale Lun: **1764 kcal** · P 119 g · C 194 g · G 51 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Uova intere 3 uova, Pane integrale 60g, Arancia 1 arancia | 418 |
+| Colazione 07:30 | Skyr 255g, Banana 1 banana, Semi di chia 20g | 358 |
 | Pranzo 13:00 | Manzo magro 190g a crudo, Patate 285g a crudo, Rucola 40g, Olio extravergine di oliva 10g | 566 |
 | Cena 20:00 | _pasto libero_ | 516 |
 
-Totale Sab: **984 kcal** · P 72 g · C 90 g · G 34 g
+Totale Sab: **924 kcal** · P 79 g · C 87 g · G 25 g
 
 **Mese 1 — Mese 1 · Adattamento**
 
@@ -1216,17 +1220,17 @@ Esempio giorno di allenamento (Lun) e pasto libero (Sab):
 |---|---|---|
 | Colazione 07:30 | Yogurt greco 0% 260g, Muesli 40g a secco, Kiwi 1 kiwi, Mandorle 25g | 484 |
 | Pranzo 13:00 | Tonno al naturale 150g, Pasta 85g a secco, Pomodori 100g, Olio extravergine di oliva 20g | 669 |
-| Cena 20:00 | Trota 180g a crudo, Patate 310g a crudo, Fagiolini 150g, Olio extravergine di oliva 10g | 623 |
+| Cena 20:00 | Orata 205g a crudo, Riso 75g a secco, Zucchine 150g, Olio extravergine di oliva 10g | 606 |
 
-Totale Lun: **1776 kcal** · P 130 g · C 169 g · G 60 g
+Totale Lun: **1758 kcal** · P 131 g · C 171 g · G 58 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Ricotta magra 250g, Gallette di riso 2 gallette, Banana 1 banana | 434 |
+| Colazione 07:30 | Yogurt greco 2% 300g, Fiocchi d'avena 20g a secco, Banana 1 banana, Semi di chia 20g | 485 |
 | Pranzo 13:00 | Manzo magro 200g a crudo, Riso 75g a secco, Peperoni 150g, Olio extravergine di oliva 15g | 679 |
 | Cena 20:00 | _pasto libero_ | 603 |
 
-Totale Sab: **1112 kcal** · P 78 g · C 113 g · G 37 g
+Totale Sab: **1163 kcal** · P 83 g · C 115 g · G 38 g
 
 _Nessun piano di allenamento generato._
 
@@ -1240,7 +1244,7 @@ _Nessun piano di allenamento generato._
 
 ## Elena, 27 anni — intollerante al lattosio, 5 pasti
 
-**Esito:** ⚠️ SUPERATO CON AVVISI (0 errori, 2 avvisi, 2 note)
+**Esito:** ⚠️ SUPERATO CON AVVISI (0 errori, 1 avvisi, 2 note)
 
 - **Chi è:** Impiegata, 62 kg per 167 cm, vuole dimagrire un po’. Intollerante al lattosio (niente yogurt, latticini, whey), colazione e due spuntini.
 - **Cosa ci aspettiamo:** Senza latticini la dieta deve restare varia: colazioni e spuntini diversi ogni giorno, mai la stessa merenda per tutta la settimana.
@@ -1270,13 +1274,13 @@ Totale Lun: **1622 kcal** · P 110 g · C 176 g · G 48 g
 
 | Pasto | Alimenti | kcal |
 |---|---|---|
-| Colazione 07:30 | Albume d'uovo 160g a crudo, Fiocchi d'avena 20g a secco, Banana 1 banana, Bevanda di soia non zuccherata 40 ml | 277 |
+| Colazione 07:30 | Uova intere 2 uova, Pane integrale 50g, Avocado 30g | 312 |
 | Spuntino mattina 10:30 | Tonno al naturale 60g, Crackers integrali 20g, Pomodori 40g | 158 |
 | Pranzo 13:00 | Macinato di manzo magro 130g a crudo, Pasta 45g a secco, Lattuga 60g, Olio extravergine di oliva 5g | 401 |
 | Spuntino pomeriggio 17:00 | Pane integrale 30g, Marmellata light 20g | 104 |
 | Cena 20:00 | _pasto libero_ | 366 |
 
-Totale Sab: **937 kcal** · P 75 g · C 105 g · G 21 g
+Totale Sab: **973 kcal** · P 70 g · C 91 g · G 34 g
 
 **Mese 1 — Mese 1 · Accumulo**
 
@@ -1304,7 +1308,6 @@ Totale Sab: **937 kcal** · P 75 g · C 105 g · G 21 g
 
 **Controlli**
 
-- ⚠️ `D5` Proteine: i pasti danno in media il 95% del target (giorno peggiore: 11% di scarto)
 - ⚠️ `R14` I mesi "Mese 1 · Accumulo" (1, 2) sono identici: stessi esercizi, serie, ripetizioni e carichi — nel piano non c’è un vero sovraccarico progressivo
 - ℹ️ `Q2` Risposte non presenti nello schema: excludedFoods, includedFoods
 - ℹ️ `D14` Dal mese 2 in poi il target è identico (1427 kcal): nessuna periodizzazione automatica nel piano, solo l’aggiustamento mensile (check-in) lo modifica
@@ -1412,10 +1415,10 @@ Totale Lun: **2000 kcal** · P 111 g · C 251 g · G 54 g
 |---|---|---|
 | Colazione 07:30 | Ricotta magra 210g, Gallette di riso 2 gallette, Banana 1 banana | 393 |
 | Pranzo 13:00 | Petto di pollo 110g a crudo, Pasta 85g a secco, Zucchine 150g, Olio extravergine di oliva 15g | 578 |
-| Spuntino pomeriggio 17:00 | Uova intere 1 uovo, Pane integrale 50g | 194 |
+| Spuntino pomeriggio 17:00 | Yogurt magro 195g, Frutti di bosco 150g, Semi di lino 15g | 221 |
 | Cena 20:00 | _pasto libero_ | 523 |
 
-Totale Sab: **1163 kcal** · P 72 g · C 132 g · G 36 g
+Totale Sab: **1190 kcal** · P 74 g · C 131 g · G 37 g
 
 **Mese 1 — Mese 1 · Accumulo**
 
