@@ -16,7 +16,7 @@
 import type { MuscleGroup } from './catalog';
 import type { Level, ProgramProfile } from './profile';
 
-export type SplitKind = 'fullBody' | 'upperLower' | 'upperLowerFull' | 'pushPullLegs' | 'pplUpperLower' | 'pushPull' | 'broSplit';
+export type SplitKind = 'fullBody' | 'upperLower' | 'upperLowerFull' | 'pushPullLegs' | 'pplUpperLower' | 'pplFull' | 'pushPull' | 'broSplit';
 
 export const SPLIT_LABEL: Record<SplitKind, string> = {
   fullBody: 'Full Body',
@@ -24,6 +24,7 @@ export const SPLIT_LABEL: Record<SplitKind, string> = {
   upperLowerFull: 'Upper / Lower + Full Body',
   pushPullLegs: 'Push / Pull / Legs',
   pplUpperLower: 'Push / Pull / Legs + Upper / Lower',
+  pplFull: 'Push / Pull / Legs + Full Body',
   pushPull: 'Push / Pull',
   broSplit: 'Split per gruppo muscolare',
 };
@@ -76,7 +77,7 @@ function byPreference(pref: string, days: number, level: Level): SplitPlan | nul
   if (pref === 'pushPullLegs') {
     if (days < 3) return null;
     if (days === 3) return { kind: 'pushPullLegs', sessions: [PUSH, PULL, LEGS], reason: 'Push/Pull/Legs come richiesto (ogni gruppo una volta a settimana: il volume per seduta è più alto).' };
-    if (days === 4) return { kind: 'pplUpperLower', sessions: [PUSH, PULL, LEGS, UPPER_B], reason: 'Push/Pull/Legs come richiesto, con una quarta seduta Upper per allenare la parte alta due volte.' };
+    if (days === 4) return { kind: 'pplFull', sessions: [PUSH, PULL, LEGS, FB_C], reason: 'Push/Pull/Legs come richiesto, con una quarta seduta Full Body: così anche le gambe si allenano due volte a settimana, non solo la parte alta.' };
     if (days === 5) return { kind: 'pplUpperLower', sessions: [PUSH, PULL, LEGS, UPPER_A, LOWER_B], reason: 'Push/Pull/Legs + Upper/Lower: ogni gruppo due volte a settimana.' };
     return { kind: 'pushPullLegs', sessions: cycle([PUSH, PULL, LEGS], days), reason: 'Push/Pull/Legs ripetuto due volte.' };
   }

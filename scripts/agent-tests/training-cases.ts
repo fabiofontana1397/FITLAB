@@ -5,7 +5,7 @@
  *
  *   npx tsx scripts/agent-tests/training-cases.ts [out.json]
  */
-import { writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 
 import { buildPlans } from '@/domain/plan-engine';
 import { NEUTRAL_CALIBRATION } from '@/domain/recalibration';
@@ -13,6 +13,9 @@ import { buildUserContext, type UserContext } from '@/domain/user-context';
 import { rescheduleMissed } from '@/lib/planning/training-days';
 import { adaptTraining } from '@/lib/planning/training/adaptation';
 import { CATALOG_BY_ID } from '@/lib/planning/training/catalog';
+import { nearDuplicate, patternOf } from '@/lib/planning/training/session-builder';
+import { validateMonth } from '@/lib/planning/training/safety';
+import { compareVersions } from './training-compare';
 import { doubleProgression } from '@/lib/planning/training/loads';
 import { buildProgramProfile, equipmentFor } from '@/lib/planning/training/profile';
 import { broSplit } from '@/lib/planning/training/split';
@@ -281,7 +284,16 @@ test(22, 'Necessità di deload', 'Deload solo quando serve: nessuno nel piano in
   const forced = plan(q({}), { deloadFirstWeek: true, fromMonth: 2 }).t;
   const begDeload = beg.months.some((m) => m.mesocycle?.weeks.some((w) => w.label.includes('scarico')));
   const advCond = adv.months.find((m) => m.block === 'intensificazione')?.mesocycle?.weeks[3]?.label ?? '';
-  return [ok(!begDeload, 'nessuno scarico programmato per il principiante', 'scarico automatico'), ok(advCond.includes('se serve'), `avanzato: "${advCond}"`, 'manca lo scarico condizionale'), ok((forced.months[1].mesocycle?.weeks[0].label ?? '').includes('scarico'), 'scarico deciso al check-in nella settimana 1', 'scarico non applicato')];
+  const m2 = forced.months[1];
+  const ex2 = allEx(m2);
+  const w1 = ex2.reduce((a, x) => a + (x.weeks?.[0]?.sets ?? x.sets), 0);
+  const w2 = ex2.reduce((a, x) => a + (x.weeks?.[1]?.sets ?? x.sets), 0);
+  return [
+    ok(!begDeload, 'nessuno scarico programmato per il principiante', 'scarico automatico'),
+    ok(advCond.includes('se serve'), `avanzato: "${advCond}"`, 'manca lo scarico condizionale'),
+    ok((m2.mesocycle?.weeks[0].label ?? '').includes('scarico'), 'scarico deciso al check-in nella settimana 1', 'scarico non applicato'),
+    ok(w1 < w2, `negli esercizi: ${w1} serie nella settimana di scarico contro ${w2}`, `serie della settimana di scarico ${w1} contro ${w2}: lo scarico è solo dichiarato`),
+  ];
 });
 
 test(23, 'Utente con disponibilità ridotta', '2 sedute da meno di 30 minuti: sedute entro il tempo, volume ridotto in proporzione e dichiarato.', () => {
@@ -313,6 +325,233 @@ test(25, 'Sedute saltate', 'Una seduta saltata si recupera nel primo giorno libe
 test(26, 'Split per gruppo muscolare (bro split)', 'Disponibile su richiesta, mai scelta automaticamente.', () => {
   const autos = [3, 4, 5, 6].map((d) => plan(q({ freq_gym: String(d), availableDays: d === 6 ? '6+' : String(d), gymExperience: '3plusYears', gymSkillLevel: 'expert', sessionDuration: 'gt90' })).t.rationale?.split);
   return [ok(broSplit().sessions.length === 5, 'generatore disponibile (5 sedute)', 'generatore assente'), ok(autos.every((s) => s !== 'Split per gruppo muscolare'), `scelte automatiche: ${autos.join(', ')}`, 'bro split scelta da sola')];
+});
+
+const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
+const weekSets = (m: TrainingMonthPlan, w: number) => sum(allEx(m).map((x) => x.weeks?.find((y) => y.week === w)?.sets ?? x.sets));
+const blockers = (m: TrainingMonthPlan) => (m.validation ?? []).filter((f) => f.level === 'blocker');
+
+test(27, 'A — Deload reale', 'setsFactor e rirOffset cambiano davvero serie, RIR, carichi e tecniche degli esercizi della settimana di scarico; un deload solo dichiarato viene bloccato.', () => {
+  const t = plan(q({ gymExperience: '3plusYears', gymSkillLevel: 'expert', freq_gym: '5', availableDays: '5', sessionDuration: '60-90' }), { deloadFirstWeek: true, fromMonth: 2 }).t;
+  const m = t.months[1];
+  const ex = allEx(m);
+  const wk = m.mesocycle!.weeks[0];
+  const fewer = ex.filter((x) => x.sets > 1 && (x.weeks![0].sets >= x.sets));
+  const rirUp = ex.filter((x) => x.rir != null && x.rir < 4 && (x.weeks![0].rir ?? 0) <= x.rir);
+  const tech = ex.filter((x) => x.weeks![0].technique && x.weeks![0].technique.kind !== 'antagonistSuperset');
+  // a load already at the smallest step of the exercise cannot go lower: there the deload is in sets and RIR
+  const heavier = ex.filter((x) => x.suggestedKg != null && x.weeks![0].suggestedKg != null && x.weeks![0].suggestedKg! >= x.suggestedKg && x.suggestedKg > (x.loadIncrementKg ?? 1));
+  const zeroed = ex.filter((x) => (x.suggestedKg ?? 0) > 0 && x.weeks![0].suggestedKg === 0);
+  // a fake deload: same exercises, week flagged as deload but prescriptions unchanged → the validator must block it
+  const fake = JSON.parse(JSON.stringify(m)) as TrainingMonthPlan;
+  for (const d of fake.weeklySplit) for (const x of d.exercises ?? []) x.weeks = x.weeks!.map((w) => ({ ...w, sets: x.sets, rir: x.rir, suggestedKg: x.suggestedKg }));
+  fake.mesocycle!.weeks[0].sets = undefined;
+  const { ctx } = plan(q({}));
+  const caught = validateMonth(fake, ctx, { profile: buildProgramProfile(ctx, null), splitKind: null, hybrid: false }).filter((f) => f.code === 'B3').length;
+  return [
+    ok(!!wk.deload && wk.setsFactor < 1 && wk.rirOffset > 0, `settimana 1: ${wk.label}, serie ×${wk.setsFactor}, RIR +${wk.rirOffset}`, 'parametri di scarico assenti'),
+    ok(weekSets(m, 1) < weekSets(m, 2) * 0.75, `volume effettivo: ${weekSets(m, 1)} serie contro ${weekSets(m, 2)} della settimana ordinaria`, `volume ${weekSets(m, 1)} contro ${weekSets(m, 2)}`),
+    ok(fewer.length === 0, 'ogni esercizio ha meno serie', `serie invariate: ${fewer.map((x) => x.name).join(', ')}`),
+    ok(rirUp.length === 0, 'RIR più prudente su ogni esercizio', `RIR invariato: ${rirUp.map((x) => x.name).join(', ')}`),
+    ok(tech.length === 0, 'nessuna tecnica di intensità nello scarico', `tecniche rimaste: ${tech.map((x) => x.name).join(', ')}`),
+    ok(heavier.length === 0 && zeroed.length === 0, 'carichi circa −10% (mai azzerati)', `carichi non ridotti: ${heavier.map((x) => x.name).join(', ')}${zeroed.length ? `; azzerati: ${zeroed.map((x) => x.name).join(', ')}` : ''}`),
+    ok(blockers(m).length === 0, 'nessun blocco del validatore sul piano reale', blockers(m).map((f) => f.message).join(' | ')),
+    ok(caught > 0, `uno scarico solo dichiarato viene bloccato (${caught} errori B3)`, 'il validatore accetta un flag senza prescrizioni diverse'),
+  ];
+});
+
+test(28, 'B — Full Body senza attrezzatura', 'Spinta, tirata, ginocchio, anca e core coperti nella settimana per quanto possibile; un limite non viene dichiarato come copertura completa.', () => {
+  const none = plan(q({ mode: 'training', age: 55, gymExperience: 'never', gymSkillLevel: 'beginner', freq_gym: '2', availableDays: '2', sessionDuration: 'lt30', trainingLocation: 'outdoor', equipment: [], goal: 'generalHealth', focus_gym: 'technique' })).t;
+  const bar = plan(q({ gymExperience: 'never', gymSkillLevel: 'beginner', freq_gym: '2', availableDays: '2', sessionDuration: '30-45', trainingLocation: 'outdoor', equipment: ['pullupBar'] })).t;
+  const cov = (t: TrainingPlan) => Object.fromEntries((t.months[0].patternCoverage ?? []).map((c) => [c.pattern, c.status]));
+  const n = cov(none);
+  const b = cov(bar);
+  const recomputed = (t: TrainingPlan) => {
+    const keys = new Set<string>();
+    for (const x of allEx(t.months[0])) {
+      const def = CATALOG_BY_ID.get(x.id);
+      const po = def ? patternOf(def) : null;
+      if (po?.full) keys.add(po.key);
+    }
+    return ['push', 'pull', 'knee', 'hip', 'core'].every((k) => (cov(t)[k] === 'full') === keys.has(k));
+  };
+  return [
+    ok(['push', 'knee', 'hip', 'core'].every((k) => n[k] === 'full'), `senza attrezzatura: ${Object.entries(n).map(([k, v]) => `${k} ${v}`).join(', ')}`, `schemi mancanti: ${JSON.stringify(n)}`),
+    ok(n.pull === 'partial' && (none.rationale?.notices ?? []).some((x) => x.includes('solo in modo parziale')), 'tirata solo parziale e dichiarata come limite', `tirata: ${n.pull}, limite non dichiarato`),
+    ok(Object.values(b).every((v) => v === 'full'), `con la sbarra: tutti gli schemi completi (${allEx(bar.months[0]).filter((x) => /trazioni|rematore/i.test(x.name)).map((x) => x.name).join(', ')})`, `con la sbarra: ${JSON.stringify(b)}`),
+    ok(recomputed(none) && recomputed(bar), 'la copertura dichiarata corrisponde agli esercizi presenti', 'copertura dichiarata diversa dagli esercizi'),
+  ];
+});
+
+test(29, 'C — Dolore a due distretti', 'Ginocchio e spalla: nessun esercizio che li carica, nessun gruppo alzato per compensare, esclusioni motivate e invito a una valutazione.', () => {
+  const base = q({ sex: 'female', heightCm: 165, currentWeightKg: 60, targetWeightKg: 60, goal: 'maintainImprove', gymSplitPreference: 'upperLower' });
+  const ref = plan(base).t;
+  const pain = plan({ ...base, hasPain: 'yes', painDetails: 'Dolore al ginocchio destro' }, { avoidAreas: ['shoulder'], fromMonth: 2 }).t;
+  const m = pain.months[1];
+  const loading = allEx(m).filter((x) => (CATALOG_BY_ID.get(x.id)?.areas ?? []).some((a) => a === 'knee' || a === 'shoulder'));
+  const refVol = new Map((ref.months[1].weeklyVolume ?? []).map((v) => [v.group, v]));
+  // compensation = a group's TOTAL weekly volume (direct + indirect) raised above the same plan without pain. A group that
+  // loses the indirect work of an excluded exercise (triceps without presses) may get direct sets up to its own target.
+  // (the same plan without pain may sit below target because of time: reaching the group's own target is not compensating)
+  const raised = (m.weeklyVolume ?? []).filter((v) => v.status !== 'excluded' && v.fractional > Math.max((refVol.get(v.group)?.fractional ?? 0) * 1.15 + 1, v.target * 1.15 + 1));
+  const over = (m.weeklyVolume ?? []).filter((v) => v.status === 'over');
+  return [
+    ok(loading.length === 0, 'nessun esercizio che carica ginocchio o spalla', `ancora: ${loading.map((x) => x.name).join(', ')}`),
+    ok(raised.length === 0, 'nessun gruppo oltre il proprio obiettivo né oltre la stessa scheda senza dolore', `gruppi alzati: ${raised.map((v) => `${v.label} ${refVol.get(v.group)?.fractional}→${v.fractional}`).join(', ')}`),
+    ok(over.length === 0, 'nessun gruppo sovradosato', over.map((v) => v.label).join(', ')),
+    ok((m.exclusions ?? []).some((e) => e.reason.includes('spalla')) && (m.exclusions ?? []).some((e) => e.reason.includes('ginocchio')), `esclusioni motivate: ${(m.exclusions ?? []).filter((e) => /sospeso/.test(e.reason)).map((e) => e.group).join(', ')} sospesi`, 'esclusioni non tracciate'),
+    ok((pain.rationale?.notices ?? []).some((x) => x.includes('fisioterapista')), 'invito a farsi valutare da un professionista', 'manca l’invito'),
+    ok(blockers(m).length === 0, 'nessun blocco del validatore', blockers(m).map((f) => f.message).join(' | ')),
+  ];
+});
+
+test(30, 'D — Volume muscolare', 'Su profili rappresentativi nessun gruppo con serie dirette oltre l’obiettivo; ogni sottodosaggio ha una motivazione.', () => {
+  const profilesD = [
+    q({ gymExperience: 'never', gymSkillLevel: 'beginner', goal: 'loseFat', focus_gym: 'fatLoss', targetWeightKg: 70 }),
+    q({}),
+    q({ freq_gym: '4', availableDays: '4', sessionDuration: '60-90' }),
+    q({ gymExperience: '3plusYears', gymSkillLevel: 'expert', freq_gym: '5', availableDays: '5', sessionDuration: '60-90' }),
+    q({ focus_gym: 'strength', freq_gym: '4', availableDays: '4', gymSplitPreference: 'pushPullLegs', sessionDuration: '60-90' }),
+    q({ trainingLocation: 'home', equipment: ['dumbbells', 'bands'], sessionDuration: '30-45' }),
+  ];
+  const overs: string[] = [];
+  const unexplained: string[] = [];
+  let groups = 0;
+  for (const a of profilesD)
+    for (const m of plan(a).t.months)
+      for (const v of m.weeklyVolume ?? []) {
+        if (v.target <= 0) continue;
+        groups++;
+        if (v.status === 'over') overs.push(`${v.label} M${m.monthIndex} ${v.direct}/${v.target}`);
+        if (v.status === 'under' && !v.reason) unexplained.push(`${v.label} M${m.monthIndex}`);
+      }
+  return [ok(overs.length === 0, `nessun sovradosaggio diretto su ${groups} gruppi-mese`, `sovradosaggi: ${overs.slice(0, 5).join(', ')}`), ok(unexplained.length === 0, 'ogni sottodosaggio è motivato', `senza motivo: ${unexplained.slice(0, 5).join(', ')}`)];
+});
+
+test(31, 'E — Esercizi simili', 'Due varianti quasi identiche non stanno nella stessa seduta; varianti diverse (libero/macchina) sì.', () => {
+  const g = (id: string) => CATALOG_BY_ID.get(id)!;
+  let dups = 0;
+  const ex: string[] = [];
+  for (const p of profiles())
+    for (const m of plan(p.answers).t.months)
+      for (const d of workouts(m)) {
+        const xs = d.exercises ?? [];
+        for (let i = 0; i < xs.length; i++)
+          for (let j = i + 1; j < xs.length; j++)
+            if (nearDuplicate(g(xs[i].id), g(xs[j].id))) {
+              dups++;
+              if (ex.length < 3) ex.push(`${xs[i].name} + ${xs[j].name}`);
+            }
+      }
+  const rdl = [...CATALOG_BY_ID.values()].find((e) => e.id !== 'romanian-deadlift' && e.pattern === 'hinge' && e.loadType === 'dumbbell');
+  return [
+    ok(!!rdl && nearDuplicate(g('romanian-deadlift'), rdl), `stacco rumeno con bilanciere e ${rdl?.name ?? '—'} riconosciuti come quasi identici`, 'similarità non riconosciuta'),
+    ok(!nearDuplicate(g('back-squat'), g('leg-press')), 'back squat e leg press considerati complementari', 'squat e leg press considerati identici'),
+    ok(dups === 0, 'nessuna coppia quasi identica nella stessa seduta su 360 profili', `${dups} coppie: ${ex.join('; ')}`),
+  ];
+});
+
+test(32, 'F — Allenamento ibrido 2 forza + 3 corsa', 'Settimana ragionata insieme: niente forza consecutiva, niente gambe prima delle corse dure, ripetute lontane dal lungo, volume e intensità della corsa che non salgono insieme.', () => {
+  const { t } = plan(q({ activitiesPracticed: ['gym', 'running'], freq_gym: '2', freq_running: '3', focus_running: 'raceTime', focus_gym: 'strength', availableDays: '5', goal: 'improveEndurance', dailySteps: '8000-12000' }));
+  const issues: string[] = [];
+  const both: string[] = [];
+  let prev: { easy: number; reps: number } | null = null;
+  for (const m of t.months) {
+    const w = m.weeklySplit;
+    const kind = (d: TrainingDayPlan) => (d.type === 'workout' ? 'gym' : d.type === 'cardio' ? (d.run?.kind === 'easy' ? 'easy' : d.run?.kind === 'long' ? 'long' : 'quality') : 'rest');
+    for (let i = 0; i < 7; i++) {
+      const a = kind(w[i]);
+      const b = kind(w[(i + 1) % 7]);
+      if (a === 'gym' && b === 'gym') issues.push(`M${m.monthIndex} ${w[i].weekday}: forza consecutiva`);
+      if (a === 'gym' && (b === 'quality' || b === 'long')) issues.push(`M${m.monthIndex} ${w[i].weekday}: gambe prima di una corsa dura`);
+      if ((a === 'quality' && b === 'long') || (a === 'long' && b === 'quality')) issues.push(`M${m.monthIndex} ${w[i].weekday}: ripetute e lungo vicini`);
+    }
+    const runs = w.filter((d) => d.type === 'cardio');
+    const easy = sum(runs.filter((d) => d.run?.kind !== 'intervals' && d.run?.kind !== 'tempo').map((d) => d.run!.minutes));
+    const reps = Number((runs.find((d) => d.run?.kind === 'intervals')?.note ?? '').match(/(\d+)×/)?.[1] ?? 0);
+    if (prev && easy > prev.easy && reps > prev.reps && m.block !== 'consolidamento') both.push(`M${m.monthIndex}`);
+    const long = runs.find((d) => d.run?.kind === 'long')?.run?.minutes ?? 0;
+    if (runs.length >= 3 && long > sum(runs.map((d) => d.run!.minutes)) * 0.46) issues.push(`M${m.monthIndex}: lungo sproporzionato`);
+    prev = { easy, reps };
+  }
+  const recovery = t.months.some((m) => (m.weeklySplit.find((d) => d.type === 'cardio')?.run?.weeks ?? []).some((x, i, arr) => i > 0 && x.minutes < arr[0].minutes));
+  return [
+    ok(issues.length === 0, `${t.months.length} mesi: ${t.months[0].weeklySplit.filter((d) => d.type !== 'rest').map((d) => `${d.weekday} ${d.title}`).join(', ')}`, issues.slice(0, 4).join('; ')),
+    ok(both.length === 0, 'volume e intensità della corsa crescono in mesi alterni', `insieme nei mesi ${both.join(', ')}`),
+    ok(recovery, 'settimana di recupero della corsa prevista', 'nessuna settimana di recupero'),
+  ];
+});
+
+test(33, 'G — Recupero insufficiente', 'Calo di prestazioni e stanchezza → scarico applicato alle serie della settimana 1; stanchezza senza calo → RIR +1 sugli esercizi.', () => {
+  const tired = adaptTraining({ monthIndex: 1, previous: undefined, trainingCompletion: 0.9, checkin: { adherence: 4, energy: 'veryLow', difficulty: ['soreness'] }, performance: perf(-0.06), plannedRir: 2, hasGym: true, sessionBucket: '45-60' });
+  const lowEnergy = adaptTraining({ monthIndex: 1, previous: undefined, trainingCompletion: 0.9, checkin: { adherence: 4, energy: 'low', difficulty: ['soreness'] }, performance: perf(0.05), plannedRir: 2, hasGym: true, sessionBucket: '45-60' });
+  const neutral = plan(q({})).t.months[1];
+  const a = plan(q({}), { ...tired.calibration, fromMonth: 2 }).t.months[1];
+  const b = plan(q({}), { ...lowEnergy.calibration, fromMonth: 2 }).t.months[1];
+  const rirN = sum(allEx(neutral).map((x) => x.rir ?? 0));
+  const rirB = sum(allEx(b).map((x) => x.rir ?? 0));
+  return [
+    ok(weekSets(a, 1) < weekSets(neutral, 1), `scarico: ${weekSets(a, 1)} serie in settimana 1 contro ${weekSets(neutral, 1)}`, `serie ${weekSets(a, 1)} contro ${weekSets(neutral, 1)}`),
+    ok(rirB > rirN, `RIR complessivo ${rirN} → ${rirB}`, `RIR ${rirN} → ${rirB}`),
+  ];
+});
+
+test(34, 'H — Attrezzatura limitata', 'Nessun esercizio richiede attrezzatura non disponibile, in nessun mese, su 360 profili.', () => {
+  let bad = 0;
+  let eqBlockers = 0;
+  const ex: string[] = [];
+  for (const p of profiles()) {
+    const { t, ctx } = plan(p.answers);
+    const prof = buildProgramProfile(ctx, null);
+    for (const m of t.months) {
+      eqBlockers += (m.validation ?? []).filter((f) => f.code === 'B1').length;
+      for (const x of allEx(m)) {
+        const miss = (CATALOG_BY_ID.get(x.id)?.equipment ?? []).filter((e) => !prof.equipment.has(e));
+        if (miss.length) {
+          bad++;
+          if (ex.length < 3) ex.push(`${p.label}: ${x.name}`);
+        }
+      }
+    }
+  }
+  return [ok(bad === 0 && eqBlockers === 0, 'tutti gli esercizi eseguibili con l’attrezzatura dichiarata', `${bad} esercizi non eseguibili: ${ex.join('; ')}`)];
+});
+
+test(35, 'I — Progressione dei carichi', 'Il carico sale solo quando il criterio è raggiunto; il piano non aumenta i carichi a calendario.', () => {
+  const t = { repsMin: 8, repsMax: 10, rir: 2, increment: 2.5 };
+  const pt = (reps: number, rir?: number) => ({ date: '2026-01-10', weightKg: 60, reps, rir });
+  const met = doubleProgression([pt(10, 2), pt(10, 2), pt(10, 2)], t, 60);
+  const closeToFailure = doubleProgression([pt(10, 0), pt(10, 0), pt(10, 1)], t, 60);
+  const inRange = doubleProgression([pt(10, 2), pt(9, 2), pt(9, 2)], t, 60);
+  const noData = doubleProgression([], t, 60);
+  const p = plan(q({ gymExperience: 'never', gymSkillLevel: 'beginner' })).t;
+  const id = allEx(p.months[1]).find((x) => x.suggestedKg != null)?.id;
+  const kgs = p.months.slice(1).map((m) => allEx(m).filter((x) => x.id === id && m.block === p.months[1].block).map((x) => x.suggestedKg)[0]).filter((x) => x != null);
+  return [
+    ok(met.action === 'increase' && met.kg === 62.5, `3×10 con RIR 2 → ${met.kg} kg`, `criterio raggiunto: ${met.action}`),
+    ok(closeToFailure.action === 'hold', '3×10 ma vicino al cedimento → stesso carico', `vicino al cedimento: ${closeToFailure.action}`),
+    ok(inRange.action === 'hold', 'dentro il range → stesso carico', `dentro il range: ${inRange.action}`),
+    ok(noData.action === 'calibrate' && noData.kg === 60, 'senza dati → carico da calibrare, nessun aumento', `senza dati: ${noData.action}`),
+    ok(kgs.every((k) => k === kgs[0]), `nel piano il carico di partenza non sale da solo (${kgs.join(' → ')} kg)`, `carichi a calendario: ${kgs.join(' → ')}`),
+  ];
+});
+
+test(36, 'J — Confronto tra versioni', 'Le metriche di confronto sono ricalcolate dai dati di before.json, del motore precedente e di data.json, non copiate.', () => {
+  const dir = process.env.FITLAB_REPORT_DIR;
+  if (!dir || !existsSync(`${dir}/before.json`) || !existsSync(`${dir}/data.json`)) return [`✗ file del report non trovati (FITLAB_REPORT_DIR=${dir ?? '—'})`];
+  const load = (f: string) => JSON.parse(readFileSync(`${dir}/${f}`, 'utf8'));
+  const before = load('before.json');
+  const data = load('data.json');
+  const prev = existsSync(`${dir}/v3.json`) ? load('v3.json') : null;
+  const c = compareVersions(before, prev, data);
+  const identical = c.users.filter((u) => JSON.stringify(u.v2) === JSON.stringify(u.v4));
+  const stored = data.compare;
+  const mismatch = stored ? c.users.filter((u) => JSON.stringify(stored.users.find((s: { id: string }) => s.id === u.id)) !== JSON.stringify(u)) : [];
+  return [
+    ok(c.users.length === 7, `${c.users.length} profili confrontati su ${c.metrics.length} metriche`, `${c.users.length} profili`),
+    ok(identical.length === 0, 'nessun profilo con valori identici tra training-2 e la nuova versione', `identici: ${identical.map((u) => u.id).join(', ')}`),
+    ok(!!stored && mismatch.length === 0, 'i valori salvati in data.json coincidono con il ricalcolo', `disallineati: ${mismatch.map((u) => u.id).join(', ') || 'confronto assente'}`),
+  ];
 });
 
 function perf(delta: number) {
@@ -390,6 +629,16 @@ function quality() {
     signatures.add(JSON.stringify(workouts(m1).map((d) => d.exercises!.map((x) => [x.id, x.sets, x.reps]))));
   }
   const pct = (n: number) => Math.round((n / ps.length) * 100);
+  let blockerN = 0;
+  let warningN = 0;
+  let cleanPlans = 0;
+  for (const p of ps) {
+    const t = plan(p.answers).t;
+    const b = t.months.reduce((a, m) => a + (m.validation ?? []).filter((f) => f.level === 'blocker').length, 0);
+    blockerN += b;
+    warningN += t.months.reduce((a, m) => a + (m.validation ?? []).filter((f) => f.level === 'warning').length, 0);
+    if (b === 0) cleanPlans++;
+  }
   const threeByTen = ps.reduce((acc, p) => acc + allEx(plan(p.answers).t.months[0]).filter((x) => x.sets === 3 && (x.reps === '10' || x.reps === '12')).length, 0);
   return {
     profiles: ps.length,
@@ -404,6 +653,9 @@ function quality() {
       { label: 'Tempi di esecuzione diversi usati', value: `${tempos.size} (${[...tempos].join(', ')})` },
       { label: 'Schede diverse su profili diversi', value: `${signatures.size} su ${ps.length}` },
       { label: 'Esercizi prescritti 3×10 o 3×12 fissi', value: `${threeByTen}` },
+      { label: 'Schede senza blocchi del validatore', value: `${pct(cleanPlans)}%` },
+      { label: 'Blocchi (blocker) in tutti i mesi', value: `${blockerN}` },
+      { label: 'Avvisi (warning) in tutti i mesi', value: `${warningN} (${(warningN / ps.length).toFixed(1)} per scheda)` },
     ],
     examples,
   };

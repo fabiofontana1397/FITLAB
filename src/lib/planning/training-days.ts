@@ -83,43 +83,85 @@ export function resolveTrainingSchedule(answers: Answers): TrainingSchedule {
 }
 
 /**
- * Assigns gym sessions and runs to the training weekdays so that hard runs
- * (intervals, tempo, long run) do not fall on the day before or after a leg
- * session, and two hard runs are not back to back. Small search: at most 6
- * days, so every arrangement is checked.
+ * Places the week's gym sessions and runs. Strength and running are planned as ONE week:
+ *  - two hard strength sessions are not put on consecutive days;
+ *  - a leg session is not the day before a hard run (intervals, tempo, long run), and a hard run is
+ *    not the day before a leg session (the first matters more: it spoils the quality session);
+ *  - intervals/tempo and the long run are not back to back, nor are two hard runs;
+ *  - the week wraps (Sunday is followed by Monday).
+ * With running in the week the training days themselves are chosen (any weekday set that keeps a
+ * rest day), because a fixed weekday pattern can force consecutive hard days; with gym only the
+ * usual pattern is kept. Small exhaustive search (≤ 7 days). The cost of the chosen layout is
+ * returned, with what could not be avoided.
  */
-export function arrangeWeek(days: number[], gym: { legDay: boolean }[], runs: { hard: boolean }[]): { gymAt: number[]; runAt: number[] } {
+export function arrangeWeek(
+  days: number[],
+  gym: { legDay: boolean }[],
+  runs: { hard: boolean; kind?: string }[]
+): { gymAt: number[]; runAt: number[]; compromises: string[] } {
   const n = gym.length + runs.length;
-  const slots = days.slice(0, n);
-  let best: { cost: number; gymAt: number[]; runAt: number[] } | null = null;
+  if (n === 0) return { gymAt: [], runAt: [], compromises: [] };
+  const daySets: number[][] = [];
+  if (runs.length > 0 && gym.length > 0 && n < 7) {
+    const rec = (start: number, acc: number[]) => {
+      if (acc.length === n) return void daySets.push(acc);
+      for (let d = start; d < 7; d++) rec(d + 1, [...acc, d]);
+    };
+    rec(0, []);
+  } else daySets.push(days.slice(0, n));
   const choose = (start: number, k: number, acc: number[]): number[][] => {
     if (acc.length === k) return [acc];
     const out: number[][] = [];
     for (let i = start; i < n; i++) out.push(...choose(i + 1, k, [...acc, i]));
     return out;
   };
-  for (const gymIdx of choose(0, gym.length, [])) {
-    const runIdx = [...Array(n).keys()].filter((i) => !gymIdx.includes(i));
-    const kind: ({ t: 'gym'; leg: boolean } | { t: 'run'; hard: boolean })[] = new Array(n);
-    gymIdx.forEach((slot, i) => (kind[slot] = { t: 'gym', leg: gym[i].legDay }));
-    runIdx.forEach((slot, i) => (kind[slot] = { t: 'run', hard: runs[i].hard }));
-    let cost = 0;
-    for (let i = 0; i < n; i++) {
-      const a = kind[i];
-      const bIdx = (i + 1) % n;
-      const b = kind[bIdx];
-      const adjacent = (slots[bIdx] - slots[i] + 7) % 7 === 1;
-      if (!adjacent) continue;
-      if (a.t === 'gym' && a.leg && b.t === 'run' && b.hard) cost += 3;
-      if (a.t === 'run' && a.hard && b.t === 'gym' && b.leg) cost += 2;
-      if (a.t === 'run' && a.hard && b.t === 'run' && b.hard) cost += 2;
-      if (a.t === 'gym' && b.t === 'gym' && a.leg && b.leg) cost += 1;
+  const perms = (arr: number[]): number[][] => (arr.length <= 1 ? [arr] : arr.flatMap((x, i) => perms([...arr.slice(0, i), ...arr.slice(i + 1)]).map((r) => [x, ...r])));
+  const runOrders = perms([...Array(runs.length).keys()]);
+  const given = new Set(days);
+  let best: { cost: number; gymAt: number[]; runAt: number[]; compromises: string[] } | null = null;
+  for (const slots of daySets) {
+    for (const gymIdx of choose(0, gym.length, [])) {
+      const runIdx = [...Array(n).keys()].filter((i) => !gymIdx.includes(i));
+      for (const order of runOrders) {
+        type K = { t: 'gym'; leg: boolean } | { t: 'run'; hard: boolean; quality: boolean; long: boolean };
+        const kind: K[] = new Array(n);
+        gymIdx.forEach((slot, i) => (kind[slot] = { t: 'gym', leg: gym[i].legDay }));
+        runIdx.forEach((slot, i) => {
+          const r = runs[order[i]];
+          kind[slot] = { t: 'run', hard: r.hard, quality: r.kind === 'intervals' || r.kind === 'tempo', long: r.kind === 'long' };
+        });
+        let cost = 0;
+        const why: string[] = [];
+        for (let i = 0; i < n; i++) {
+          const j = (i + 1) % n;
+          if (n > 1 && (slots[j] - slots[i] + 7) % 7 !== 1) continue;
+          if (n === 1) continue;
+          const a = kind[i];
+          const b = kind[j];
+          if (a.t === 'gym' && b.t === 'gym') {
+            cost += 2;
+            why.push('due sedute di forza consecutive');
+          }
+          if (a.t === 'gym' && a.leg && b.t === 'run' && b.hard) {
+            cost += 3;
+            why.push('una seduta con le gambe il giorno prima di una corsa impegnativa');
+          }
+          if (a.t === 'run' && a.hard && b.t === 'gym' && b.leg) {
+            cost += 1.5;
+            why.push('una corsa impegnativa il giorno prima di una seduta con le gambe');
+          }
+          if (a.t === 'run' && b.t === 'run' && a.hard && b.hard) {
+            cost += (a.quality && b.long) || (a.long && b.quality) ? 2.5 : 2;
+            why.push('due corse impegnative consecutive');
+          }
+        }
+        cost += slots.filter((d) => !given.has(d)).length * 0.05 + slots.reduce((sum, x) => sum + x, 0) * 0.001;
+        if (!best || cost < best.cost - 1e-9)
+          best = { cost, gymAt: gymIdx.map((i) => slots[i]), runAt: order.map((_, k) => slots[runIdx[order.indexOf(k)]]), compromises: [...new Set(why)] };
+      }
     }
-    // prefer gym earlier in the week on ties (stable output)
-    cost += gymIdx.reduce((s, x) => s + x, 0) * 0.001;
-    if (!best || cost < best.cost) best = { cost, gymAt: gymIdx.map((i) => slots[i]), runAt: runIdx.map((i) => slots[i]) };
   }
-  return best ? { gymAt: best.gymAt, runAt: best.runAt } : { gymAt: [], runAt: [] };
+  return best ?? { gymAt: [], runAt: [], compromises: [] };
 }
 
 /**

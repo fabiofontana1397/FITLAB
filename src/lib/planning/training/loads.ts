@@ -19,9 +19,6 @@ import type { Level } from './profile';
 const LEVEL: Record<Level, number> = { beginner: 0.6, intermediate: 1, advanced: 1.25 };
 const LOWER_BODY = new Set(['squat', 'hinge', 'lunge', 'kneeExtension', 'kneeFlexion', 'hipExtension', 'hipAbduction', 'hipAdduction', 'calfRaise']);
 
-/** Monthly projected increase of the working load when no history exists yet. */
-const MONTHLY_GAIN: Record<Level, number> = { beginner: 0.05, intermediate: 0.025, advanced: 0.01 };
-
 export function estimateE1rm(e: CatalogExercise, p: { bodyweightKg: number; sex: string; level: Level; age: number }): number | null {
   if (e.e1rmRatio == null) return null;
   const lower = LOWER_BODY.has(e.pattern);
@@ -62,16 +59,12 @@ export function initialLoad(args: {
     return { kg: null, status: 'bodyweight', note: e.timed ? 'A corpo libero: tieni la posizione con tecnica perfetta.' : e.loadType === 'band' ? 'Scegli l’elastico con cui arrivi al range lasciando le ripetizioni in riserva indicate.' : 'A corpo libero: se il range è troppo facile, usa la variante più difficile.' };
   }
   const e1rm = estimateE1rm(e, profile)!;
-  const projected = e1rm * (1 + Math.min(monthsIn * MONTHLY_GAIN[profile.level] * (e.kind === 'isolation' ? 0.5 : 1), 0.2));
-  const raw = loadFor(projected, repsMax, rir) * 0.9;
-  let kg = roundDown(raw, e.increment);
-  // beginners add load quickly on multi-joint lifts: at least one real increment per month,
-  // capped at +25% (or three increments, for light loads where 25% is less than one plate)
-  if (profile.level === 'beginner' && e.kind === 'compound' && monthsIn > 0) {
-    const base = roundDown(loadFor(e1rm, repsMax, rir) * 0.9, e.increment);
-    const cap = Math.max(roundDown(base * 1.25, e.increment), base + 3 * e.increment);
-    if (base >= e.increment) kg = Math.min(Math.max(kg, base + monthsIn * e.increment), Math.max(kg, cap));
-  }
+  // No load is ever raised by the calendar: without logged sets the later months keep the starting estimate
+  // (adjusted only to the month's rep range and RIR); the real increases come from the person's history with the
+  // double progression (doubleProgression below), when the criteria are met.
+  void monthsIn;
+  const raw = loadFor(e1rm, repsMax, rir) * 0.9;
+  const kg = roundDown(raw, e.increment);
   const unit = e.loadType === 'dumbbell' ? ' per manubrio' : '';
   if (kg < e.increment || kg <= 0) {
     return { kg: e.increment || null, status: 'calibrate', note: `Parti dal carico più leggero disponibile${unit} e sali finché arrivi a ${repsMax} ripetizioni lasciandone ${rir} in riserva.` };
@@ -83,7 +76,7 @@ export function initialLoad(args: {
       note: `Carico iniziale stimato${unit}, da calibrare: se fai più di ${repsMax} ripetizioni con ${rir} in riserva aumenta, se non arrivi a ${Math.max(1, repsMax - 4)} riduci.${e.loadType === 'machine' || e.loadType === 'cable' ? ' Le macchine variano molto da palestra a palestra.' : ''}`,
     };
   }
-  return { kg, status: 'estimate', note: `Stima per questo mese${unit}: il carico reale lo decide il tuo storico con la doppia progressione.` };
+  return { kg, status: 'estimate', note: `Carico di partenza${unit}, non aumentato in automatico: sale solo quando completi il range con le ripetizioni in riserva previste (doppia progressione sul tuo storico).` };
 }
 
 // ------------------------------------------------------------------ history --

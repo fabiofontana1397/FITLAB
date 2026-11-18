@@ -198,3 +198,53 @@ export function prescribe(args: {
     progression: progressionRule(e, sets, lo, hi, rir, model, role, timed),
   };
 }
+
+/**
+ * The prescription of one week of the month: the mesocycle's weekly parameters
+ * applied to the exercise (chain mesocycle → week → session → exercise).
+ *  - calibration / last-week push: RIR offset (on every exercise or only on the
+ *    safe ones: isolations, machines, cables, core);
+ *  - deload: sets × setsFactor (main lifts keep at least 2), RIR + offset (max 4),
+ *    load ≈ −10% rounded down to the exercise's increment, intensification
+ *    techniques removed (an antagonist superset only saves time and stays).
+ */
+export function weekPrescription(args: {
+  e: CatalogExercise;
+  role: Role;
+  base: { sets: number; reps: string; rir?: number; restSec: number; kg: number | null; technique?: Intensification | { kind: string; label: string; how: string } | null };
+  week: { week: number; rirOffset: number; setsFactor: number; rirScope: 'all' | 'safe'; deload: boolean; conditional: boolean; note: string };
+}): { week: number; sets: number; reps: string; rir?: number; rpe?: number; restSec: number; suggestedKg?: number | null; technique?: { kind: string; label: string; how: string } | null; deload?: boolean; conditional?: boolean; note?: string } {
+  const { e, role, base, week } = args;
+  const safe = e.kind === 'isolation' || e.kind === 'core' || e.loadType === 'machine' || e.loadType === 'cable';
+  const applies = week.rirScope === 'all' || safe;
+  let rir = base.rir;
+  if (rir != null && applies && week.rirOffset !== 0) rir = Math.max(week.deload ? rir : 1, Math.min(4, rir + week.rirOffset));
+  if (rir != null && !week.deload && week.rirOffset < 0 && !safe) rir = base.rir; // never closer to failure on free-weight compounds
+  let sets = base.sets;
+  let kg: number | null | undefined;
+  let technique = base.technique ?? null;
+  if (week.deload) {
+    sets = Math.max(role === 'main' ? 2 : 1, Math.round(base.sets * week.setsFactor));
+    if (sets >= base.sets && base.sets > 1) sets = base.sets - 1;
+    if (base.kg != null && base.kg > 0) {
+      const inc = e.increment > 0 ? e.increment : 1;
+      // −10% rounded down to the exercise's increment; a load already at the smallest step stays (the deload is in sets and RIR)
+      kg = base.kg <= inc ? base.kg : Math.max(inc, Math.floor((base.kg * 0.9) / inc) * inc);
+      if (kg >= base.kg && base.kg > inc) kg = base.kg - inc;
+    }
+    if (technique && technique.kind !== 'antagonistSuperset') technique = null;
+  }
+  return {
+    week: week.week,
+    sets,
+    reps: base.reps,
+    rir,
+    rpe: rir != null ? 10 - rir : undefined,
+    restSec: base.restSec,
+    ...(kg !== undefined ? { suggestedKg: kg } : {}),
+    ...(week.deload ? { technique } : technique ? { technique } : {}),
+    ...(week.deload ? { deload: true } : {}),
+    ...(week.conditional ? { conditional: true } : {}),
+    ...(week.note ? { note: week.note } : {}),
+  };
+}

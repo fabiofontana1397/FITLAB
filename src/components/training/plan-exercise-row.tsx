@@ -39,7 +39,9 @@ export function PlanExerciseRow({
 
   const isBodyweight = exercise.suggestedKg == null && latestWeightKg == null;
   const isFirstTime = latestWeightKg == null;
-  const referenceKg = latestWeightKg ?? exercise.suggestedKg;
+  // deload week: about −10% on the last load used (the plan's own suggestion already carries it)
+  const deload = !!exercise.activeWeek?.deload;
+  const referenceKg = latestWeightKg != null ? (deload ? Math.floor((latestWeightKg * 0.9) / (exercise.loadIncrementKg || 1)) * (exercise.loadIncrementKg || 1) : latestWeightKg) : exercise.suggestedKg;
   const restLabel = exercise.restSec < 60 ? `${exercise.restSec}s` : exercise.restSec % 60 === 0 ? `${exercise.restSec / 60} min` : `${Math.floor(exercise.restSec / 60)}:${String(exercise.restSec % 60).padStart(2, '0')} min`;
   const calibrating = isFirstTime && exercise.loadStatus === 'calibrate';
   const programming = {
@@ -92,6 +94,11 @@ export function PlanExerciseRow({
         <MetaItem icon="clockOutline" value={restLabel} label="Recupero" />
       </View>
 
+      {deload ? (
+        <ThemedText type="caption" themeColor="textSecondary">
+          Settimana di scarico: meno serie, più ripetizioni in riserva e carico circa −10%.
+        </ThemedText>
+      ) : null}
       {exercise.supersetWith || exercise.technique ? (
         <ThemedText type="caption" themeColor="textSecondary">
           {exercise.technique?.label}
@@ -101,7 +108,7 @@ export function PlanExerciseRow({
       <View style={styles.loadRow}>
         <View style={styles.loadCol}>
           <ThemedText type="caption" themeColor="textSecondary" numberOfLines={1}>
-            {isBodyweight ? 'Carico' : calibrating ? 'Da calibrare' : isFirstTime ? 'Stima' : 'Ultimo carico'}
+            {isBodyweight ? 'Carico' : deload ? 'Carico di scarico' : calibrating ? 'Da calibrare' : isFirstTime ? 'Stima' : 'Ultimo carico'}
           </ThemedText>
           <ThemedText style={styles.loadValue} numberOfLines={1}>
             {referenceKg != null ? `${referenceKg} kg` : '—'}

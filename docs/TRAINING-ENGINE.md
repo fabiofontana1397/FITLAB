@@ -1,4 +1,4 @@
-# Motore dell'allenamento (v3, `training-3`)
+# Motore dell’allenamento (v4, `training-4`)
 
 Il motore progetta un programma di allenamento completo invece di riempire una scheda da un catalogo:
 
@@ -98,3 +98,41 @@ npx tsx scripts/agent-tests/training-cases.ts     # 26 casi + indicatori di qual
 npx tsx scripts/agent-tests/training-journey.ts   # 7 utenti di regressione con check-in mensili
 npm run agents:test                               # 22 questionari, controlli su dieta e allenamento
 ```
+
+## 8. Refactoring v4 (`training-4`)
+
+Correzioni mirate su `training-3`: ogni decisione del motore deve essere applicata agli esercizi e verificata su ciò che è prescritto, mai su un flag.
+
+### Audit: cause delle anomalie
+
+| Anomalia | Causa | Tipo |
+|---|---|---|
+| Scarico dichiarato ma serie invariate (Luca M5, Elena M4) | `setsFactor` e `rirOffset` restavano nei metadati del mesociclo; la seduta aveva un'unica prescrizione mensile | generazione |
+| Petto e quadricipiti a 0, alta schiena e bicipiti sopra obiettivo con dolori (Elena) | il riempimento del tempo libero alzava ogni gruppo fino al massimo, anche quando altri erano esclusi per dolore | calcolo |
+| Full Body senza tirata (Paolo) | nessun controllo degli schemi motori; Y-T-W tolto per stare in 4 esercizi | validazione |
+| Alta schiena sovradosata (Luca, Marco) | lo stacco rumeno e gli stacchi contavano l'alta schiena come sinergico (è un isometrico) e il riempimento arrivava al massimo | calcolo |
+| Polpacci a 0 (Marco) | il gruppo tolto per tempo non veniva più reintrodotto | generazione |
+| Due sedute di forza consecutive con la corsa (Andrea) | giorni fissi da uno schema settimanale, assegnati senza ragionare su tutta la settimana | generazione |
+| Stacco rumeno con bilanciere e con manubri nella stessa seduta | la selezione penalizzava lo stesso schema ma non lo escludeva | generazione |
+| Confronto uguale per tutte le versioni nel report | metriche calcolate da un file sovrascritto, non dai dataset | validazione |
+| Carichi che salivano a calendario | proiezione mensile senza dati di prestazione | calcolo |
+
+### Cosa cambia
+
+- **Catena mesociclo → settimana → seduta → esercizio** (`periodization.ts`, `prescription.ts → weekPrescription`, `types.ts → ExerciseWeekRx`): ogni esercizio porta le prescrizioni effettive delle 4 settimane. Nello scarico: serie × `setsFactor` (il principale almeno 2), RIR + `rirOffset` (max 4), carico circa −10% arrotondato all'incremento, niente tecniche di intensità (il superset antagonista resta: fa solo risparmiare tempo). Lo scarico "se serve" dell'avanzato è condizionale: le prescrizioni ci sono, l'app non lo applica da sola. L'app mostra la settimana corrente (`training/week.ts`).
+- **Dolori**: gli esercizi che caricano una zona indicata sono esclusi; se un gruppo resta senza varianti compatibili è sospeso, tracciato in `exclusions` con il motivo e il suo volume non va su altri gruppi. Con più zone o più gruppi sospesi il piano invita a una valutazione professionale. Nessuna diagnosi, nessun esercizio di recupero proposto.
+- **Schemi motori** (`session-builder.ts → ensureCoverage, measureCoverage`): spinta, tirata, ginocchio, anca e core sulla settimana. Se manca uno schema si aggiunge o si sostituisce un accessorio che non è l'unico a coprire un altro schema; se l'attrezzatura permette solo una versione parziale (es. Y-T-W senza sbarra né elastico) lo stato è "parziale" e il limite è scritto nel piano.
+- **Volume** (`balanceVolume`, `catalog.ts`): muscoli stabilizzatori separati dai sinergici (non contano), contributo indiretto configurabile per esercizio (`indirectShare`, default 0,5), riempimento fino a circa +20% dell'obiettivo e non al massimo, bilanciamento settimanale (aumenta i gruppi sotto l'80%, riduce le serie dirette oltre il 130%), gruppi senza lavoro diretto reintrodotti dove c'è spazio. Stato per gruppo: ok, sotto, sopra (solo per serie dirette), escluso, con motivo. La decisione di volume del check-in si applica dopo il tetto di tempo.
+- **Settimana ibrida** (`training-days.ts → arrangeWeek`): con la corsa i giorni sono scelti insieme alle sedute, minimizzando forza consecutiva, gambe prima di corse dure, ripetute vicine al lungo. Il compromesso inevitabile è spiegato. Corsa: volume e intensità crescono in mesi alterni, il lungo resta entro il 45% della settimana, una settimana di recupero ogni tre mesi.
+- **Similarità** (`nearDuplicate`): stesso gruppo, schema, porzione di ROM, regione, stabilità e tipo di carico (libero o macchina) = quasi identici, non nella stessa seduta salvo specializzazione.
+- **Push/Pull/Legs su 4 giorni**: la quarta seduta è Full Body, così anche le gambe si allenano due volte.
+- **Carichi**: nessun aumento a calendario; dal mese 2 resta il carico di partenza (adeguato a ripetizioni e RIR del mese) finché la doppia progressione sullo storico non decide un aumento.
+- **Validatore a tre livelli** (`safety.ts → validateMonth`, salvato in `month.validation`): blocchi (attrezzatura, zone doloranti, prescrizioni non valide, scarico che non alleggerisce davvero, mesociclo e sedute disallineati), avvisi (volume fuori obiettivo, frequenza, esercizi quasi identici, settimana ibrida, recupero tra stimoli, schemi mancanti, durata), note (esclusioni, coperture parziali, motivazione degli scarichi).
+
+### Modello dati
+
+Nuovi campi opzionali, compatibili con i piani salvati: `TrainingExerciseEntry.weeks`, `activeWeek`; `run.weeks`; `mesocycle.weeks[].deload/conditional/sets`; `weeklyVolume[].status/reason`; `patternCoverage`, `exclusions`, `validation` sul mese. Catalogo: `stabilizers`, `indirectShare`. Il cambio di versione ricostruisce i piani `training-3` al primo avvio.
+
+### Test
+
+`npm run training:journey -- data.json`, `npm run training:compare -- <cartella>` (scrive `compare` in `data.json` ricalcolandolo da `before.json`, `v3.json`, `data.json`), `FITLAB_REPORT_DIR=<cartella> npm run training:cases -- cases.json`. I 26 casi precedenti restano (il 22 ora verifica anche le serie effettive) più i casi A–J (27–36).

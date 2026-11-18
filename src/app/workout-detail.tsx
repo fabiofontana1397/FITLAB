@@ -1,3 +1,4 @@
+import { dayForWeek, weekOfMonth } from '@/lib/planning/training/week';
 import { useLocalSearchParams } from 'expo-router';
 import { planIndexFor, useTrainingSwapStore } from '@/store/training-swap-store';
 import { StyleSheet, View } from 'react-native';
@@ -38,7 +39,8 @@ export default function WorkoutDetailScreen() {
 
   const month = trainingPlan?.months.find((m) => m.monthIndex === currentMonthIndex(trainingPlan));
   const swaps = useTrainingSwapStore((s) => s.swaps);
-  const day = month?.weeklySplit[planIndexFor(date, swaps)];
+  // the week's effective prescription (deload, calibration week…), not just the month's ordinary session
+  const day = month && trainingPlan ? dayForWeek(month.weeklySplit[planIndexFor(date, swaps)], weekOfMonth(trainingPlan, month.monthIndex, date)) : undefined;
   const exercises = day?.type === 'workout' ? (day.exercises ?? []) : [];
 
   const ctx = useUserContext();

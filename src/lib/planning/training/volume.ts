@@ -12,7 +12,7 @@
  *   - energy deficit, age ≥55, health/endurance goals: lower;
  *   - the time the person actually has caps everything.
  */
-import { CATALOG_BY_ID, PROGRAMMED_GROUPS, type MuscleGroup } from './catalog';
+import { CATALOG_BY_ID, indirectShareOf, PROGRAMMED_GROUPS, type MuscleGroup } from './catalog';
 import type { Level, ProgramModel, ProgramProfile } from './profile';
 
 /** Intermediate hypertrophy baseline, fractional sets per week. */
@@ -80,9 +80,9 @@ export type GroupVolume = { group: MuscleGroup; direct: number; indirect: number
 
 /** Direct, indirect and fractional weekly sets per group for a built week. */
 export function measureVolume(sessions: { exercises: { id: string; sets: number }[] }[], targets: VolumeTarget[]): GroupVolume[] {
-  const acc = new Map<MuscleGroup, { direct: number; indirect: number; days: Set<number> }>();
+  const acc = new Map<MuscleGroup, { direct: number; indirect: number; weighted: number; days: Set<number> }>();
   const get = (g: MuscleGroup) => {
-    if (!acc.has(g)) acc.set(g, { direct: 0, indirect: 0, days: new Set() });
+    if (!acc.has(g)) acc.set(g, { direct: 0, indirect: 0, weighted: 0, days: new Set() });
     return acc.get(g)!;
   };
   sessions.forEach((s, i) => {
@@ -95,18 +95,19 @@ export function measureVolume(sessions: { exercises: { id: string; sets: number 
       for (const g of def.secondary) {
         const v = get(g);
         v.indirect += x.sets;
+        v.weighted += x.sets * indirectShareOf(def, g);
         v.days.add(i);
       }
     }
   });
   const groups = new Set<MuscleGroup>([...targets.map((t) => t.group), ...acc.keys()]);
   return [...groups].map((group) => {
-    const a = acc.get(group) ?? { direct: 0, indirect: 0, days: new Set<number>() };
+    const a = acc.get(group) ?? { direct: 0, indirect: 0, weighted: 0, days: new Set<number>() };
     return {
       group,
       direct: a.direct,
       indirect: a.indirect,
-      fractional: a.direct + a.indirect * 0.5,
+      fractional: a.direct + a.weighted,
       frequency: a.days.size,
       target: targets.find((t) => t.group === group)?.sets ?? 0,
     };

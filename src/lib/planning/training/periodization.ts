@@ -28,6 +28,14 @@ export type WeekPlan = {
   /** Multiplier on the sets of the week (deload < 1). */
   setsFactor: number;
   note: string;
+  /** Which exercises the RIR offset applies to: all, or only the safe ones (machines, isolations, core). */
+  rirScope: 'all' | 'safe';
+  /** A real deload: sets × setsFactor, RIR + rirOffset, load ≈ −10%, no intensification techniques. */
+  deload: boolean;
+  /** Applied only if needed (fatigue): the exercises still carry its prescription. */
+  conditional: boolean;
+  /** Multiplier on running minutes (recovery week < 1). */
+  runFactor: number;
 };
 
 export type MonthBlock = {
@@ -64,18 +72,22 @@ export function monthBlock(args: { block: Block; monthIndex: number; blocks: Blo
   const volumeFactor =
     block === 'accumulo' ? 1 + Math.min(run - 1, 2) * 0.07 : block === 'intensificazione' ? prev : block === 'consolidamento' ? Math.round(prev * 0.88 * 100) / 100 : 0.85;
 
-  const weeks: WeekPlan[] = [1, 2, 3, 4].map((w) => ({ week: w, label: `Settimana ${w}`, rirOffset: 0, setsFactor: 1, note: '' }));
+  const weeks: WeekPlan[] = [1, 2, 3, 4].map((w) => ({ week: w, label: `Settimana ${w}`, rirOffset: 0, setsFactor: 1, note: '', rirScope: 'all', deload: false, conditional: false, runFactor: 1 }));
   if (monthIndex === 1) {
     weeks[0] = { ...weeks[0], label: 'Settimana 1 · calibrazione', rirOffset: 1, note: 'Trova il carico giusto per ogni esercizio: una ripetizione in più in riserva rispetto al previsto.' };
   }
   if (block === 'accumulo' && level !== 'beginner') {
-    weeks[3] = { ...weeks[3], rirOffset: -1, note: 'Ultima settimana del blocco: una ripetizione in meno in riserva sugli esercizi sicuri (macchine, isolamenti).' };
+    weeks[3] = { ...weeks[3], rirOffset: -1, rirScope: 'safe', note: 'Ultima settimana del blocco: una ripetizione in meno in riserva sugli esercizi sicuri (macchine, isolamenti).' };
   }
   if (block === 'intensificazione' && level === 'advanced') {
-    weeks[3] = { ...weeks[3], label: 'Settimana 4 · scarico se serve', note: 'Se energia e prestazioni sono calate, fai questa settimana di scarico: metà delle serie e 2 ripetizioni in più in riserva, stessi carichi.' };
+    weeks[3] = { ...weeks[3], label: 'Settimana 4 · scarico se serve', rirOffset: 2, setsFactor: 0.5, deload: true, conditional: true, note: 'Se energia e prestazioni sono calate, fai questa settimana di scarico: metà delle serie, 2 ripetizioni in più in riserva, carichi circa −10%, niente tecniche di intensità.' };
   }
   if (deloadFirstWeek) {
-    weeks[0] = { ...weeks[0], label: 'Settimana 1 · scarico', rirOffset: 2, setsFactor: 0.6, note: 'Scarico deciso al check-in: circa il 40% di serie in meno e più ripetizioni in riserva, carichi invariati.' };
+    weeks[0] = { ...weeks[0], label: 'Settimana 1 · scarico', rirOffset: 2, setsFactor: 0.6, deload: true, conditional: false, runFactor: 0.7, note: 'Scarico deciso al check-in: circa il 40% di serie in meno, 2 ripetizioni in più in riserva, carichi circa −10%, niente tecniche di intensità.' };
+  }
+  // running: every third month the last week is a recovery week (unless that month already starts with a deload)
+  if (monthIndex % 3 === 0 && !deloadFirstWeek && block !== 'consolidamento') {
+    weeks[3] = { ...weeks[3], runFactor: 0.75, note: [weeks[3].note, 'Corsa: settimana di recupero, durate −25%.'].filter(Boolean).join(' ') };
   }
 
   const goal =

@@ -297,6 +297,8 @@ function monthView(m: TrainingMonthPlan | undefined) {
       reason: x.orderingReason ?? null,
       cues: x.cues ?? [],
       areas: CATALOG_BY_ID.get(x.id)?.areas ?? [],
+      pattern: CATALOG_BY_ID.get(x.id)?.pattern ?? null,
+      weeks: x.weeks ?? [],
     })),
   }));
   const workouts = days.filter((d) => d.type === 'workout');
@@ -311,6 +313,9 @@ function monthView(m: TrainingMonthPlan | undefined) {
     gymSessions: workouts.length,
     runSessions: days.filter((d) => d.type === 'cardio').length,
     weeklySets: workouts.reduce((s, d) => s + d.exercises.reduce((a, x) => a + x.sets, 0), 0),
+    patternCoverage: m.patternCoverage ?? [],
+    exclusions: m.exclusions ?? [],
+    validation: m.validation ?? [],
     days,
   };
 }
@@ -519,7 +524,11 @@ function runUser(u: TestUser) {
 
   // loads month by month: no drop during progression unless the plan lightens on purpose
   const loadTable = months.map((mv) => ({ monthIndex: mv.monthIndex, block: mv.block, loads: loads(mv) }));
-  const repsOf = (mv: MonthView, name: string) => mv.days.flatMap((d) => d.exercises).find((x) => x.name === name)?.reps;
+  // same prescription = same rep range and same RIR (more reps in reserve means a lighter load, on purpose)
+  const repsOf = (mv: MonthView, name: string) => {
+    const x = mv.days.flatMap((d) => d.exercises).find((y) => y.name === name);
+    return x ? `${x.reps}@${x.rir}` : undefined;
+  };
   for (let i = 1; i < loadTable.length; i++) {
     const a = loadTable[i - 1];
     const b = loadTable[i];

@@ -19,22 +19,23 @@ import type { UserContext } from '@/domain/user-context';
 
 import { WEEKDAY_LABELS } from './exercise-library';
 import { arrangeWeek, resolveSchedule } from './training-days';
-import { MUSCLE_LABEL, MUSCLE_SHORT, type CatalogExercise } from './training/catalog';
+import { CATALOG, MUSCLE_LABEL, MUSCLE_SHORT, type CatalogExercise, type MuscleGroup } from './training/catalog';
 import { initialLoad } from './training/loads';
 import { blockSequence, monthBlock } from './training/periodization';
-import { BLOCK_LABEL, prescribe, type Block, type Role } from './training/prescription';
+import { BLOCK_LABEL, prescribe, weekPrescription, type Block, type Role } from './training/prescription';
 import { buildProgramProfile, LEVEL_LABEL, MODEL_LABEL, type ProgramProfile } from './training/profile';
 import { runWeek } from './training/running';
-import { validateTrainingPlan } from './training/safety';
-import { buildSession, perSessionTargets, type PlannedSession } from './training/session-builder';
+import { validateMonth, validateTrainingPlan } from './training/safety';
+import { balanceVolume, buildSession, ensureCoverage, measureCoverage, perSessionTargets, type PlannedSession } from './training/session-builder';
 import { chooseSplit, SPLIT_LABEL } from './training/split';
 import type { TrainingCalibration } from './training/types';
 import { measureVolume, setMinutes, weeklyTargets } from './training/volume';
 import type { TrainingStrategy } from './strategy-types';
 import type { PlanPhaseKind, TrainingDayPlan, TrainingExerciseEntry, TrainingMonthPlan, TrainingPlan } from './types';
+import type { WeekPlan } from './training/periodization';
 
 /** Bump when the prescription logic changes: an older stored plan is rebuilt in place (see isValidTrainingPlan). */
-export const TRAINING_ENGINE_VERSION = 'training-3';
+export const TRAINING_ENGINE_VERSION = 'training-4';
 
 export type TrainingPlanInput = {
   ctx: UserContext;
@@ -55,14 +56,21 @@ export type TrainingTuning = {
   fromMonth?: number;
 };
 
+const AREA_LABEL: Record<string, string> = { knee: 'ginocchio', shoulder: 'spalla', lowerBack: 'zona lombare', wrist: 'polso', hip: 'anca' };
+const PATTERN_TITLE: Record<string, string> = { push: 'Spinta', pull: 'Tirata', knee: 'Dominante di ginocchio', hip: 'Dominante d’anca', core: 'Core' };
+
 function coarsePhase(b: Block): PlanPhaseKind {
   return b === 'adattamento' ? 'adattamento' : b === 'consolidamento' ? 'consolidamento' : 'progressione';
 }
 
-function entryFor(pe: PlannedSession['exercises'][number], order: number, p: ProgramProfile, block: Block, monthIndex: number, rirShift: number, lastIsolationId: string | null): TrainingExerciseEntry {
+function entryFor(pe: PlannedSession['exercises'][number], order: number, p: ProgramProfile, block: Block, monthIndex: number, rirShift: number, lastIsolationId: string | null, weeks: WeekPlan[]): TrainingExerciseEntry {
   const def = pe.def;
   const rx = prescribe({ e: def, role: pe.role, model: p.model, level: p.level, block, sets: pe.sets, rirShift, isMinor: p.isMinor, lastIsolation: def.id === lastIsolationId });
   const load = initialLoad({ e: def, profile: { bodyweightKg: p.bodyweightKg, sex: p.sex, level: p.level, age: p.age }, repsMax: rx.repsMax, rir: rx.rir, monthsIn: monthIndex - 1, calibrating: monthIndex === 1 });
+  const restSec = pe.supersetWith ? Math.max(60, Math.round(rx.restSec * 0.75)) : rx.restSec;
+  const technique = pe.supersetWith ? { kind: 'antagonistSuperset', label: 'Superset antagonista', how: 'Alterna una serie di questo esercizio e una dell’altro, recuperando tra una coppia e la successiva.' } : (rx.technique ?? undefined);
+  // mesocycle → week → session → exercise: every week of the month carries its effective prescription
+  const weekRx = weeks.map((w) => weekPrescription({ e: def, role: pe.role, base: { sets: pe.sets, reps: rx.reps, rir: rx.rir, restSec, kg: load.kg, technique: technique ?? null }, week: w }));
   return {
     id: def.id,
     name: def.name,
@@ -72,7 +80,7 @@ function entryFor(pe: PlannedSession['exercises'][number], order: number, p: Pro
     repsMax: rx.repsMax,
     rir: rx.rir,
     rpe: rx.rpe,
-    restSec: pe.supersetWith ? Math.max(60, Math.round(rx.restSec * 0.75)) : rx.restSec,
+    restSec,
     tempo: rx.tempo,
     suggestedKg: load.kg,
     loadStatus: load.status,
@@ -90,8 +98,9 @@ function entryFor(pe: PlannedSession['exercises'][number], order: number, p: Pro
     orderingReason: pe.orderingReason,
     cues: def.cues,
     progression: rx.progression,
-    technique: pe.supersetWith ? { kind: 'antagonistSuperset', label: 'Superset antagonista', how: 'Alterna una serie di questo esercizio e una dell’altro, recuperando tra una coppia e la successiva.' } : (rx.technique ?? undefined),
+    technique,
     supersetWith: pe.supersetWith,
+    weeks: weekRx,
   };
 }
 
@@ -135,7 +144,9 @@ export function generateTrainingPlan(input: TrainingPlanInput): TrainingPlan | n
     }
 
     // volume: base target × block factor × check-in adjustments
-    let targets = weeklyTargets(p, { volumeFactor: mb.volumeFactor * (calib.volumeFactor ?? 1), groupSets: calib.groupSets });
+    // the time cap is computed on the planned volume; the check-in's volume decision is applied after it, so that a
+    // decision to lower the volume can never raise a group the cap had squeezed (and vice versa)
+    let targets = weeklyTargets(p, { volumeFactor: mb.volumeFactor, groupSets: calib.groupSets });
     // the time the person has caps the volume: scale every group down together rather than drop groups at random
     let timeCapped = false;
     if (gymDays > 0) {
@@ -158,6 +169,14 @@ export function generateTrainingPlan(input: TrainingPlanInput): TrainingPlan | n
         if (monthIndex === 1) reasons.add(`Volume adattato al tempo disponibile: ${gymDays} sedute da circa ${p.sessionMinutes} minuti.`);
       }
     }
+    const checkinVolume = calib.volumeFactor ?? 1;
+    if (checkinVolume !== 1) {
+      targets = targets.map((x) => {
+        const floor = x.group === 'abs' || x.group === 'calves' ? 2 : 3;
+        const sets = checkinVolume < 1 ? Math.max(Math.min(floor, x.sets), Math.round(x.sets * checkinVolume)) : timeCapped ? x.sets : Math.round(x.sets * checkinVolume);
+        return { ...x, sets, min: Math.max(2, Math.round(sets * 0.7)), max: Math.max(3, Math.round(sets * 1.4)) };
+      });
+    }
     const rotation = Math.floor((monthIndex - 1) / 3);
     const rirShift = calib.rirShift ?? 0;
     const restFor = (def: CatalogExercise, role: Role) => prescribe({ e: def, role, model: p.model, level: p.level, block, sets: 3, rirShift: 0, isMinor: p.isMinor, lastIsolation: false }).restSec;
@@ -171,7 +190,7 @@ export function generateTrainingPlan(input: TrainingPlanInput): TrainingPlan | n
       split.sessions.forEach((tpl0, i) => {
         const tpl = priority.length ? { ...tpl0, groups: [...tpl0.groups.filter((g) => priority.includes(g)), ...tpl0.groups.filter((g) => !priority.includes(g))] } : tpl0;
         const avoid = usedByTemplate.get(tpl.key) ?? new Set<string>();
-        const s = buildSession({ template: tpl, perSessionTarget: perSession[i].target, perSessionMax: perSession[i].max, p, restFor, replaceIds: new Set(calib.replaceIds ?? []), avoidIds: avoid, rotation });
+        const s = buildSession({ template: tpl, perSessionTarget: perSession[i].target, perSessionMax: perSession[i].max, p, restFor, replaceIds: new Set(calib.replaceIds ?? []), avoidIds: avoid, rotation, specialized: new Set(priority as MuscleGroup[]) });
         // a template repeated in the week varies its accessories, never its main lift
         const nextAvoid = new Set(avoid);
         for (const x of s.exercises) if (x.role !== 'main') nextAvoid.add(x.def.id);
@@ -180,6 +199,31 @@ export function generateTrainingPlan(input: TrainingPlanInput): TrainingPlan | n
         sessions.push(s);
       });
     }
+    // ---- week-level passes (engine v4)
+    // groups whose every compatible exercise loads a painful area: excluded, never compensated elsewhere
+    const avail = (e: CatalogExercise) => e.equipment.every((x) => p.equipment.has(x));
+    const programmed = new Set<MuscleGroup>(split ? split.sessions.flatMap((x) => x.groups) : []);
+    const frozen = new Set<MuscleGroup>();
+    // groups no exercise can train with the equipment the person has (e.g. lats without a bar or a band)
+    const noEquipment = new Set<MuscleGroup>([...programmed].filter((g) => !CATALOG.some((e) => e.primary === g && avail(e))));
+    const exclusions: NonNullable<TrainingMonthPlan['exclusions']> = [];
+    for (const g of programmed) {
+      const hit = CATALOG.filter((e) => e.primary === g && avail(e) && e.areas.some((a) => p.exclusions.areas.has(a)));
+      if (!hit.length) continue;
+      const areas = [...new Set(hit.flatMap((e) => e.areas.filter((a) => p.exclusions.areas.has(a))))].map((a) => AREA_LABEL[a] ?? a);
+      const ok = CATALOG.some((e) => e.primary === g && avail(e) && !e.areas.some((a) => p.exclusions.areas.has(a)) && !(calib.replaceIds ?? []).includes(e.id));
+      if (!ok) frozen.add(g);
+      exclusions.push({ group: MUSCLE_LABEL[g], reason: ok ? `Esclusi gli esercizi che caricano: ${areas.join(', ')}. Restano varianti compatibili.` : `Nessuna variante compatibile con le zone indicate (${areas.join(', ')}): gruppo sospeso, il volume non viene spostato su altri gruppi.`, exercises: hit.map((e) => e.name) });
+    }
+    if (frozen.size >= 2 || p.exclusions.areas.size >= 2)
+      notices.add('Il dolore che hai indicato limita diversi movimenti: fatti valutare da un medico o da un fisioterapista. La scheda non propone esercizi di recupero, non aumenta carichi o volume nelle zone interessate e non sposta il lavoro escluso su altri gruppi.');
+    const weekNotes: string[] = [];
+    if (sessions.length) {
+      weekNotes.push(...ensureCoverage(sessions, p, restFor, new Set(calib.replaceIds ?? [])).notes);
+      weekNotes.push(...balanceVolume(sessions, targets, p, restFor, frozen, new Set(calib.replaceIds ?? []), measureVolume).notes);
+    }
+    const coverage = sessions.length ? measureCoverage(sessions) : [];
+
     // repeated templates get A/B names when the exercises differ
     const nameCount = new Map<string, number>();
     for (const s of sessions) nameCount.set(s.template.name, (nameCount.get(s.template.name) ?? 0) + 1);
@@ -187,7 +231,9 @@ export function generateTrainingPlan(input: TrainingPlanInput): TrainingPlan | n
 
     const runs = t.running ? runWeek({ focus: t.running.focus, sessions: schedule.runSlots.length, monthIndex, consolidation: block === 'consolidamento', beginnerStart: p.level === 'beginner' }) : [];
     const days = [...schedule.gymSlots, ...schedule.runSlots].sort((a, b) => a - b);
-    const { gymAt, runAt } = arrangeWeek(days, sessions.map((s) => ({ legDay: s.template.legDay })), runs);
+    const { gymAt, runAt, compromises } = arrangeWeek(days, sessions.map((s) => ({ legDay: s.template.legDay })), runs);
+    if (compromises.length && runs.length && sessions.length)
+      notices.add(`Con ${days.length} giorni di allenamento tra forza e corsa non si riesce a evitare ${compromises.join(' e ')}: è la disposizione più sostenibile, con le sedute dure il più lontano possibile tra loro.`);
 
     const week: TrainingDayPlan[] = WEEKDAY_LABELS.map((weekday) => ({ weekday, type: 'rest', title: 'Riposo' }));
     sessions.forEach((s, i) => {
@@ -196,7 +242,7 @@ export function generateTrainingPlan(input: TrainingPlanInput): TrainingPlan | n
       nameSeen.set(s.template.name, k);
       const repeated = (nameCount.get(s.template.name) ?? 1) > 1 && !/ [AB]$/.test(s.template.name);
       const lastIso = [...s.exercises].reverse().find((x) => x.role === 'isolation')?.def.id ?? null;
-      const exercises = s.exercises.map((x, order) => entryFor(x, order + 1, p, block, monthIndex, rirShift, lastIso));
+      const exercises = s.exercises.map((x, order) => entryFor(x, order + 1, p, block, monthIndex, rirShift, lastIso, mb.weeks));
       const blockList = [...new Map(s.exercises.map((x) => [x.blockId, { id: x.blockId, name: x.blockName, order: x.blockOrder }])).values()];
       week[dayIdx] = {
         weekday: WEEKDAY_LABELS[dayIdx],
@@ -218,7 +264,14 @@ export function generateTrainingPlan(input: TrainingPlanInput): TrainingPlan | n
         title: r.title,
         note: r.note,
         estimatedMinutes: r.minutes,
-        run: { kind: r.kind, minutes: r.minutes, intensity: r.intensity, structure: r.structure, progression: r.progression },
+        run: {
+          kind: r.kind,
+          minutes: r.minutes,
+          intensity: r.intensity,
+          structure: r.structure,
+          progression: r.progression,
+          weeks: mb.weeks.map((w) => ({ week: w.week, minutes: w.runFactor === 1 ? r.minutes : Math.max(15, Math.round((r.minutes * w.runFactor) / 5) * 5), ...(w.runFactor < 1 ? { note: w.deload ? 'Settimana di scarico: corsa più breve e tutta facile.' : 'Settimana di recupero: durata ridotta, stesso ritmo.' } : {}) })),
+        },
       };
     });
 
@@ -235,13 +288,55 @@ export function generateTrainingPlan(input: TrainingPlanInput): TrainingPlan | n
         goal: mb.goal,
         progression: timeCapped && (calib.volumeFactor ?? 1) > 1 ? `${mb.progression} Il volume è già al limite del tempo disponibile: l’aumento deciso al check-in non entra nelle sedute.` : mb.progression,
         exitCriteria: mb.exitCriteria,
-        weeks: mb.weeks,
+        weeks: mb.weeks.map((w) => ({
+          week: w.week,
+          label: w.label,
+          rirOffset: w.rirOffset,
+          setsFactor: w.setsFactor,
+          note: w.note,
+          ...(w.deload ? { deload: true } : {}),
+          ...(w.conditional ? { conditional: true } : {}),
+          sets: week.reduce((sum, d) => sum + (d.exercises ?? []).reduce((a, x) => a + (x.weeks?.find((y) => y.week === w.week)?.sets ?? x.sets), 0), 0),
+        })),
       },
       timeCapped: timeCapped || undefined,
       weeklyVolume: volume
         .filter((v) => v.target > 0 || v.direct > 0)
-        .map((v) => ({ group: v.group, label: MUSCLE_LABEL[v.group], direct: v.direct, indirect: v.indirect, fractional: Math.round(v.fractional * 10) / 10, frequency: v.frequency, target: v.target })),
+        .map((v) => {
+          // over only when the DIRECT work exceeds the target: indirect volume from the compounds is expected
+          // (squats train the glutes, presses the triceps) and is shown, not "corrected" by removing those lifts
+          const status =
+            frozen.has(v.group) || (noEquipment.has(v.group) && v.direct === 0)
+              ? 'excluded'
+              : v.target > 0 && v.fractional < v.target * 0.75
+                ? 'under'
+                : v.target > 0 && v.direct > Math.max(v.target * 1.3 + 1, v.target + 2)
+                  ? 'over'
+                  : 'ok';
+          const reason =
+            status === 'excluded'
+              ? frozen.has(v.group)
+                ? 'Escluso per dolore: nessuna variante compatibile.'
+                : 'Nessun esercizio possibile con l’attrezzatura indicata.'
+              : status === 'under'
+                ? timeCapped
+                  ? 'Sotto obiettivo: il tempo disponibile non basta.'
+                  : 'Sotto obiettivo.'
+                : status === 'over'
+                  ? 'Serie dirette sopra obiettivo.'
+                  : v.target > 0 && v.fractional > v.target * 1.35 + 1
+                    ? v.fractional - v.direct > v.direct * 0.5
+                      ? 'Sopra obiettivo per il lavoro indiretto dei multiarticolari (serie dirette nella norma).'
+                      : 'Appena sopra obiettivo: è il minimo di serie per gli esercizi della settimana.'
+                    : undefined;
+          return { group: v.group, label: MUSCLE_LABEL[v.group], direct: v.direct, indirect: v.indirect, fractional: Math.round(v.fractional * 10) / 10, frequency: v.frequency, target: v.target, status, ...(reason ? { reason } : {}) };
+        }),
+      patternCoverage: coverage.map((c) => ({ ...c, ...(c.status !== 'full' ? { note: weekNotes.find((n) => n.startsWith(PATTERN_TITLE[c.pattern])) } : {}) })),
+      exclusions: exclusions.length ? exclusions : undefined,
     });
+    const built = months[months.length - 1];
+    built.validation = validateMonth(built, ctx, { profile: p, splitKind: split?.kind ?? null, hybrid: !!t.running && !!t.gym });
+    for (const n of weekNotes) if (/nessun esercizio|solo in modo parziale|non c’è spazio/.test(n)) notices.add(n);
   }
 
   const plan: TrainingPlan = {

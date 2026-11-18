@@ -120,6 +120,30 @@ export type TrainingExerciseEntry = {
   technique?: { kind: string; label: string; how: string };
   /** Id of the exercise this one alternates with in an antagonist superset. */
   supersetWith?: string;
+  /** Effective prescription of each week of the month (engine v4): the mesocycle's weekly
+   * parameters (calibration, last-week push, deload) applied to this exercise. The top-level
+   * fields are the ordinary week. */
+  weeks?: ExerciseWeekRx[];
+  /** Set by exerciseForWeek (training/week.ts) when the entry shows a specific week's prescription. */
+  activeWeek?: { week: number; deload?: boolean; note?: string };
+};
+
+/** One week's prescription of an exercise. */
+export type ExerciseWeekRx = {
+  week: number;
+  sets: number;
+  reps: string;
+  rir?: number;
+  rpe?: number;
+  restSec: number;
+  /** Load for the week when it differs from the ordinary week (deload: ≈ −10%). */
+  suggestedKg?: number | null;
+  /** Intensification technique of the week; null = none (removed in a deload). */
+  technique?: { kind: string; label: string; how: string } | null;
+  deload?: boolean;
+  /** True when the week is applied only if needed (e.g. "deload if fatigue is high"). */
+  conditional?: boolean;
+  note?: string;
 };
 
 export type TrainingDayPlan = {
@@ -137,7 +161,15 @@ export type TrainingDayPlan = {
   /** Decisions taken while building the session (supersets, cuts to fit the time). */
   notes?: string[];
   /** Structured running session. */
-  run?: { kind: string; minutes: number; intensity: string; structure: string; progression: string };
+  run?: {
+    kind: string;
+    minutes: number;
+    intensity: string;
+    structure: string;
+    progression: string;
+    /** Per-week minutes (engine v4): a recovery week shortens the runs. */
+    weeks?: { week: number; minutes: number; note?: string }[];
+  };
 };
 
 export type TrainingMonthPlan = {
@@ -153,12 +185,29 @@ export type TrainingMonthPlan = {
     goal: string;
     progression: string;
     exitCriteria: string;
-    weeks: { week: number; label: string; rirOffset: number; setsFactor: number; note: string }[];
+    weeks: {
+      week: number;
+      label: string;
+      rirOffset: number;
+      setsFactor: number;
+      note: string;
+      /** Engine v4: deload week (reduced sets, higher RIR, no intensification). */
+      deload?: boolean;
+      conditional?: boolean;
+      /** Weekly gym sets actually prescribed this week (sum over the sessions). */
+      sets?: number;
+    }[];
   };
   /** True when the time the person has, not the programme, limited the weekly volume this month. */
   timeCapped?: boolean;
   /** Weekly volume per muscle group (fractional sets: direct + half of the indirect ones). */
-  weeklyVolume?: { group: string; label: string; direct: number; indirect: number; fractional: number; frequency: number; target: number }[];
+  weeklyVolume?: { group: string; label: string; direct: number; indirect: number; fractional: number; frequency: number; target: number; status?: 'ok' | 'under' | 'over' | 'excluded'; reason?: string }[];
+  /** Engine v4: coverage of the fundamental movement patterns over the week. */
+  patternCoverage?: { pattern: 'push' | 'pull' | 'knee' | 'hip' | 'core'; status: 'full' | 'partial' | 'missing'; sessions: number; exercises: string[]; note?: string }[];
+  /** Engine v4: exercises excluded this month and why (pain, equipment, near-duplicates). */
+  exclusions?: { group: string; reason: string; exercises: string[] }[];
+  /** Engine v4: findings of the plan validator for this month. */
+  validation?: { level: 'blocker' | 'warning' | 'info'; code: string; message: string }[];
 };
 
 export type TrainingPlan = {
