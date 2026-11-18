@@ -12,7 +12,8 @@ import { baselineKcal } from '@/domain/energy';
 import { buildPlans, initialTargets, type PlanBundle } from '@/domain/plan-engine';
 import { weeklyBalanceGoal, type PlanTargets } from '@/domain/targets';
 import { buildUserContext, type UserContext } from '@/domain/user-context';
-import { GYM_EXERCISES, HOME_EXERCISES, type ExerciseDef } from '@/lib/planning/exercise-library';
+import { CATALOG_BY_ID, type CatalogExercise } from '@/lib/planning/training/catalog';
+import { equipmentFor } from '@/lib/planning/training/profile';
 import type { DietPlan, TrainingPlan } from '@/lib/planning/types';
 import type { Goal } from '@/lib/mock/types';
 
@@ -90,8 +91,8 @@ function allDietItems(diet: DietPlan, monthIndex?: number) {
   return out;
 }
 
-const exerciseCatalog: Map<string, ExerciseDef> = new Map(
-  [...Object.values(GYM_EXERCISES).flat(), ...Object.values(HOME_EXERCISES).flat()].map((e) => [e.id, e])
+const exerciseCatalog: Map<string, CatalogExercise> = new Map(
+  [...CATALOG_BY_ID.entries()]
 );
 
 function minutesFromBucket(bucket: unknown): { min: number; max: number } {
@@ -370,10 +371,11 @@ export function checkDiet(persona: Persona, targets: NutritionTargets, diet: Die
 
 // ---------------------------------------------------------------- training --
 
-const SPLIT_COVERAGE = {
-  push: ['Push', 'Upper', 'Full Body'],
-  pull: ['Pull', 'Upper', 'Full Body'],
-  legs: ['Legs', 'Lower', 'Full Body'],
+/** Which muscle groups make a session count as pushing / pulling / legs. */
+const SPLIT_COVERAGE: Record<string, string[]> = {
+  push: ['chest', 'frontDelts', 'triceps'],
+  pull: ['lats', 'upperBack'],
+  legs: ['quads', 'hamstrings', 'glutes'],
 };
 
 export function checkTraining(persona: Persona, training: TrainingPlan, durationMonths: number): Finding[] {
@@ -416,10 +418,11 @@ export function checkTraining(persona: Persona, training: TrainingPlan, duration
   if (beginner && (!pref || pref === 'noPreference') && labels.some((l) => ['Push', 'Pull', 'Legs'].includes(l))) f.push({ level: 'WARN', area: 'allenamento', code: 'R6', message: `Principiante con split ${labels.join('/')}: meglio full body / upper-lower` });
   if (gymDays.length >= 2) {
     for (const [group, covers] of Object.entries(SPLIT_COVERAGE)) {
-      if (!labels.some((l) => covers.includes(l))) f.push({ level: 'WARN', area: 'allenamento', code: 'R7', message: `Nessuna seduta allena ${group === 'legs' ? 'le gambe' : group === 'push' ? 'la spinta' : 'la trazione'} (split: ${labels.join(', ')})` });
+      const trained = gymDays.some((d) => (d.exercises ?? []).some((x) => covers.includes(exerciseCatalog.get(x.id)?.primary ?? '')));
+      if (!trained) f.push({ level: 'WARN', area: 'allenamento', code: 'R7', message: `Nessuna seduta allena ${group === 'legs' ? 'le gambe' : group === 'push' ? 'la spinta' : 'la trazione'} (split: ${labels.join(', ')})` });
     }
   }
-  if (gymDays.length >= 3 && labels.every((l) => l === labels[0]) && labels[0] !== 'Full Body') f.push({ level: 'WARN', area: 'allenamento', code: 'R7', message: `Tutte le sedute uguali (${labels[0]})` });
+  if (gymDays.length >= 3 && labels.every((l) => l === labels[0]) && !labels[0].startsWith('Full Body')) f.push({ level: 'WARN', area: 'allenamento', code: 'R7', message: `Tutte le sedute uguali (${labels[0]})` });
 
   // exercises
   const bucket = a.sessionDuration;
@@ -447,18 +450,16 @@ export function checkTraining(persona: Persona, training: TrainingPlan, duration
   }
 
   // home equipment
-  if (a.trainingLocation === 'home') {
-    const owned = (a.equipment as string[] | undefined) ?? [];
+  if (a.trainingLocation && a.trainingLocation !== 'gym') {
+    // independent of the planner: what the declared location and equipment allow
+    const has = equipmentFor(String(a.trainingLocation), (a.equipment as string[] | undefined) ?? []);
     const bad = new Set<string>();
-    for (const d of week) for (const ex of d.exercises ?? []) {
+    for (const m of training.months) for (const d of m.weeklySplit) for (const ex of d.exercises ?? []) {
       const def = exerciseCatalog.get(ex.id);
-      const need = def?.equipment ?? [];
-      if (need.length > 0 && !need.some((n) => owned.includes(n))) bad.add(`${def?.name} (serve: ${need.join('/')})`);
-      if (def && !HOME_EXERCISES['Full Body'].concat(...Object.values(HOME_EXERCISES)).some((h) => h.id === ex.id)) bad.add(`${def.name} (non è un esercizio da casa)`);
+      const missing = (def?.equipment ?? []).filter((n) => !has.has(n));
+      if (missing.length > 0) bad.add(`${def?.name} (serve: ${missing.join('/')})`);
     }
     if (bad.size) f.push({ level: 'FAIL', area: 'allenamento', code: 'R12', message: `Esercizi non eseguibili con l’attrezzatura dichiarata: ${[...bad].join(', ')}` });
-  } else if (a.trainingLocation === 'outdoor' || a.trainingLocation === 'mixed') {
-    if (gymDays.length > 0) f.push({ level: 'WARN', area: 'allenamento', code: 'R12', message: `Luogo di allenamento "${String(a.trainingLocation)}" ma la scheda usa esercizi da sala pesi (bilanciere, macchine): il luogo viene ignorato` });
   }
 
   // scheme vs focus

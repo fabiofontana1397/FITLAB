@@ -39,8 +39,20 @@ export function PlanExerciseRow({
 
   const isBodyweight = exercise.suggestedKg == null && latestWeightKg == null;
   const isFirstTime = latestWeightKg == null;
-  const referenceKg = latestWeightKg ?? exercise.suggestedKg;
-  const restLabel = exercise.restSec < 60 ? `${exercise.restSec}s` : `${Math.round(exercise.restSec / 60)} min`;
+  // deload week: about −10% on the last load used (the plan's own suggestion already carries it)
+  const deload = !!exercise.activeWeek?.deload;
+  const referenceKg = latestWeightKg != null ? (deload ? Math.floor((latestWeightKg * 0.9) / (exercise.loadIncrementKg || 1)) * (exercise.loadIncrementKg || 1) : latestWeightKg) : exercise.suggestedKg;
+  const restLabel = exercise.restSec < 60 ? `${exercise.restSec}s` : exercise.restSec % 60 === 0 ? `${exercise.restSec / 60} min` : `${Math.floor(exercise.restSec / 60)}:${String(exercise.restSec % 60).padStart(2, '0')} min`;
+  const calibrating = isFirstTime && exercise.loadStatus === 'calibrate';
+  const programming = {
+    rir: exercise.rir,
+    muscles: exercise.primaryMuscle ? [exercise.primaryMuscle + (exercise.primaryRegion ? ` (${exercise.primaryRegion})` : ''), ...(exercise.secondaryMuscles?.length ? [`in parte: ${exercise.secondaryMuscles.join(', ').toLowerCase()}`] : [])].join(' · ') : undefined,
+    progression: exercise.progression,
+    technique: exercise.technique,
+    loadNote: isFirstTime ? exercise.loadNote : undefined,
+    reason: exercise.orderingReason,
+    cues: exercise.cues,
+  };
   const recentHistory = history.slice(-4);
 
   return (
@@ -70,15 +82,33 @@ export function PlanExerciseRow({
       <View style={styles.metaRow}>
         <MetaItem icon="repsHash" value={`${exercise.sets}×${exercise.reps}`} label="Serie x Rip." />
         <View style={[styles.metaDivider, { backgroundColor: theme.border }]} />
-        <MetaItem icon="hourglass" value={exercise.tempo} label="Modalità di esecuzione" />
+        {exercise.rir != null ? (
+          <>
+            <View style={[styles.metaDivider, { backgroundColor: theme.border }]} />
+            <MetaItem icon="barChart" value={`RIR ${exercise.rir}`} label="In riserva" />
+          </>
+        ) : null}
+        <View style={[styles.metaDivider, { backgroundColor: theme.border }]} />
+        <MetaItem icon="hourglass" value={exercise.tempo} label="Tempo" />
         <View style={[styles.metaDivider, { backgroundColor: theme.border }]} />
         <MetaItem icon="clockOutline" value={restLabel} label="Recupero" />
       </View>
 
+      {deload ? (
+        <ThemedText type="caption" themeColor="textSecondary">
+          Settimana di scarico: meno serie, più ripetizioni in riserva e carico circa −10%.
+        </ThemedText>
+      ) : null}
+      {exercise.supersetWith || exercise.technique ? (
+        <ThemedText type="caption" themeColor="textSecondary">
+          {exercise.technique?.label}
+        </ThemedText>
+      ) : null}
+
       <View style={styles.loadRow}>
         <View style={styles.loadCol}>
           <ThemedText type="caption" themeColor="textSecondary" numberOfLines={1}>
-            {isBodyweight ? 'Carico' : isFirstTime ? 'Consigliato' : 'Ultimo carico'}
+            {isBodyweight ? 'Carico' : deload ? 'Carico di scarico' : calibrating ? 'Da calibrare' : isFirstTime ? 'Stima' : 'Ultimo carico'}
           </ThemedText>
           <ThemedText style={styles.loadValue} numberOfLines={1}>
             {referenceKg != null ? `${referenceKg} kg` : '—'}
@@ -109,6 +139,7 @@ export function PlanExerciseRow({
         reps={exercise.reps}
         tempo={exercise.tempo}
         restLabel={restLabel}
+        programming={programming}
         onClose={() => setInfoOpen(false)}
       />
 

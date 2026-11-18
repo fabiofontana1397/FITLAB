@@ -157,7 +157,7 @@ function SessionView({ onClose, title, exercises, date }: Omit<WorkoutSessionMod
       initial.loads ??
       Object.fromEntries(
         exercises.map((ex) => {
-          const load = suggestedNextLoadForExercise(progressSets, ex.id, ex.reps, ex.suggestedKg).suggestedKg;
+          const load = suggestedNextLoadForExercise(progressSets, ex.id, ex.reps, ex.suggestedKg, { rir: ex.rir, incrementKg: ex.loadIncrementKg }).suggestedKg;
           return [ex.id, ex.suggestedKg == null && !load ? null : load || ex.suggestedKg];
         })
       )

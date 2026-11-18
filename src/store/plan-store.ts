@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-import { buildPlans } from '@/domain/plan-engine';
+import { buildPlans, previewTrainingWeek } from '@/domain/plan-engine';
+import type { ExercisePerformance } from '@/lib/planning/training/types';
 import { NEUTRAL_CALIBRATION, recalibrate, type Adherence, type CheckinSignals, type RecalibrationRecord, type RecalibrationResult, type WeightPoint } from '@/domain/recalibration';
 import { computeTargets } from '@/domain/targets';
 import { supervisionReasons } from '@/domain/nutrition/safety';
@@ -15,6 +16,7 @@ import { buildCustomTrainingPlan } from '@/lib/planning/custom-workout';
 import { TRAINING_ENGINE_VERSION } from '@/lib/planning/training-planner';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
 import { daysAgoISO } from '@/lib/mock/dates';
+import { plannedLoadOf } from '@/lib/planning/training/planned-load';
 import type { DietDayPlan, DietPlan, TrainingDayPlan, TrainingPlan } from '@/lib/planning/types';
 import { applySubstitution as applySubstitutionToPlan, type SubstitutionChange, type SubstitutionRequest } from '@/lib/planning/substitution';
 import { logFreeMeal as logFreeMealOnPlan, type FreeMealLog, type FreeMealLogInput } from '@/lib/planning/free-meal';
@@ -50,6 +52,8 @@ export type RecalibrateMonthInput = {
   weights: WeightPoint[];
   adherence: Adherence;
   checkin: CheckinSignals;
+  /** Logged performance of the month (lib/planning/month-adherence.ts → exercisePerformanceInMonth). */
+  performance?: ExercisePerformance[];
 };
 
 type PlanState = {
@@ -249,6 +253,8 @@ export const usePlanStore = create<PlanState>()(
           adherence: input.adherence,
           checkin: input.checkin,
           calibration,
+          performance: input.performance,
+          plannedLoad: plannedLoadOf(trainingPlan?.months.find((m) => m.monthIndex === input.monthIndex)),
           weeks: {
             current: trainingPlan?.months[input.monthIndex - 1]?.weeklySplit ?? null,
             next: trainingPlan?.months[input.monthIndex]?.weeklySplit ?? null,
@@ -256,6 +262,7 @@ export const usePlanStore = create<PlanState>()(
           history,
           slots: buildMealSlotsFromAnswers(input.answers).map((sl) => sl.id),
           frozen: !!dietPlan?.supervision,
+          previewNextWeek: (cal) => previewTrainingWeek(ctx, { calibration: cal, existing: trainingPlan, preserveMonthsBefore: input.monthIndex + 1, monthIndex: input.monthIndex + 1 }),
         });
 
         // Safety engine: a condition reported in this check-in freezes the diet before anything is rebuilt
@@ -391,3 +398,4 @@ export function isValidDietPlan(plan: DietPlan | null): boolean {
   // plans built before the Fit Lab dishes (no recipe on a prescribed meal) are rebuilt
   return plan.months.every((month) => Array.isArray(month.weeklySplit) && month.weeklySplit.length > 0 && month.weeklySplit.every((day) => day.meals.every((meal) => meal.isFreeMeal || meal.recipe)));
 }
+

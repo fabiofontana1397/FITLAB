@@ -125,13 +125,10 @@ export function latestWeightForExercise(sets: LoggedSet[], exerciseId: string): 
   return history.length > 0 ? history[history.length - 1].weightKg : null;
 }
 
-/** Scoped progression-engine suggestion (lib/planning/progression.ts) for
- * an exercise's next load: reacts to the most recent logged RIR if one
- * exists, otherwise behaves exactly like latestWeightForExercise (no RIR
- * ever logged = no behavior change from before this existed). */
-export function suggestedNextLoadForExercise(sets: LoggedSet[], exerciseId: string, targetReps: string, fallbackKg: number | null): ProgressionSuggestion {
+/** Next load for an exercise with double progression on the logged sets (lib/planning/progression.ts). */
+export function suggestedNextLoadForExercise(sets: LoggedSet[], exerciseId: string, targetReps: string, fallbackKg: number | null, opts?: { rir?: number; incrementKg?: number }): ProgressionSuggestion {
   const forExercise = sets.filter((s) => s.exerciseId === exerciseId).map((s) => ({ date: s.date, weightKg: s.weightKg, reps: s.reps, rir: s.rir }));
-  return suggestNextLoad(forExercise, targetReps, latestWeightForExercise(sets, exerciseId) ?? fallbackKg);
+  return suggestNextLoad(forExercise, targetReps, latestWeightForExercise(sets, exerciseId) ?? fallbackKg, opts);
 }
 
 export function isExerciseCompleted(completed: CompletedExercise[], exerciseId: string, date: string): boolean {

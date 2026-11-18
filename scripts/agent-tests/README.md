@@ -58,3 +58,9 @@ veganismo stretto…) richiedono un dietologo e non fanno parte dei test.
 ## Qualità della dieta (framework Fit Lab)
 
 `diet-quality.ts` verifica la struttura del piano alimentare, indipendentemente dal planner: ogni alimento appartiene al catalogo del pasto (Q2), niente latticini o integratori a pranzo e cena (Q3), spuntini senza cottura (Q4), verdura e carboidrato a pranzo e cena (Q5), stessa proteina non a pranzo e cena (Q6), almeno 4 piatti diversi nella settimana (Q7), sostituzioni che portano lo stesso nutriente (Q8), ogni pasto ha un nome di piatto (Q1) e le ricette usano solo alimenti del catalogo (Q0). Una fonte per ruolo: una sola fonte di carboidrati (Q13) e una sola di proteine (Q14) per pasto; pranzo e cena sono primo + secondo + una verdura + olio d'oliva, con sostituzioni (Q15); affettati al massimo una volta a settimana (Q16). Pan bauletto mai come primo (Q17). Vedi `docs/DIET-ENGINE.md`.
+
+
+## Motore dell'allenamento (v3)
+
+- `training-cases.ts` (`npm run training:cases`): 26 casi (principiante, forza, split, blocchi, superset, casa, aperto, corsa + palestra, carichi da calibrare, doppia progressione, scarico, dolore, richieste di split e di giorni, sedute saltate…) e indicatori di qualità su 360 profili.
+- `training-journey.ts` (`npm run training:journey -- out.json`): i 7 utenti di regressione con check-in mensili simulati, atteso e ottenuto per ogni check-in, controlli automatici (A1–A18). Il JSON alimenta il report navigabile.

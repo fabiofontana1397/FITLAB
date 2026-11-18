@@ -29,6 +29,9 @@ import { calorieLimits, enforceCalorieLimits, supervisionReasons, updateExpendit
 import type { DecisionLog, DietAdaptations, SafetyCheck } from './nutrition/types';
 import type { SessionLike } from './energy';
 import { computeTargets, MIN_CALORIES, modelAverage, type PlanTargets } from './targets';
+import type { BodyArea } from '@/lib/planning/exercise-library';
+import { adaptTraining } from '@/lib/planning/training/adaptation';
+import type { ExercisePerformance, TrainingCalibration } from '@/lib/planning/training/types';
 import { fitlabById } from '@/lib/planning/fitlab/foods';
 import { buildFitLabPools } from '@/lib/planning/fitlab/pools';
 import type { UserContext } from './user-context';
@@ -37,14 +40,16 @@ import type { UserContext } from './user-context';
 export type PlanCalibration = {
   /** Extra daily kcal on top of the energy model (negative = fewer). Bounded ±MAX_TOTAL_ADJUSTMENT. */
   calorieAdjustment: number;
-  /** Extra sets per exercise (−1 / 0 / +1). */
+  /** @deprecated training engine ≤2 (one set more/less on every exercise); kept for stored plans, always 0 now — see `training`. */
   setsDelta: number;
-  /** Multiplier on suggested loads (0.9–1.1). */
+  /** @deprecated training engine ≤2 (flat % on every load); kept for stored plans, always 1 now — see `training`. */
   loadFactor: number;
   /** Rotates which foods are picked, so the diet stays fresh (and changes when the old one is not working). */
   mealVariant: number;
   /** First month the calibration applies to. */
   fromMonth: number;
+  /** Training adaptation decided at the check-ins (volume, effort, deload, days, split, painful areas). */
+  training?: TrainingCalibration;
   /** Dynamic expenditure estimate: kcal/day the real expenditure differs from the model (bounds the deficit). */
   expenditureOffset?: number;
   /** How the meal planner adapts the next months (times, distribution, density, foods, meals out…). */
@@ -69,10 +74,20 @@ export type Adherence = {
   avgEatenKcal: number | null;
 };
 
-/** Every check-in answer the engine reads (see monitoring.ts). */
-export type CheckinSignals = CheckinInput;
+/** Every check-in answer the engines read: nutrition (see monitoring.ts) and training follow-ups. */
+export type CheckinSignals = CheckinInput & {
+  /** Follow-ups of the training questions: new days per week, requested split, painful areas. */
+  newDays?: number;
+  split?: 'fullBody' | 'upperLower' | 'pushPullLegs';
+  painAreas?: BodyArea[];
+  /** Perceived recovery between sessions and sleep quality (optional questions). */
+  recovery?: 'good' | 'ok' | 'poor';
+  sleep?: 'good' | 'ok' | 'poor';
+};
 
 export type RecalibrationInput = {
+  /** Engine v5: load of the month just lived (estimated fatigue, double-session days, runs per week). */
+  plannedLoad?: { fatigueStatus?: string; doubles?: number; runs?: number };
   ctx: UserContext;
   /** The month that just ended (1-based). */
   monthIndex: number;
@@ -84,6 +99,8 @@ export type RecalibrationInput = {
   adherence: Adherence;
   checkin: CheckinSignals;
   calibration: PlanCalibration;
+  /** Logged performance of the exercises in the month (best e1RM first vs last session, logged RIR). */
+  performance?: ExercisePerformance[];
   /** Planned training week of the month that ended and of the next one (null in diet-only mode). */
   weeks?: { current: (SessionLike | null | undefined)[] | null; next: (SessionLike | null | undefined)[] | null };
   /** Earlier check-ins, oldest first: their steps and expected outcomes. */
@@ -92,6 +109,8 @@ export type RecalibrationInput = {
   slots?: string[];
   /** The diet plan is already under professional supervision (frozen). */
   frozen?: boolean;
+  /** Next month's training week as it will be rebuilt with the new calibration (the training adaptation can change it). */
+  previewNextWeek?: (calibration: PlanCalibration) => (SessionLike | null | undefined)[] | null;
 };
 
 export type Verdict =
@@ -184,36 +203,12 @@ export function applyGuardrails(
 
 // ------------------------------------------------------------------ engine --
 
-/** Training side, unchanged in spirit: fewer sets when recovery or adherence suffer, a bit more load when everything goes well. */
-function trainingTuning(input: RecalibrationInput, verdict: Verdict, lowAdherence: boolean): { setsDelta: number; loadFactor: number; changes: PlanChange[]; reasons: string[] } {
-  const { checkin, adherence } = input;
-  const changes: PlanChange[] = [];
-  const reasons: string[] = [];
-  let setsDelta = 0;
-  let loadFactor = 1;
-  if (input.ctx.mode === 'diet') return { setsDelta, loadFactor, changes, reasons };
-  if (lowAdherence) {
-    setsDelta = -1;
-    changes.push({ area: 'allenamento', text: 'Allenamenti più leggeri (una serie in meno per esercizio) per rendere il piano più facile da seguire.' });
-    return { setsDelta, loadFactor, changes, reasons };
-  }
-  const sore = checkin.difficulty?.includes('soreness') ?? false;
-  if (checkin.energy === 'low' || checkin.energy === 'veryLow' || sore) {
-    setsDelta = -1;
-    reasons.push('Energia bassa o recupero difficile: una serie in meno.');
-    changes.push({ area: 'allenamento', text: 'Allenamenti più leggeri per recuperare meglio (una serie in meno per esercizio).' });
-  } else if ((checkin.energy === 'high' || checkin.energy === 'veryHigh') && (adherence.trainingCompletion ?? 0) >= 0.8 && (verdict === 'on_track' || verdict === 'too_slow')) {
-    loadFactor = 1.03;
-    reasons.push('Energia alta e allenamenti completati: carichi +3%.');
-  }
-  if (checkin.wantsChange?.includes('trainingIntensity') && setsDelta === 0 && loadFactor === 1) {
-    loadFactor = checkin.energy === 'low' || checkin.energy === 'veryLow' ? 0.97 : 1.03;
-    reasons.push('Richiesta di cambiare l’intensità degli allenamenti.');
-  }
-  if (setsDelta === 0 && loadFactor === 1) changes.push({ area: 'allenamento', text: 'Progressione normale: carichi in salita graduale e rotazione degli esercizi di supporto.' });
-  return { setsDelta, loadFactor, changes, reasons };
-}
-
+/**
+ * Decides the next calibration. Nutrition: monitoring → analysis → decision → limits → explanation
+ * (docs/NUTRITION-ADAPTIVE-ENGINE.md). Training is adapted by its own engine (lib/planning/training/adaptation.ts):
+ * performance from the logged sets, recovery, pain, time and explicit requests decide volume, effort, deload,
+ * days and split. No flat percentage on all loads: loads progress set by set with double progression.
+ */
 export function recalibrate(input: RecalibrationInput): RecalibrationResult {
   const { ctx, targets, adherence, calibration } = input;
   const P = NUTRITION_PARAMS;
@@ -310,13 +305,32 @@ export function recalibrate(input: RecalibrationInput): RecalibrationResult {
   }
   const lowAdherence = adh.level === 'low';
   const verdict: Verdict = supervision.length > 0 ? 'professional_review' : lowAdherence && weight.classification !== 'insufficient_data' ? 'low_adherence' : weight.classification;
-  const training = trainingTuning(input, verdict, lowAdherence);
+  // training: its own adaptation engine (performance, recovery, pain, requests) — see lib/planning/training/adaptation.ts
+  const training: { calibration: TrainingCalibration | undefined; changes: PlanChange[]; reasons: string[] } = { calibration: calibration.training, changes: [], reasons: [] };
+  if (ctx.training) {
+    const adaptation = adaptTraining({
+      monthIndex: input.monthIndex,
+      previous: calibration.training,
+      trainingCompletion: adherence.trainingCompletion,
+      checkin: input.checkin,
+      performance: input.performance,
+      plannedRir: 2,
+      hasGym: !!ctx.training.gym,
+      sessionBucket: ctx.training.sessionBucket,
+      plannedLoad: input.plannedLoad,
+    });
+    training.calibration = adaptation.calibration;
+    training.changes = adaptation.changes.map((text) => ({ area: 'allenamento' as const, text }));
+    training.reasons = adaptation.reasons;
+  }
 
   const next: PlanCalibration = {
     ...calibration,
     calorieAdjustment: Math.round(adjustment),
-    setsDelta: training.setsDelta,
-    loadFactor: training.loadFactor,
+    // sets and loads are no longer changed by a flat percentage on the whole plan: training has its own calibration
+    setsDelta: 0,
+    loadFactor: 1,
+    training: training.calibration,
     mealVariant: calibration.mealVariant + 1, // foods always rotate: the plan is reworked every month
     fromMonth: input.monthIndex + 1,
     expenditureOffset: tdee.offset,
@@ -338,7 +352,7 @@ export function recalibrate(input: RecalibrationInput): RecalibrationResult {
   }
 
   // preview of the next month with the new calibration (what buildPlans will produce)
-  const computed = computeTargets(ctx, weeks.next ?? weeks.current, next);
+  const computed = computeTargets(ctx, input.previewNextWeek?.(next) ?? weeks.next ?? weeks.current, next);
   const nextTargets = supervised ? { ...computed, calories: targets.calories, macros: targets.macros } : computed;
   const otherChanges: string[] = [];
   const trainingDiff = nextTargets.calories - (targets.calories + effectiveStep);

@@ -13,7 +13,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useUserContext } from '@/hooks/use-user-context';
 import { daysAgoISO } from '@/lib/mock/dates';
 import { goBackOr } from '@/lib/navigation/go-back';
-import { checkinSignals, computeMonthAdherence, monthWindow, weightsInMonth } from '@/lib/planning/month-adherence';
+import { checkinSignals, computeMonthAdherence, exercisePerformanceInMonth, monthWindow, weightsInMonth } from '@/lib/planning/month-adherence';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
 import { MONTHLY_CHECKIN_QUESTIONS } from '@/lib/questionnaire/monthly-checkin-schema';
 import { isQuestionVisible } from '@/lib/questionnaire/schema';
@@ -61,6 +61,7 @@ export default function MonthlyCheckinScreen() {
   const bodyEntries = useBodyStore((s) => s.entries);
   const nutritionEntries = useNutritionStore((s) => s.entries);
   const completedExercises = useTrainingProgressStore((s) => s.completed);
+  const loggedSets = useTrainingProgressStore((s) => s.sets);
   const activityLog = useActivityLogStore((s) => s.entries);
   const dietPlan = usePlanStore((s) => s.dietPlan);
   const trainingPlan = usePlanStore((s) => s.trainingPlan);
@@ -105,6 +106,7 @@ export default function MonthlyCheckinScreen() {
           activityLog,
         }),
         checkin: checkinSignals(answers),
+        performance: exercisePerformanceInMonth(loggedSets, window),
       });
       await submitCheckin(endedMonth, answers, trendKg);
 

@@ -32,7 +32,7 @@ non ricalcolano nulla: chiamano il dominio.
 | `domain/nutrition/*` | Motore adattivo: monitoraggio, analisi, decisione, limiti di sicurezza, validazione, parametri (`NUTRITION_PARAMS`) |
 | `domain/profile.ts` | `profileFromContext` per il profilo utente |
 | `lib/planning/diet-planner.ts` + `lib/planning/fitlab/*` | Dieta secondo il framework Fit Lab: catalogo per pasto → ricette → quantità risolte su calorie e macro (vedi `docs/DIET-ENGINE.md`) |
-| `lib/planning/training-planner.ts` | Split, progressione, rotazione, `tuning` dalla calibrazione |
+| `lib/planning/training-planner.ts` + `lib/planning/training/*` | Programmazione dell'allenamento: profilo, split, volume per gruppo muscolare, blocchi, prescrizioni con RIR, carichi da calibrare, doppia progressione, mesocicli, corsa, sicurezza (vedi `docs/TRAINING-ENGINE.md`) |
 | `lib/planning/month-adherence.ts` | Fatti del mese: sedute fatte, giorni tracciati, calorie medie, segnali del check-in |
 
 ## Il ciclo mensile
@@ -49,6 +49,8 @@ Alla fine di ogni mese del piano (anche il primo) l'utente fa il check-in (`app/
    - **bassa aderenza → non si cambiano i numeri**; il nuovo target è il target seguito più il passo deciso
      (massimo 150 kcal), sempre entro i limiti permanenti (deficit 20%, surplus 15%, soglia individuale);
    - storico con `DecisionLog` (motivi, regole, alternative escluse, risultato atteso e ottenuto).
+   - l'allenamento ha il suo adattamento (`lib/planning/training/adaptation.ts` → `PlanCalibration.training`):
+     prestazioni registrate, recupero, sonno, dolore, tempo e richieste decidono volume, RIR, scarico, giorni e split.
 3. `buildPlans` rigenera dieta e allenamento **dal mese successivo**, con la nuova calibrazione.
 4. Calibrazione e storico stanno nel jsonb dei piani (`DietPlan.calibration`, `recalibrations`): nessuna migrazione.
 

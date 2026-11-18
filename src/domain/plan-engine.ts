@@ -53,10 +53,29 @@ export function initialTargets(ctx: UserContext, calibration?: PlanCalibration):
   return computeTargets(ctx, provisionalTrainingWeek(ctx), calibration);
 }
 
+/**
+ * Training week of a month as buildPlans will produce it with a given calibration (same generator, same preserved
+ * months). Used by the recalibration to preview the next month's expenditure with the training it just decided.
+ */
+export function previewTrainingWeek(ctx: UserContext, opts: { calibration: PlanCalibration; existing: TrainingPlan | null; preserveMonthsBefore: number; monthIndex: number }) {
+  if (ctx.mode === 'diet') return null;
+  if (opts.existing?.source === 'custom') return opts.existing.months.find((m) => m.monthIndex === opts.monthIndex)?.weeklySplit ?? null;
+  const c = opts.calibration;
+  const plan = generateTrainingPlan({
+    ctx,
+    durationMonths: opts.existing?.durationMonths ?? planDurationMonths(ctx, initialTargets(ctx, c)),
+    strategy: null,
+    preserveMonthsBefore: opts.preserveMonthsBefore,
+    existingMonths: opts.existing?.months as TrainingMonthPlan[] | undefined,
+    tuning: { training: c.training, fromMonth: c.training?.fromMonth ?? c.fromMonth },
+  });
+  return plan?.months.find((m) => m.monthIndex === opts.monthIndex)?.weeklySplit ?? null;
+}
+
 export function buildPlans(ctx: UserContext, opts: BuildPlansOptions = {}): PlanBundle {
   const { strategy, preserveMonthsBefore, existing } = opts;
   const calibration = opts.calibration ?? existing?.diet?.calibration ?? existing?.training?.calibration ?? NEUTRAL_CALIBRATION;
-  const tuning: TrainingTuning = { setsDelta: calibration.setsDelta, loadFactor: calibration.loadFactor, fromMonth: calibration.fromMonth };
+  const tuning: TrainingTuning = { training: calibration.training, fromMonth: calibration.training?.fromMonth ?? calibration.fromMonth };
 
   const durationMonths = existing?.diet?.durationMonths ?? existing?.training?.durationMonths ?? planDurationMonths(ctx, initialTargets(ctx, calibration));
 

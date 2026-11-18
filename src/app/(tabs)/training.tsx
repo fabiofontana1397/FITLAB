@@ -1,3 +1,4 @@
+import { dayForWeek, weekOfMonth } from '@/lib/planning/training/week';
 import { router } from 'expo-router';
 import { useMemo, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
@@ -82,7 +83,8 @@ export default function TrainingScreen() {
   const monthIndex = trainingPlan ? currentMonthIndex(trainingPlan) : 1;
   const currentMonth = trainingPlan?.months.find((m) => m.monthIndex === monthIndex);
   const weeklySplit = currentMonth?.weeklySplit ?? [];
-  const dayPlanOf = (date: string): TrainingDayPlan | undefined => weeklySplit[planIndexFor(date, swaps)];
+  const dayPlanOf = (date: string): TrainingDayPlan | undefined =>
+    currentMonth && trainingPlan ? dayForWeek(weeklySplit[planIndexFor(date, swaps)], weekOfMonth(trainingPlan, currentMonth.monthIndex, date)) : weeklySplit[planIndexFor(date, swaps)];
 
   const isDayComplete = (date: string): boolean => {
     const day = dayPlanOf(date);

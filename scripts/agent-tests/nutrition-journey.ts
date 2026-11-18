@@ -17,7 +17,7 @@ import { writeFileSync } from 'node:fs';
 
 import { dayNutrition, validateDietMonth, validateUpdate, varietyMetrics, type ValidationIssue } from '@/domain/nutrition/validation';
 import type { InterventionKind } from '@/domain/nutrition/types';
-import { buildPlans, type PlanBundle } from '@/domain/plan-engine';
+import { buildPlans, previewTrainingWeek, type PlanBundle } from '@/domain/plan-engine';
 import { NEUTRAL_CALIBRATION, recalibrate, type CheckinSignals, type PlanCalibration, type RecalibrationRecord } from '@/domain/recalibration';
 import { buildUserContext } from '@/domain/user-context';
 import { DIET_ENGINE_VERSION, generateDietPlan, reconcileDay } from '@/lib/planning/diet-planner';
@@ -492,6 +492,7 @@ function runUser(u: Scenario['user'], expectations: (m: number) => Expectation |
       history,
       slots: slots(),
       frozen: wasFrozen,
+      previewNextWeek: (cal) => previewTrainingWeek(ctx, { calibration: cal, existing: bundle.training, preserveMonthsBefore: m + 1, monthIndex: m + 1 }),
     });
     if (history.length && result.previousOutcome && history[history.length - 1].decision) history[history.length - 1].decision!.observedOutcome = result.previousOutcome;
     history.push({ monthIndex: m, date: addDays(start, m * 30), verdict: result.verdict, weeklyRateKg: result.weeklyRateKg, expectedWeeklyKg: result.expectedWeeklyKg, changes: result.changes, calibration: result.calibration, decision: result.decision });

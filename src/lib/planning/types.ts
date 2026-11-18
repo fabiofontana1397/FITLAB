@@ -134,7 +134,7 @@ export type TrainingExerciseEntry = {
   restSec: number;
   /** Conservative starting point in kg, or null for bodyweight/band exercises with no load to suggest. */
   suggestedKg: number | null;
-  /** Execution cadence in seconds as "eccentric-isometric-concentric", e.g. "3-0-1". */
+  /** Execution cadence: eccentric – pause in the stretch – concentric – pause at the top ("X" = explosive intent), e.g. "3-1-1-0". */
   tempo: string;
   /** True when no exercise in this split (or the wider catalog) was
    * compatible with the user's stated pain/injury/equipment constraints, so
@@ -142,6 +142,60 @@ export type TrainingExerciseEntry = {
    * recommendation — spec §4.3/§13 edge case table: this should never be
    * silently presented as an ordinary pick. */
   needsManualReview?: boolean;
+  // ---- training engine v3 (all optional: custom cards and older plans do not have them)
+  repsMin?: number;
+  repsMax?: number;
+  /** Reps in reserve to stop at (0 = failure). */
+  rir?: number;
+  /** RIR-based RPE (10 − RIR). */
+  rpe?: number;
+  /** 'calibrate' = first-month estimate to adjust in the first sessions; 'estimate' = projection until history exists. */
+  loadStatus?: 'calibrate' | 'estimate' | 'bodyweight';
+  loadNote?: string;
+  /** Smallest load jump for this exercise (kg). */
+  loadIncrementKg?: number;
+  role?: 'main' | 'secondary' | 'isolation' | 'core';
+  primaryMuscle?: string;
+  primaryRegion?: string;
+  secondaryMuscles?: string[];
+  muscleGroup?: string;
+  sessionBlockId?: string;
+  blockName?: string;
+  blockOrder?: number;
+  exerciseOrder?: number;
+  orderingReason?: string;
+  /** Execution cues. */
+  cues?: string[];
+  /** How this exercise progresses (double progression, reps, time). */
+  progression?: string;
+  /** Intensification technique, when appropriate. */
+  technique?: { kind: string; label: string; how: string };
+  /** Id of the exercise this one alternates with in an antagonist superset. */
+  supersetWith?: string;
+  /** Effective prescription of each week of the month (engine v4): the mesocycle's weekly
+   * parameters (calibration, last-week push, deload) applied to this exercise. The top-level
+   * fields are the ordinary week. */
+  weeks?: ExerciseWeekRx[];
+  /** Set by exerciseForWeek (training/week.ts) when the entry shows a specific week's prescription. */
+  activeWeek?: { week: number; deload?: boolean; note?: string };
+};
+
+/** One week's prescription of an exercise. */
+export type ExerciseWeekRx = {
+  week: number;
+  sets: number;
+  reps: string;
+  rir?: number;
+  rpe?: number;
+  restSec: number;
+  /** Load for the week when it differs from the ordinary week (deload: ≈ −10%). */
+  suggestedKg?: number | null;
+  /** Intensification technique of the week; null = none (removed in a deload). */
+  technique?: { kind: string; label: string; how: string } | null;
+  deload?: boolean;
+  /** True when the week is applied only if needed (e.g. "deload if fatigue is high"). */
+  conditional?: boolean;
+  note?: string;
 };
 
 export type TrainingDayPlan = {
@@ -150,6 +204,38 @@ export type TrainingDayPlan = {
   title: string;
   exercises?: TrainingExerciseEntry[];
   note?: string;
+  // ---- training engine v3
+  /** What the session is about ("Squat e spinta orizzontale"). */
+  focus?: string;
+  muscleGroups?: string[];
+  blocks?: { id: string; name: string; order: number }[];
+  estimatedMinutes?: number;
+  /** Decisions taken while building the session (supersets, cuts to fit the time). */
+  notes?: string[];
+  /** Structured running session. */
+  run?: {
+    kind: string;
+    minutes: number;
+    intensity: string;
+    structure: string;
+    progression: string;
+    /** Per-week minutes (engine v4): a recovery week shortens the runs. */
+    weeks?: { week: number; minutes: number; note?: string }[];
+  };
+  /** Engine v5: an easy run done on the same day as this strength session, in a separate moment. */
+  extraRun?: {
+    kind: string;
+    title: string;
+    minutes: number;
+    intensity: string;
+    structure: string;
+    progression: string;
+    weeks?: { week: number; minutes: number; note?: string }[];
+    /** Which comes first (the activity with priority), and the minimum gap between the two. */
+    order: 'runFirst' | 'gymFirst';
+    gapHours: number;
+    note: string;
+  };
 };
 
 export type TrainingMonthPlan = {
@@ -158,6 +244,93 @@ export type TrainingMonthPlan = {
   title: string;
   focusNote: string;
   weeklySplit: TrainingDayPlan[];
+  // ---- training engine v3
+  /** Mesocycle block: adattamento, accumulo, intensificazione, consolidamento. */
+  block?: string;
+  mesocycle?: {
+    goal: string;
+    progression: string;
+    exitCriteria: string;
+    weeks: {
+      week: number;
+      label: string;
+      rirOffset: number;
+      setsFactor: number;
+      note: string;
+      /** Engine v4: deload week (reduced sets, higher RIR, no intensification). */
+      deload?: boolean;
+      conditional?: boolean;
+      /** Weekly gym sets actually prescribed this week (sum over the sessions). */
+      sets?: number;
+    }[];
+  };
+  /** True when the time the person has, not the programme, limited the weekly volume this month. */
+  timeCapped?: boolean;
+  /** Weekly volume per muscle group (fractional sets: direct + half of the indirect ones). */
+  weeklyVolume?: { group: string; label: string; direct: number; indirect: number; fractional: number; frequency: number; target: number; status?: 'ok' | 'under' | 'over' | 'excluded'; reason?: string }[];
+  /** Engine v4: coverage of the fundamental movement patterns over the week. */
+  patternCoverage?: { pattern: 'push' | 'pull' | 'knee' | 'hip' | 'core'; status: 'full' | 'partial' | 'missing'; sessions: number; exercises: string[]; note?: string }[];
+  /** Engine v4: exercises excluded this month and why (pain, equipment, near-duplicates). */
+  exclusions?: { group: string; reason: string; exercises: string[] }[];
+  /** Engine v4/v5: findings of the plan validator for this month. */
+  validation?: PlanFinding[];
+  /** Engine v5: conflicts of this month (requests vs possibilities), with decision and alternatives. */
+  conflicts?: PlanConflict[];
+  /** Engine v5: split and session length the month was built with (for month-to-month traceability). */
+  splitKind?: string;
+  sessionMinutes?: number;
+  /** Engine v5: layout compromises that could not be avoided with the days available (hybrid weeks). */
+  compromises?: string[];
+  /** Engine v5: estimated fatigue of the month's ordinary week (see training/fatigue.ts). */
+  fatigue?: {
+    weekly: number;
+    capacity: number;
+    ratio: number;
+    status: 'low' | 'ok' | 'high' | 'excessive';
+    capacityNotes: string[];
+    days: { weekday: string; strength: number; running: number; total: number; legs: number }[];
+    groups: { group: string; label: string; load: number; sessions: number; closeStimuli: string[] }[];
+    joints: { area: string; load: number }[];
+    runningShare: number;
+    notes: string[];
+    /** What the planner did about it, if anything. */
+    action?: string;
+  };
+  /** Engine v5: change of each group's weekly volume vs the previous month, with its reason. */
+  volumeChanges?: { group: string; label: string; previous: number; current: number; changePct: number; direct: number; indirect: number; frequency: number; deload: boolean; temporary: boolean; reason: string }[];
+  /** Engine v5: exercises that changed vs the previous month (same session), with the reason. */
+  exerciseChanges?: { session: string; from: string | null; to: string | null; role?: string; reason: string }[];
+};
+
+/** A structured validation finding (engine v5). */
+export type PlanFinding = {
+  level: 'blocker' | 'warning' | 'info' | 'review';
+  code: string;
+  message: string;
+  /** volume, safety, deload, schedule, hybrid, fatigue, patterns, conflict, prescription, progression, equipment */
+  category?: string;
+  /** Muscle group, session or day involved. */
+  subject?: string;
+  cause?: string;
+  impact?: string;
+  action?: string;
+  /** Same key = same underlying problem (used to count unique problems across months). */
+  groupKey?: string;
+};
+
+/** A conflict between what the person asked and what can be done (engine v5). */
+export type PlanConflict = {
+  id: string;
+  /** Hierarchy: 1 safety, 2 availability, 3 main goal, 4 frequency, 5 split preference, 6 secondary preferences. */
+  level: 1 | 2 | 3 | 4 | 5 | 6;
+  title: string;
+  description: string;
+  alternatives: string[];
+  decision: string;
+  /** True when the plan is provisional until the person chooses. */
+  needsConfirmation: boolean;
+  /** Months of the plan it applies to. */
+  months?: number[];
 };
 
 export type TrainingPlan = {
@@ -174,4 +347,8 @@ export type TrainingPlan = {
    * substitution (see TrainingExerciseEntry.needsManualReview) — surfaced
    * as a plan-level banner rather than requiring the UI to scan every day. */
   needsManualReview?: boolean;
+  /** Why the plan is built the way it is: level, model, split, decisions on conflicts. */
+  rationale?: { level: string; model: string; split: string; reasons: string[]; notices: string[] };
+  /** Engine v5: conflicts between requests and possibilities, with the decision taken and the alternatives. */
+  conflicts?: PlanConflict[];
 };

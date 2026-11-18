@@ -3,11 +3,13 @@
  * recalibration (domain/recalibration.ts) works from. Pure: callers pass in the
  * logged data from the stores.
  */
-import type { Adherence, CheckinSignals, WeightPoint } from '@/domain/recalibration';
+import type { Adherence, WeightPoint } from '@/domain/recalibration';
 import { addDaysISO, isoMondayIndex } from '@/lib/mock/dates';
 import type { LoggedActivity } from '@/lib/api/activity-log';
 import type { BodyMetricSnapshot } from '@/lib/mock/types';
 import type { TrainingPlan } from '@/lib/planning/types';
+import { sessionE1rm } from '@/lib/planning/training/loads';
+import type { ExercisePerformance } from '@/lib/planning/training/types';
 import { macrosForEntry, type MealFoodEntry } from '@/store/nutrition-store';
 import { isExerciseCompleted } from '@/store/training-progress-store';
 
@@ -70,33 +72,32 @@ export function computeMonthAdherence(input: {
   };
 }
 
-/** Maps the check-in questionnaire's stored answers onto the signals the engine reads. */
-export function checkinSignals(answers: Record<string, unknown>): CheckinSignals {
-  const asArray = (v: unknown) => (Array.isArray(v) ? (v as string[]) : undefined);
-  const asText = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : undefined);
-  const adherence = Number(answers.checkinAdherence);
-  const eatingOut = Number(answers.checkinEatingOut);
-  const waist = Number(answers.checkinWaistCm);
-  const difficulty = asArray(answers.checkinDifficulty);
-  const wantsChange = asArray(answers.checkinWantsChange);
-  return {
-    adherence: Number.isFinite(adherence) && adherence > 0 ? adherence : undefined,
-    energy: answers.checkinEnergyLevel as CheckinSignals['energy'],
-    hunger: answers.checkinHungerLevel as CheckinSignals['hunger'],
-    difficulty,
-    wantsChange,
-    // follow-up answers count only while the question they depend on still asks for them
-    quantityDirection: difficulty?.includes('foodQuantity') ? (answers.checkinQuantityDirection as CheckinSignals['quantityDirection']) : undefined,
-    skippedMeals: answers.checkinSkippedMeals as CheckinSignals['skippedMeals'],
-    eatingOutPerWeek: answers.checkinEatingOut != null && Number.isFinite(eatingOut) ? eatingOut : undefined,
-    activityChange: answers.checkinActivityChange as CheckinSignals['activityChange'],
-    events: asArray(answers.checkinEvents)?.filter((e) => e !== 'none'),
-    waistCm: Number.isFinite(waist) && waist > 0 ? waist : undefined,
-    preferredTimes: wantsChange?.includes('mealTimes') ? asText(answers.checkinPreferredTimes) : undefined,
-    foodsToReplace: wantsChange?.includes('foodOptions') ? asText(answers.checkinFoodsToReplace) : undefined,
-    foodsWanted: wantsChange?.includes('foodOptions') ? asText(answers.checkinFoodsWanted) : undefined,
-    specialConditions: asArray(answers.checkinSpecialConditions)?.filter((e) => e !== 'none'),
-    dietaryPatternChange: answers.checkinDietaryPattern && answers.checkinDietaryPattern !== 'keep' ? String(answers.checkinDietaryPattern) : undefined,
-    notes: asText(answers.checkinNotes),
-  };
+export { checkinSignals } from './checkin-signals';
+
+/**
+ * How each exercise's performance moved during the month, from the logged sets:
+ * best estimated 1RM (Epley, reps + logged RIR) of the first and of the last
+ * session, and the average logged RIR. Feeds the training adaptation.
+ */
+export function exercisePerformanceInMonth(sets: { exerciseId: string; exerciseName: string; date: string; reps: number; weightKg: number; rir?: number }[], window: { start: string; end: string }): ExercisePerformance[] {
+  const byExercise = new Map<string, typeof sets>();
+  for (const s of sets) {
+    if (s.date < window.start || s.date > window.end || s.weightKg <= 0) continue;
+    byExercise.set(s.exerciseId, [...(byExercise.get(s.exerciseId) ?? []), s]);
+  }
+  const out: ExercisePerformance[] = [];
+  for (const [exerciseId, list] of byExercise) {
+    const dates = [...new Set(list.map((s) => s.date))].sort();
+    const best = (d: string) => sessionE1rm(list.filter((s) => s.date === d));
+    const rirs = list.map((s) => s.rir).filter((r): r is number => r != null);
+    out.push({
+      exerciseId,
+      name: list[0].exerciseName,
+      firstE1rm: best(dates[0]),
+      lastE1rm: best(dates[dates.length - 1]),
+      sessions: dates.length,
+      avgRir: rirs.length ? rirs.reduce((a, b) => a + b, 0) / rirs.length : null,
+    });
+  }
+  return out;
 }

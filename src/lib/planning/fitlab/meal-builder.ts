@@ -608,7 +608,7 @@ export function buildFitLabMeal(args: { kind: SlotKind; slotId: string; target: 
               (adapt?.simplify && !isMain ? 0 : repeatPenalty(used(week.slot, `${slotId}|name|${name}`), 70, 600)) +
               (pf ? repeatPenalty(used(week.slot, `${slotId}|food|${pf.id}`), 10, 300) : 0) +
               (bf ? repeatPenalty(used(week.slot, `${slotId}|food|${bf.id}`), 0, 40) : 0);
-            const score = solved.error / 6 + variety + kcalOff * 500 + proteinShort * 8 + repeats;
+            const score = solved.error / 6 + variety + kcalOff * 500 + proteinShort * 12 + repeats;
             if (!best || score < best.score) best = { ...solved, score, cand, picks, fixed };
           }
         }

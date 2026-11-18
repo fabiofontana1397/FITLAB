@@ -4,7 +4,7 @@ import { Image, Pressable, StyleSheet, View } from 'react-native';
 import { DishPhoto, DishPlaceholder } from '@/components/nutrition/dish-photo';
 import { MealRecipeSheet } from '@/components/nutrition/meal-recipe-sheet';
 import { ThemedText } from '@/components/themed-text';
-import { ExerciseInfoModal } from '@/components/training/exercise-info-modal';
+import { ExerciseInfoModal, type ExerciseProgramming } from '@/components/training/exercise-info-modal';
 import { Collapsible } from '@/components/ui/collapsible';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon } from '@/components/ui/icon';
@@ -25,6 +25,7 @@ export type ExerciseCardItem = {
   reps?: string;
   tempo?: string;
   restLabel?: string;
+  programming?: ExerciseProgramming;
 };
 
 export function ExerciseSummaryCard({ item }: { item: ExerciseCardItem }) {
@@ -62,6 +63,7 @@ export function ExerciseSummaryCard({ item }: { item: ExerciseCardItem }) {
         reps={item.reps ?? ''}
         tempo={item.tempo ?? ''}
         restLabel={item.restLabel ?? ''}
+        programming={item.programming}
         onClose={() => setInfoOpen(false)}
       />
     </FlatCard>
