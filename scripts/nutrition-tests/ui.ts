@@ -263,7 +263,7 @@ async function main() {
       });
     }
     // The three snacks share one list: the apple of the morning snack is a recent for the afternoon one too.
-    const snack = meals.find((m) => m.startsWith('Spuntino'));
+    const snack = meals.find((m: string) => m.startsWith('Spuntino'));
     if (snack) {
       await test(`Recenti in ${snack}: the snacks share their list`, async () => {
         const text = await recentFor(snack);
