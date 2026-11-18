@@ -201,6 +201,80 @@ async function main() {
       await page.getByRole('button', { name: 'Chiudi' }).first().click();
       await page.getByRole('tab', { name: /Preferiti/ }).waitFor({ state: 'detached' });
     });
+
+    // Recenti lists what was eaten in that kind of meal: breakfasts for Colazione, lunches for Pranzo…
+    const yesterday = new Date(today.getTime() - 86400000).toISOString().slice(0, 10);
+    const fullDay = (weekday: string) => ({
+      ...day(weekday),
+      meals: [meal('colazione', 'Colazione', '07:30'), meal('pranzo', 'Pranzo', '13:00'), meal('spuntinoPomeriggio', 'Spuntino pomeriggio', '17:00'), meal('cena', 'Cena', '20:00')],
+    });
+    const fullPlan = { ...PLAN, months: [{ ...PLAN.months[0], weeklySplit: ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'].map(fullDay) }] };
+    const byMeal = await openApp(browser, server.url, {
+      path: '/nutrition',
+      storage: {
+        'fitlab/plans': { state: { dietPlan: fullPlan, trainingPlan: null }, version: 0 },
+        'fitlab/nutrition': {
+          state: {
+            entries: [
+              { id: 'r-1', date: yesterday, slot: 'colazione', foodId: 'oats', grams: 50 },
+              { id: 'r-2', date: yesterday, slot: 'colazione', foodId: 'greek-yogurt', grams: 150 },
+              { id: 'r-3', date: yesterday, slot: 'pranzo', foodId: 'chicken-breast', grams: 150 },
+              { id: 'r-4', date: todayIso, slot: 'cena', foodId: 'eggs', grams: 120 },
+              { id: 'r-5', date: todayIso, slot: 'spuntinoMattina', foodId: 'apple', grams: 150 },
+            ],
+            seededDates: [],
+          },
+          version: 0,
+        },
+      },
+    });
+    await byMeal.getByText('Aggiungi alimento').first().waitFor({ timeout: 30000 });
+    await pause(800);
+    // The meal cards in page order, so the n-th "Aggiungi alimento" can be matched to its meal.
+    const cardOrder = async () =>
+      (await byMeal.getByRole('button', { name: /^(Colazione|Spuntino mattina|Pranzo|Spuntino pomeriggio|Cena|Spuntino sera), \d+ kcal$/ }).allTextContents()).map((t: string) =>
+        (t.match(/Colazione|Spuntino mattina|Pranzo|Spuntino pomeriggio|Cena|Spuntino sera/) ?? [''])[0]
+      );
+    const recentFor = async (meal: string) => {
+      const index = (await cardOrder()).indexOf(meal);
+      assert.ok(index >= 0, `${meal} card on the page`);
+      await byMeal.getByText('Aggiungi alimento').nth(index).click();
+      await byMeal.getByRole('tab', { name: /Recenti/ }).click();
+      await pause(400);
+      const text = await byMeal.getByTestId('food-list').innerText();
+      if (shots) await byMeal.screenshot({ path: join(shots, `recenti-${meal.toLowerCase().replace(/ /g, '-')}.png`) });
+      await byMeal.getByRole('button', { name: 'Chiudi' }).first().click();
+      await byMeal.getByRole('tab', { name: /Preferiti/ }).waitFor({ state: 'detached' });
+      await pause(300);
+      return text;
+    };
+    const meals = await cardOrder();
+    for (const [meal, header, has, hasNot] of [
+      ['Colazione', 'Mangiati di recente a colazione', ['Fiocchi d’avena', 'Yogurt greco'], ['Petto di pollo', 'Uova intere', 'Mela']],
+      ['Pranzo', 'Mangiati di recente a pranzo', ['Petto di pollo'], ['Fiocchi d’avena', 'Uova intere', 'Mela']],
+      ['Cena', 'Mangiati di recente a cena', ['Uova intere'], ['Fiocchi d’avena', 'Petto di pollo', 'Mela']],
+    ] as [string, string, string[], string[]][]) {
+      if (!meals.includes(meal)) continue;
+      await test(`Recenti in ${meal}: only foods eaten in that meal`, async () => {
+        const text = await recentFor(meal);
+        assert.ok(text.includes(header), `header "${header}"`);
+        for (const name of has) assert.ok(text.includes(name), `${name} is listed`);
+        for (const name of hasNot) assert.ok(!text.includes(name), `${name} is not listed`);
+      });
+    }
+    // The three snacks share one list: the apple of the morning snack is a recent for the afternoon one too.
+    const snack = meals.find((m) => m.startsWith('Spuntino'));
+    if (snack) {
+      await test(`Recenti in ${snack}: the snacks share their list`, async () => {
+        const text = await recentFor(snack);
+        assert.ok(text.includes('Mangiati di recente negli spuntini'), 'header');
+        assert.ok(text.includes('Mela') && !text.includes('Petto di pollo'), 'the snack apple, not the lunch chicken');
+      });
+    }
+    await test('the per-meal checks ran on at least colazione, pranzo and cena', async () => {
+      for (const meal of ['Colazione', 'Pranzo', 'Cena']) assert.ok(meals.includes(meal), `${meal} card shown (cards: ${meals.join(', ')})`);
+    });
+    await byMeal.context().close();
   } finally {
     await browser.close();
     server.close();
