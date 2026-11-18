@@ -34,6 +34,29 @@ const FADE_HEIGHT = 22;
 /** Shown (in this order) until the user's own history says otherwise. */
 const DEFAULT_FAVORITE_IDS = ['chicken-breast', 'cottage-cheese', 'greek-yogurt', 'apple', 'mixed-salad', 'eggs'];
 
+/**
+ * Which meals share one Recenti list. Colazione, pranzo and cena each have their own; the three snacks are
+ * one list, since a snack is the same kind of food at any hour.
+ */
+type RecentGroup = 'colazione' | 'pranzo' | 'cena' | 'spuntino';
+const RECENT_GROUP: Record<MealSlot, RecentGroup> = {
+  colazione: 'colazione',
+  spuntinoMattina: 'spuntino',
+  pranzo: 'pranzo',
+  spuntinoPomeriggio: 'spuntino',
+  cena: 'cena',
+  spuntinoSera: 'spuntino',
+};
+/** How the Recenti list names the meal it is for: "Mangiati di recente a colazione". */
+const RECENT_GROUP_LABEL: Record<RecentGroup, string> = { colazione: 'a colazione', pranzo: 'a pranzo', cena: 'a cena', spuntino: 'negli spuntini' };
+/** Until something has been logged in a meal, its Recenti suggests foods that suit that meal. */
+const STARTERS: Record<RecentGroup, string[]> = {
+  colazione: ['greek-yogurt', 'oats', 'eggs', 'egg-whites', 'fette-biscottate', 'jam', 'ricotta', 'banana'],
+  spuntino: ['greek-yogurt', 'apple', 'banana', 'kiwi', 'almonds', 'walnuts', 'rice-cakes', 'bresaola'],
+  pranzo: ['pasta', 'rice-basmati', 'potato', 'chickpeas', 'chicken-breast', 'turkey-breast', 'mixed-salad', 'olive-oil'],
+  cena: ['rice-basmati', 'potato', 'lentils', 'salmon', 'cod', 'beef-lean', 'zucchini', 'olive-oil'],
+};
+
 type CategoryId = FoodItem['category'];
 type ListTab = 'preferiti' | 'recenti';
 /** What the list shows: one of the two personal lists, or one category of the catalogue. */
@@ -119,14 +142,21 @@ function FoodSearchForm({ slot, date, editEntry, onClose, onSaved }: Omit<FoodSe
   const [selected, setSelected] = useState<FoodItem | null>(() => (editEntry ? (findFood(editEntry.foodId) ?? null) : null));
   const [grams, setGrams] = useState(() => (editEntry ? String(editEntry.grams) : String(FOOD_DATABASE[0].defaultPortionG)));
 
-  // What the person logs most (for the order inside a category), and what they logged last (for Recenti).
+  // What the person logs most (for the order inside a category), and what they logged last in this kind of meal
+  // (for Recenti): opening Colazione lists the foods of recent breakfasts, the newest first, and so on.
+  const group = slot ? RECENT_GROUP[slot] : null;
   const history = useMemo(() => {
     const counts = new Map<string, number>();
     for (const e of entries) counts.set(e.foodId, (counts.get(e.foodId) ?? 0) + 1);
+    // Newest day first; within a day, the last logged first.
+    const ordered = entries.map((e, i) => ({ e, i })).sort((a, b) => b.e.date.localeCompare(a.e.date) || b.i - a.i);
     const recent: string[] = [];
-    for (let i = entries.length - 1; i >= 0; i--) if (!recent.includes(entries[i].foodId)) recent.push(entries[i].foodId);
+    for (const { e } of ordered) {
+      if (group && RECENT_GROUP[e.slot] !== group) continue;
+      if (!recent.includes(e.foodId)) recent.push(e.foodId);
+    }
     return { counts, recent };
-  }, [entries]);
+  }, [entries, group]);
 
   const searching = query.trim().length > 0;
   const toFoods = (ids: string[]) => ids.map((id) => findFood(id)).filter((f): f is FoodItem => !!f);
@@ -189,7 +219,7 @@ function FoodSearchForm({ slot, date, editEntry, onClose, onSaved }: Omit<FoodSe
     }
     if (view.kind === 'tab') {
       if (view.id === 'preferiti') return toFoods(favoriteIds);
-      return toFoods(history.recent.length > 0 ? history.recent.slice(0, 30) : DEFAULT_FAVORITE_IDS);
+      return toFoods(history.recent.length > 0 ? history.recent.slice(0, 30) : group ? STARTERS[group] : DEFAULT_FAVORITE_IDS);
     }
     // A category: the foods of it the person logs most first, then the catalogue's own order.
     return FOOD_DATABASE.filter((f) => f.category === view.id)
@@ -197,7 +227,7 @@ function FoodSearchForm({ slot, date, editEntry, onClose, onSaved }: Omit<FoodSe
       .sort((a, b) => (history.counts.get(b.food.id) ?? 0) - (history.counts.get(a.food.id) ?? 0) || a.index - b.index)
       .map(({ food }) => food)
       .slice(0, 60);
-  }, [searching, query, view, history, favoriteIds, remote, online]);
+  }, [searching, query, view, history, favoriteIds, remote, online, group]);
 
   const gramsNum = parseFloat(grams.replace(',', '.'));
   const validGrams = Number.isFinite(gramsNum) && gramsNum > 0;
@@ -512,7 +542,11 @@ function FoodSearchForm({ slot, date, editEntry, onClose, onSaved }: Omit<FoodSe
           ListHeaderComponent={
             suggesting ? (
               <ThemedText style={styles.sectionTitle} accessibilityRole="header">
-                Suggeriti
+                {group ? `Suggeriti ${RECENT_GROUP_LABEL[group]}` : 'Suggeriti'}
+              </ThemedText>
+            ) : !searching && view.kind === 'tab' && view.id === 'recenti' && group ? (
+              <ThemedText style={styles.sectionTitle} accessibilityRole="header">
+                {`Mangiati di recente ${RECENT_GROUP_LABEL[group]}`}
               </ThemedText>
             ) : null
           }
