@@ -91,6 +91,29 @@ async function main() {
       });
       await page.context().close();
     }
+
+    // The menu's pages are full pages like the tabs: the same top bar with a back button, sections entering one by one.
+    const page = await openApp(browser, server.url, { path: '/progress' });
+    await page.getByRole('button', { name: 'Apri menu' }).waitFor({ timeout: 30000 });
+    await pause(1200);
+    for (const [item, title, path] of [['Profilo', 'Profilo', '/profile'], ['Notifiche', 'Notifiche', '/notification-settings'], ['Impostazioni', 'Impostazioni', '/settings']]) {
+      await test(`menu → ${item}: opens as a page with a back button that returns to the tab`, async () => {
+        await page.getByRole('button', { name: 'Apri menu' }).click();
+        await pause(600);
+        await page.getByRole('button', { name: item, exact: true }).click();
+        await page.waitForURL((u: URL) => u.pathname === path, { timeout: 5000 });
+        await page.getByRole('button', { name: 'Indietro' }).waitFor({ timeout: 5000 });
+        await pause(1400);
+        const bar = await page.getByRole('button', { name: 'Indietro' }).boundingBox();
+        assert.ok(bar.y < 120, 'the back button sits in the top bar');
+        assert.ok((await page.getByText(title, { exact: true }).count()) > 0, `the title ${title} is shown`);
+        if (shots) await page.screenshot({ path: join(shots, `page-${path.slice(1)}.png`) });
+        await page.getByRole('button', { name: 'Indietro' }).click();
+        await page.waitForURL((u: URL) => u.pathname === '/progress', { timeout: 5000 });
+        await pause(600);
+      });
+    }
+    await page.context().close();
   } finally {
     await browser.close();
     server.close();

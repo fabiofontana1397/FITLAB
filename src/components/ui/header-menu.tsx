@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { router, type Href } from 'expo-router';
+import { router, usePathname, type Href } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Modal, Platform, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, { Easing, interpolate, runOnJS, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
@@ -23,6 +23,8 @@ const WEB = Platform.OS === 'web';
 type Anchor = { top: number; right: number; buttonWidth: number };
 
 type Item = { icon: IconName; label: string; href: Href };
+
+const MENU_PATHS: string[] = ['/profile', '/notification-settings', '/settings'];
 
 const ITEMS: Item[] = [
   { icon: 'bell', label: 'Notifiche', href: '/notification-settings' as Href },
@@ -85,13 +87,17 @@ function MenuPanel({ anchor, visible, onClose }: { anchor: Anchor | null; visibl
   if (visible && !mounted) setMounted(true);
   const progress = useSharedValue(0);
   const pending = useRef<Href | null>(null);
+  const pathname = usePathname();
 
   const finishClose = useCallback(() => {
     setMounted(false);
     const next = pending.current;
     pending.current = null;
-    if (next) router.push(next);
-  }, []);
+    if (!next || next === pathname) return;
+    // From one menu page to another the new one takes its place, so Indietro always goes back to the tab.
+    if (MENU_PATHS.includes(pathname)) router.replace(next);
+    else router.push(next);
+  }, [pathname]);
 
   useEffect(() => {
     if (visible) {

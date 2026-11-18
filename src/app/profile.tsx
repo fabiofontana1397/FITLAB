@@ -11,7 +11,7 @@ import { MODE_LABEL, OutcomeBanner, QuestionnaireSheet } from '@/components/prof
 import { ThemedText } from '@/components/themed-text';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { PrimaryButton } from '@/components/ui/primary-button';
-import { SheetScreen } from '@/components/ui/sheet-screen';
+import { PageScreen } from '@/components/ui/page-screen';
 import { Layout, Radius, Spacing } from '@/constants/theme';
 import { useAnswersEditor, type SaveOutcome } from '@/hooks/use-answers-editor';
 import { useTheme } from '@/hooks/use-theme';
@@ -103,7 +103,46 @@ export default function ProfileScreen() {
   const editor = <EditAnswersSheet key={editing?.id ?? 'closed'} group={editing} answers={answers} onClose={() => setEditing(null)} onSave={onSave} />;
 
   return (
-    <SheetScreen title="Profilo">
+    <PageScreen
+      title="Profilo"
+      subtitle="I tuoi dati e il questionario"
+      overlays={
+        <>
+          <QuestionnaireSheet
+            visible={questionnaireOpen}
+            onClose={() => setQuestionnaireOpen(false)}
+            groups={groups}
+            answers={answers}
+            mode={mode}
+            onEdit={setEditing}
+            onRestart={restartOnboarding}
+            saving={saving}
+            isGenerating={isGenerating}
+            outcome={outcome}>
+            {questionnaireOpen ? editor : null}
+          </QuestionnaireSheet>
+          {questionnaireOpen ? null : editor}
+
+          <GlassPopup visible={photoMenuOpen} onClose={() => setPhotoMenuOpen(false)} style={{ gap: Spacing.two }}>
+            <ThemedText type="subtitle" style={{ marginBottom: Spacing.one }}>
+              Foto profilo
+            </ThemedText>
+            <MenuItem icon="addCircle" label="Scegli dalla galleria" onPress={() => void pickPhoto('library')} />
+            {Platform.OS !== 'web' ? <MenuItem icon="camera" label="Scatta una foto" onPress={() => void pickPhoto('camera')} /> : null}
+            {currentUser.avatarUri ? (
+              <MenuItem
+                icon="trash"
+                label="Rimuovi foto"
+                danger
+                onPress={() => {
+                  setAvatarUri(null);
+                  setPhotoMenuOpen(false);
+                }}
+              />
+            ) : null}
+          </GlassPopup>
+        </>
+      }>
       <FlatCard radius={26} style={styles.identityCard}>
         <View style={styles.identityTop}>
           <Pressable onPress={onAvatarPress} accessibilityRole="button" accessibilityLabel="Cambia foto profilo">
@@ -221,40 +260,7 @@ export default function ProfileScreen() {
         </FlatCard>
       </View>
 
-      <QuestionnaireSheet
-        visible={questionnaireOpen}
-        onClose={() => setQuestionnaireOpen(false)}
-        groups={groups}
-        answers={answers}
-        mode={mode}
-        onEdit={setEditing}
-        onRestart={restartOnboarding}
-        saving={saving}
-        isGenerating={isGenerating}
-        outcome={outcome}>
-        {questionnaireOpen ? editor : null}
-      </QuestionnaireSheet>
-      {questionnaireOpen ? null : editor}
-
-      <GlassPopup visible={photoMenuOpen} onClose={() => setPhotoMenuOpen(false)} style={{ gap: Spacing.two }}>
-        <ThemedText type="subtitle" style={{ marginBottom: Spacing.one }}>
-          Foto profilo
-        </ThemedText>
-        <MenuItem icon="addCircle" label="Scegli dalla galleria" onPress={() => void pickPhoto('library')} />
-        {Platform.OS !== 'web' ? <MenuItem icon="camera" label="Scatta una foto" onPress={() => void pickPhoto('camera')} /> : null}
-        {currentUser.avatarUri ? (
-          <MenuItem
-            icon="trash"
-            label="Rimuovi foto"
-            danger
-            onPress={() => {
-              setAvatarUri(null);
-              setPhotoMenuOpen(false);
-            }}
-          />
-        ) : null}
-      </GlassPopup>
-    </SheetScreen>
+    </PageScreen>
   );
 }
 

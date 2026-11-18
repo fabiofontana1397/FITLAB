@@ -16,6 +16,8 @@ export type TabHeaderProps = {
   subtitle?: string;
   /** Shows the calendar button before the menu; omit it on pages with no calendar. */
   onCalendarPress?: () => void;
+  /** On a page opened from the menu (Profilo, Notifiche, Impostazioni): a back button takes the logo's place. */
+  onBack?: () => void;
 };
 
 /**
@@ -23,14 +25,20 @@ export type TabHeaderProps = {
  * page title (with an optional line under it) on the left; on the right the
  * calendar (when the page has one) and the menu (Profilo, Notifiche, Impostazioni).
  */
-export function TabHeader({ title, subtitle, onCalendarPress }: TabHeaderProps) {
+export function TabHeader({ title, subtitle, onCalendarPress, onBack }: TabHeaderProps) {
   const theme = useTheme();
   const narrow = useWindowDimensions().width < NARROW;
   const size = narrow ? 34 : 40;
   const iconSize = narrow ? 17 : 19;
   return (
     <View style={[styles.row, narrow && styles.rowNarrow]}>
-      <BrandMark height={narrow ? 20 : 24} />
+      {onBack ? (
+        <LiquidGlassButton onPress={onBack} hitSlop={8} scaleTo={0.9} accessibilityLabel="Indietro" size={size}>
+          <Icon name="arrowBack" size={iconSize + 1} color={theme.text} />
+        </LiquidGlassButton>
+      ) : (
+        <BrandMark height={narrow ? 20 : 24} />
+      )}
       <View style={styles.text}>
         <ThemedText style={[styles.title, narrow && styles.titleNarrow]} numberOfLines={1}>
           {title}
