@@ -1,6 +1,8 @@
 import { buildUserContext, type Answers, type UserContext } from '@/domain/user-context';
 
 import { WEEKDAY_PATTERN } from './exercise-library';
+import { weekKinds } from './training/running';
+import type { PlanConflict } from './types';
 
 export type TrainingSchedule = {
   /** Weekday indices (0=Lun, matching WEEKDAY_LABELS/mondayIndex) assigned a gym session. */
@@ -11,6 +13,10 @@ export type TrainingSchedule = {
   isTrainingDay: boolean[];
   /** Set when the requested sessions did not fit the available days: what was decided and why. */
   conflict: string | null;
+  /** Engine v5: easy runs done on the same day as a strength session (two moments of the day). */
+  doubles: number;
+  /** Engine v5: structured conflicts (requests vs availability), with decision and alternatives. */
+  conflicts: PlanConflict[];
 };
 
 /**
@@ -27,7 +33,7 @@ export type TrainingSchedule = {
 export function resolveSchedule(ctx: Pick<UserContext, 'training'>, override?: { availableDays?: number }): TrainingSchedule {
   const isTrainingDay: boolean[] = new Array(7).fill(false);
   const t = ctx.training;
-  if (!t || (!t.gym && !t.running)) return { gymSlots: [], runSlots: [], isTrainingDay, conflict: null };
+  if (!t || (!t.gym && !t.running)) return { gymSlots: [], runSlots: [], isTrainingDay, conflict: null, doubles: 0, conflicts: [] };
 
   // A check-in can change the days the person has: with only gym, the sessions follow the new days.
   const wantedGym = t.gym ? Math.max(override?.availableDays != null && !t.running ? override.availableDays : t.gym.daysPerWeek, 1) : 0;
@@ -37,44 +43,85 @@ export function resolveSchedule(ctx: Pick<UserContext, 'training'>, override?: {
   const available = Math.max(1, Math.min(override?.availableDays ?? t.availableDays, 6));
   const wanted = gymDays + runDays;
   let conflict: string | null = null;
+  let doubles = 0;
+  const conflicts: PlanConflict[] = [];
   if (wanted > available) {
     if (gymDays > 0 && runDays > 0) {
-      if (available < 2) {
-        if (t.priority === 'running') {
-          runDays = 1;
-          gymDays = 0;
-        } else {
-          runDays = 0;
-          gymDays = 1;
-        }
-      } else if (t.priority === 'gym') {
-        gymDays = Math.min(gymDays, available - 1);
-        runDays = available - gymDays;
-      } else if (t.priority === 'running') {
-        runDays = Math.min(runDays, available - 1);
-        gymDays = available - runDays;
+      // 1) can the extra sessions be done on the same day as another one? Only an EASY run with a strength
+      //    session, never two hard sessions; only if the person said they have time for two moments in a day.
+      const needed = wanted - available;
+      const easy = weekKinds(t.running!.focus, wantedRun).filter((k) => k === 'easy').length;
+      const doublesPossible = available >= 2 && easy >= needed && needed <= gymDays;
+      const alternatives = [
+        ...(doublesPossible ? [`Doppie sedute: ${needed === 1 ? 'una corsa facile' : `${needed} corse facili`} nello stesso giorno di una seduta di forza (in due momenti, almeno 6 ore di distanza): tutte le ${wanted} sedute restano.`] : []),
+        `Precedenza alla corsa: ${Math.min(wantedRun, available - 1)} corse e ${available - Math.min(wantedRun, available - 1)} sedute di forza.`,
+        `Precedenza alla palestra: ${Math.min(wantedGym, available - 1)} sedute di forza e ${available - Math.min(wantedGym, available - 1) === 1 ? '1 corsa' : `${available - Math.min(wantedGym, available - 1)} corse`}.`,
+      ];
+      if (doublesPossible && t.doubleSessions === true) {
+        doubles = needed;
+        conflicts.push({
+          id: 'sessions-vs-days',
+          level: 2,
+          title: `${wanted} allenamenti in ${available} giorni`,
+          description: `Hai chiesto ${wantedGym} sedute di forza e ${wantedRun} corse ma hai ${available} giorni. Hai indicato che puoi allenarti due volte nello stesso giorno.`,
+          alternatives,
+          decision: `${needed === 1 ? 'Una corsa facile' : `${needed} corse facili`} nello stesso giorno di una seduta di forza: nessuna seduta tolta. Le corse impegnative restano in giorni separati.`,
+          needsConfirmation: false,
+        });
+        conflict = conflicts[0].decision;
       } else {
-        gymDays = Math.max(1, Math.min(gymDays, Math.round((gymDays / wanted) * available)));
-        runDays = Math.max(1, available - gymDays);
-        if (gymDays + runDays > available) gymDays = available - runDays;
+        if (available < 2) {
+          if (t.priority === 'running') {
+            runDays = 1;
+            gymDays = 0;
+          } else {
+            runDays = 0;
+            gymDays = 1;
+          }
+        } else if (t.priority === 'gym') {
+          gymDays = Math.min(gymDays, available - 1);
+          runDays = available - gymDays;
+        } else if (t.priority === 'running') {
+          runDays = Math.min(runDays, available - 1);
+          gymDays = available - runDays;
+        } else {
+          gymDays = Math.max(1, Math.min(gymDays, Math.round((gymDays / wanted) * available)));
+          runDays = Math.max(1, available - gymDays);
+          if (gymDays + runDays > available) gymDays = available - runDays;
+        }
+        const decided = t.priority === 'gym' || t.priority === 'running' || t.priority === 'balanced';
+        const why = t.doubleSessions === false ? 'Hai indicato che non puoi fare due attività nello stesso giorno.' : !doublesPossible ? 'Abbinare una corsa facile a una seduta di forza non basta a far stare tutte le sedute.' : 'Non sappiamo ancora se puoi fare due attività nello stesso giorno.';
+        const who = t.priority === 'gym' ? 'la palestra ha la precedenza, come hai indicato' : t.priority === 'running' ? 'la corsa ha la precedenza, come hai indicato' : t.priority === 'balanced' ? 'dividi i giorni in proporzione, come hai indicato' : 'scelta provvisoria in proporzione, da confermare';
+        conflicts.push({
+          id: 'sessions-vs-days',
+          level: 2,
+          title: `${wanted} allenamenti in ${available} giorni`,
+          description: `Hai chiesto ${wantedGym} sedute di forza e ${wantedRun} corse ma hai ${available} giorni. ${why}`,
+          alternatives,
+          decision: `${gymDays === 1 ? '1 seduta' : `${gymDays} sedute`} di forza e ${runDays === 1 ? '1 corsa' : `${runDays} corse`}: ${who}. ${wanted - gymDays - runDays === 1 ? 'Una seduta richiesta non entra' : `${wanted - gymDays - runDays} sedute richieste non entrano`} nella settimana.`,
+          needsConfirmation: !decided,
+        });
+        conflict = `Hai chiesto ${wantedGym} sedute di palestra e ${wantedRun} di corsa ma hai ${available} giorni: ${who} (${gymDays} palestra, ${runDays} corsa).${!decided ? ' Scegli nel profilo quale attività ha la precedenza o se puoi fare due sedute nello stesso giorno.' : ''}`;
       }
-      const who = t.priority === 'gym' ? 'la palestra ha la precedenza, come hai indicato' : t.priority === 'running' ? 'la corsa ha la precedenza, come hai indicato' : 'i giorni sono divisi in proporzione; puoi scegliere quale attività ha la precedenza nel profilo';
-      conflict = `Hai chiesto ${wantedGym} sedute di palestra e ${wantedRun} di corsa ma hai ${available} giorni: ${who} (${gymDays} palestra, ${runDays} corsa).`;
     } else {
       gymDays = Math.min(gymDays, available);
       runDays = Math.min(runDays, available);
-      if (wanted > available) conflict = `Hai chiesto ${wanted} sedute ma hai ${available} giorni disponibili: la scheda ne prevede ${gymDays + runDays}.`;
+      if (wanted > available) {
+        conflict = `Hai chiesto ${wanted} sedute ma hai ${available} giorni disponibili: la scheda ne prevede ${gymDays + runDays}.`;
+        conflicts.push({ id: 'sessions-vs-days', level: 2, title: `${wanted} sedute in ${available} giorni`, description: conflict, alternatives: [`${available} sedute a settimana`, 'Aumentare i giorni disponibili nel profilo'], decision: `${gymDays + runDays} sedute, una per giorno disponibile.`, needsConfirmation: false });
+      }
     }
   }
   gymDays = Math.min(gymDays, 6);
   runDays = Math.min(runDays, 6 - gymDays);
 
-  const combined = Math.max(gymDays + runDays, 1);
+  // runs done on a strength day take no day of their own
+  const combined = Math.max(gymDays + runDays - doubles, 1);
   const dayIndices = WEEKDAY_PATTERN[combined] ?? WEEKDAY_PATTERN[3];
   const gymSlots = dayIndices.slice(0, gymDays);
-  const runSlots = dayIndices.slice(gymDays, gymDays + runDays);
+  const runSlots = dayIndices.slice(gymDays, gymDays + runDays - doubles);
   for (const dayIdx of [...gymSlots, ...runSlots]) isTrainingDay[dayIdx] = true;
-  return { gymSlots, runSlots, isTrainingDay, conflict };
+  return { gymSlots, runSlots, isTrainingDay, conflict, doubles, conflicts };
 }
 
 /** Same as resolveSchedule, from raw questionnaire answers. */
@@ -96,11 +143,38 @@ export function resolveTrainingSchedule(answers: Answers): TrainingSchedule {
  */
 export function arrangeWeek(
   days: number[],
-  gym: { legDay: boolean }[],
+  gym: { legDay: boolean; load?: Record<string, number> }[],
   runs: { hard: boolean; kind?: string }[]
 ): { gymAt: number[]; runAt: number[]; compromises: string[] } {
   const n = gym.length + runs.length;
   if (n === 0) return { gymAt: [], runAt: [], compromises: [] };
+  if (runs.length === 0) {
+    // strength only: keep the usual days, but order the sessions so that two leg sessions are not back to back
+    const slots = days.slice(0, n);
+    const perms = (arr: number[]): number[][] => (arr.length <= 1 ? [arr] : arr.flatMap((x, i) => perms([...arr.slice(0, i), ...arr.slice(i + 1)]).map((r) => [x, ...r])));
+    let bestG: { cost: number; order: number[] } | null = null;
+    for (const order of n <= 6 ? perms([...Array(n).keys()]) : [[...Array(n).keys()]]) {
+      let cost = 0;
+      for (let k = 0; k < n; k++) {
+        const j = (k + 1) % n;
+        if (!(n > 1 && (slots[j] - slots[k] + 7) % 7 === 1)) continue;
+        const a = gym[order[k]];
+        const b = gym[order[j]];
+        if (a.legDay && b.legDay) cost += 2.5;
+        // the same group trained hard (≥4 direct sets) on consecutive days, in different sessions
+        for (const g of Object.keys(a.load ?? {})) if ((a.load![g] ?? 0) >= 4 && (b.load?.[g] ?? 0) >= 4) cost += 1;
+      }
+      // prefer the template's own order on ties (stable, recognisable week)
+      cost += order.reduce((a, x, k) => a + (x === k ? 0 : 0.01), 0);
+      if (!bestG || cost < bestG.cost - 1e-9) bestG = { cost, order };
+    }
+    const gymAt = new Array<number>(n);
+    bestG!.order.forEach((sessionIdx, k) => (gymAt[sessionIdx] = slots[k]));
+    const comp: string[] = [];
+    if (bestG!.cost >= 2.5) comp.push('due sedute per le gambe consecutive');
+    if (bestG!.cost % 2.5 >= 1 - 1e-6) comp.push('stimoli sullo stesso gruppo in giorni consecutivi');
+    return { gymAt, runAt: [], compromises: comp };
+  }
   const daySets: number[][] = [];
   if (runs.length > 0 && gym.length > 0 && n < 7) {
     const rec = (start: number, acc: number[]) => {

@@ -17,5 +17,7 @@ export function checkinSignals(answers: Record<string, unknown>): CheckinSignals
     split: split === 'fullBody' || split === 'upperLower' || split === 'pushPullLegs' ? split : undefined,
     painAreas: areas && areas.length ? areas : undefined,
     notes: typeof answers.checkinNotes === 'string' ? answers.checkinNotes : undefined,
+    recovery: answers.checkinRecovery === 'good' || answers.checkinRecovery === 'ok' || answers.checkinRecovery === 'poor' ? answers.checkinRecovery : undefined,
+    sleep: answers.checkinSleep === 'good' || answers.checkinSleep === 'ok' || answers.checkinSleep === 'poor' ? answers.checkinSleep : undefined,
   };
 }

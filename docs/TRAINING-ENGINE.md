@@ -1,4 +1,4 @@
-# Motore dell’allenamento (v4, `training-4`)
+# Motore dell’allenamento (v5, `training-5`)
 
 Il motore progetta un programma di allenamento completo invece di riempire una scheda da un catalogo:
 
@@ -136,3 +136,49 @@ Nuovi campi opzionali, compatibili con i piani salvati: `TrainingExerciseEntry.w
 ### Test
 
 `npm run training:journey -- data.json`, `npm run training:compare -- <cartella>` (scrive `compare` in `data.json` ricalcolandolo da `before.json`, `v3.json`, `data.json`), `FITLAB_REPORT_DIR=<cartella> npm run training:cases -- cases.json`. I 26 casi precedenti restano (il 22 ora verifica anche le serie effettive) più i casi A–J (27–36).
+
+## 9. Evoluzione v5 (`training-5`)
+
+Refactoring mirato su training-4, senza riscrittura. Base da preservare: 36/36 casi, 360 profili, volume 98%, vincoli 100%, 0 blocchi.
+
+### 9.1 Audit di training-4
+- **Corsa + palestra.** Con più sedute che giorni, il motore tagliava in proporzione senza chiedere nulla. Non sapeva se la persona poteva fare due sedute nello stesso giorno. Non disponeva la settimana di sola palestra: due Lower potevano finire in giorni consecutivi, come nel Push/Pull/Legs su 4 giorni.
+- **Fatica.** Il volume si contava in serie, tutte uguali tra loro. La corsa non pesava sulle gambe. Lo scarico partiva da un solo segnale negativo nel check-in.
+- **Tracciabilità.** I cambi di volume e di esercizi da un mese all’altro non avevano un motivo. I conflitti tra richieste e possibilità restavano sparsi nelle note.
+- **Avvisi.** Erano 1.180, senza struttura né raggruppamento. Gran parte erano “sotto obiettivo”: compromessi voluti per il tempo disponibile, presentati come se fossero anomalie.
+
+### 9.2 Moduli e funzioni
+| Modulo | Novità |
+|---|---|
+| `training/fatigue.ts` (nuovo) | `effortWeight(rir)`, `personalCapacity()`, `weekFatigue()`: fatica in serie effettive per gruppo, giorno, articolazione e corsa, con stimoli ravvicinati e capacità individuale. |
+| `training/history.ts` (nuovo) | `volumeChanges()`, `exerciseChanges()`: ogni cambio tra due mesi ha un motivo, oppure risulta “non tracciato”. |
+| `training/planned-load.ts` (nuovo) | `plannedLoadOf(month)`: il carico pianificato (stato di fatica, doppie sedute, corse) passa alla ricalibrazione. |
+| `training-days.ts` | `resolveSchedule` gestisce doppie sedute e priorità e restituisce i conflitti. `arrangeWeek` permuta anche le settimane di sola palestra, con un costo per Lower–Lower e per lo stesso gruppo in giorni consecutivi. |
+| `training-planner.ts` | Applica le doppie sedute (solo corsa facile, ordine secondo la priorità, 6 ore di distanza). Riduce la fatica quando è eccessiva. Gestisce i conflitti per mese, uniti nel piano, compreso il conflitto “volume oltre il tempo”. Blocca la corsa (`runHoldMonths`). |
+| `training/adaptation.ts` | Usa recupero e sonno dal check-in. Un solo segnale negativo porta a RIR +1. Lo scarico richiede un calo insieme a un recupero scarso, oppure due recuperi scarsi di fila. Con recupero scarso o aderenza bassa e corse in programma, la corsa resta ferma un mese. |
+| `training/safety.ts` | Ogni segnalazione ha codice, livello, categoria, soggetto, causa, impatto, azione e `groupKey`. I compromessi inevitabili diventano note (I12). Il volume sotto obiettivo per tempo disponibile è I13, quello escluso per dolore è R2. `validatePlanHistory` segnala i gruppi sotto obiettivo da più mesi. |
+
+### 9.3 Modello dati
+- **Questionario:** `doubleSessions` (facoltativa). Se manca, il piano è provvisorio e chiede una scelta.
+- **Check-in:** `checkinRecovery` e `checkinSleep`.
+- **`TrainingDayPlan.extraRun`:** la seconda seduta della giornata. Conta anche nelle calorie.
+- **`TrainingMonthPlan`:** nuovi campi `fatigue`, `conflicts`, `volumeChanges`, `exerciseChanges`, `splitKind`, `sessionMinutes` e `compromises`.
+- **`TrainingPlan.conflicts`:** `PlanConflict` con livello 1–6 (sicurezza > disponibilità > obiettivo > frequenza > split > preferenze secondarie), alternative, decisione, `needsConfirmation` e mesi.
+- **`TrainingCalibration`:** nuovi campi `runHoldMonths`, `recoveryLog` e `recoveryNote`.
+- **`PlanFinding`:** livelli `blocker`, `warning`, `review` e `info`.
+
+### 9.4 Risultati
+- **Casi di test:** 48/48 (i 36 precedenti più A–L).
+- **Percorsi:** 34/34 check-in come attesi, su 7 utenti di regressione e 4 scenari ibridi.
+- **360 profili:**
+  - volume 98% e vincoli 100%, come in training-4;
+  - 0 blocchi;
+  - avvisi da 1.180 a 413, corrispondenti a 149 problemi unici (W1 244, W7 162, W9 7). Nessun avviso è stato nascosto: i compromessi voluti sono stati riclassificati come note, con causa e azione.
+- **Due attese dei percorsi cambiate per scelta, non per far passare i test:** Giulia M3 e Paolo M3. Un solo segnale negativo ora porta a RIR +1 a volume invariato, mentre prima riduceva il volume. È la regola “nessun intervento forte per un singolo segnale” chiesta dalla specifica.
+
+### 9.5 Aperti
+- **Durata delle sedute:** 162 avvisi W7 restano. Sono sedute oltre il tempo dichiarato, soprattutto con 30–45 minuti e livello avanzato.
+- **Capacità individuale:** è un modello euristico, non ancora tarato sui dati registrati dagli utenti.
+- **Doppie sedute:** il motore abbina solo corse facili alla forza. Non propone doppie sedute di forza.
+- **Risposte ai conflitti:** l’interfaccia per rispondere ai conflitti da confermare non esiste ancora. Oggi il conflitto compare nel piano e nella validazione come “da valutare”.
+- **`training:ui`:** 5 test falliscono, uguali prima e dopo le modifiche (preesistenti).

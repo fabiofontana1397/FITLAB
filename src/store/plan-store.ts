@@ -14,6 +14,7 @@ import { buildCustomTrainingPlan } from '@/lib/planning/custom-workout';
 import { TRAINING_ENGINE_VERSION } from '@/lib/planning/training-planner';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
 import { daysAgoISO } from '@/lib/mock/dates';
+import { plannedLoadOf } from '@/lib/planning/training/planned-load';
 import type { DietDayPlan, DietPlan, TrainingDayPlan, TrainingPlan } from '@/lib/planning/types';
 import { withAuthRetry } from '@/lib/supabase/retry';
 import { useAuthStore } from '@/store/auth-store';
@@ -230,6 +231,7 @@ export const usePlanStore = create<PlanState>()(
           checkin: input.checkin,
           calibration,
           performance: input.performance,
+          plannedLoad: plannedLoadOf(trainingPlan?.months.find((m) => m.monthIndex === input.monthIndex)),
         });
 
         const bundle = buildPlans(ctx, {
@@ -318,3 +320,4 @@ export function isValidDietPlan(plan: DietPlan | null): boolean {
   // plans built before the Fit Lab dishes (no recipe on a prescribed meal) are rebuilt
   return plan.months.every((month) => Array.isArray(month.weeklySplit) && month.weeklySplit.length > 0 && month.weeklySplit.every((day) => day.meals.every((meal) => meal.isFreeMeal || meal.recipe)));
 }
+

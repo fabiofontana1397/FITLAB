@@ -170,6 +170,20 @@ export type TrainingDayPlan = {
     /** Per-week minutes (engine v4): a recovery week shortens the runs. */
     weeks?: { week: number; minutes: number; note?: string }[];
   };
+  /** Engine v5: an easy run done on the same day as this strength session, in a separate moment. */
+  extraRun?: {
+    kind: string;
+    title: string;
+    minutes: number;
+    intensity: string;
+    structure: string;
+    progression: string;
+    weeks?: { week: number; minutes: number; note?: string }[];
+    /** Which comes first (the activity with priority), and the minimum gap between the two. */
+    order: 'runFirst' | 'gymFirst';
+    gapHours: number;
+    note: string;
+  };
 };
 
 export type TrainingMonthPlan = {
@@ -206,8 +220,65 @@ export type TrainingMonthPlan = {
   patternCoverage?: { pattern: 'push' | 'pull' | 'knee' | 'hip' | 'core'; status: 'full' | 'partial' | 'missing'; sessions: number; exercises: string[]; note?: string }[];
   /** Engine v4: exercises excluded this month and why (pain, equipment, near-duplicates). */
   exclusions?: { group: string; reason: string; exercises: string[] }[];
-  /** Engine v4: findings of the plan validator for this month. */
-  validation?: { level: 'blocker' | 'warning' | 'info'; code: string; message: string }[];
+  /** Engine v4/v5: findings of the plan validator for this month. */
+  validation?: PlanFinding[];
+  /** Engine v5: conflicts of this month (requests vs possibilities), with decision and alternatives. */
+  conflicts?: PlanConflict[];
+  /** Engine v5: split and session length the month was built with (for month-to-month traceability). */
+  splitKind?: string;
+  sessionMinutes?: number;
+  /** Engine v5: layout compromises that could not be avoided with the days available (hybrid weeks). */
+  compromises?: string[];
+  /** Engine v5: estimated fatigue of the month's ordinary week (see training/fatigue.ts). */
+  fatigue?: {
+    weekly: number;
+    capacity: number;
+    ratio: number;
+    status: 'low' | 'ok' | 'high' | 'excessive';
+    capacityNotes: string[];
+    days: { weekday: string; strength: number; running: number; total: number; legs: number }[];
+    groups: { group: string; label: string; load: number; sessions: number; closeStimuli: string[] }[];
+    joints: { area: string; load: number }[];
+    runningShare: number;
+    notes: string[];
+    /** What the planner did about it, if anything. */
+    action?: string;
+  };
+  /** Engine v5: change of each group's weekly volume vs the previous month, with its reason. */
+  volumeChanges?: { group: string; label: string; previous: number; current: number; changePct: number; direct: number; indirect: number; frequency: number; deload: boolean; temporary: boolean; reason: string }[];
+  /** Engine v5: exercises that changed vs the previous month (same session), with the reason. */
+  exerciseChanges?: { session: string; from: string | null; to: string | null; role?: string; reason: string }[];
+};
+
+/** A structured validation finding (engine v5). */
+export type PlanFinding = {
+  level: 'blocker' | 'warning' | 'info' | 'review';
+  code: string;
+  message: string;
+  /** volume, safety, deload, schedule, hybrid, fatigue, patterns, conflict, prescription, progression, equipment */
+  category?: string;
+  /** Muscle group, session or day involved. */
+  subject?: string;
+  cause?: string;
+  impact?: string;
+  action?: string;
+  /** Same key = same underlying problem (used to count unique problems across months). */
+  groupKey?: string;
+};
+
+/** A conflict between what the person asked and what can be done (engine v5). */
+export type PlanConflict = {
+  id: string;
+  /** Hierarchy: 1 safety, 2 availability, 3 main goal, 4 frequency, 5 split preference, 6 secondary preferences. */
+  level: 1 | 2 | 3 | 4 | 5 | 6;
+  title: string;
+  description: string;
+  alternatives: string[];
+  decision: string;
+  /** True when the plan is provisional until the person chooses. */
+  needsConfirmation: boolean;
+  /** Months of the plan it applies to. */
+  months?: number[];
 };
 
 export type TrainingPlan = {
@@ -226,4 +297,6 @@ export type TrainingPlan = {
   needsManualReview?: boolean;
   /** Why the plan is built the way it is: level, model, split, decisions on conflicts. */
   rationale?: { level: string; model: string; split: string; reasons: string[]; notices: string[] };
+  /** Engine v5: conflicts between requests and possibilities, with the decision taken and the alternatives. */
+  conflicts?: PlanConflict[];
 };

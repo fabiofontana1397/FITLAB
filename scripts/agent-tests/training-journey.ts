@@ -17,6 +17,7 @@ import { NEUTRAL_CALIBRATION, recalibrate, type PlanCalibration } from '@/domain
 import { computeTargets } from '@/domain/targets';
 import { buildUserContext } from '@/domain/user-context';
 import { checkinSignals } from '@/lib/planning/checkin-signals';
+import { plannedLoadOf } from '@/lib/planning/training/planned-load';
 import { CATALOG_BY_ID, MUSCLE_SHORT } from '@/lib/planning/training/catalog';
 import { buildProgramProfile, equipmentFor } from '@/lib/planning/training/profile';
 import type { ExercisePerformance, TrainingCalibration } from '@/lib/planning/training/types';
@@ -98,6 +99,25 @@ const ck = (adherence: number, energy: string, difficulty: string[] = ['none'], 
   ...extra,
 });
 
+/** Running by component, from the month's week (engine v5): what grows and what does not. */
+function runProgress(m: TrainingMonthPlan) {
+  const runs = m.weeklySplit.flatMap((d) => (d.type === 'cardio' && d.run ? [{ ...d.run, note: d.note ?? '' }] : d.extraRun ? [{ ...d.extraRun, note: d.extraRun.title }] : []));
+  const of = (k: string) => runs.filter((r) => r.kind === k);
+  const total = runs.reduce((a, r) => a + r.minutes, 0);
+  const week4 = runs.reduce((a, r) => a + (r.weeks?.find((w) => w.week === 4)?.minutes ?? r.minutes), 0);
+  const week1 = runs.reduce((a, r) => a + (r.weeks?.find((w) => w.week === 1)?.minutes ?? r.minutes), 0);
+  const reps = Number(of('intervals')[0]?.note.match(/(\d+)×/)?.[1] ?? of('intervals')[0]?.structure.match(/(\d+)×/)?.[1] ?? 0);
+  return {
+    runs: runs.length,
+    totalMinutes: total,
+    easyMinutes: of('easy').reduce((a, r) => a + r.minutes, 0),
+    longMinutes: of('long')[0]?.minutes ?? 0,
+    intervalReps: reps,
+    tempoMinutes: of('tempo')[0]?.minutes ?? 0,
+    recoveryWeekMinutes: Math.min(week1, week4) < total ? Math.min(week1, week4) : null,
+  };
+}
+
 export const USERS: TestUser[] = [
   {
     id: 'marco',
@@ -159,7 +179,7 @@ export const USERS: TestUser[] = [
         expect: 'Chiede 2 giorni: la scheda passa a 2 sedute (Full Body A/B) e le sedute si accorciano.',
         expected: { availableDays: 2, shorterSessions: true },
       },
-      { weeklyKg: -0.3, completion: 0.85, perf: 'stable', checkin: ck(4, 'low'), expect: 'Energia bassa con carichi stabili: circa −10% di serie e una ripetizione in più in riserva, nessun esercizio cambiato.', expected: { volume: -1, rirShift: 1 } },
+      { weeklyKg: -0.3, completion: 0.85, perf: 'stable', checkin: ck(4, 'low'), expect: 'Energia bassa con carichi stabili e recupero non segnalato come scarso: un solo segnale negativo, programma mantenuto con una ripetizione in più in riserva (regola v5: niente riduzioni per un dato isolato).', expected: { volume: 0, rirShift: 1 } },
     ],
   },
   {
@@ -240,8 +260,8 @@ export const USERS: TestUser[] = [
         completion: 0.8,
         perf: 'none',
         checkin: ck(4, 'low', ['none'], ['trainingIntensity']),
-        expect: 'Stanco e chiede di cambiare intensità: allenamenti meno duri (RIR +1), volume −10%.',
-        expected: { rirShift: 1, volume: -1 },
+        expect: 'Stanco e chiede di cambiare intensità: allenamenti meno duri (RIR +1); un solo segnale di fatica, volume mantenuto (regola v5).',
+        expected: { rirShift: 1, volume: 0 },
       },
     ],
   },
@@ -272,6 +292,7 @@ function monthView(m: TrainingMonthPlan | undefined) {
     focus: d.focus ?? null,
     note: d.note ?? null,
     run: d.run ?? null,
+    extraRun: d.extraRun ?? null,
     minutes: d.estimatedMinutes ?? null,
     notes: d.notes ?? [],
     exercises: (d.exercises ?? []).map((x) => ({
@@ -311,11 +332,16 @@ function monthView(m: TrainingMonthPlan | undefined) {
     mesocycle: m.mesocycle ?? null,
     weeklyVolume: m.weeklyVolume ?? [],
     gymSessions: workouts.length,
-    runSessions: days.filter((d) => d.type === 'cardio').length,
+    runSessions: days.filter((d) => d.type === 'cardio').length + days.filter((d) => d.extraRun).length,
+    doubleDays: days.filter((d) => d.extraRun).map((d) => d.weekday),
+    runProgress: runProgress(m),
     weeklySets: workouts.reduce((s, d) => s + d.exercises.reduce((a, x) => a + x.sets, 0), 0),
     patternCoverage: m.patternCoverage ?? [],
     exclusions: m.exclusions ?? [],
     validation: m.validation ?? [],
+    fatigue: m.fatigue ?? null,
+    volumeChanges: m.volumeChanges ?? [],
+    exerciseChanges: m.exerciseChanges ?? [],
     days,
   };
 }
@@ -408,6 +434,7 @@ function runUser(u: TestUser) {
       checkin: signals,
       calibration,
       performance,
+      plannedLoad: plannedLoadOf(storedTraining),
     });
     const prevCal = calibration;
     calibration = result.calibration;
@@ -494,7 +521,10 @@ function runUser(u: TestUser) {
     const days = calibByMonth.get(mv.monthIndex)?.availableDays ?? available;
     if (mv.monthIndex === 1 && (mv.gymSessions !== u.gymSessions || mv.runSessions !== u.runSessions))
       findings.push({ level: 'FAIL', code: 'A4', month: 1, message: `${tag}: ${mv.gymSessions} sedute di palestra e ${mv.runSessions} di corsa, attese ${u.gymSessions} e ${u.runSessions}.` });
-    if (mv.gymSessions + mv.runSessions > days) findings.push({ level: 'FAIL', code: 'A4', month: mv.monthIndex, message: `${tag}: ${mv.gymSessions + mv.runSessions} sedute con ${days} giorni disponibili.` });
+    // training DAYS, not sessions: a double-session day counts once
+    const trainingDays = mv.days.filter((d) => d.type !== 'rest').length;
+    if (trainingDays > days) findings.push({ level: 'FAIL', code: 'A4', month: mv.monthIndex, message: `${tag}: ${trainingDays} giorni di allenamento con ${days} giorni disponibili.` });
+    for (const d of mv.days) if (d.extraRun && d.extraRun.kind !== 'easy') findings.push({ level: 'FAIL', code: 'A4', month: mv.monthIndex, message: `${tag}, ${d.weekday}: doppia seduta con una corsa impegnativa.` });
     const equip = new Set<string>();
     const area = new Set<string>();
     for (const d of mv.days) {
@@ -557,6 +587,7 @@ function runUser(u: TestUser) {
     summary: u.summary,
     answers: u.answers,
     rationale: plan.rationale ?? null,
+    conflicts: plan.conflicts ?? [],
     expected: { gymSessions: u.gymSessions, runSessions: u.runSessions, avoidAreas: (u.avoidAreas ?? []).map((a) => AREA[a]) },
     durationMonths: bundle.durationMonths,
     weights,
@@ -568,11 +599,52 @@ function runUser(u: TestUser) {
   };
 }
 
+/** Hybrid scenarios (engine v5): Andrea's same request with different answers on priority and double sessions, and a
+ * runner with three Lower-heavy strength sessions. Not part of the 7 regression users. */
+const ANDREA = USERS.find((u) => u.id === 'andrea')!;
+export const HYBRID: TestUser[] = [
+  {
+    ...ANDREA,
+    id: 'andrea-doppie',
+    name: 'Andrea · doppie sedute',
+    summary: 'Come Andrea, ma può allenarsi due volte nello stesso giorno: 2 forza + 3 corse in 4 giorni.',
+    answers: { ...ANDREA.answers, doubleSessions: 'yes' },
+    gymSessions: 2,
+    runSessions: 3,
+    months: [
+      { weeklyKg: 0.0, completion: 0.9, perf: 'improving', checkin: ck(5, 'high'), expect: 'In crescita ed energia alta: volume +5%.', expected: { volume: 1 } },
+      {
+        weeklyKg: 0.0,
+        completion: 0.85,
+        perf: 'stable',
+        checkin: ck(4, 'low', ['soreness'], ['nothing'], '', { checkinRecovery: 'poor' }),
+        expect: 'Recupero scarso con doppie sedute: la corsa non progredisce, stress della forza ridotto, nessuno scarico per un solo mese.',
+        expected: { deload: false, volume: -1, rirShift: 1 },
+      },
+      { weeklyKg: 0.0, completion: 0.9, perf: 'stable', checkin: ck(4, 'normal', ['none'], ['nothing'], '', { checkinRecovery: 'poor' }), expect: 'Recupero scarso per il secondo check-in di fila: settimana di scarico.', expected: { deload: true } },
+    ],
+  },
+  { ...ANDREA, id: 'andrea-corsa', name: 'Andrea · precedenza alla corsa', summary: 'Come Andrea, con la corsa che ha la precedenza e niente doppie sedute.', answers: { ...ANDREA.answers, trainingPriority: 'running', doubleSessions: 'no' }, gymSessions: 1, runSessions: 3 },
+  { ...ANDREA, id: 'andrea-palestra', name: 'Andrea · precedenza alla palestra', summary: 'Come Andrea, con la palestra che ha la precedenza e niente doppie sedute.', answers: { ...ANDREA.answers, trainingPriority: 'gym', doubleSessions: 'no' }, gymSessions: 2, runSessions: 2 },
+  {
+    id: 'runner-lower',
+    name: 'Chiara · corsa veloce + 3 sedute di forza',
+    summary: 'Intermedia, corre 2 volte con ripetute e fa 3 sedute di forza (Upper/Lower) con 5 giorni: corsa intensa e gambe da distanziare.',
+    answers: q({ sex: 'female', heightCm: 168, currentWeightKg: 60, targetWeightKg: 60, goal: 'maintainImprove', activitiesPracticed: ['gym', 'running'], freq_gym: '3', freq_running: '2', focus_running: 'speed', availableDays: '5', gymSplitPreference: 'upperLower', trainingPriority: 'balanced' }),
+    gymSessions: 3,
+    runSessions: 2,
+    months: [
+      { weeklyKg: 0.0, completion: 0.9, perf: 'improving', checkin: ck(4, 'normal'), expect: 'Regolare: si continua.', expected: { volume: 0 } },
+      { weeklyKg: 0.0, completion: 0.9, perf: 'declining', checkin: ck(3, 'low', ['soreness'], ['nothing'], '', { checkinRecovery: 'poor', checkinSleep: 'poor' }), expect: 'Prestazioni in calo per più settimane e recupero scarso: scarico.', expected: { deload: true } },
+    ],
+  },
+];
+
 if (require.main === module) {
-  const out = { engine: TRAINING_ENGINE_VERSION, generatedAt: new Date().toISOString(), users: USERS.map(runUser) };
+  const out = { engine: TRAINING_ENGINE_VERSION, generatedAt: new Date().toISOString(), users: USERS.map(runUser), hybrid: HYBRID.map(runUser) };
   const path = process.argv[2] ?? 'training-journey.json';
   writeFileSync(path, JSON.stringify(out));
-  for (const u of out.users) {
+  for (const u of [...out.users, ...out.hybrid]) {
     const c = (l: string) => u.findings.filter((f) => f.level === l).length;
     console.log(`${u.name}: ${u.durationMonths} mesi, ${u.checkins.length} check-in, ${c('FAIL')} errori, ${c('WARN')} avvisi, ${c('REVIEW')} da valutare`);
     for (const f of u.findings) if (f.level === 'FAIL' || f.level === 'WARN') console.log(`   ${f.level} ${f.code} ${f.message}`);

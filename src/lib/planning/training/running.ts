@@ -28,7 +28,7 @@ export type RunSession = {
 const KIND_TITLE: Record<RunKind, string> = { easy: 'Corsa facile', long: 'Lungo lento', intervals: 'Ripetute', tempo: 'Corsa a ritmo medio' };
 
 /** Session kinds for a week, by focus and number of runs. */
-function weekKinds(focus: RunFocus, n: number): RunKind[] {
+export function weekKinds(focus: RunFocus, n: number): RunKind[] {
   if (n <= 0) return [];
   const quality: RunKind | null = focus === 'speed' || focus === 'raceTime' ? 'intervals' : focus === 'raceReady' ? 'tempo' : null;
   const longRun = focus === 'endurance' || focus === 'raceReady' || focus === 'raceTime';

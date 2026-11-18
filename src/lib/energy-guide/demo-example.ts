@@ -27,6 +27,7 @@ const DEMO_PERSON: Pick<UserContext, 'sex' | 'age' | 'heightCm' | 'weightKg' | '
     location: 'gym',
     equipment: [],
     priority: null,
+    doubleSessions: null,
   },
 };
 

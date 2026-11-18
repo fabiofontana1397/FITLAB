@@ -30,6 +30,9 @@ export type TrainingCheckin = {
   split?: 'fullBody' | 'upperLower' | 'pushPullLegs';
   painAreas?: BodyArea[];
   notes?: string;
+  /** Engine v5: perceived recovery between sessions and sleep quality. */
+  recovery?: 'good' | 'ok' | 'poor';
+  sleep?: 'good' | 'ok' | 'poor';
 };
 
 export type TrainingAdaptation = {
@@ -83,8 +86,10 @@ export function adaptTraining(args: {
   hasGym: boolean;
   /** Session length bucket from the questionnaire (used when the check-in asks for shorter sessions). */
   sessionBucket: string;
+  /** Engine v5: what the month just lived asked of the person (estimated fatigue, double-session days, runs). */
+  plannedLoad?: { fatigueStatus?: string; doubles?: number; runs?: number };
 }): TrainingAdaptation {
-  const { monthIndex, previous, trainingCompletion, checkin, performance, plannedRir, hasGym, sessionBucket } = args;
+  const { monthIndex, previous, trainingCompletion, checkin, performance, plannedRir, hasGym, sessionBucket, plannedLoad } = args;
   const prev = previous ?? {};
   const changes: string[] = [];
   const reasons: string[] = [];
@@ -99,6 +104,8 @@ export function adaptTraining(args: {
     rirShift: 0,
     groupSets: prev.groupSets ? { ...prev.groupSets } : undefined,
     fromMonth: monthIndex + 1,
+    runHoldMonths: prev.runHoldMonths,
+    recoveryLog: [...(prev.recoveryLog ?? [])],
   };
   const { trend, avgRir } = performanceTrend(performance);
   const tired = checkin.energy === 'low' || checkin.energy === 'veryLow';
@@ -127,6 +134,22 @@ export function adaptTraining(args: {
     changes.push(`Dolore segnalato (${label}): dal prossimo mese niente esercizi che caricano la zona e nessun aumento automatico per quegli esercizi. Se il dolore persiste o limita i movimenti, fatti valutare da un medico o da un fisioterapista.`);
   }
 
+  // ---- recovery verdict of the month and its trend (engine v5): decisions look at the trend, not one answer
+  const recPoor = checkin.recovery === 'poor' || sore || veryTired || (tired && checkin.sleep === 'poor');
+  const verdict: 'good' | 'ok' | 'poor' = recPoor ? 'poor' : tired || checkin.recovery === 'ok' || checkin.sleep === 'poor' ? 'ok' : 'good';
+  const prevVerdict = cal.recoveryLog!.length ? cal.recoveryLog![cal.recoveryLog!.length - 1] : null;
+  cal.recoveryLog = [...cal.recoveryLog!, verdict].slice(-6);
+  const hadRuns = (plannedLoad?.runs ?? 0) > 0;
+  // running does not progress in a month after poor recovery or very irregular sessions
+  if (hadRuns && (verdict === 'poor' || lowAdherence)) {
+    cal.runHoldMonths = (cal.runHoldMonths ?? 0) + 1;
+    changes.push(
+      (plannedLoad?.doubles ?? 0) > 0
+        ? 'Corsa: niente progressione il prossimo mese. Le doppie sedute pesano sul recupero: la corsa abbinata alla forza resta facile e non si allunga.'
+        : 'Corsa: niente progressione il prossimo mese (stesse durate e stesse ripetute) finché il recupero non migliora.'
+    );
+  }
+
   if (!hasGym) {
     return { calibration: cal, changes, reasons, performanceTrend: trend };
   }
@@ -149,21 +172,36 @@ export function adaptTraining(args: {
   }
 
   // ---- recovery and fatigue
-  // deload only when two signals agree: performance down AND poor recovery (or very low energy with soreness)
-  if ((trend === 'declining' && (sore || tired)) || (veryTired && sore)) {
+  // deload on the TREND: performance down with poor recovery, or poor recovery two check-ins in a row.
+  // One bad month on its own (even very tired and sore) lightens the month without a deload.
+  const highLoad = plannedLoad?.fatigueStatus === 'high' || plannedLoad?.fatigueStatus === 'excessive';
+  if ((trend === 'declining' && (sore || tired || recPoor)) || (recPoor && prevVerdict === 'poor')) {
     cal.deloadFirstWeek = true;
-    reasons.push('Prestazioni in calo e recupero difficile: segnali di fatica accumulata.');
-    changes.push('Prima settimana di scarico (circa 40% di serie in meno, carichi invariati, più ripetizioni in riserva), poi si riprende il programma.');
-  } else if (sore || tired) {
+    reasons.push(trend === 'declining' ? 'Prestazioni in calo e recupero difficile: segnali di fatica accumulata.' : 'Recupero scarso per due check-in di fila: la fatica si sta accumulando anche se il volume non è aumentato.');
+    changes.push('Prima settimana di scarico (circa 40% di serie in meno, carichi circa −10%, più ripetizioni in riserva), poi si riprende il programma.');
+    if (highLoad) {
+      cal.volumeFactor = Math.max(0.7, (cal.volumeFactor ?? 1) * 0.9);
+      changes.push('Il carico stimato del mese era elevato rispetto alla tua capacità: dopo lo scarico il volume riparte circa il 10% più basso.');
+    }
+    cal.recoveryNote = 'scarico per fatica accumulata (andamento)';
+  } else if (sore || tired || recPoor) {
     if (trend === 'improving') {
       reasons.push('Stanchezza o dolori muscolari ma prestazioni in crescita: la fatica non viene dall’allenamento in sé.');
       cal.rirShift = 1;
       changes.push('Una ripetizione in più in riserva per un mese, volume invariato. Controlla sonno e alimentazione.');
+    } else if (!recPoor && !highLoad && (checkin.sleep === 'poor' || !sore)) {
+      // a single negative signal (tired, or poor sleep) with stable performance: keep the plan, a little more margin
+      cal.rirShift = 1;
+      reasons.push(checkin.sleep === 'poor' ? 'Energia bassa con sonno scarso e prestazioni stabili: la causa probabile è il sonno, non il volume.' : 'Energia bassa con prestazioni stabili: un solo segnale negativo.');
+      changes.push('Programma mantenuto, con una ripetizione in più in riserva per un mese. Nessuno scarico per un solo segnale.');
+      cal.recoveryNote = 'segnale isolato: programma mantenuto';
     } else {
       cal.volumeFactor = Math.max(0.7, (cal.volumeFactor ?? 1) * 0.9);
       cal.rirShift = 1;
       reasons.push(sore ? 'Recupero difficile.' : 'Energia bassa.');
-      changes.push('Stress ridotto per un mese: circa il 10% di serie in meno e una ripetizione in più in riserva. Nessun esercizio cambiato.');
+      if (highLoad) reasons.push('Il carico stimato del mese era elevato rispetto alla capacità.');
+      changes.push(prevVerdict === 'poor' ? 'Stress ridotto per un mese: circa il 10% di serie in meno e una ripetizione in più in riserva.' : 'Stress ridotto per un mese: circa il 10% di serie in meno e una ripetizione in più in riserva. Se il recupero resta scarso al prossimo check-in, scatta una settimana di scarico.');
+      cal.recoveryNote = 'recupero difficile: stress ridotto, scarico solo se continua';
     }
   } else if (trend === 'improving') {
     reasons.push('Prestazioni in crescita con buon recupero.');

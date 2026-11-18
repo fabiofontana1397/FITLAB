@@ -25,17 +25,19 @@ import { blockSequence, monthBlock } from './training/periodization';
 import { BLOCK_LABEL, prescribe, weekPrescription, type Block, type Role } from './training/prescription';
 import { buildProgramProfile, LEVEL_LABEL, MODEL_LABEL, type ProgramProfile } from './training/profile';
 import { runWeek } from './training/running';
-import { validateMonth, validateTrainingPlan } from './training/safety';
-import { balanceVolume, buildSession, ensureCoverage, measureCoverage, perSessionTargets, type PlannedSession } from './training/session-builder';
+import { validateMonth, validatePlanHistory, validateTrainingPlan } from './training/safety';
+import { personalCapacity, weekFatigue } from './training/fatigue';
+import { exerciseChanges, volumeChanges } from './training/history';
+import { balanceVolume, buildSession, ensureCoverage, measureCoverage, perSessionTargets, sessionMinutes, type PlannedSession } from './training/session-builder';
 import { chooseSplit, SPLIT_LABEL } from './training/split';
 import type { TrainingCalibration } from './training/types';
 import { measureVolume, setMinutes, weeklyTargets } from './training/volume';
 import type { TrainingStrategy } from './strategy-types';
-import type { PlanPhaseKind, TrainingDayPlan, TrainingExerciseEntry, TrainingMonthPlan, TrainingPlan } from './types';
+import type { PlanConflict, PlanPhaseKind, TrainingDayPlan, TrainingExerciseEntry, TrainingMonthPlan, TrainingPlan } from './types';
 import type { WeekPlan } from './training/periodization';
 
 /** Bump when the prescription logic changes: an older stored plan is rebuilt in place (see isValidTrainingPlan). */
-export const TRAINING_ENGINE_VERSION = 'training-4';
+export const TRAINING_ENGINE_VERSION = 'training-5';
 
 export type TrainingPlanInput = {
   ctx: UserContext;
@@ -56,6 +58,7 @@ export type TrainingTuning = {
   fromMonth?: number;
 };
 
+const SLEEP_HOURS: Record<string, number> = { lt5: 4.5, '5-6': 5.5, '6-7': 6.5, '7-8': 7.5, gt8: 8.5 };
 const AREA_LABEL: Record<string, string> = { knee: 'ginocchio', shoulder: 'spalla', lowerBack: 'zona lombare', wrist: 'polso', hip: 'anca' };
 const PATTERN_TITLE: Record<string, string> = { push: 'Spinta', pull: 'Tirata', knee: 'Dominante di ginocchio', hip: 'Dominante d’anca', core: 'Core' };
 
@@ -117,6 +120,7 @@ export function generateTrainingPlan(input: TrainingPlanInput): TrainingPlan | n
   let splitLabel = '';
   let prevVolumeFactor: number | null = null;
   let needsManualReview = false;
+  let prevInfo = null as { gymSessions: number; sessionMinutes: number; splitKind: string | null; frozen: Set<MuscleGroup> } | null;
 
   for (let monthIndex = 1; monthIndex <= durationMonths; monthIndex++) {
     const block = blocks[monthIndex - 1];
@@ -129,6 +133,12 @@ export function generateTrainingPlan(input: TrainingPlanInput): TrainingPlan | n
       const existing = existingMonths?.find((m) => m.monthIndex === monthIndex);
       if (existing) {
         months.push(existing);
+        prevInfo = {
+          gymSessions: existing.weeklySplit.filter((d) => d.type === 'workout').length,
+          sessionMinutes: existing.sessionMinutes ?? prevInfo?.sessionMinutes ?? base.sessionMinutes,
+          splitKind: existing.splitKind ?? prevInfo?.splitKind ?? null,
+          frozen: new Set((existing.weeklyVolume ?? []).filter((v) => v.status === 'excluded').map((v) => v.group as MuscleGroup)),
+        };
         continue;
       }
     }
@@ -229,51 +239,113 @@ export function generateTrainingPlan(input: TrainingPlanInput): TrainingPlan | n
     for (const s of sessions) nameCount.set(s.template.name, (nameCount.get(s.template.name) ?? 0) + 1);
     const nameSeen = new Map<string, number>();
 
-    const runs = t.running ? runWeek({ focus: t.running.focus, sessions: schedule.runSlots.length, monthIndex, consolidation: block === 'consolidamento', beginnerStart: p.level === 'beginner' }) : [];
+    // running: the progression is shifted back by the months in which it was held for poor recovery
+    const runMonth = Math.max(1, monthIndex - (calib.runHoldMonths ?? 0));
+    const runs = t.running ? runWeek({ focus: t.running.focus, sessions: schedule.runSlots.length + schedule.doubles, monthIndex: runMonth, consolidation: block === 'consolidamento', beginnerStart: p.level === 'beginner' }) : [];
+    if ((calib.runHoldMonths ?? 0) > 0 && runs.length) reasons.add(`Corsa: progressione ferma per ${calib.runHoldMonths} ${calib.runHoldMonths === 1 ? 'mese' : 'mesi'} per il recupero segnalato ai check-in.`);
+    // double sessions: easy runs paired with a strength session, never a hard run; the upper-body sessions first
+    const extras = new Map<number, (typeof runs)[number]>();
+    if (schedule.doubles > 0 && sessions.length) {
+      const easyIdx = runs.map((r, i) => (r.kind === 'easy' ? i : -1)).filter((i) => i >= 0).slice(0, schedule.doubles);
+      const hosts = sessions.map((s, i) => ({ i, leg: s.template.legDay, legSets: s.exercises.filter((x) => ['quads', 'hamstrings', 'glutes'].includes(x.group)).reduce((a, x) => a + x.sets, 0) })).sort((x, y) => Number(x.leg) - Number(y.leg) || x.legSets - y.legSets);
+      easyIdx.forEach((ri, k) => hosts[k] && extras.set(hosts[k].i, runs[ri]));
+    }
+    const pairedRuns = new Set([...extras.values()]);
+    const standalone = runs.filter((r) => !pairedRuns.has(r));
     const days = [...schedule.gymSlots, ...schedule.runSlots].sort((a, b) => a - b);
-    const { gymAt, runAt, compromises } = arrangeWeek(days, sessions.map((s) => ({ legDay: s.template.legDay })), runs);
-    if (compromises.length && runs.length && sessions.length)
-      notices.add(`Con ${days.length} giorni di allenamento tra forza e corsa non si riesce a evitare ${compromises.join(' e ')}: è la disposizione più sostenibile, con le sedute dure il più lontano possibile tra loro.`);
+    const { gymAt, runAt, compromises } = arrangeWeek(
+      days,
+      sessions.map((s, i) => ({ legDay: s.template.legDay || extras.has(i), load: s.exercises.reduce<Record<string, number>>((acc, x) => ({ ...acc, [x.def.primary]: (acc[x.def.primary] ?? 0) + x.sets }), {}) })),
+      standalone
+    );
+    if (compromises.length && sessions.length)
+      notices.add(`Con ${days.length} giorni di allenamento${runs.length ? ' tra forza e corsa' : ''} non si riesce a evitare ${compromises.join(' e ')}: è la disposizione più sostenibile, con le sedute dure il più lontano possibile tra loro.`);
+    const runWeeks = (minutes: number) =>
+      mb.weeks.map((w) => ({ week: w.week, minutes: w.runFactor === 1 ? minutes : Math.max(15, Math.round((minutes * w.runFactor) / 5) * 5), ...(w.runFactor < 1 ? { note: w.deload ? 'Settimana di scarico: corsa più breve e tutta facile.' : 'Settimana di recupero: durata ridotta, stesso ritmo.' } : {}) }));
+    const runFirst = t.priority === 'running';
 
-    const week: TrainingDayPlan[] = WEEKDAY_LABELS.map((weekday) => ({ weekday, type: 'rest', title: 'Riposo' }));
-    sessions.forEach((s, i) => {
-      const dayIdx = gymAt[i];
-      const k = (nameSeen.get(s.template.name) ?? 0) + 1;
-      nameSeen.set(s.template.name, k);
-      const repeated = (nameCount.get(s.template.name) ?? 1) > 1 && !/ [AB]$/.test(s.template.name);
-      const lastIso = [...s.exercises].reverse().find((x) => x.role === 'isolation')?.def.id ?? null;
-      const exercises = s.exercises.map((x, order) => entryFor(x, order + 1, p, block, monthIndex, rirShift, lastIso, mb.weeks));
-      const blockList = [...new Map(s.exercises.map((x) => [x.blockId, { id: x.blockId, name: x.blockName, order: x.blockOrder }])).values()];
-      week[dayIdx] = {
-        weekday: WEEKDAY_LABELS[dayIdx],
-        type: 'workout',
-        title: repeated ? `${s.template.name} ${k === 1 ? '1' : '2'}` : s.template.name,
-        exercises,
-        focus: s.template.focus,
-        muscleGroups: [...new Set(s.exercises.map((x) => MUSCLE_SHORT[x.group]))],
-        blocks: blockList,
-        estimatedMinutes: s.estimatedMinutes,
-        notes: s.notes.length ? s.notes : undefined,
-      };
-    });
-    runs.forEach((r, i) => {
-      const dayIdx = runAt[i];
-      week[dayIdx] = {
-        weekday: WEEKDAY_LABELS[dayIdx],
-        type: 'cardio',
-        title: r.title,
-        note: r.note,
-        estimatedMinutes: r.minutes,
-        run: {
-          kind: r.kind,
-          minutes: r.minutes,
-          intensity: r.intensity,
-          structure: r.structure,
-          progression: r.progression,
-          weeks: mb.weeks.map((w) => ({ week: w.week, minutes: w.runFactor === 1 ? r.minutes : Math.max(15, Math.round((r.minutes * w.runFactor) / 5) * 5), ...(w.runFactor < 1 ? { note: w.deload ? 'Settimana di scarico: corsa più breve e tutta facile.' : 'Settimana di recupero: durata ridotta, stesso ritmo.' } : {}) })),
-        },
-      };
-    });
+    const buildWeek = (): TrainingDayPlan[] => {
+      nameSeen.clear();
+      const week: TrainingDayPlan[] = WEEKDAY_LABELS.map((weekday) => ({ weekday, type: 'rest', title: 'Riposo' }));
+      sessions.forEach((s, i) => {
+        const dayIdx = gymAt[i];
+        const k = (nameSeen.get(s.template.name) ?? 0) + 1;
+        nameSeen.set(s.template.name, k);
+        const repeated = (nameCount.get(s.template.name) ?? 1) > 1 && !/ [AB]$/.test(s.template.name);
+        const lastIso = [...s.exercises].reverse().find((x) => x.role === 'isolation')?.def.id ?? null;
+        const exercises = s.exercises.map((x, order) => entryFor(x, order + 1, p, block, monthIndex, rirShift, lastIso, mb.weeks));
+        const blockList = [...new Map(s.exercises.map((x) => [x.blockId, { id: x.blockId, name: x.blockName, order: x.blockOrder }])).values()];
+        const extra = extras.get(i);
+        week[dayIdx] = {
+          weekday: WEEKDAY_LABELS[dayIdx],
+          type: 'workout',
+          title: repeated ? `${s.template.name} ${k === 1 ? '1' : '2'}` : s.template.name,
+          exercises,
+          focus: s.template.focus,
+          muscleGroups: [...new Set(s.exercises.map((x) => MUSCLE_SHORT[x.group]))],
+          blocks: blockList,
+          estimatedMinutes: s.estimatedMinutes,
+          notes: s.notes.length ? s.notes : undefined,
+          ...(extra
+            ? {
+                extraRun: {
+                  kind: extra.kind,
+                  title: extra.title,
+                  minutes: extra.minutes,
+                  intensity: extra.intensity,
+                  structure: extra.structure,
+                  progression: extra.progression,
+                  weeks: runWeeks(extra.minutes),
+                  order: runFirst ? 'runFirst' : 'gymFirst',
+                  gapHours: 6,
+                  note: runFirst
+                    ? `Doppia seduta: prima la corsa facile (${extra.minutes} min), la forza almeno 6 ore dopo. La corsa ha la precedenza.`
+                    : `Doppia seduta: prima la forza, poi la corsa facile (${extra.minutes} min) almeno 6 ore dopo, così la seduta di forza non risente della corsa.`,
+                },
+              }
+            : {}),
+        };
+      });
+      standalone.forEach((r, i) => {
+        const dayIdx = runAt[i];
+        week[dayIdx] = {
+          weekday: WEEKDAY_LABELS[dayIdx],
+          type: 'cardio',
+          title: r.title,
+          note: r.note,
+          estimatedMinutes: r.minutes,
+          run: { kind: r.kind, minutes: r.minutes, intensity: r.intensity, structure: r.structure, progression: r.progression, weeks: runWeeks(r.minutes) },
+        };
+      });
+      return week;
+    };
+    let week = buildWeek();
+    // ---- fatigue (engine v5): the week's load against the person's capacity; trimmed only when clearly excessive
+    const cap = personalCapacity(p.level, { age: ctx.age, training: ctx.training, sleepHours: SLEEP_HOURS[ctx.lifestyle.sleep] ?? null, inDeficit: p.inDeficit }, calib.recoveryLog);
+    let fatigue = weekFatigue(week, cap);
+    let fatigueAction: string | undefined;
+    if (fatigue.status === 'excessive' && sessions.length) {
+      const before = fatigue.ratio;
+      const order: Record<Role, number> = { isolation: 0, core: 1, secondary: 2, main: 3 };
+      for (let guard = 0; guard < 80 && fatigue.ratio > 1.1; guard++) {
+        // one set less on the most loaded group's lowest-priority exercise (never below its minimum)
+        const loads = new Map(fatigue.groups.map((g) => [g.group, g.load]));
+        const cand = sessions
+          .flatMap((s) => s.exercises.map((x) => ({ s, x })))
+          .filter(({ x }) => x.sets > (x.role === 'main' ? 3 : 2))
+          .sort((a, b) => (loads.get(b.x.group) ?? 0) - (loads.get(a.x.group) ?? 0) || order[a.x.role] - order[b.x.role])[0];
+        if (!cand) break;
+        cand.x.sets--;
+        cand.s.estimatedMinutes = Math.round(sessionMinutes(cand.s.exercises, p, restFor));
+        week = buildWeek();
+        fatigue = weekFatigue(week, cap);
+      }
+      fatigueAction = `Carico stimato ${Math.round(before * 100)}% della tua capacità settimanale: serie ridotte sugli esercizi accessori dei gruppi più carichi fino a ${Math.round(fatigue.ratio * 100)}%.`;
+      reasons.add(fatigueAction);
+    }
+
+    const monthConflicts = new Map<string, PlanConflict>();
+    for (const c of schedule.conflicts) monthConflicts.set(c.id, c);
 
     const volume = measureVolume(sessions.map((s) => ({ exercises: s.exercises.map((x) => ({ id: x.def.id, sets: x.sets })) })), targets);
     const monthlyFocus = strategy?.monthlyFocus?.find((m) => m.monthIndex === monthIndex);
@@ -310,7 +382,8 @@ export function generateTrainingPlan(input: TrainingPlanInput): TrainingPlan | n
               ? 'excluded'
               : v.target > 0 && v.fractional < v.target * 0.75
                 ? 'under'
-                : v.target > 0 && v.direct > Math.max(v.target * 1.3 + 1, v.target + 2)
+                : // over: direct sets above the target beyond the structural minimum (2 sets per exercise in each session that trains the group)
+                  v.target > 0 && v.direct > Math.max(v.target * 1.3 + 1, v.target + 2, 2 * v.frequency)
                   ? 'over'
                   : 'ok';
           const reason =
@@ -333,9 +406,92 @@ export function generateTrainingPlan(input: TrainingPlanInput): TrainingPlan | n
         }),
       patternCoverage: coverage.map((c) => ({ ...c, ...(c.status !== 'full' ? { note: weekNotes.find((n) => n.startsWith(PATTERN_TITLE[c.pattern])) } : {}) })),
       exclusions: exclusions.length ? exclusions : undefined,
+      fatigue: { ...fatigue, ...(fatigueAction ? { action: fatigueAction } : {}) },
+      splitKind: split?.kind,
+      sessionMinutes: p.sessionMinutes,
+      compromises: compromises.length ? compromises : undefined,
     });
     const built = months[months.length - 1];
-    built.validation = validateMonth(built, ctx, { profile: p, splitKind: split?.kind ?? null, hybrid: !!t.running && !!t.gym });
+    // ---- traceability vs the previous month (engine v5)
+    const prevMonth = months.length >= 2 ? months[months.length - 2] : undefined;
+    const histCtx = {
+      block,
+      prevBlock: prevMonth?.block ?? null,
+      gymSessions: sessions.length,
+      prevGymSessions: prevInfo?.gymSessions ?? sessions.length,
+      sessionMinutes: p.sessionMinutes,
+      prevSessionMinutes: prevInfo?.sessionMinutes ?? p.sessionMinutes,
+      checkinVolume: calibActive ? (calib.volumeFactor ?? 1) : null,
+      checkinFromThisMonth: calibActive && monthIndex === (tuning?.fromMonth ?? -1),
+      splitChanged: !!prevInfo && prevInfo.splitKind != null && prevInfo.splitKind !== (split?.kind ?? null),
+      frozenGroups: frozen as Set<string>,
+      newlyFrozen: new Set([...frozen].filter((g) => !prevInfo?.frozen.has(g))) as Set<string>,
+      fatigueTrim: !!fatigueAction,
+      timeCapped,
+      deloadWeek: mb.weeks.some((w) => w.deload && !w.conditional),
+      rotationMonth: monthIndex > 1 && (monthIndex - 1) % 3 === 0,
+      avoidAreas: p.exclusions.areas as Set<string>,
+      replaceIds: new Set(calib.replaceIds ?? []),
+    };
+    if (prevMonth) {
+      built.volumeChanges = volumeChanges(prevMonth, built, histCtx);
+      built.exerciseChanges = exerciseChanges(prevMonth, built, histCtx);
+    }
+    prevInfo = { gymSessions: sessions.length, sessionMinutes: p.sessionMinutes, splitKind: split?.kind ?? null, frozen };
+    // ---- conflicts beyond the calendar (hierarchy: safety, availability, goal, frequency, split preference, secondary)
+    if (frozen.size)
+      monthConflicts.set('pain', {
+        id: 'pain',
+        level: 1,
+        title: 'Zone doloranti',
+        description: `Nessun esercizio compatibile per: ${[...frozen].map((g) => MUSCLE_LABEL[g]).join(', ')}.`,
+        alternatives: ['Valutazione di un medico o di un fisioterapista, che indichi le varianti possibili', 'Riprendere il gruppo quando il dolore è passato (segnalalo al check-in)'],
+        decision: 'Gruppi sospesi, nessuna compensazione su altri gruppi, nessun esercizio di recupero proposto dall’app.',
+        needsConfirmation: true,
+      });
+    const prefWanted = calib.split ?? t.gym?.splitPreference;
+    if (split && prefWanted && prefWanted !== 'noPreference' && /non è applicabile/.test(split.reason))
+      monthConflicts.set('split-preference', {
+        id: 'split-preference',
+        level: 5,
+        title: 'Split richiesta non compatibile con i giorni',
+        description: split.reason,
+        alternatives: [`Tenere ${SPLIT_LABEL[split.kind]} con ${gymDays} giorni`, 'Aumentare i giorni di palestra per usare la split preferita'],
+        decision: `${SPLIT_LABEL[split.kind]}: la disponibilità reale viene prima della preferenza.`,
+        needsConfirmation: false,
+      });
+    if (timeCapped && Object.values(calib.groupSets ?? {}).some((v) => (v ?? 0) > 0))
+      monthConflicts.set('specialization-time', {
+        id: 'specialization-time',
+        level: 6,
+        title: 'Specializzazione con poco tempo',
+        description: 'Il volume extra richiesto per la specializzazione non entra nelle sedute disponibili.',
+        alternatives: ['Sedute più lunghe', 'Un giorno in più', 'Meno volume sugli altri gruppi durante la specializzazione'],
+        decision: 'Il tempo disponibile viene rispettato: la specializzazione è applicata solo in parte.',
+        needsConfirmation: true,
+      });
+    if (prefWanted && prefWanted !== 'noPreference' && coverage.some((c) => c.status === 'missing') && !frozen.size)
+      monthConflicts.set('split-equipment', {
+        id: 'split-equipment',
+        level: 2,
+        title: 'Attrezzatura insufficiente per la struttura richiesta',
+        description: `Con l’attrezzatura indicata manca: ${coverage.filter((c) => c.status === 'missing').map((c) => PATTERN_TITLE[c.pattern].toLowerCase()).join(', ')}.`,
+        alternatives: ['Aggiungere attrezzatura nel profilo (sbarra, elastici, manubri)', 'Accettare la scheda con lo schema mancante'],
+        decision: 'La scheda segue la struttura richiesta con gli esercizi possibili e segnala lo schema mancante.',
+        needsConfirmation: false,
+      });
+    if (timeCapped && sessions.length)
+      monthConflicts.set('volume-time', {
+        id: 'volume-time',
+        level: 2,
+        title: 'Volume obiettivo oltre il tempo disponibile',
+        description: `Con ${gymDays} sedute da circa ${p.sessionMinutes} minuti il volume previsto per l’obiettivo non entra tutto.`,
+        alternatives: ['Sedute più lunghe', 'Un giorno di palestra in più', 'Accettare meno volume diretto sui gruppi piccoli'],
+        decision: 'Il tempo disponibile viene rispettato: i gruppi grandi tengono più volume, i piccoli lavorano soprattutto in modo indiretto.',
+        needsConfirmation: false,
+      });
+    if (monthConflicts.size) built.conflicts = [...monthConflicts.values()];
+    built.validation = validateMonth(built, ctx, { profile: p, splitKind: split?.kind ?? null, hybrid: !!t.running && !!t.gym, availableDays: days.length });
     for (const n of weekNotes) if (/nessun esercizio|solo in modo parziale|non c’è spazio/.test(n)) notices.add(n);
   }
 
@@ -352,7 +508,18 @@ export function generateTrainingPlan(input: TrainingPlanInput): TrainingPlan | n
       reasons: [...reasons],
       notices: [...notices],
     },
+    conflicts: (() => {
+      // every conflict of the plan, with the months it applies to (preserved months keep theirs)
+      const all = new Map<string, PlanConflict>();
+      for (const m of months)
+        for (const c of m.conflicts ?? []) {
+          const prev = all.get(c.id);
+          all.set(c.id, { ...c, months: [...(prev?.months ?? []), m.monthIndex] });
+        }
+      return all.size ? [...all.values()] : undefined;
+    })(),
   };
+  validatePlanHistory(plan, preserveMonthsBefore ?? 1);
   const issues = validateTrainingPlan(plan, ctx);
   if (issues.length) {
     plan.needsManualReview = true;

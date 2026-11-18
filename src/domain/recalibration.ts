@@ -70,9 +70,14 @@ export type CheckinSignals = {
   split?: 'fullBody' | 'upperLower' | 'pushPullLegs';
   painAreas?: BodyArea[];
   notes?: string;
+  /** Perceived recovery between sessions and sleep quality (optional questions). */
+  recovery?: 'good' | 'ok' | 'poor';
+  sleep?: 'good' | 'ok' | 'poor';
 };
 
 export type RecalibrationInput = {
+  /** Engine v5: load of the month just lived (estimated fatigue, double-session days, runs per week). */
+  plannedLoad?: { fatigueStatus?: string; doubles?: number; runs?: number };
   ctx: UserContext;
   /** The month that just ended (1-based). */
   monthIndex: number;
@@ -280,6 +285,7 @@ export function recalibrate(input: RecalibrationInput): RecalibrationResult {
       plannedRir: 2,
       hasGym: !!ctx.training.gym,
       sessionBucket: ctx.training.sessionBucket,
+      plannedLoad: input.plannedLoad,
     });
     training = adaptation.calibration;
     for (const text of adaptation.changes) changes.push({ area: 'allenamento', text });

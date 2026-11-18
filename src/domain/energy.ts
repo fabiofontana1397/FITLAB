@@ -84,7 +84,7 @@ export function parseRunMinutes(note: string | undefined, fallback = 35): number
   return Math.round((lo + hi) / 2);
 }
 
-export type SessionLike = Pick<TrainingDayPlan, 'type'> & { note?: string; estimatedMinutes?: number };
+export type SessionLike = Pick<TrainingDayPlan, 'type'> & { note?: string; estimatedMinutes?: number; extraRun?: { minutes: number } };
 
 /** Minutes a planned day takes (0 on a rest day). */
 export function sessionMinutes(day: SessionLike | null | undefined, ctx: Pick<UserContext, 'training'>): number {
@@ -98,7 +98,9 @@ export function sessionMinutes(day: SessionLike | null | undefined, ctx: Pick<Us
 export function sessionKcal(day: SessionLike | null | undefined, ctx: Pick<UserContext, 'training' | 'weightKg'>): number {
   if (!day || day.type === 'rest') return 0;
   const minutes = sessionMinutes(day, ctx);
-  return day.type === 'cardio' ? runSessionKcal(ctx.weightKg, minutes) : gymSessionKcal(ctx.weightKg, minutes);
+  const main = day.type === 'cardio' ? runSessionKcal(ctx.weightKg, minutes) : gymSessionKcal(ctx.weightKg, minutes);
+  // a double session day also counts its easy run
+  return main + (day.type === 'workout' && day.extraRun ? runSessionKcal(ctx.weightKg, day.extraRun.minutes) : 0);
 }
 
 export type DayEnergy = { resting: number; everyday: number; exercise: number; total: number };

@@ -27,6 +27,12 @@ export type TrainingCalibration = {
   replaceIds?: string[];
   /** Month index from which this calibration applies. */
   fromMonth?: number;
+  /** Engine v5: months in which running did not progress (poor recovery): the running progression is shifted back. */
+  runHoldMonths?: number;
+  /** Engine v5: recovery verdict of each check-in so far (oldest first): decisions look at the trend, not one answer. */
+  recoveryLog?: ('good' | 'ok' | 'poor')[];
+  /** Engine v5: why the last decision about recovery was taken (shown in the plan). */
+  recoveryNote?: string;
 };
 
 /** One exercise's performance over the month that just ended, from the logged sets. */

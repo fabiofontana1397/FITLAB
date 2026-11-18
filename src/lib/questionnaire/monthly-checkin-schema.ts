@@ -51,6 +51,28 @@ export const MONTHLY_CHECKIN_QUESTIONS: Question[] = [
     ],
   },
   {
+    id: 'checkinRecovery',
+    type: 'single',
+    optional: true,
+    label: 'Come hai recuperato tra un allenamento e l’altro?',
+    options: [
+      { value: 'good', label: 'Bene, arrivavo fresco' },
+      { value: 'ok', label: 'Abbastanza' },
+      { value: 'poor', label: 'Male, ero spesso ancora stanco o indolenzito' },
+    ],
+  },
+  {
+    id: 'checkinSleep',
+    type: 'single',
+    optional: true,
+    label: 'Come hai dormito questo mese?',
+    options: [
+      { value: 'good', label: 'Bene' },
+      { value: 'ok', label: 'Così così' },
+      { value: 'poor', label: 'Male' },
+    ],
+  },
+  {
     id: 'checkinPainAreas',
     type: 'multi',
     label: 'Dove senti dolore?',

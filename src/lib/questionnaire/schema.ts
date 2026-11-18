@@ -565,6 +565,21 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
           { value: 'balanced', label: 'Dividi i giorni in proporzione' },
         ],
       },
+      {
+        id: 'doubleSessions',
+        type: 'single',
+        label: 'Puoi fare corsa e palestra nello stesso giorno, in due momenti diversi?',
+        optional: true,
+        helper: 'Serve quando le sedute che vuoi fare sono più dei giorni disponibili: una corsa facile si può abbinare a una seduta di forza.',
+        dependsOn: [
+          { questionId: 'activitiesPracticed', equals: 'gym' },
+          { questionId: 'activitiesPracticed', equals: 'running' },
+        ],
+        options: [
+          { value: 'yes', label: 'Sì, ho tempo per due sedute (es. mattina e sera)' },
+          { value: 'no', label: 'No, una sola attività al giorno' },
+        ],
+      },
     ],
   },
   {
