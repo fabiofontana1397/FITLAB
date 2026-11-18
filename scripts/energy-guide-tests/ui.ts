@@ -111,12 +111,11 @@ async function main() {
     const homeBefore = await page.locator('body').innerText();
     if (shots) await page.screenshot({ path: join(shots, 'home.png') });
 
-    await test('Home: calendar, notifications and profile buttons sit on one line of the top bar, in that order', async () => {
+    await test('Home: calendar and menu buttons sit on one line of the top bar, in that order', async () => {
       const cal = await page.getByRole('button', { name: 'Apri calendario' }).boundingBox();
-      const bell = await page.getByRole('button', { name: 'Notifiche' }).boundingBox();
-      const profile = await page.getByRole('button', { name: /profilo/i }).first().boundingBox();
-      assert.ok(cal.x + cal.width <= bell.x + 1 && bell.x + bell.width <= profile.x + 1, 'calendar, bell, profile from left to right');
-      assert.ok(Math.abs(cal.y - bell.y) < 2 && Math.abs(cal.y - profile.y) < 2, 'all on one line');
+      const menu = await page.getByRole('button', { name: 'Apri menu' }).boundingBox();
+      assert.ok(cal.x + cal.width <= menu.x + 1, 'calendar, then menu, from left to right');
+      assert.ok(Math.abs(cal.y - menu.y) < 2, 'both on one line');
     });
 
     await test('Home: the gauge shows the balance, the goal under it, then deficit / surplus in grey', async () => {

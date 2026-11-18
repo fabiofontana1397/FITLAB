@@ -75,7 +75,7 @@ async function main() {
       for (const date of week) if ((await page.getByTestId(`training-day-${date}`).count()) > 0) found.push(date);
       return found;
     };
-    const barY = async () => Math.round((await page.getByRole('button', { name: 'Notifiche' }).boundingBox()).y);
+    const barY = async () => Math.round((await page.getByRole('button', { name: 'Apri menu' }).boundingBox()).y);
 
     await test('the list runs from the selected day (today) to the end of the week, in calendar order', async () => {
       // Today is always there; after it, every later session day.

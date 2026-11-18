@@ -7,14 +7,10 @@ import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { GlassPopup } from '@/components/glass/glass-popup';
 import { FlatCard } from '@/components/ui/flat-card';
 import { EditAnswersSheet } from '@/components/profile/edit-answers-sheet';
-import { IntegrationsSection } from '@/components/profile/integrations-section';
 import { MODE_LABEL, OutcomeBanner, QuestionnaireSheet } from '@/components/profile/questionnaire-sheet';
 import { ThemedText } from '@/components/themed-text';
 import { Icon, type IconName } from '@/components/ui/icon';
-import { ListGroup, ListRow } from '@/components/ui/list-group';
 import { PrimaryButton } from '@/components/ui/primary-button';
-import { SectionHeader } from '@/components/ui/section-header';
-import { SegmentedControl } from '@/components/ui/segmented-control';
 import { SheetScreen } from '@/components/ui/sheet-screen';
 import { Layout, Radius, Spacing } from '@/constants/theme';
 import { useAnswersEditor, type SaveOutcome } from '@/hooks/use-answers-editor';
@@ -23,13 +19,11 @@ import { latestSnapshot } from '@/lib/mock/body';
 import { sportIcon, sportMeta } from '@/lib/mock';
 import { answerText, findGroup, groupsForMode, type ProfileGroup } from '@/lib/questionnaire/profile-sections';
 import type { OnboardingMode } from '@/lib/questionnaire/schema';
-import { useAppStore, type AppearanceMode } from '@/store/app-store';
-import { useAuthStore } from '@/store/auth-store';
+import { useAppStore } from '@/store/app-store';
 import { useBodyStore } from '@/store/body-store';
 import { useOnboardingStore, type AnswerValue } from '@/store/onboarding-store';
 import { usePlanStore } from '@/store/plan-store';
 import { useUserStore } from '@/store/user-store';
-import { hapticWarning } from '@/lib/haptics';
 
 const GOAL_LABEL: Record<string, string> = {
   loseFat: 'Perdere grasso',
@@ -40,12 +34,6 @@ const GOAL_LABEL: Record<string, string> = {
   generalHealth: 'Salute generale',
 };
 
-const APPEARANCE_OPTIONS: { value: AppearanceMode; label: string }[] = [
-  { value: 'system', label: 'Sistema' },
-  { value: 'light', label: 'Chiaro' },
-  { value: 'dark', label: 'Scuro' },
-];
-
 const AVATAR_SIZE = 72;
 
 export default function ProfileScreen() {
@@ -55,10 +43,7 @@ export default function ProfileScreen() {
   const answers = useOnboardingStore((s) => s.answers);
   const bodyEntries = useBodyStore((s) => s.entries);
   const isGenerating = usePlanStore((s) => s.isGenerating);
-  const appearance = useAppStore((s) => s.appearance);
-  const setAppearance = useAppStore((s) => s.setAppearance);
   const startQuestionnaireRedo = useAppStore((s) => s.startQuestionnaireRedo);
-  const logout = useAuthStore((s) => s.logout);
   const saveAnswers = useAnswersEditor();
 
   const [editing, setEditing] = useState<ProfileGroup | null>(null);
@@ -85,12 +70,6 @@ export default function ProfileScreen() {
     setQuestionnaireOpen(false);
     startQuestionnaireRedo();
     router.replace('/onboarding');
-  };
-
-  const handleLogout = async () => {
-    hapticWarning();
-    await logout();
-    router.replace('/welcome');
   };
 
   const pickPhoto = async (source: 'library' | 'camera') => {
@@ -215,11 +194,6 @@ export default function ProfileScreen() {
         </View>
       </FlatCard>
 
-      <View>
-        <SectionHeader title="Aspetto" />
-        <SegmentedControl options={APPEARANCE_OPTIONS} value={appearance} onChange={setAppearance} />
-      </View>
-
       <View style={{ gap: Spacing.three }}>
         <ThemedText type="subtitle" accessibilityRole="header">Questionario</ThemedText>
         <OutcomeBanner saving={saving && !questionnaireOpen} isGenerating={isGenerating && !questionnaireOpen} outcome={questionnaireOpen ? null : outcome} />
@@ -246,12 +220,6 @@ export default function ProfileScreen() {
           </Pressable>
         </FlatCard>
       </View>
-
-      <IntegrationsSection />
-
-      <ListGroup footer="FITLAB · v0.1.0 prototype">
-        <ListRow icon="logout" title="Esci" destructive iconTint={theme.backgroundElement} onPress={handleLogout} />
-      </ListGroup>
 
       <QuestionnaireSheet
         visible={questionnaireOpen}

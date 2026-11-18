@@ -31,7 +31,7 @@ const PROVIDERS: ProviderMeta[] = [
 const fmt = (n: number) => Math.round(n).toLocaleString('it-IT');
 
 /**
- * "Dispositivi e app salute" in Profilo: connects the phone's health store
+ * "Dispositivi e app salute" in Impostazioni: connects the phone's health store
  * (Apple Salute on iPhone, Health Connect on Android) and shows what FITLAB
  * learned from it — steps, active and resting calories, and how they refine
  * the burned-calories estimate (domain/health-calibration.ts).
