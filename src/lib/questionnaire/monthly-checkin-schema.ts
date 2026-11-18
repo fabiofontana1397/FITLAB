@@ -157,6 +157,20 @@ export const MONTHLY_CHECKIN_QUESTIONS: Question[] = [
     dependsOn: { questionId: 'checkinWantsChange', equals: 'foodOptions' },
   },
   {
+    id: 'checkinDietaryPattern',
+    type: 'single',
+    optional: true,
+    label: 'Il tuo regime alimentare è cambiato?',
+    helper: 'Cambia il piano solo se lo confermi qui: le preferenze da sole non modificano mai il regime.',
+    options: [
+      { value: 'keep', label: 'No, resta com’è' },
+      { value: 'none', label: 'Mangio di tutto' },
+      { value: 'pescetarian', label: 'Pescetariano' },
+      { value: 'vegetarian', label: 'Vegetariano' },
+      { value: 'vegan', label: 'Vegano' },
+    ],
+  },
+  {
     id: 'checkinSpecialConditions',
     type: 'multi',
     optional: true,

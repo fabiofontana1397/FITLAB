@@ -110,7 +110,8 @@ export default function MonthlyCheckinScreen() {
 
       // keep the profile in step with what the plan now prescribes for the month the person is entering
       const nextMonth = usePlanStore.getState().dietPlan?.months.find((m) => m.monthIndex === endedMonth + 1);
-      if (nextMonth) updateProfile({ dailyCalorieTarget: nextMonth.calorieTarget, macroTargetsG: nextMonth.macroTargetsG });
+      // (not under professional review: no calorie target is proposed then)
+      if (nextMonth && recalibration.verdict !== 'professional_review') updateProfile({ dailyCalorieTarget: nextMonth.calorieTarget, macroTargetsG: nextMonth.macroTargetsG });
       setResult(recalibration);
     } finally {
       setSubmitting(false);

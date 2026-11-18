@@ -3,7 +3,26 @@
  * notes into structured facts. Nothing collected is dropped: every answer either feeds the analysis or becomes
  * a clarification question. When a note cannot be read reliably the engine asks, it never guesses.
  */
-import { foodsNamedIn } from '@/lib/planning/fitlab/pools';
+import { FITLAB_FOODS } from '@/lib/planning/fitlab/foods';
+
+const normName = (t: string) => t.toLowerCase().replace(/[’‘]/g, "'").normalize('NFD').replace(/[̀-ͯ]/g, '');
+const TERMS = FITLAB_FOODS.flatMap((f) => [f.name, ...f.synonyms].map((t) => ({ id: f.id, term: normName(t) }))).filter((x) => x.term.length >= 3);
+
+/**
+ * Foods named in a free text, by catalog name or synonym. The most specific mention wins: "petto di pollo"
+ * names the chicken breast only, not every food whose synonym is "pollo".
+ */
+export function foodsNamedIn(text: string): Set<string> {
+  const t = normName(text);
+  const hits: { id: string; start: number; end: number }[] = [];
+  for (const { id, term } of TERMS) {
+    const re = new RegExp(`(^|[^a-z])${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?=$|[^a-z])`, 'g');
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(t))) hits.push({ id, start: m.index + m[1].length, end: m.index + m[1].length + term.length });
+  }
+  const kept = hits.filter((h) => !hits.some((o) => o !== h && o.start <= h.start && o.end >= h.end && o.end - o.start > h.end - h.start));
+  return new Set(kept.map((h) => h.id));
+}
 
 import type { ActivityChange, Energy, Hunger, MonitoringData, NoteFacts, QuantityDirection, SkippedMeals, SpecialCondition, TemporaryEvent } from './types';
 
@@ -24,6 +43,8 @@ export type CheckinInput = {
   waistCm?: number;
   events?: string[];
   specialConditions?: string[];
+  /** Explicit confirmation of a new dietary regime (the only way a regime changes from a check-in). */
+  dietaryPatternChange?: string;
   notes?: string;
   /** Structured note reading from an AI agent: merged with the deterministic one, validated the same way. */
   aiNoteFacts?: Partial<NoteFacts>;
@@ -186,6 +207,8 @@ export function monitor(c: CheckinInput): MonitoringData {
   mark('eventi del mese', (c.events ?? []).length > 0);
   const specialConditions = [...new Set([...(c.specialConditions ?? []).filter((x): x is SpecialCondition => CONDITION_PATTERNS.some((p) => p.condition === x)), ...notesFacts.specialConditions])];
   mark('situazioni particolari', (c.specialConditions ?? []).length > 0);
+  const dietaryPatternChange = c.dietaryPatternChange && ['none', 'pescetarian', 'vegetarian', 'vegan'].includes(c.dietaryPatternChange) ? c.dietaryPatternChange : null;
+  mark('regime alimentare', dietaryPatternChange != null);
 
   return {
     adherenceSelf,
@@ -204,6 +227,8 @@ export function monitor(c: CheckinInput): MonitoringData {
     waistCm,
     events,
     specialConditions,
+    dietaryPatternChange,
+    conflicts: [],
     notes: c.notes?.trim() ?? '',
     notesFacts,
     clarifications,

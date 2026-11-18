@@ -29,6 +29,8 @@ import { calorieLimits, enforceCalorieLimits, supervisionReasons, updateExpendit
 import type { DecisionLog, DietAdaptations, SafetyCheck } from './nutrition/types';
 import type { SessionLike } from './energy';
 import { computeTargets, MIN_CALORIES, modelAverage, type PlanTargets } from './targets';
+import { fitlabById } from '@/lib/planning/fitlab/foods';
+import { buildFitLabPools } from '@/lib/planning/fitlab/pools';
 import type { UserContext } from './user-context';
 
 /** Everything recalibration can change, persisted with the plans. */
@@ -88,6 +90,8 @@ export type RecalibrationInput = {
   history?: RecalibrationRecord[];
   /** Meal slots of the plan (ids). */
   slots?: string[];
+  /** The diet plan is already under professional supervision (frozen). */
+  frozen?: boolean;
 };
 
 export type Verdict =
@@ -218,11 +222,43 @@ export function recalibrate(input: RecalibrationInput): RecalibrationResult {
 
   // A — monitoring
   const m = monitor(input.checkin);
+  // Preference engine: safety > allergies/intolerances > explicit exclusions > regime > preferences > variety.
+  // A regime changes ONLY when the person confirms it in the check-in; a requested food that clashes with a
+  // restriction is never saved as a preference: the conflict is reported and a confirmation is asked.
+  const profileUpdates: { dietaryPattern?: string } = {};
+  let answersNow = ctx.answers;
+  if (m.dietaryPatternChange && m.dietaryPatternChange !== (ctx.answers.dietaryPattern ?? 'none')) {
+    profileUpdates.dietaryPattern = m.dietaryPatternChange;
+    answersNow = { ...ctx.answers, dietaryPattern: m.dietaryPatternChange };
+  }
+  const restrictions = buildFitLabPools(answersNow, { dislikedFoodIds: calibration.diet?.dislikedFoodIds });
+  const REGIME_LABEL: Record<string, string> = { omni: 'onnivoro', pesc: 'pescetariano', veg: 'vegetariano', vegan: 'vegano' };
+  for (const id of m.foodsWanted) {
+    const food = fitlabById(id);
+    if (!food || restrictions.allowed(food)) continue;
+    const reason = !food.regimes.includes(restrictions.regime)
+      ? `non compatibile con il regime ${REGIME_LABEL[restrictions.regime]}`
+      : food.allergens && /allerg|intoller|lattosio|glutine|celiac/i.test(String(answersNow.allergiesIntolerances ?? ''))
+        ? 'in conflitto con un’allergia o intolleranza che hai indicato'
+        : 'tra gli alimenti che hai escluso';
+    m.conflicts.push({ foodId: id, name: food.name, reason });
+  }
+  if (m.conflicts.length > 0) {
+    m.foodsWanted = m.foodsWanted.filter((id) => !m.conflicts.some((c) => c.foodId === id));
+    const regime = m.conflicts.filter((c) => c.reason.startsWith('non compatibile'));
+    const other = m.conflicts.filter((c) => !c.reason.startsWith('non compatibile'));
+    if (regime.length)
+      m.clarifications.push(`Hai chiesto ${regime.map((c) => c.name.toLowerCase()).join(', ')}: ${regime[0].reason}. Non li aggiungo al piano. Vuoi cambiare il tuo regime alimentare? Confermalo nella domanda “Il tuo regime alimentare è cambiato?” del check-in o nel Profilo.`);
+    if (other.length)
+      m.clarifications.push(`Hai chiesto ${other.map((c) => c.name.toLowerCase()).join(', ')}: ${other.map((c) => c.reason).join('; ')}. Non li aggiungo al piano; se l’informazione non è più valida, aggiornala nel Profilo.`);
+  }
   // B — analysis
   const weight = analyzeWeight({ weights: input.weights, currentKg: ctx.weightKg, expectedKgWeek: expectedWeeklyKg, direction, temporaryEvents: m.events });
   const adh = analyzeAdherence(m, { avgEatenKcal: adherence.avgEatenKcal, mealDaysTracked: adherence.mealDaysTracked, targetKcal: targets.calories, trainingCompletion: adherence.trainingCompletion });
   const sus = analyzeSustainability(m);
   const supervision = supervisionReasons(ctx, m);
+  // a plan already frozen by a previous check-in stays frozen until reactivated explicitly
+  if (input.frozen && supervision.length === 0) supervision.push('piano sospeso in attesa della valutazione di un professionista');
   // C — decision
   const history = input.history ?? [];
   const decision = decide({
@@ -262,7 +298,7 @@ export function recalibrate(input: RecalibrationInput): RecalibrationResult {
   }
   if (supervision.length > 0) safety.push({ id: 'supervision', ok: false, blocked: true, message: `Aggiustamenti automatici sospesi: ${supervision.join(', ')}.` });
 
-  const effectiveStep = Math.round(model.base) + adjustment - targets.calories;
+  const effectiveStep = supervision.length > 0 ? 0 : Math.round(model.base) + adjustment - targets.calories;
   // the interventions follow the step really applied (a safety limit may have changed it)
   if (effectiveStep !== decision.calorieStep) {
     const blocked = safety.filter((c) => c.blocked).map((c) => c.message).join(' ');
@@ -287,9 +323,23 @@ export function recalibrate(input: RecalibrationInput): RecalibrationResult {
     diet: decision.adaptations,
   };
   if (ctx.isMinor && ctx.goal === 'loseFat') next.calorieAdjustment = Math.max(next.calorieAdjustment, 0);
+  // Safety engine: under supervision NOTHING of the nutrition plan moves — calories, macros, dynamic expenditure,
+  // adaptations, rotation. The previous calibration is kept as it is (the training side keeps its own rules).
+  const supervised = supervision.length > 0;
+  if (supervised) {
+    Object.assign(next, {
+      calorieAdjustment: calibration.calorieAdjustment,
+      mealVariant: calibration.mealVariant,
+      fromMonth: calibration.fromMonth,
+      expenditureOffset: calibration.expenditureOffset,
+      diet: calibration.diet,
+    });
+    decision.interventions = decision.interventions.filter((i) => i.kind === 'professional_review' || i.kind === 'training_signal');
+  }
 
   // preview of the next month with the new calibration (what buildPlans will produce)
-  const nextTargets = computeTargets(ctx, weeks.next ?? weeks.current, next);
+  const computed = computeTargets(ctx, weeks.next ?? weeks.current, next);
+  const nextTargets = supervised ? { ...computed, calories: targets.calories, macros: targets.macros } : computed;
   const otherChanges: string[] = [];
   const trainingDiff = nextTargets.calories - (targets.calories + effectiveStep);
   if (Math.abs(trainingDiff) >= 5) otherChanges.push(`${trainingDiff > 0 ? '+' : ''}${trainingDiff} kcal perché l'allenamento del mese prossimo ha un dispendio diverso (${nextTargets.adjustments.length ? nextTargets.adjustments.join(' ') : 'giorni di allenamento e riposo'}).`);
@@ -307,7 +357,8 @@ export function recalibrate(input: RecalibrationInput): RecalibrationResult {
     if (i.kind === 'confirm_calories' || i.kind === 'increase_calories' || i.kind === 'decrease_calories' || i.kind === 'request_info' || i.kind === 'professional_review') continue;
     changes.push({ area: i.kind === 'training_signal' ? 'allenamento' : 'dieta', text: i.text });
   }
-  changes.push({ area: 'dieta', text: 'Nuova rotazione delle ricette del mese.' });
+  if (supervised) changes.push({ area: 'dieta', text: 'Piano alimentare sospeso: nessuna nuova rotazione né modifica automatica finché un professionista non lo rivede. Lo storico resta disponibile.' });
+  else changes.push({ area: 'dieta', text: 'Nuova rotazione delle ricette del mese.' });
   changes.push(...training.changes);
 
   const reasons = [
@@ -358,6 +409,8 @@ export function recalibrate(input: RecalibrationInput): RecalibrationResult {
     safety,
     clarifications,
     supervision: decision.supervision,
+    conflicts: m.conflicts,
+    profileUpdates,
     expectedOutcome: decision.expectedOutcome,
   };
 

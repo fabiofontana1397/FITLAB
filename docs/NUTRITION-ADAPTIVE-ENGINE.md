@@ -4,6 +4,32 @@ Alla fine di ogni mese del piano il motore legge **tutte** le risposte del check
 
 Il motore è deterministico: stessi dati, stessa decisione. Calcoli, limiti e controlli di sicurezza non dipendono dall'AI. Un agente AI può solo proporre una lettura strutturata delle note (`NoteFacts`) o una proposta (`RecalibrationProposal`), che passano dagli stessi controlli.
 
+## Novità di fitlab-8
+
+- **Motore di sicurezza prima di tutto.** `supervisionReasons` (in `nutrition/safety.ts`) viene chiamato per primo da `goalPace`/`computeTargets`, `buildPlans` e `recalibrate`.
+  - **Condizioni:** minore età; gravidanza, allattamento, condizione medica o storia di disturbi alimentari, dalla nuova domanda `specialConditions` del questionario o dal check-in.
+  - **Dal questionario:** nessun piano alimentare, nessun deficit o surplus (solo la stima del fabbisogno, a titolo informativo), nessun adattamento. La pagina Piani mostra `NutritionSupervisionCard` con indicazioni generali.
+  - **Dal check-in:** il piano viene congelato (`DietPlan.supervision`, salvato con il piano) senza toccare lo storico: niente nuove rotazioni, calorie, macro né adattamenti.
+  - **Riattivazione:** solo con `reactivateNutrition`, quando il questionario non segnala più la condizione **e** la persona conferma la valutazione di un professionista. Un aggiornamento del questionario non la riattiva.
+- **Un'unica fonte dei valori nutrizionali.** Ogni alimento del piano porta grammi, kcal, proteine, carboidrati, grassi e fibre presi dal catalogo. Pasto, giorno e settimana sono sempre somme (`sumNutrition`, `withTotals`, `dayNutrition`): nessun valore scritto a mano.
+  - **Fattori di conversione UE:** P 4, carboidrati disponibili 4, G 9, fibre 2 kcal/g. Il catalogo non ha polioli né alcol. Tutti i 157 alimenti tornano entro il 6%.
+  - **Solutore delle porzioni:** il secondo passaggio toglie l'energia delle fibre dal target dei carboidrati, così le calorie di etichetta arrivano sul target.
+- **Riconciliazione della giornata** (`reconcileDay`). Prima le proteine (fino al 95% del target), poi l'energia entro ±2,5% del target del giorno, senza mai scendere sotto la soglia giornaliera. Si muovono carboidrati, grassi e proteine a passi pratici, entro i limiti di porzione, e i sostituti si ricalcolano sulla nuova porzione.
+- **Validazione a tre livelli e blocco della pubblicazione.**
+  - **BLOCKER:** valori mancanti, valori diversi dal catalogo, somme sbagliate, alimenti non ammessi, limiti di sicurezza, giorno oltre ±8%, media settimanale oltre ±4%, calorie e macro oltre il 6%.
+  - **WARNING:** varietà, sostituti, macro del giorno, giorno oltre ±5%.
+  - **INFO.**
+  - `buildPlans` valida ogni mese generato: con un BLOCKER il nuovo piano non viene pubblicato e resta quello precedente (`dietBlocked`, `dietIssues`).
+- **Gerarchia tra preferenze e restrizioni:** sicurezza > allergie e intolleranze > esclusioni > regime > preferenze > varietà.
+  - Un alimento richiesto che va in conflitto non viene salvato: il conflitto viene segnalato e si chiede conferma.
+  - Il regime cambia solo con la conferma esplicita della domanda di check-in `checkinDietaryPattern`. Il profilo viene aggiornato e il piano rigenerato.
+- **Varietà.**
+  - Memoria di due mesi: costo 70 per una ricetta del mese prima, 35 per quella di due mesi prima; con rotazione rafforzata il costo sale a 120.
+  - Niente stesso pranzo o cena due giorni di fila.
+  - Alternanza delle categorie proteiche.
+  - Le metriche (`varietyMetrics`) separano ripetizione della ricetta, alimento principale, fonte proteica, categorie e mese su mese. La ripetizione tra mesi è giudicata rispetto alle ricette compatibili con la persona: con un catalogo ristretto (per esempio pescetariana senza lattosio) è segnalata come inevitabile.
+- **Sostituti equivalenti.** La porzione bilancia il nutriente del ruolo e l'energia: nutriente entro ±25%, energia entro ±25%. Se non esiste un equivalente si offre un solo sostituto entro ±40% (±60% per le proteine magre come il tonno), segnalato da V14.
+
 ## Moduli
 
 | Modulo | File | Ruolo |
@@ -128,7 +154,15 @@ Tra le difficoltà ci sono anche preparazione e organizzazione. Senza la direzio
 
 Sempre: tonno in scatola al massimo 2 volte a settimana in tutto il piano.
 
-## Test
+## Test (fitlab-8)
+
+`nutrition-journey.ts` esegue 57 test:
+
+- i 6 profili di regressione (21 check-in);
+- 26 scenari: i 18 originali più 8 nuovi (allergia, vegano che chiede alimenti animali, preferenza contro intolleranza, condizione dichiarata al check-in, gravidanza dal questionario, nessuna pesata, cambio del numero di pasti, cambio di regime confermato);
+- 7 test del validatore su piani alterati apposta (valori incompleti, calorie del pasto incoerenti, macro incoerenti, giornate sbilanciate a media corretta, stessa ricetta più giorni, mese identico al precedente, sostituto troppo diverso).
+
+Risultato: 49 superati, 0 falliti, 5 da professionista, 3 non valutabili. Nei piani generati: 0 blocker, 419 warning, 4 info. Banco di prova esistente: 0 errori.
 
 ```
 npx tsx scripts/agent-tests/nutrition-journey.ts out.json   # 6 casi di regressione + 18 scenari, exit 1 se fallisce
@@ -137,11 +171,13 @@ npx tsx scripts/agent-tests/run.ts                          # banco di prova esi
 
 I sei utenti di `nutrition-cases.ts` hanno input **congelati**: le nuove decisioni si confrontano sempre con gli stessi dati. Ogni check-in è **superato**, **fallito**, **da valutare con un professionista** o **non valutabile** (dati insufficienti). Su ogni mese generato e su ogni aggiornamento girano `validateDietMonth` e `validateUpdate`.
 
-Risultati dell’ultima esecuzione (39 check-in: 21 dei sei utenti, 18 scenari): 35 superati, 0 falliti, 2 da valutare con un professionista (gravidanza, minorenne), 2 non valutabili (una sola pesata, due pesate). Il banco di prova esistente resta a 0 errori.
+Risultati di fitlab-7 (39 check-in): 35 superati, 0 falliti, 2 da professionista, 2 non valutabili; i problemi segnalati come avvisi non bloccavano il test. Da fitlab-8 un test passa solo senza blocker.
 
 ## Eccezioni e limiti noti
 
-- Per i minorenni le calorie non vengono mai ricalibrate in automatico: serve un professionista.
+- Per i minorenni non si genera un piano alimentare (fitlab-8): serve un professionista. Il piano di allenamento resta, con le sue regole.
+- Durante la supervisione il piano di allenamento continua con le proprie regole: il motore nutrizionale non lo modifica.
+- La Home e il diario usano ancora l'obiettivo calorico del profilo: per chi è sotto supervisione è la stima del fabbisogno (nessun deficit o surplus).
 - Le note sono lette da un riconoscitore di parole chiave italiano. Ciò che non riconosce diventa una domanda. La lettura AI (`aiNoteFacts`) è prevista ma non collegata.
 - Le circonferenze sono registrate ma non usate ancora per la ricomposizione: servono più mesi di dati.
 - I segnali sull'allenamento vengono registrati; il piano di allenamento li applica con le sue regole (serie e carichi).

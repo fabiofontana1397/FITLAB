@@ -15,7 +15,7 @@
  */
 import { dayEnergy, weekEnergy, type SessionLike } from './energy';
 import { NUTRITION_PARAMS } from './nutrition/params';
-import { calorieLimits, SEX_FLOOR } from './nutrition/safety';
+import { calorieLimits, SEX_FLOOR, supervisionReasons } from './nutrition/safety';
 import type { Goal, UserContext } from './user-context';
 
 /** Per-day floor by sex. The AVERAGE target also respects the individual limits of nutrition/safety.ts. */
@@ -50,8 +50,12 @@ const KCAL_PER_KG = 7700;
  *  - strength: a small surplus; everything else: maintenance.
  * Under 18 there is never a deficit: growth comes first.
  */
-export function goalPace(ctx: Pick<UserContext, 'goal' | 'weightKg' | 'isMinor' | 'training'>, averageExpenditure: number): GoalPace {
+export function goalPace(ctx: Pick<UserContext, 'goal' | 'weightKg' | 'isMinor' | 'training'> & { answers?: Record<string, unknown> }, averageExpenditure: number): GoalPace {
   const experience = ctx.training?.gym?.skill ?? 'beginner';
+  // safety engine: with a condition that needs a professional, no deficit or surplus is ever proposed
+  const supervised = supervisionReasons(ctx);
+  if (supervised.length > 0)
+    return { weeklyKg: 0, dailyBalanceKcal: 0, note: `Nessun obiettivo calorico personalizzato (${supervised.join(', ')}): solo la stima del fabbisogno, in attesa di un professionista.` };
   switch (ctx.goal) {
     case 'loseFat': {
       if (ctx.isMinor) return { weeklyKg: 0, dailyBalanceKcal: 0, note: 'Sotto i 18 anni non si prevede un deficit: obiettivo di ricomposizione corporea a calorie di mantenimento.' };
@@ -128,7 +132,9 @@ export function computeTargets(ctx: UserContext, week: (SessionLike | null | und
   const pace = goalPace(ctx, energy.averageTotal);
   if (pace.note) adjustments.push(pace.note);
 
-  const rawAverage = energy.averageTotal + pace.dailyBalanceKcal + (calibration?.calorieAdjustment ?? 0);
+  // under supervision no automatic correction applies either (see nutrition/safety.ts)
+  const adjustment = supervisionReasons(ctx).length > 0 ? 0 : (calibration?.calorieAdjustment ?? 0);
+  const rawAverage = energy.averageTotal + pace.dailyBalanceKcal + adjustment;
   // permanent limits, on every month of every plan version: deficit / surplus against the best expenditure
   // estimate (model + dynamic offset) and the individual floor
   const limits = calorieLimits(ctx, energy.averageTotal + (calibration?.expenditureOffset ?? 0));
@@ -160,7 +166,7 @@ export function computeTargets(ctx: UserContext, week: (SessionLike | null | und
   // Each day eats its own expenditure plus the goal's balance. On a small, aggressive plan a rest day can fall
   // under the safety floor: it stays at the floor, and what it could not cut comes off the days that have room,
   // so the week keeps its balance.
-  const dailyBalance = pace.dailyBalanceKcal + (calibration?.calorieAdjustment ?? 0) + (average - Math.round(rawAverage));
+  const dailyBalance = pace.dailyBalanceKcal + adjustment + (average - Math.round(rawAverage));
   const raw = energy.days.map((d) => d.total + dailyBalance);
   const eats = raw.map((x) => Math.max(Math.round(x), floor));
   const shortfall = eats.reduce((s, x, i) => s + (x - Math.round(raw[i])), 0);

@@ -96,6 +96,7 @@ export function checkinSignals(answers: Record<string, unknown>): CheckinSignals
     foodsToReplace: wantsChange?.includes('foodOptions') ? asText(answers.checkinFoodsToReplace) : undefined,
     foodsWanted: wantsChange?.includes('foodOptions') ? asText(answers.checkinFoodsWanted) : undefined,
     specialConditions: asArray(answers.checkinSpecialConditions)?.filter((e) => e !== 'none'),
+    dietaryPatternChange: answers.checkinDietaryPattern && answers.checkinDietaryPattern !== 'keep' ? String(answers.checkinDietaryPattern) : undefined,
     notes: asText(answers.checkinNotes),
   };
 }

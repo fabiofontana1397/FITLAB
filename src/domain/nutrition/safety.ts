@@ -34,13 +34,27 @@ const CONDITION_LABEL: Record<SpecialCondition, string> = {
   eatingDisorder: 'storia di disturbi del comportamento alimentare',
 };
 
-/** Situations where calories must not be adjusted without a professional. */
-export function supervisionReasons(ctx: Pick<UserContext, 'isMinor'>, m: Pick<MonitoringData, 'specialConditions'> | null): string[] {
+const CONDITIONS = Object.keys(CONDITION_LABEL) as SpecialCondition[];
+
+/**
+ * Safety engine: situations where no nutrition plan, calorie target or automatic adjustment is produced without a
+ * professional. Read from the questionnaire (age, `specialConditions`) and from a check-in. Every builder calls it
+ * first (computeTargets, buildPlans, recalibrate).
+ */
+export function supervisionReasons(ctx: Pick<UserContext, 'isMinor'> & { answers?: Record<string, unknown> }, m?: Pick<MonitoringData, 'specialConditions'> | null): string[] {
   const out: string[] = [];
   if (ctx.isMinor) out.push('età inferiore a 18 anni');
-  for (const c of m?.specialConditions ?? []) out.push(CONDITION_LABEL[c]);
+  const fromQuestionnaire = Array.isArray(ctx.answers?.specialConditions) ? (ctx.answers!.specialConditions as string[]) : [];
+  for (const c of new Set([...fromQuestionnaire.filter((x): x is SpecialCondition => CONDITIONS.includes(x as SpecialCondition)), ...(m?.specialConditions ?? [])])) out.push(CONDITION_LABEL[c]);
   return out;
 }
+
+/** General guidance shown instead of a plan while a professional has to set it (no numbers, no targets). */
+export const SUPERVISION_GUIDANCE = [
+  'Il piano alimentare automatico è sospeso: in questa situazione obiettivi, calorie e quantità vanno definiti con un medico o un nutrizionista.',
+  'Nel frattempo valgono le indicazioni generali di una alimentazione varia ed equilibrata: pasti regolari, verdura e frutta ogni giorno, cereali preferibilmente integrali, legumi, acqua a sufficienza.',
+  'Porta al professionista lo storico del piano e dei check-in: lo trovi nell’app e puoi esportarlo in PDF.',
+];
 
 /**
  * Observed expenditure from what was eaten and how the weight moved: intake − change in stored energy.

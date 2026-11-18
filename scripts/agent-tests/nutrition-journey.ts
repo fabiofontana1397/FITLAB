@@ -15,7 +15,7 @@
  */
 import { writeFileSync } from 'node:fs';
 
-import { validateDietMonth, validateUpdate, type ValidationIssue } from '@/domain/nutrition/validation';
+import { dayNutrition, validateDietMonth, validateUpdate, varietyMetrics, type ValidationIssue } from '@/domain/nutrition/validation';
 import type { InterventionKind } from '@/domain/nutrition/types';
 import { buildPlans, type PlanBundle } from '@/domain/plan-engine';
 import { NEUTRAL_CALIBRATION, recalibrate, type CheckinSignals, type PlanCalibration, type RecalibrationRecord } from '@/domain/recalibration';
@@ -23,6 +23,7 @@ import { buildUserContext } from '@/domain/user-context';
 import { DIET_ENGINE_VERSION } from '@/lib/planning/diet-planner';
 import { FITLAB_FOODS } from '@/lib/planning/fitlab/foods';
 import { buildMealSlotsFromAnswers } from '@/lib/planning/meal-slots';
+import type { DietMonthPlan } from '@/lib/planning/types';
 
 import { ck, q, USERS, type Answers, type MonthOutcome, type TestUser } from './nutrition-cases';
 
@@ -46,6 +47,12 @@ type Expectation = {
   clarification?: boolean;
   /** Custom check on the plan generated for the next month. */
   planCheck?: (next: PlanBundle['diet'], m: number) => string | null;
+  /** Requested foods that must be rejected as conflicts (by name). */
+  conflict?: string[];
+  /** The diet must be frozen: no calorie, rotation or adaptation change, no new month content. */
+  frozen?: boolean;
+  /** A confirmed regime that must reach the profile. */
+  profileUpdate?: string;
 };
 
 const id = (name: string) => FITLAB_FOODS.find((x) => x.name === name)!.id;
@@ -126,7 +133,13 @@ const SPEC_EXPECTATIONS: Record<string, Expectation> = {
 // ------------------------------------------------------------------ scenarios --
 
 /** A synthetic scenario: one user, one or two months, an expectation per check-in. */
-type Scenario = { user: TestUser & { months: (MonthOutcome & { weights?: (startKg: number, start: string) => { date: string; kg: number }[] })[] }; expect: Expectation[]; topic: string };
+type Scenario = {
+  user: TestUser & { months: (MonthOutcome & { weights?: (startKg: number, start: string) => { date: string; kg: number }[]; answersPatch?: Answers })[] };
+  expect: Expectation[];
+  topic: string;
+  /** The safety engine must stop the plan before any generation. */
+  preflight?: 'supervision';
+};
 
 const NO_OLD = { expect: '', verdict: [] as string[], step: 0 };
 const LOSS = q({ age: 38, currentWeightKg: 86, targetWeightKg: 78, goal: 'loseFat', preferredProteins: [id('Petto di pollo'), id('Merluzzo')], preferredCarbs: [id('Pasta'), id('Riso basmati')] });
@@ -149,11 +162,20 @@ const SCENARIOS: Scenario[] = [
   { topic: 'Dati insufficienti', user: { id: 's-nodata', name: 'Due pesate', summary: 'Solo due pesate nel mese.', answers: LOSS, months: [{ ...NO_OLD, weeklyKg: -0.1, weighIns: 2, checkin: ck(4, 'normal', 'sometimes') }] }, expect: [{ text: 'Nessuna decisione calorica, richiesta di pesate.', verdict: ['insufficient_data'], step: [0, 0], must: ['request_info'] }] },
   { topic: 'Variazione temporanea del peso', user: { id: 's-temp', name: 'Ritenzione a fine mese', summary: 'Peso stabile, +1,4 kg nell’ultima settimana con il ciclo.', answers: q({ ...LOSS, sex: 'female', heightCm: 165, currentWeightKg: 70, targetWeightKg: 64 }), months: [{ ...NO_OLD, weeklyKg: 0, weights: flatThenSpike, checkin: { ...ck(4, 'normal', 'sometimes'), checkinEvents: ['cycle'] } }] }, expect: [{ text: 'Oscillazione temporanea: nessuna correzione.', verdict: ['temporary_variation'], step: [0, 0] }] },
   { topic: 'Variazione dell’attività fisica', user: { id: 's-activity', name: 'Più attività', summary: 'Si è mosso molto di più: la stima del dispendio non va aggiornata su questo mese.', answers: LOSS, months: [{ ...NO_OLD, weeklyKg: -0.9, trackedDays: 26, checkin: { ...ck(5, 'high', 'sometimes'), checkinActivityChange: 'more' } }] }, expect: [{ text: 'Dispendio non ricalibrato su un mese anomalo; aumento prudente se troppo rapido.', step: [0, 150], planCheck: () => null }] },
-  { topic: 'Violazione di un vincolo nutrizionale', user: { id: 's-veg-meat', name: 'Vegetariana chiede carne', summary: 'Vegetariana che scrive di volere pollo e salmone.', answers: q({ ...LOSS, sex: 'female', heightCm: 165, currentWeightKg: 68, targetWeightKg: 62, dietaryPattern: 'vegetarian', preferredProteins: [id('Uova intere'), id('Ceci')] }), months: [{ ...NO_OLD, weeklyKg: -0.4, checkin: { ...ck(4, 'normal', 'sometimes', ['none'], ['foodOptions']), checkinFoodsWanted: 'petto di pollo, salmone' } }] }, expect: [{ text: 'Il regime alimentare resta un vincolo: niente carne né pesce nel piano.', step: [0, 0], planCheck: (diet, m) => (foodIn(diet, m, 'Petto di pollo') || foodIn(diet, m, 'Salmone') ? 'carne o pesce nel piano di una vegetariana' : null) }] },
+  { topic: 'Violazione di un vincolo nutrizionale', user: { id: 's-veg-meat', name: 'Vegetariana chiede carne', summary: 'Vegetariana che scrive di volere pollo e salmone.', answers: q({ ...LOSS, sex: 'female', heightCm: 165, currentWeightKg: 68, targetWeightKg: 62, dietaryPattern: 'vegetarian', preferredProteins: [id('Uova intere'), id('Ceci')] }), months: [{ ...NO_OLD, weeklyKg: -0.4, checkin: { ...ck(4, 'normal', 'sometimes', ['none'], ['foodOptions']), checkinFoodsWanted: 'petto di pollo, salmone' } }] }, expect: [{ text: 'Il regime resta un vincolo: pollo e salmone non entrano nel piano né tra le preferenze; si chiede conferma di un cambio di regime.', step: [0, 0], conflict: ['Petto di pollo', 'Salmone'], clarification: true, planCheck: (diet, m) => (foodIn(diet, m, 'Petto di pollo') || foodIn(diet, m, 'Salmone') ? 'carne o pesce nel piano di una vegetariana' : null) }] },
   { topic: 'Superamento dei limiti calorici', user: { id: 's-limit', name: 'Taglio oltre il limite', summary: 'Già al deficit massimo del 20%: lo stallo non può portare un altro taglio.', answers: q({ ...LOSS, age: 52, currentWeightKg: 98, heightCm: 176, targetWeightKg: 88, dailySteps: '3000-5000' }), months: [{ ...NO_OLD, weeklyKg: 0, trackedDays: 5, checkin: ck(5, 'normal', 'sometimes') }] }, expect: [{ text: 'Il taglio viene bloccato dal limite di deficit e spiegato.', verdict: ['plateau'], step: [0, 0], safetyBlocked: true }] },
-  { topic: 'Gravidanza', user: { id: 's-pregnancy', name: 'Gravidanza', summary: 'Segnala una gravidanza nel check-in.', answers: q({ ...LOSS, sex: 'female', heightCm: 165, currentWeightKg: 68, targetWeightKg: 62 }), months: [{ ...NO_OLD, weeklyKg: 0, checkin: { ...ck(4, 'normal', 'sometimes'), checkinSpecialConditions: ['pregnancy'] } }] }, expect: [{ text: 'Nessun aggiustamento automatico: valutazione professionale.', verdict: ['professional_review'], step: [0, 0], must: ['professional_review'] }] },
-  { topic: 'Minorenne', user: { id: 's-minor', name: '17 anni', summary: 'Minorenne con obiettivo di massa.', answers: q({ ...GAIN, age: 17 }), months: [{ ...NO_OLD, weeklyKg: 0, checkin: ck(4, 'normal', 'sometimes') }] }, expect: [{ text: 'Nessun aggiustamento automatico per un minorenne.', verdict: ['professional_review'], step: [0, 0], must: ['professional_review'] }] },
+  { topic: 'Gravidanza', user: { id: 's-pregnancy', name: 'Gravidanza', summary: 'Segnala una gravidanza nel check-in.', answers: q({ ...LOSS, sex: 'female', heightCm: 165, currentWeightKg: 68, targetWeightKg: 62 }), months: [{ ...NO_OLD, weeklyKg: 0, checkin: { ...ck(4, 'normal', 'sometimes'), checkinSpecialConditions: ['pregnancy'] } }] }, expect: [{ text: 'Gravidanza comunicata al check-in: adattamenti sospesi subito, piano congelato con lo storico, stato di supervisione.', verdict: ['professional_review'], step: [0, 0], must: ['professional_review'], frozen: true }] },
+  { topic: 'Minorenne', user: { id: 's-minor', name: '17 anni', summary: 'Minorenne con obiettivo di massa.', answers: q({ ...GAIN, age: 17 }), months: [{ ...NO_OLD, weeklyKg: 0, checkin: ck(4, 'normal', 'sometimes') }] }, expect: [{ text: 'Minorenne: nessun piano alimentare generato, nessun obiettivo calorico autonomo, stato di supervisione.', verdict: ['professional_review'], step: [0, 0], must: ['professional_review'] }], preflight: 'supervision' },
   { topic: 'Nota non interpretabile', user: { id: 's-unclear', name: 'Nota ambigua', summary: 'Una nota che il motore non sa interpretare.', answers: LOSS, months: [{ ...NO_OLD, weeklyKg: -0.45, checkin: ck(4, 'normal', 'sometimes', ['none'], ['nothing'], 'Il mercoledì per me è complicato per via del calcetto') }] }, expect: [{ text: 'Il motore chiede un chiarimento invece di inventare.', step: [0, 0], clarification: true }] },
+  // ---- new cases (review of fitlab-7)
+  { topic: 'Allergia a un alimento delle ricette', user: { id: 'n-allergy', name: 'Allergia alla frutta a guscio', summary: 'Ha scelto le noci tra i preferiti ma dichiara un’allergia alla frutta a guscio.', answers: q({ ...LOSS_4, allergiesIntolerances: 'Allergia alla frutta a guscio', preferredFats: [id('Noci'), id('Mandorle')] }), months: [{ ...NO_OLD, weeklyKg: -0.45, checkin: ck(4, 'normal', 'sometimes') }] }, expect: [{ text: 'Nessuna frutta a guscio nel piano né nei sostituti, nonostante la preferenza.', step: [0, 0], planCheck: (diet, m) => (['Noci', 'Mandorle', 'Nocciole', 'Anacardi', 'Pistacchi'].some((n) => foodIn(diet, m, n) || foodIn(diet, 1, n)) ? 'frutta a guscio nel piano' : null) }] },
+  { topic: 'Vegano chiede un alimento animale', user: { id: 'n-vegan-animal', name: 'Vegano chiede yogurt', summary: 'Vegano che nel check-in chiede yogurt greco e uova.', answers: q({ ...LOSS, dietaryPattern: 'vegan', preferredProteins: [id('Ceci'), id('Lenticchie')] }), months: [{ ...NO_OLD, weeklyKg: -0.4, checkin: { ...ck(4, 'normal', 'sometimes', ['none'], ['foodOptions']), checkinFoodsWanted: 'yogurt greco 0%, uova intere' } }] }, expect: [{ text: 'Conflitto rilevato, nessun alimento animale nel piano o tra le preferenze, richiesta di conferma.', step: [0, 0], conflict: ['Yogurt greco 0%', 'Uova intere'], clarification: true, planCheck: (diet, m) => (foodIn(diet, m, 'Yogurt greco 0%') || foodIn(diet, m, 'Uova intere') ? 'alimento animale nel piano di un vegano' : null) }] },
+  { topic: 'Preferenza cambiata, restrizione invariata', user: { id: 'n-pref-restriction', name: 'Senza lattosio chiede mozzarella', summary: 'Intollerante al lattosio: chiede mozzarella (in conflitto) e salmone (compatibile).', answers: q({ ...LOSS, allergiesIntolerances: 'Intollerante al lattosio' }), months: [{ ...NO_OLD, weeklyKg: -0.45, checkin: { ...ck(4, 'normal', 'sometimes', ['none'], ['foodOptions']), checkinFoodsWanted: 'mozzarella, salmone' } }] }, expect: [{ text: 'Il salmone diventa preferito, la mozzarella no: l’intolleranza resta e il conflitto è segnalato.', step: [0, 0], conflict: ['Mozzarella'], clarification: true, planCheck: (diet, m) => (foodIn(diet, m, 'Mozzarella') ? 'mozzarella nel piano' : !foodIn(diet, m, 'Salmone') ? 'salmone assente' : null) }] },
+  { topic: 'Nuova condizione al check-in', user: { id: 'n-checkin-condition', name: 'Condizione medica al secondo mese', summary: 'Primo mese regolare; al secondo check-in segnala una terapia in corso.', answers: LOSS, months: [{ ...NO_OLD, weeklyKg: -0.45, checkin: ck(4, 'normal', 'sometimes') }, { ...NO_OLD, weeklyKg: -0.4, checkin: { ...ck(4, 'normal', 'sometimes'), checkinSpecialConditions: ['medical'] } }, { ...NO_OLD, weeklyKg: -0.4, checkin: ck(4, 'normal', 'sometimes') }] }, expect: [{ text: 'In linea.', verdict: ['on_track'], step: [0, 0] }, { text: 'Supervisione: piano congelato, storico conservato.', verdict: ['professional_review'], step: [0, 0], frozen: true }, { text: 'Resta congelato anche senza ripetere la condizione: si riattiva solo con conferma esplicita.', verdict: ['professional_review'], step: [0, 0], frozen: true }] },
+  { topic: 'Gravidanza dal questionario', user: { id: 'n-pregnancy-q', name: 'Gravidanza dichiarata subito', summary: 'Indica la gravidanza nel questionario iniziale.', answers: q({ ...LOSS, sex: 'female', heightCm: 165, currentWeightKg: 68, targetWeightKg: 62, specialConditions: ['pregnancy'] }), months: [{ ...NO_OLD, weeklyKg: 0, checkin: ck(4, 'normal', 'sometimes') }] }, expect: [{ text: 'Nessun piano generato, nessun deficit: solo indicazioni generali.' }], preflight: 'supervision' },
+  { topic: 'Nessuna pesata', user: { id: 'n-noweights', name: 'Nessuna pesata', summary: 'Ha seguito il piano ma non si è mai pesato.', answers: LOSS, months: [{ ...NO_OLD, weeklyKg: -0.4, weighIns: 0, checkin: ck(4, 'normal', 'sometimes') }] }, expect: [{ text: 'Nessun adattamento calorico senza dati.', verdict: ['insufficient_data'], step: [0, 0], must: ['request_info'] }] },
+  { topic: 'Cambio del numero di pasti', user: { id: 'n-meals', name: 'Da 3 a 5 pasti', summary: 'Dopo il primo mese aggiorna il questionario: aggiunge due spuntini.', answers: LOSS, months: [{ ...NO_OLD, weeklyKg: -0.45, checkin: ck(4, 'normal', 'sometimes'), answersPatch: { mealsSelected: ['colazione', 'spuntinoMattina', 'pranzo', 'spuntinoPomeriggio', 'cena'], morningSnackTime: '10:30', afternoonSnackTime: '17:00' } }] }, expect: [{ text: 'Il nuovo mese ha 5 pasti, calorie e macro ridistribuiti e coerenti.', step: [0, 0], planCheck: (diet, m) => (diet?.months.find((x) => x.monthIndex === m)?.weeklySplit.every((d) => d.meals.length === 5) ? null : 'il mese nuovo non ha 5 pasti') }] },
+  { topic: 'Cambio di regime confermato', user: { id: 'n-regime', name: 'Da vegetariano a onnivoro', summary: 'Vegetariano: al primo check-in chiede pollo (conflitto), al secondo conferma di mangiare di tutto.', answers: q({ ...LOSS, dietaryPattern: 'vegetarian', preferredProteins: [id('Uova intere'), id('Ceci')] }), months: [{ ...NO_OLD, weeklyKg: -0.45, checkin: { ...ck(4, 'normal', 'sometimes', ['none'], ['foodOptions']), checkinFoodsWanted: 'petto di pollo' } }, { ...NO_OLD, weeklyKg: -0.45, checkin: { ...ck(4, 'normal', 'sometimes', ['none'], ['foodOptions']), checkinFoodsWanted: 'petto di pollo', checkinDietaryPattern: 'none' } }] }, expect: [{ text: 'Conflitto: il pollo non entra, si chiede conferma.', step: [0, 0], conflict: ['Petto di pollo'], clarification: true, planCheck: (diet, m) => (foodIn(diet, m, 'Petto di pollo') ? 'pollo nel piano prima della conferma' : null) }, { text: 'Regime confermato: profilo aggiornato, il pollo entra nel piano.', step: [0, 0], profileUpdate: 'none', planCheck: (diet, m) => (foodIn(diet, m, 'Petto di pollo') ? null : 'pollo assente dopo la conferma') }] },
 ];
 
 // ------------------------------------------------------------------ helpers --
@@ -181,6 +203,7 @@ function checkinSignals(answers: Answers): CheckinSignals {
     foodsToReplace: wantsChange?.includes('foodOptions') ? asText(answers.checkinFoodsToReplace) : undefined,
     foodsWanted: wantsChange?.includes('foodOptions') ? asText(answers.checkinFoodsWanted) : undefined,
     specialConditions: asArray(answers.checkinSpecialConditions)?.filter((e) => e !== 'none'),
+    dietaryPatternChange: answers.checkinDietaryPattern && answers.checkinDietaryPattern !== 'keep' ? String(answers.checkinDietaryPattern) : undefined,
     notes: asText(answers.checkinNotes),
   };
 }
@@ -245,7 +268,7 @@ const LABEL: Record<string, Record<string, string>> = {
 
 type Status = 'passed' | 'failed' | 'professional' | 'not_evaluable';
 
-function evaluate(exp: Expectation | undefined, r: ReturnType<typeof recalibrate>, nextDiet: PlanBundle['diet'], m: number, issues: ValidationIssue[]): { status: Status; failures: string[] } {
+function evaluate(exp: Expectation | undefined, r: ReturnType<typeof recalibrate>, nextDiet: PlanBundle['diet'], m: number, issues: ValidationIssue[], frozenOk: boolean | null): { status: Status; failures: string[] } {
   const failures: string[] = [];
   const d = r.decision;
   if (exp) {
@@ -257,34 +280,88 @@ function evaluate(exp: Expectation | undefined, r: ReturnType<typeof recalibrate
     for (const a of exp.adapt ?? []) if (!(r.calibration.diet as Record<string, unknown> | undefined)?.[a]) failures.push(`adattamento ${a} non applicato`);
     if (exp.safetyBlocked && !d.safety.some((s) => s.blocked)) failures.push('il limite di sicurezza non è intervenuto');
     if (exp.clarification && r.clarifications.length === 0) failures.push('nessuna richiesta di chiarimento');
+    for (const name of exp.conflict ?? []) {
+      if (!d.conflicts.some((c) => c.name === name)) failures.push(`conflitto non rilevato per ${name}`);
+      const fid = FITLAB_FOODS.find((f) => f.name === name)?.id;
+      if (fid && r.calibration.diet?.extraPreferredFoodIds?.includes(fid)) failures.push(`${name} salvato tra le preferenze nonostante il conflitto`);
+    }
+    if (exp.profileUpdate && d.profileUpdates.dietaryPattern !== exp.profileUpdate) failures.push(`regime non aggiornato (atteso ${exp.profileUpdate})`);
+    if (!exp.profileUpdate && d.profileUpdates.dietaryPattern) failures.push('regime cambiato senza conferma');
+    if (exp.frozen && frozenOk === false) failures.push('il piano non è rimasto congelato (calibrazione o mesi cambiati)');
     const pc = exp.planCheck?.(nextDiet, m + 1);
     if (pc) failures.push(pc);
   }
-  for (const i of issues) if (i.level === 'FAIL') failures.push(`${i.code}: ${i.message}`);
+  for (const i of issues) if (i.level === 'BLOCKER') failures.push(`${i.code}: ${i.message}`);
   const status: Status = failures.length ? 'failed' : d.supervision ? 'professional' : d.weight.classification === 'insufficient_data' ? 'not_evaluable' : 'passed';
   return { status, failures };
 }
 
+/** Per-month nutrition summary for the report (from the plan as generated: items → meals → days → week). */
+function nutritionSummary(month: DietMonthPlan, previous?: DietMonthPlan) {
+  const days = month.weeklySplit.map((d) => ({ target: d.calorieTarget ?? month.calorieTarget, ...dayNutrition(d.meals) }));
+  const avg = (f: (x: (typeof days)[number]) => number) => Math.round(days.reduce((s, x) => s + f(x), 0) / days.length);
+  const vm = varietyMetrics(month, previous);
+  return {
+    monthIndex: month.monthIndex,
+    target: month.calorieTarget,
+    macroTargets: month.macroTargetsG,
+    weekAvgKcal: avg((x) => x.kcal),
+    protein: avg((x) => x.protein),
+    carbs: avg((x) => x.carbs),
+    fats: avg((x) => x.fats),
+    fiber: avg((x) => x.fiber),
+    maxDayDevPct: Math.round(Math.max(...days.map((x) => Math.abs(x.kcal / x.target - 1))) * 1000) / 10,
+    maxMacroGapPct: Math.round(Math.max(...days.filter((x) => x.prescribedKcal > 0).map((x) => Math.abs(x.prescribedKcal / x.derivedKcal - 1))) * 1000) / 10,
+    days: days.map((x) => ({ target: x.target, kcal: x.kcal, derived: Math.round(x.derivedKcal + x.budgetKcal), protein: Math.round(x.protein), carbs: Math.round(x.carbs), fats: Math.round(x.fats), fiber: Math.round(x.fiber), budget: x.budgetKcal })),
+    repeatedMeals: vm.repeatedMeals,
+    repeatedVsPreviousPct: vm.repeatedVsPrevious == null ? null : Math.round(vm.repeatedVsPrevious * 100),
+    consecutiveSameRecipe: vm.consecutiveSameRecipe,
+    topProteins: vm.topProteins,
+    proteinCategories: vm.proteinCategories,
+  };
+}
+
 // --------------------------------------------------------------------- run --
 
-function runUser(u: Scenario['user'], expectations: (m: number) => Expectation | undefined) {
+function runUser(u: Scenario['user'], expectations: (m: number) => Expectation | undefined, preflight?: 'supervision') {
   const rand = rng(u.id.split('').reduce((s, c) => s + c.charCodeAt(0), 0) * 7919);
-  const ctx0 = buildUserContext(u.answers);
+  let answers = u.answers;
+  const ctxInitial = buildUserContext(answers);
   let calibration: PlanCalibration = { ...NEUTRAL_CALIBRATION };
-  let bundle = buildPlans(ctx0);
-  const slots = buildMealSlotsFromAnswers(u.answers).map((s) => s.id);
-  const initial = {
-    durationMonths: bundle.durationMonths,
-    monthTargets: bundle.monthTargets.map((t) => ({ calories: t.calories, macros: t.macros, weeklyKg: t.pace.weeklyKg })),
-    tdee: Math.round(bundle.monthTargets[0].averageExpenditure),
-    adjustments: bundle.monthTargets[0].adjustments,
+  let bundle = buildPlans(ctxInitial);
+  const base = {
+    id: u.id,
+    name: u.name,
+    summary: u.summary,
+    answers: u.answers,
+    initial: {
+      durationMonths: bundle.durationMonths,
+      monthTargets: bundle.monthTargets.map((t) => ({ calories: t.calories, macros: t.macros, weeklyKg: t.pace.weeklyKg })),
+      tdee: Math.round(bundle.monthTargets[0].averageExpenditure),
+      adjustments: bundle.monthTargets[0].adjustments,
+    },
   };
+
+  // Safety engine before any generation
+  if (!bundle.diet) {
+    const failures: string[] = [];
+    if (preflight !== 'supervision') failures.push('nessun piano generato senza un motivo di supervisione');
+    if (bundle.dietSupervision.length === 0) failures.push('piano non generato ma nessuna supervisione dichiarata');
+    if (bundle.monthTargets[0].pace.dailyBalanceKcal !== 0) failures.push('obiettivo calorico con deficit o surplus nonostante la supervisione');
+    const status: Status = failures.length ? 'failed' : 'professional';
+    return { ...base, preflight: { reasons: bundle.dietSupervision, status, failures, note: bundle.monthTargets[0].adjustments.join(' ') }, weights: [], checkins: [], months: [], monthIssues: {}, nutrition: [], history: [] };
+  }
+  const preflightFailures = preflight === 'supervision' ? ['il piano è stato generato nonostante una condizione da supervisionare'] : [];
+
+  const slots = () => buildMealSlotsFromAnswers(answers).map((s) => s.id);
   const months = [monthView(bundle, 1)];
-  const monthIssues: Record<number, ValidationIssue[]> = { 1: validateDietMonth(bundle.diet!.months[0], ctx0, { expenditure: bundle.monthTargets[0].averageExpenditure }) };
+  const ofMonth = (issues: ValidationIssue[], k: number) => issues.filter((i) => new RegExp(`^Mese ${k}[,:]`).test(i.message));
+  const monthIssues: Record<number, ValidationIssue[]> = { 1: ofMonth(bundle.dietIssues, 1) };
+  const nutrition = [nutritionSummary(bundle.diet.months[0])];
   const checkins: unknown[] = [];
   const weights: { date: string; kg: number }[] = [];
   const history: RecalibrationRecord[] = [];
-  let kg = ctx0.weightKg;
+  let kg = ctxInitial.weightKg;
   const start = '2026-01-05';
   const horizon = Math.min(u.months.length, bundle.durationMonths - 1);
 
@@ -306,8 +383,9 @@ function runUser(u: Scenario['user'], expectations: (m: number) => Expectation |
     weights.push(...used);
     const tracked = o.trackedDays ?? 24;
     const signals = checkinSignals(o.checkin);
-    const ctx = { ...ctx0, weightKg: r1(kg) };
+    const ctx = { ...buildUserContext(answers), weightKg: r1(kg) };
     const targetsFollowed = { ...bundle.monthTargets[m - 1], calories: stored.calorieTarget, macros: stored.macroTargetsG };
+    const wasFrozen = !!bundle.diet!.supervision;
     const result = recalibrate({
       ctx,
       monthIndex: m,
@@ -315,7 +393,7 @@ function runUser(u: Scenario['user'], expectations: (m: number) => Expectation |
       targets: targetsFollowed,
       weights: used,
       adherence: {
-        trainingCompletion: o.trainingCompletion !== undefined ? o.trainingCompletion : ctx0.mode === 'diet' ? null : signals.adherence != null && signals.adherence <= 2 ? 0.45 : 0.9,
+        trainingCompletion: o.trainingCompletion !== undefined ? o.trainingCompletion : ctx.mode === 'diet' ? null : signals.adherence != null && signals.adherence <= 2 ? 0.45 : 0.9,
         mealDaysTracked: tracked,
         daysInMonth: 30,
         avgEatenKcal: tracked >= 10 ? stored.calorieTarget * (o.eatenShare ?? 1) : null,
@@ -324,25 +402,46 @@ function runUser(u: Scenario['user'], expectations: (m: number) => Expectation |
       calibration,
       weeks: { current: bundle.training?.months[m - 1]?.weeklySplit ?? null, next: bundle.training?.months[m]?.weeklySplit ?? null },
       history,
-      slots,
+      slots: slots(),
+      frozen: wasFrozen,
     });
     if (history.length && result.previousOutcome && history[history.length - 1].decision) history[history.length - 1].decision!.observedOutcome = result.previousOutcome;
     history.push({ monthIndex: m, date: addDays(start, m * 30), verdict: result.verdict, weeklyRateKg: result.weeklyRateKg, expectedWeeklyKg: result.expectedWeeklyKg, changes: result.changes, calibration: result.calibration, decision: result.decision });
+    // same as plan-store.recalibrateMonth: a confirmed regime reaches the profile; a questionnaire update
+    // between months (answersPatch) is applied; a reported condition freezes the diet before the rebuild
+    if (result.decision.profileUpdates.dietaryPattern) answers = { ...answers, dietaryPattern: result.decision.profileUpdates.dietaryPattern };
+    if (o.answersPatch) answers = { ...answers, ...o.answersPatch };
     const prevBundle = bundle;
+    const prevCalibration = calibration;
     calibration = result.calibration;
-    bundle = buildPlans(ctx, { calibration, preserveMonthsBefore: m + 1, existing: { diet: bundle.diet, training: bundle.training } });
+    const dietForBuild =
+      result.decision.supervision && !bundle.diet!.supervision
+        ? { ...bundle.diet!, supervision: { status: 'professional_review' as const, reasons: ['check-in'], since: addDays(start, m * 30), source: 'checkin' as const, monthIndex: m } }
+        : bundle.diet;
+    bundle = buildPlans({ ...buildUserContext(answers), weightKg: r1(kg) }, { calibration, preserveMonthsBefore: m + 1, existing: { diet: dietForBuild, training: bundle.training } });
     const next = bundle.diet!.months.find((x) => x.monthIndex === m + 1)!;
     months.push(monthView(bundle, m + 1));
 
-    const issues: ValidationIssue[] = [
-      ...validateUpdate(result.decision, stored, next),
-      ...validateDietMonth(next, ctx, { expenditure: result.decision.tdeeEstimate, previous: stored, adapt: calibration.diet }),
-    ];
+    const supervised = result.decision.supervision;
+    const frozenOk = supervised
+      ? JSON.stringify(bundle.diet!.months) === JSON.stringify(prevBundle.diet!.months) &&
+        calibration.calorieAdjustment === prevCalibration.calorieAdjustment &&
+        calibration.mealVariant === prevCalibration.mealVariant &&
+        JSON.stringify(calibration.diet ?? null) === JSON.stringify(prevCalibration.diet ?? null)
+      : null;
+    // a frozen plan is not re-validated as a new publication: nothing new was generated
+    const issues: ValidationIssue[] = supervised ? [] : [...validateUpdate(result.decision, stored, next), ...ofMonth(bundle.dietIssues, m + 1)];
+    if (bundle.dietBlocked) issues.push({ level: 'BLOCKER', code: 'P0', message: `Pubblicazione bloccata: ${bundle.dietIssues.filter((i) => i.level === 'BLOCKER').length} blocker nel piano generato.` });
     if (JSON.stringify(bundle.diet!.months.find((x) => x.monthIndex === m)) !== JSON.stringify(prevBundle.diet!.months.find((x) => x.monthIndex === m)))
-      issues.push({ level: 'FAIL', code: 'J1', message: `Il mese ${m}, già vissuto, è stato modificato dal check-in.` });
+      issues.push({ level: 'BLOCKER', code: 'J1', message: `Il mese ${m}, già vissuto, è stato modificato dal check-in.` });
     monthIssues[m + 1] = issues;
+    nutrition.push(nutritionSummary(next, stored));
     const exp = expectations(m);
-    const evaluation = evaluate(exp, result, bundle.diet, m, issues);
+    const evaluation = evaluate(exp, result, bundle.diet, m, issues, frozenOk);
+    if (preflightFailures.length && m === 1) {
+      evaluation.failures.unshift(...preflightFailures);
+      evaluation.status = 'failed';
+    }
 
     checkins.push({
       monthIndex: m,
@@ -358,46 +457,102 @@ function runUser(u: Scenario['user'], expectations: (m: number) => Expectation |
           .map(([k, v]) => `${k.replace('checkin', '')}: ${Array.isArray(v) ? v.join(', ') : v}`),
         notes: o.checkin.checkinNotes,
       },
+      questionnaireUpdate: o.answersPatch ? Object.keys(o.answersPatch) : null,
       before: o.expect ? { verdict: o.verdict, step: o.step, text: o.expect, review: o.review ?? null } : null,
       expectation: exp ? { text: exp.text, verdict: exp.verdict ?? null, step: exp.step ?? null, must: exp.must ?? [] } : null,
       evaluation,
+      frozen: supervised,
       result: { verdict: result.verdict, changes: result.changes, reasons: result.reasons, clarifications: result.clarifications, adaptations: calibration.diet, expenditureOffset: calibration.expenditureOffset ?? 0 },
       decision: result.decision,
     });
   }
 
   return {
-    id: u.id,
-    name: u.name,
-    summary: u.summary,
-    answers: u.answers,
-    initial,
+    ...base,
+    preflight: null,
     weights,
     checkins,
     months,
     monthIssues,
+    nutrition,
     history: history.map((h) => ({ monthIndex: h.monthIndex, step: h.decision?.calorieStep, expected: h.decision?.expectedOutcome, observed: h.decision?.observedOutcome ?? null })),
   };
 }
 
+// ---------------------------------------------------------------- validator unit tests --
+// Plans the generator would never produce, built on purpose by altering a valid month: the validator must catch them.
+
+function validatorTests() {
+  const ctx = buildUserContext(USERS[0].answers);
+  const b = buildPlans(ctx);
+  const good = b.diet!.months[0];
+  const exp = b.monthTargets[0].averageExpenditure;
+  const clone = (): DietMonthPlan => JSON.parse(JSON.stringify(good));
+  const firstPrescribed = (mo: DietMonthPlan, day = 0) => mo.weeklySplit[day].meals.find((x) => !x.isFreeMeal && x.items.length > 1)!;
+  const cases: { id: string; topic: string; expect: { level: 'BLOCKER' | 'WARNING'; code: string }; build: () => { month: DietMonthPlan; previous?: DietMonthPlan } }[] = [
+    { id: 'v-incomplete', topic: 'Ricetta con valori nutrizionali incompleti', expect: { level: 'BLOCKER', code: 'V0' }, build: () => { const mo = clone(); const it = firstPrescribed(mo).items[0]; delete it.protein; it.kcal = Number.NaN; return { month: mo }; } },
+    { id: 'v-recipe-kcal', topic: 'Ricetta con calorie non coerenti con gli ingredienti', expect: { level: 'BLOCKER', code: 'V5' }, build: () => { const mo = clone(); firstPrescribed(mo).totalKcal += 180; return { month: mo }; } },
+    { id: 'v-macros', topic: 'Calorie corrette ma macro non coerenti', expect: { level: 'BLOCKER', code: 'V5' }, build: () => { const mo = clone(); const it = firstPrescribed(mo).items[0]; it.protein = (it.protein ?? 0) + 25; it.carbs = Math.max(0, (it.carbs ?? 0) - 25); return { month: mo }; } },
+    {
+      id: 'v-unbalanced',
+      topic: 'Media settimanale corretta, giornate sbilanciate',
+      expect: { level: 'BLOCKER', code: 'V3' },
+      build: () => {
+        const mo = clone();
+        // +18% on Monday and −18% on Tuesday: the week's average stays on target
+        const scale = (day: number, f: number) => { for (const meal of mo.weeklySplit[day].meals) { if (meal.isFreeMeal) continue; for (const it of meal.items) { it.grams = Math.round(it.grams * f); const food = FITLAB_FOODS.find((x) => x.id === it.foodId)!; const k = it.grams / 100; it.kcal = Math.round(food.kcal * k); it.protein = Math.round(food.p * k * 10) / 10; it.carbs = Math.round(food.c * k * 10) / 10; it.fats = Math.round(food.f * k * 10) / 10; it.fiber = Math.round(food.fib * k * 10) / 10; } meal.totalKcal = meal.items.reduce((s, i) => s + i.kcal, 0); const n = meal.items.reduce((a, i) => ({ p: a.p + i.protein!, c: a.c + i.carbs!, f: a.f + i.fats!, fib: a.fib + i.fiber! }), { p: 0, c: 0, f: 0, fib: 0 }); meal.macros = { protein: Math.round(n.p), carbs: Math.round(n.c), fats: Math.round(n.f), fiber: Math.round(n.fib) }; } };
+        scale(0, 1.18);
+        scale(1, 0.82);
+        return { month: mo };
+      },
+    },
+    { id: 'v-same-recipe', topic: 'Stessa ricetta per più giorni', expect: { level: 'WARNING', code: 'V17' }, build: () => { const mo = clone(); const lunch = mo.weeklySplit[0].meals.find((x) => x.slotId === 'pranzo')!; for (const d of mo.weeklySplit.slice(1, 5)) { const i = d.meals.findIndex((x) => x.slotId === 'pranzo'); d.meals[i] = JSON.parse(JSON.stringify(lunch)); } return { month: mo }; } },
+    { id: 'v-same-month', topic: 'Menu mensile quasi identico al precedente', expect: { level: 'WARNING', code: 'V10' }, build: () => { const mo = clone(); mo.monthIndex = 2; return { month: mo, previous: good }; } },
+    { id: 'v-substitute', topic: 'Sostituzione che cambia molto le calorie', expect: { level: 'WARNING', code: 'V14' }, build: () => { const mo = clone(); const it = firstPrescribed(mo).items.find((x) => x.substitutes?.length && x.role !== 'veg' && x.kcal >= 80)!; it.substitutes![0].grams = it.substitutes![0].grams * 2; return { month: mo }; } },
+  ];
+  return cases.map((c) => {
+    const { month, previous } = c.build();
+    const issues = validateDietMonth(month, ctx, { expenditure: exp, previous });
+    const hit = issues.some((i) => i.level === c.expect.level && i.code === c.expect.code);
+    const failures = hit ? [] : [`atteso ${c.expect.level} ${c.expect.code}, rilevati: ${issues.map((i) => `${i.level} ${i.code}`).join(', ') || 'nessuno'}`];
+    return { id: c.id, topic: c.topic, expected: c.expect, issues: issues.filter((i) => i.code === c.expect.code).slice(0, 3), status: (hit ? 'passed' : 'failed') as Status, failures };
+  });
+}
+
+// ------------------------------------------------------------------ output --
+
 const users = USERS.map((u) => runUser(u as Scenario['user'], (m) => SPEC_EXPECTATIONS[`${u.id}:${m}`]));
-const scenarios = SCENARIOS.map((s) => ({ topic: s.topic, ...runUser(s.user, (m) => s.expect[m - 1]) }));
-const all = [...users, ...scenarios].flatMap((u) => (u.checkins as { evaluation: { status: Status; failures: string[] } }[]).map((c) => ({ u, c })));
-const counts = { passed: 0, failed: 0, professional: 0, not_evaluable: 0 } as Record<Status, number>;
-for (const { c } of all) counts[c.evaluation.status]++;
-const out = { engine: DIET_ENGINE_VERSION, generatedAt: new Date().toISOString(), counts, users, scenarios };
+const scenarios = SCENARIOS.map((s) => ({ topic: s.topic, ...runUser(s.user, (m) => s.expect[m - 1], s.preflight) }));
+const validator = validatorTests();
+type Row = { status: Status };
+const evaluations: Row[] = [
+  ...[...users, ...scenarios].flatMap((u) => [...(u.preflight ? [u.preflight] : []), ...(u.checkins as { evaluation: Row }[]).map((c) => c.evaluation)]),
+  ...validator,
+];
+const counts = { tests: evaluations.length, passed: 0, failed: 0, professional: 0, not_evaluable: 0 } as Record<Status | 'tests', number>;
+for (const e of evaluations) counts[e.status]++;
+const allIssues = [...users, ...scenarios].flatMap((u) => Object.values(u.monthIssues).flat());
+const levels = { BLOCKER: 0, WARNING: 0, INFO: 0 } as Record<string, number>;
+for (const i of allIssues) levels[i.level]++;
+const byCode: Record<string, number> = {};
+for (const i of allIssues) byCode[`${i.level} ${i.code}`] = (byCode[`${i.level} ${i.code}`] ?? 0) + 1;
+const out = { engine: DIET_ENGINE_VERSION, generatedAt: new Date().toISOString(), counts, levels, byCode, users, scenarios, validator };
 const path = process.argv[2] ?? 'nutrition-journey.json';
 writeFileSync(path, JSON.stringify(out));
 
+const icon = { passed: '✓', failed: '✗', professional: '⚕', not_evaluable: '·' } as const;
 for (const group of [users, scenarios]) {
   for (const u of group) {
     console.log(`${'topic' in u ? `[${(u as { topic: string }).topic}] ` : ''}${u.name}`);
+    if (u.preflight) console.log(`   ${icon[u.preflight.status]} prima della generazione: ${u.preflight.reasons.join(', ') || '—'}${u.preflight.failures.length ? `\n       - ${u.preflight.failures.join('\n       - ')}` : ''}`);
     for (const c of u.checkins as { monthIndex: number; evaluation: { status: Status; failures: string[] }; decision: { calorieStep: number; previousTarget: number; newTarget: number; balancePct: number }; result: { verdict: string } }[]) {
-      const icon = { passed: '✓', failed: '✗', professional: '⚕', not_evaluable: '·' }[c.evaluation.status];
-      console.log(`   ${icon} M${c.monthIndex} ${c.result.verdict} passo ${c.decision.calorieStep} · ${c.decision.previousTarget}→${c.decision.newTarget} kcal · bilancio ${c.decision.balancePct}%${c.evaluation.failures.length ? `\n       - ${c.evaluation.failures.join('\n       - ')}` : ''}`);
+      console.log(`   ${icon[c.evaluation.status]} M${c.monthIndex} ${c.result.verdict} passo ${c.decision.calorieStep} · ${c.decision.previousTarget}→${c.decision.newTarget} kcal · bilancio ${c.decision.balancePct}%${c.evaluation.failures.length ? `\n       - ${c.evaluation.failures.join('\n       - ')}` : ''}`);
     }
   }
 }
-console.log(`\nSuperati ${counts.passed} · falliti ${counts.failed} · valutazione professionale ${counts.professional} · non valutabili ${counts.not_evaluable}`);
+console.log('[Validatore]');
+for (const v of validator) console.log(`   ${icon[v.status]} ${v.topic}${v.failures.length ? `\n       - ${v.failures.join('\n       - ')}` : ''}`);
+console.log(`\nTest ${counts.tests}: superati ${counts.passed} · falliti ${counts.failed} · valutazione professionale ${counts.professional} · non valutabili ${counts.not_evaluable}`);
+console.log(`Piani generati: ${levels.BLOCKER} blocker · ${levels.WARNING} warning · ${levels.INFO} info`);
 console.log(`→ ${path}`);
 if (counts.failed > 0) process.exitCode = 1;

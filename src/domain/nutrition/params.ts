@@ -84,6 +84,8 @@ export const NUTRITION_PARAMS = {
     kcalPerKg: 7700,
   },
   planning: {
+    /** The generator brings each day within this share of its calorie target (practical portions). */
+    dayKcalTolerance: 0.025,
     /** Flexible times: a window of ±this many minutes. */
     flexibleWindowMin: 60,
     /** Distribution "even": how far the slot shares move toward equal (0 = unchanged, 1 = all equal). */
@@ -95,5 +97,35 @@ export const NUTRITION_PARAMS = {
     maxTunaPerWeek: 2,
     /** Share of dishes that may repeat last month's (above it the validator warns). */
     maxRepeatedDishShare: 0.5,
+    /** Cost of a recipe eaten last month (×1) or the month before (×0.5): normal and "strong variety". */
+    previousMonthCost: 70,
+    previousMonthCostStrong: 120,
+    /** Cost of the same lunch or dinner as the day before. */
+    consecutiveDayCost: 40,
+    /** Cost per extra use of a protein category in the week's main meals (beyond 2). */
+    categoryRepeatCost: 4,
+  },
+  validation: {
+    /** Day energy vs the day's target: warning beyond, blocker beyond. */
+    dayWarnShare: 0.05,
+    dayBlockShare: 0.08,
+    /** Weekly average vs the month's target. */
+    weekWarnShare: 0.02,
+    weekBlockShare: 0.04,
+    /**
+     * Label energy vs energy derived from the macros (P×4 + C×4 + G×9 + fibre×2). The catalog is within 6% per
+     * food (label rounding, specific factors); over a day the residual stays within ~2%. Beyond `macroWarnShare`
+     * it is reported, beyond `macroBlockShare` the values are not trustworthy and the plan is not published.
+     */
+    macroWarnShare: 0.03,
+    macroBlockShare: 0.06,
+    /** Day macros vs the day's targets (carbohydrates are available carbs: fibre energy is counted apart). */
+    proteinWarnShare: 0.1,
+    carbsWarnShare: 0.15,
+    fatsWarnShare: 0.15,
+    /** A substitute's energy stays within this share of the item it replaces (the generator only offers those)… */
+    substituteKcalShare: 0.25,
+    /** …except a single closest swap, up to this share, when no equivalent exists (reported as a warning). */
+    substituteFallbackShare: 0.4,
   },
 } as const;

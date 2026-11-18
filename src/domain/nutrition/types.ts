@@ -76,6 +76,10 @@ export type MonitoringData = {
   waistCm: number | null;
   events: TemporaryEvent[];
   specialConditions: SpecialCondition[];
+  /** Regime explicitly confirmed in the check-in ('none' = eats everything), or null. */
+  dietaryPatternChange: string | null;
+  /** Requested foods that clash with a restriction: never saved as preferences, a confirmation is asked. */
+  conflicts: { foodId: string; name: string; reason: string }[];
   notes: string;
   notesFacts: NoteFacts;
   /** Questions the engine needs answered before acting on something it could not interpret. */
@@ -175,6 +179,9 @@ export type DecisionLog = {
   safety: SafetyCheck[];
   clarifications: string[];
   supervision: boolean;
+  /** Requested foods rejected by the restriction hierarchy, and profile changes confirmed by the person. */
+  conflicts: { foodId: string; name: string; reason: string }[];
+  profileUpdates: { dietaryPattern?: string };
   expectedOutcome: string;
   /** Filled at the next check-in: what really happened after this decision. */
   observedOutcome?: string;

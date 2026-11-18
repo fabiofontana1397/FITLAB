@@ -19,8 +19,8 @@ import { formatFoodQuantity } from '../food-quantity';
 import type { PlanMealItem } from '../types';
 import { short, UNITS, type Role, type SlotKind } from './catalog';
 import { CONTORNI, DISHES, PRIMI, SECONDI, SECONDI_VEG, type Dish } from './dishes';
-import { foodByName, type FitLabFood } from './foods';
-import { familyOf, type FitLabPools } from './pools';
+import { fitlabById, foodByName, type FitLabFood } from './foods';
+import { familyOf, proteinCategory, type FitLabPools } from './pools';
 import { addMacros, kcalOfMacros, macrosOfGrams, portionBounds, solvePortions, ZERO, type Macros, type PortionVar } from './solver';
 
 /** What the week has already used: overall (dish, food) and per slot (`slotId|dish|id`, `slotId|name|recipe`, `slotId|food|id`), so the same meal never comes back more than a couple of times. */
@@ -28,8 +28,11 @@ export type WeekUsage = {
   dish: Map<string, number>;
   food: Map<string, number>;
   slot: Map<string, number>;
-  /** Recipes of the previous month: the pool rotates, so a new month (or an updated plan) brings mostly other recipes. */
-  previous?: Set<string>;
+  /** Recipes of the previous months (weight 1 last month, 0.5 the month before): the pool rotates, so a new month
+   * (or an updated plan) brings mostly other recipes. */
+  previous?: Map<string, number>;
+  /** Recipes eaten the day before: the same lunch or dinner is not served two days in a row. */
+  yesterday?: Set<string>;
   /** The person asked for different foods: last month's recipes and repeated proteins cost much more. */
   strongVariety?: boolean;
 };
@@ -40,7 +43,6 @@ export type DayState = { eggGrams: number; families: Set<string>; dishes: Set<st
 
 export type BuiltMeal = {
   items: PlanMealItem[];
-  macros: Macros;
   recipe: { name: string; flavorings: string[]; portable?: boolean; dishId: string };
 };
 
@@ -130,7 +132,7 @@ function candidateDishes(kind: SlotKind, slotId: string, pools: FitLabPools, see
     // food not yet eaten this week first of all, so every preferred food reaches the table)
     const foodsOf = [base[0], protein[0], ...sides.map((g) => g[0]), ok(r.fat)[0]].filter((f): f is FitLabFood => !!f);
     const liked = foodsOf.reduce((sum, f) => sum + (pools.weight(f, kind) - 1) * (f === base[0] && isMain ? 4 : f === protein[0] ? 3 : 2), 0);
-    const freshPreferred = foodsOf.some((f) => pools.isPreferred(f) && used(week.food, f.id) === 0) ? 3 : 0;
+    const freshPreferred = foodsOf.some((f) => pools.isRequested(f) && used(week.food, f.id) === 0) ? 10 : foodsOf.some((f) => pools.isPreferred(f) && used(week.food, f.id) === 0) ? 3 : 0;
     // lunch and dinner of the same day do not share a protein family (chicken twice, fish twice)
     const sameFamily = isMain && protein[0] && day.families.has(familyOf(protein[0])) ? 80 : 0;
     const inSlot = used(week.slot, `${slotId}|dish|${dish.id}`);
@@ -140,7 +142,11 @@ function candidateDishes(kind: SlotKind, slotId: string, pools: FitLabPools, see
       used(week.dish, dish.id) * (recurring ? 0 : 3) +
       (recurring ? (inSlot > 0 ? -4 : 0) : inSlot * 8) +
       // rotation: last month's recipes wait (they come back when the pool for this person is small)
-      (week.previous?.has(dish.id) ? (week.strongVariety ? 60 : 14) : 0) +
+      (week.previous?.get(dish.id) ?? 0) * (week.strongVariety ? NUTRITION_PARAMS.planning.previousMonthCostStrong : NUTRITION_PARAMS.planning.previousMonthCost) +
+      (isMain && week.yesterday?.has(dish.id) ? NUTRITION_PARAMS.planning.consecutiveDayCost : 0) +
+      // protein categories rotate in the main meals (meat, fish, eggs, dairy, legumes, plant), within what the
+      // person can eat: a category already used often this week costs a little more each time
+      (isMain && protein[0] ? Math.max(0, used(week.food, `cat|${proteinCategory(protein[0])}`) - 2) * NUTRITION_PARAMS.planning.categoryRepeatCost : 0) +
       (!recurring && inSlot >= 2 ? 150 : 0) +
       (!recurring && inSlot >= 3 ? 600 : 0) +
       (adapt?.simplify && isMain && dish.portable ? -3 : 0) +
@@ -229,11 +235,73 @@ const repeatPenalty = (n: number, soft: number, hard: number) => (n >= 4 ? hard 
 
 // ------------------------------------------------------------- substitutes --
 
-function toItem(food: FitLabFood, grams: number, role: NonNullable<PlanMealItem['role']>, substitutes?: PlanMealItem['substitutes']): PlanMealItem {
+const r1 = (n: number) => Math.round(n * 10) / 10;
+
+/**
+ * The nutrition of a set of items, aggregated from the items (ingredient → meal → day → week all use this):
+ * label energy, macros and fibre, plus the energy derived from the macros with the EU conversion factors
+ * (protein 4, available carbohydrate 4, fat 9, fibre 2 kcal/g; the catalog has no polyols or alcohol).
+ */
+export function sumNutrition(items: Pick<PlanMealItem, 'kcal' | 'protein' | 'carbs' | 'fats' | 'fiber' | 'foodId' | 'grams'>[]): { kcal: number; protein: number; carbs: number; fats: number; fiber: number; derivedKcal: number } {
+  const t = items.reduce(
+    (acc, i) => {
+      const food = fitlabById(i.foodId);
+      const k = i.grams / 100;
+      // items saved by an older engine have no macros: they come from the catalog row, never estimated
+      const p = i.protein ?? (food ? food.p * k : NaN);
+      const c = i.carbs ?? (food ? food.c * k : NaN);
+      const f = i.fats ?? (food ? food.f * k : NaN);
+      const fib = i.fiber ?? (food ? food.fib * k : NaN);
+      return { kcal: acc.kcal + i.kcal, protein: acc.protein + p, carbs: acc.carbs + c, fats: acc.fats + f, fiber: acc.fiber + fib };
+    },
+    { kcal: 0, protein: 0, carbs: 0, fats: 0, fiber: 0 }
+  );
+  return { ...t, derivedKcal: t.protein * 4 + t.carbs * 4 + t.fats * 9 + t.fiber * 2 };
+}
+
+/**
+ * Resizes one item of a built meal (day-level reconciliation): the new grams must stay within the food's portion
+ * bounds for that meal, and the substitutes are sized again on the new portion (same rules as at build time).
+ * Returns null when the new portion is outside the bounds.
+ */
+export function resizeItem(item: PlanMealItem, grams: number, at: { kind: SlotKind; pools: FitLabPools; kcalTarget: number; adapt?: MealAdaptations }): PlanMealItem | null {
+  const food = fitlabById(item.foodId);
+  if (!food || !item.role || item.role === 'fruit' || item.role === 'extra') return null;
+  const role: Role = item.role;
+  const isMain = at.kind === 'lunch' || at.kind === 'dinner';
+  const b = food.id === OIL.id ? oilBounds(at.kcalTarget) : role === 'carb' && isMain ? primoBounds(food, at.kcalTarget) : portionBounds(food, role, { bigMeal: at.kcalTarget > 900 });
+  // a very large meal (high-calorie days) may stretch a portion a little past its usual maximum
+  const max = at.kcalTarget > 900 ? b.max * 1.25 : b.max;
+  if (grams < Math.max(b.min, b.minUse ?? 0) || grams > max) return null;
+  const subs = food.id === OIL.id ? undefined : substitutesFor({ food, grams, role }, at.kind, at.pools, at.kcalTarget, at.adapt);
+  return toItem(food, grams, item.role, subs);
+}
+
+/** Rescales one item to new grams (practical step), keeping its substitutes equivalent; values from the catalog. */
+export function rescaleItem(item: PlanMealItem, grams: number): PlanMealItem {
+  const food = fitlabById(item.foodId);
+  if (!food) return item;
+  const ratio = grams / item.grams;
+  const subs = item.substitutes?.map((s) => {
+    const sf = fitlabById(s.foodId);
+    const step = sf ? (UNITS[sf.name]?.grams ?? 5) : 5;
+    const g = Math.max(step, Math.round((s.grams * ratio) / step) * step);
+    return sf ? { ...s, grams: g, quantityLabel: sf.sub === 'Latte' || sf.sub === 'Bevande vegetali' ? `${g} ml` : formatFoodQuantity(sf.id, g) } : s;
+  });
+  return toItem(food, grams, item.role ?? 'extra', subs);
+}
+
+/** A plan item: grams, energy and macros all from the catalog row (the single source of nutritional values). */
+export function toItem(food: FitLabFood, grams: number, role: NonNullable<PlanMealItem['role']>, substitutes?: PlanMealItem['substitutes']): PlanMealItem {
+  const k = grams / 100;
   return {
     name: food.name,
     grams,
-    kcal: Math.round((food.kcal * grams) / 100),
+    kcal: Math.round(food.kcal * k),
+    protein: r1(food.p * k),
+    carbs: r1(food.c * k),
+    fats: r1(food.f * k),
+    fiber: r1(food.fib * k),
     foodId: food.id,
     quantityLabel: food.sub === 'Latte' || food.sub === 'Bevande vegetali' ? `${grams} ml` : formatFoodQuantity(food.id, grams),
     role,
@@ -280,16 +348,39 @@ function substitutesFor(item: { food: FitLabFood; grams: number; role: Role }, k
   const nutrient = NUTRIENT[item.role];
   if (!nutrient) return undefined;
   const wanted = (item.food[nutrient] * item.grams) / 100;
+  const wantedKcal = (item.food.kcal * item.grams) / 100;
+  const kcalTol = NUTRITION_PARAMS.validation.substituteKcalShare;
+  // An equivalent swap keeps the role's nutrient AND the energy: the portion is the practical step that best
+  // balances the two, and a food that cannot stay within ±25% of the nutrient and ±kcalTol of the energy is
+  // not offered (salmon for chicken breast at equal protein would add half the calories again).
   const sized = (foods: FitLabFood[]): NonNullable<PlanMealItem['substitutes']> => {
     const out: NonNullable<PlanMealItem['substitutes']> = [];
+    const farther: { f: FitLabFood; grams: number; off: number }[] = [];
     for (const f of foods) {
       if (out.length >= MAX_SWAPS) break;
       if (f[nutrient] < 1) continue;
       const b = item.role === 'carb' && isMain ? primoBounds(f, kcalTarget) : portionBounds(f, item.role);
-      // a portion just past the food's range is brought back to it (the tolerance below still applies)
-      const grams = Math.min(Math.max(Math.round(((wanted / f[nutrient]) * 100) / b.step) * b.step, Math.max(b.min, b.step)), b.max);
-      if (wanted >= 4 && Math.abs((f[nutrient] * grams) / 100 / wanted - 1) > 0.25) continue;
-      out.push({ name: f.name, grams, foodId: f.id, quantityLabel: formatFoodQuantity(f.id, grams) });
+      let best: { grams: number; err: number; nut: number; kcal: number } | null = null;
+      for (let g = Math.max(b.min, b.step); g <= b.max + 1e-6; g += b.step) {
+        const nut = (f[nutrient] * g) / 100 / Math.max(wanted, 1e-6) - 1;
+        const kcal = (f.kcal * g) / 100 / Math.max(wantedKcal, 1e-6) - 1;
+        const err = Math.abs(nut) + Math.abs(kcal);
+        if (!best || err < best.err) best = { grams: Math.round(g), err, nut, kcal };
+      }
+      if (!best) continue;
+      if (wanted >= 4 && Math.abs(best.nut) > 0.25) continue;
+      if (wantedKcal >= 40 && Math.abs(best.kcal) > kcalTol) {
+        farther.push({ f, grams: best.grams, off: Math.abs(best.kcal) });
+        continue;
+      }
+      out.push({ name: f.name, grams: best.grams, foodId: f.id, quantityLabel: formatFoodQuantity(f.id, best.grams) });
+    }
+    // with no equivalent swap at all, the closest one in energy is still offered (the validator reports it
+    // with the difference), so no food is left without an alternative
+    for (const x of farther.sort((a, b) => a.off - b.off)) {
+      // (proteins swap by protein: a lean food such as canned tuna has no swap within the energy tolerance)
+      if (out.length >= 1 || x.off > NUTRITION_PARAMS.validation.substituteFallbackShare * (item.role === 'protein' ? 1.5 : 1)) break;
+      out.push({ name: x.f.name, grams: x.grams, foodId: x.f.id, quantityLabel: formatFoodQuantity(x.f.id, x.grams) });
     }
     return out;
   };
@@ -342,6 +433,13 @@ const vegGrams = (food: FitLabFood, sides: number, kind: SlotKind, kcalTarget: n
 
 type Solved = { vars: PortionVar[]; total: Macros; error: number; score: number };
 type Fixed = { food: FitLabFood; grams: number; kind: 'veg' | 'spread' | 'accessory' };
+
+/** How many different recipes this person can have in a slot (regime, allergies, exclusions applied). */
+export function slotPoolSize(kind: SlotKind, slotId: string, pools: FitLabPools): number {
+  const day: DayState = { eggGrams: 0, families: new Set(), dishes: new Set() };
+  const week: WeekUsage = { dish: new Map(), food: new Map(), slot: new Map() };
+  return new Set(candidateDishes(kind, slotId, pools, 0, day, week).map((c) => c.r.dish.id)).size;
+}
 
 export function buildFitLabMeal(args: { kind: SlotKind; slotId: string; target: Macros; pools: FitLabPools; seed: number; day: DayState; week: WeekUsage; adapt?: MealAdaptations }): BuiltMeal {
   const { kind, slotId, target, pools, seed, day, week, adapt } = args;
@@ -425,10 +523,15 @@ export function buildFitLabMeal(args: { kind: SlotKind; slotId: string; target: 
             }
             if (vars.length === 0) continue;
 
-            const solved = solvePortions(fixedMacros, vars, target);
-            // the calories the person will read on the plan (fibre included: it counts for meals rich in legumes)
+            // The meal's energy is the catalog (label) energy, fibre included (2 kcal/g). The solver works on
+            // protein, carbs and fats: a second pass takes the fibre's energy off the carbohydrate target, so the
+            // label calories land on the meal's share of the day instead of above it on fibre-rich meals.
+            let solved = solvePortions(fixedMacros, vars, target);
+            const fibreOf = (xs: { food: FitLabFood; grams: number }[]) => xs.reduce((sum, x) => sum + (x.food.fib * x.grams) / 100, 0);
+            const fib = fibreOf([...fixed, ...solved.vars]);
+            if (fib >= 1) solved = solvePortions(fixedMacros, vars, { ...target, carbs: Math.max(target.carbs - fib / 2, 0) });
             const labelKcal = [...fixed, ...solved.vars].reduce((sum, x) => sum + (x.food.kcal * x.grams) / 100, 0);
-            const kcalOff = (Math.abs(kcalOfMacros(solved.total) - kcalTarget) + Math.max(labelKcal - kcalTarget * 1.04, 0)) / Math.max(kcalTarget, 1);
+            const kcalOff = Math.abs(labelKcal - kcalTarget) / Math.max(kcalTarget, 1);
             const fruit = sides.find((s) => s.category === 'Frutta');
             const picks: Picks = { base: bf ?? undefined, protein: pf ?? undefined, sides, fat: fats[0], spread: spreadPick ?? undefined, fruit };
             const variety =
@@ -495,6 +598,7 @@ export function buildFitLabMeal(args: { kind: SlotKind; slotId: string; target: 
     week.food.set(v.food.id, used(week.food, v.food.id) + 1);
     if (v.role === 'protein' || v.role === 'carb') bump(`${slotId}|food|${v.food.id}`);
     if (v.role === 'protein') day.families.add(familyOf(v.food));
+    if (v.role === 'protein' && (kind === 'lunch' || kind === 'dinner')) week.food.set(`cat|${proteinCategory(v.food)}`, used(week.food, `cat|${proteinCategory(v.food)}`) + 1);
     if (v.food.name === 'Uova intere') day.eggGrams += v.grams;
     if (v.food.sub === 'Legumi') day.families.add('legumes');
     if (isCured(v.food)) week.food.set(CURED_KEY, used(week.food, CURED_KEY) + 1);
@@ -502,7 +606,8 @@ export function buildFitLabMeal(args: { kind: SlotKind; slotId: string; target: 
   for (const f of chosen.fixed) if (f.kind === 'veg') week.food.set(f.food.id, used(week.food, f.food.id) + 1);
 
   const flavorings = dish.aromas.filter((a) => pools.allowed(foodByName(a)));
-  return { items, macros: total, recipe: { name: recipeName, flavorings, portable: dish.portable, dishId: dish.id } };
+  void total;
+  return { items, recipe: { name: recipeName, flavorings, portable: dish.portable, dishId: dish.id } };
 }
 
 /** Olive oil is the only added fat of a main meal: one spoon, up to two for a normal lunch or dinner, three for a very large one. */

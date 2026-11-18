@@ -107,6 +107,8 @@ export type FitLabPools = {
   /** The foods the person picked as preferred that they can eat (diet, allergens, exclusions). */
   preferredFoods: FitLabFood[];
   isPreferred: (food: FitLabFood) => boolean;
+  /** Asked for in a check-in: it should appear in the week (when the restrictions allow it). */
+  isRequested: (food: FitLabFood) => boolean;
   /** Dietary regime: without meat, fish is the everyday protein and may be cooked for lunch too. */
   regime: 'omni' | 'pesc' | 'veg' | 'vegan';
 };
@@ -162,7 +164,7 @@ export function buildFitLabPools(answers: Record<string, unknown>, adapt?: PoolA
     let w = 1;
     // preferred foods are favoured; the others of a component the person has chosen for stay possible, just less likely
     if (withPrefs(food)) w = preferredIds.has(food.id) ? 2 : 0.6;
-    if (included.has(food.id)) w = Math.max(w, 3);
+    if (included.has(food.id) || adapt?.extraPreferredFoodIds?.includes(food.id)) w = Math.max(w, 3);
     if (usual[kind].has(food.id)) w = Math.max(w, 2.2);
     return w;
   };
@@ -171,5 +173,19 @@ export function buildFitLabPools(answers: Record<string, unknown>, adapt?: PoolA
   const pickedPlant = picked.protein.some((id) => FITLAB_FOODS.find((f) => f.id === id)?.sub === 'Proteine vegetali');
   const namedPlant = [...included].some((id) => FITLAB_FOODS.find((f) => f.id === id)?.sub === 'Proteine vegetali');
   const preferredFoods = FITLAB_FOODS.filter((f) => preferredIds.has(f.id) && allowed(f));
-  return { regime, allowed, weight, preferredFoods, isPreferred: (f: FitLabFood) => preferredIds.has(f.id), eatsOutOften: Number.isFinite(outTimes) && outTimes >= 3, wantsPlantProtein: regime !== 'omni' || pickedPlant || namedPlant };
+  const requested = new Set(adapt?.extraPreferredFoodIds ?? []);
+  const isRequested = (food: FitLabFood) => requested.has(food.id) && allowed(food);
+  return { regime, allowed, weight, preferredFoods, isPreferred: (f: FitLabFood) => preferredIds.has(f.id), isRequested, eatsOutOften: Number.isFinite(outTimes) && outTimes >= 3, wantsPlantProtein: regime !== 'omni' || pickedPlant || namedPlant };
+}
+
+/** Protein category of a food, for rotation and variety metrics: meat, fish, eggs, dairy, legumes, plant. */
+export function proteinCategory(food: FitLabFood | undefined): 'carne' | 'pesce' | 'uova' | 'latticini' | 'legumi' | 'vegetale' | 'altro' {
+  if (!food) return 'altro';
+  if (/Carni|carne|Salumi/.test(food.sub)) return 'carne';
+  if (/Pesce|Crostacei/.test(food.sub)) return 'pesce';
+  if (/Uova/.test(food.sub) || /uov|albume/i.test(food.name)) return 'uova';
+  if (/Formaggi|Latticini|Latte/.test(food.sub)) return 'latticini';
+  if (/Legumi/.test(food.sub)) return 'legumi';
+  if (/vegetal|Tofu|Tempeh|Seitan/i.test(food.sub + food.name)) return 'vegetale';
+  return 'altro';
 }
