@@ -26,10 +26,12 @@ Rispondi in italiano, solo con la trascrizione. Se non vedi una scheda di allena
 const DIET_SYSTEM_PROMPT = `Trascrivi una dieta o un piano alimentare (foto, screenshot o PDF) in testo semplice, senza inventare nulla.
 
 Formato di uscita, ESATTAMENTE questo:
-- se la dieta distingue i giorni, una riga con il nome del giorno ("Lunedì", "Martedì"...) prima dei suoi pasti; se è uguale tutti i giorni non scrivere giorni.
-- una riga per ogni pasto: "Colazione", "Spuntino mattina", "Pranzo", "Spuntino pomeriggio", "Cena", "Spuntino sera" (aggiungi l'orario solo se indicato: "Colazione ore 7:30").
-- sotto, una riga per alimento: "Nome alimento QUANTITÀ" con la quantità come scritta (80g, 200 ml, 2 uova, 1 cucchiaio).
-- Se un pasto offre alternative, trascrivi solo la prima.
+- se la dieta distingue i giorni, una riga con il nome del giorno ("Lunedì", "Martedì"...) prima dei suoi pasti; se è uguale tutti i giorni non scrivere giorni. Giorni numerati ("Giorno 1", "Giorno 2"...) diventano Lunedì, Martedì...
+- se la dieta è una tabella con i giorni in colonna (o i pasti in colonna), riscrivila giorno per giorno: prima tutto il Lunedì, poi tutto il Martedì, e così via.
+- una riga per ogni pasto, usando SOLO questi nomi: "Colazione", "Spuntino mattina", "Pranzo", "Spuntino pomeriggio", "Cena", "Spuntino sera" (uno snack, un pre o post allenamento diventa lo spuntino della sua fascia; aggiungi l'orario solo se indicato: "Colazione ore 7:30").
+- sotto, una riga per alimento: "Nome alimento QUANTITÀ" con la quantità dopo il nome (80g, 200 ml, 2 uova, 1 cucchiaio): "g 80 pasta" diventa "Pasta 80g". Gli alimenti senza quantità ("verdure a piacere", "q.b.") restano così come scritti.
+- Se un pasto offre alternative ("oppure", "in alternativa", opzione A/B), trascrivi solo la prima.
+- Totali, calorie, intestazioni, nome del professionista o del paziente: ignorali.
 - Note, integratori, consigli e altro che non sia giorno/pasto/alimento/quantità: ignorali.
 Rispondi in italiano, solo con la trascrizione. Se non vedi una dieta, rispondi con una stringa vuota.`;
 

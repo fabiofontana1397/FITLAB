@@ -93,18 +93,27 @@ export function CustomPlanSheet({ kind }: { kind: CustomPlanKind }) {
   const [reading, setReading] = useState(false);
   const [readingLabel, setReadingLabel] = useState<string>(copy.reading);
   const [readError, setReadError] = useState<string | null>(null);
+  const [readNote, setReadNote] = useState<string | null>(null);
+  const [dayIndex, setDayIndex] = useState(0);
+  // Measured (padding included), so long lines that wrap are counted too: the box never cuts the first lines off.
+  const [contentHeight, setContentHeight] = useState(0);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   // Photo or PDF → the app reads it and fills the text box, so the person can check and fix it before saving.
   const readFile = async (load: () => Promise<WorkoutCardFile | null>) => {
     setReadError(null);
+    setReadNote(null);
     try {
       const file = await load();
       if (!file) return;
       setReading(true);
       setReadingLabel(copy.reading);
-      const extracted = await extractWorkoutCardText(file, setReadingLabel, kind);
-      setText(extracted);
+      // The text read on the device is kept only if the app can follow it; otherwise the server rewrites it.
+      const accept = (raw: string) => (kind === 'diet' ? parseCustomDiet(raw).ok : parseCustomWorkout(raw).ok);
+      const extracted = await extractWorkoutCardText(file, setReadingLabel, kind, accept);
+      setText(extracted.text);
+      setReadNote(extracted.note ?? null);
+      setDayIndex(0);
       setTouched(true);
     } catch (err) {
       setReadError(err instanceof Error ? err.message : copy.readError);
@@ -155,19 +164,18 @@ export function CustomPlanSheet({ kind }: { kind: CustomPlanKind }) {
     else commit(close);
   };
 
+  // The diet's distinct menus: one when every day is the same, otherwise one per weekday.
+  const dietDays = diet?.ok ? diet.week : [];
+  const sameEveryDay = dietDays.length > 0 && dietDays.every((d) => menuKey(d.meals) === menuKey(dietDays[0].meals));
+  const shownDay = dietDays[Math.min(dayIndex, Math.max(0, dietDays.length - 1))];
+
   const preview: { day: string; summary: string; value?: string }[] = workout?.ok
     ? workout.week.map((day) => ({
         day: day.weekday,
         summary: day.type === 'workout' ? day.title || 'Allenamento' : day.type === 'cardio' ? (day.note ?? day.title) : 'Riposo',
         value: day.type === 'workout' ? `${(day.exercises ?? []).length} esercizi` : undefined,
       }))
-    : diet?.ok
-      ? diet.week.map((day) => ({
-          day: day.weekday,
-          summary: `${day.meals.length} ${day.meals.length === 1 ? 'pasto' : 'pasti'}`,
-          value: day.calorieTarget ? `${day.calorieTarget.toLocaleString('it-IT')} kcal` : undefined,
-        }))
-      : [];
+    : [];
   const notes = parsed?.ok
     ? [
         ...(diet?.ok && diet.unknownFoods.length > 0
@@ -196,6 +204,11 @@ export function CustomPlanSheet({ kind }: { kind: CustomPlanKind }) {
               </ThemedText>
             </View>
           ) : null}
+          {readNote ? (
+            <ThemedText type="small" themeColor="textSecondary" style={styles.inset} accessibilityLiveRegion="polite">
+              {readNote}
+            </ThemedText>
+          ) : null}
           {readError ? (
             <ThemedText type="small" style={[styles.inset, { color: theme.danger }]} accessibilityRole="alert">
               {readError}
@@ -213,6 +226,8 @@ export function CustomPlanSheet({ kind }: { kind: CustomPlanKind }) {
                     hapticTap();
                     setText('');
                     setTouched(false);
+                    setReadNote(null);
+                    setDayIndex(0);
                   }}
                   hitSlop={12}
                   accessibilityRole="button"
@@ -249,8 +264,12 @@ export function CustomPlanSheet({ kind }: { kind: CustomPlanKind }) {
               placeholderTextColor={theme.textTertiary}
               accessibilityLabel={copy.inputLabel}
               textAlignVertical="top"
+              onContentSizeChange={(e) => {
+                const next = Math.ceil(e.nativeEvent.contentSize.height);
+                setContentHeight((prev) => (Math.abs(prev - next) > 1 ? next : prev));
+              }}
               // Grows with the text, so the whole card is read by scrolling the sheet and not a box inside it.
-              style={[styles.input, { height: Math.max(200, text.split('\n').length * 22 + 34), color: theme.text, backgroundColor: theme.backgroundElement, borderColor: showError ? theme.danger : 'transparent' }]}
+              style={[styles.input, { height: Math.max(200, text.split('\n').length * 22 + 34, text ? contentHeight + 2 : 0), color: theme.text, backgroundColor: theme.backgroundElement, borderColor: showError ? theme.danger : 'transparent' }]}
             />
             {showError ? (
               <ThemedText type="caption" style={[styles.inset, { color: theme.danger }]} accessibilityRole="alert">
@@ -283,6 +302,53 @@ export function CustomPlanSheet({ kind }: { kind: CustomPlanKind }) {
             </ListGroup>
           ) : null}
 
+          {shownDay ? (
+            <View style={styles.group}>
+              {!sameEveryDay ? (
+                <View style={styles.dayStrip} accessibilityRole="tablist">
+                  {dietDays.map((d, i) => {
+                    const selected = d === shownDay;
+                    return (
+                      <Pressable
+                        key={d.weekday}
+                        onPress={() => {
+                          hapticTap();
+                          setDayIndex(i);
+                        }}
+                        accessibilityRole="tab"
+                        accessibilityState={{ selected }}
+                        style={[styles.dayChip, { backgroundColor: selected ? theme.text : theme.backgroundElement }]}
+                      >
+                        <ThemedText type="smallBold" style={{ color: selected ? theme.background : theme.text }}>
+                          {d.weekday}
+                        </ThemedText>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              ) : null}
+              <ListGroup
+                header={sameEveryDay ? 'Ecco cosa ho capito · ogni giorno' : `Ecco cosa ho capito · ${shownDay.weekday}`}
+                footer={[shownDay.calorieTarget ? `Totale ${shownDay.calorieTarget.toLocaleString('it-IT')} kcal.` : 'Totale non calcolabile: alcuni alimenti non hanno calorie.', ...notes].join('\n')}
+              >
+                {shownDay.meals.map((meal) => (
+                  <View key={meal.slotId} style={styles.mealRow}>
+                    <View style={styles.mealHead}>
+                      <ThemedText type="smallBold">{meal.label}</ThemedText>
+                      <ThemedText type="small" themeColor="textSecondary" style={styles.previewValue}>
+                        {meal.time}
+                        {meal.totalKcal > 0 ? ` · ${meal.totalKcal.toLocaleString('it-IT')} kcal` : ''}
+                      </ThemedText>
+                    </View>
+                    <ThemedText type="small" themeColor="textSecondary">
+                      {meal.items.map((item) => `${item.name} ${item.quantityLabel}`).join(' · ')}
+                    </ThemedText>
+                  </View>
+                ))}
+              </ListGroup>
+            </View>
+          ) : null}
+
           <PrimaryButton label={copy.apply} icon="check" disabled={!parsed?.ok || reading} onPress={() => apply(close)} />
 
           <GlassPopup visible={confirmOpen} onClose={() => setConfirmOpen(false)} style={styles.popup}>
@@ -301,6 +367,11 @@ export function CustomPlanSheet({ kind }: { kind: CustomPlanKind }) {
   );
 }
 
+/** Two days with the same meals and foods read as one menu. */
+function menuKey(meals: { slotId: string; items: { name: string; quantityLabel: string }[] }[]): string {
+  return meals.map((m) => `${m.slotId}:${m.items.map((i) => `${i.name}|${i.quantityLabel}`).join(',')}`).join(';');
+}
+
 const styles = StyleSheet.create({
   content: { gap: Spacing.four },
   group: { gap: Spacing.two },
@@ -312,6 +383,10 @@ const styles = StyleSheet.create({
   previewDay: { width: 36 },
   previewSummary: { flex: 1, minWidth: 0 },
   previewValue: { fontVariant: ['tabular-nums'] },
+  dayStrip: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two, paddingHorizontal: Spacing.four },
+  dayChip: { minWidth: 44, minHeight: 36, paddingHorizontal: Spacing.three, borderRadius: 18, borderCurve: 'continuous', alignItems: 'center', justifyContent: 'center' },
+  mealRow: { gap: 2, paddingHorizontal: Spacing.four, paddingVertical: 10 },
+  mealHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: Spacing.three },
   popup: { padding: Spacing.four, gap: Spacing.three, alignItems: 'stretch' },
   center: { textAlign: 'center' },
 });

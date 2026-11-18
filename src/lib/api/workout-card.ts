@@ -20,13 +20,42 @@ async function toBase64(file: WorkoutCardFile): Promise<string> {
   return FileSystem.readAsStringAsync(file.uri, { encoding: FileSystem.EncodingType.Base64 });
 }
 
-/** Sends a photo or PDF of a workout card to the extract-workout-card Edge Function and returns its transcription
- * (one exercise per line), or throws an Error whose message is shown to the person. */
-export async function extractWorkoutCardText(file: WorkoutCardFile, onProgress?: (label: string) => void, kind: 'training' | 'diet' = 'training'): Promise<string> {
+export type ExtractedCard = {
+  text: string;
+  /** Shown under the text when the reading needs a check (e.g. only the raw text could be read). */
+  note?: string;
+};
+
+/**
+ * Sends a photo or PDF of a workout card or a diet to the extract-workout-card Edge Function and returns its
+ * transcription, or throws an Error whose message is shown to the person.
+ *
+ * On the web the file is read first in the browser, for free. That raw text is used only when `accept` says the
+ * app can follow it: a diet laid out as a table, or with the dietitian's notes mixed in, goes to the server, which
+ * rewrites it in the expected shape. If the server is not reachable, the raw text still comes back to be fixed by hand.
+ */
+export async function extractWorkoutCardText(
+  file: WorkoutCardFile,
+  onProgress?: (label: string) => void,
+  kind: 'training' | 'diet' = 'training',
+  accept?: (text: string) => boolean,
+): Promise<ExtractedCard> {
   const what = kind === 'diet' ? 'la dieta' : 'la scheda';
-  // Free first: on the web the file is read in the browser. Only when that finds nothing (or elsewhere) does the server (Claude) step in.
   const local = await readCardLocally(file, onProgress);
-  if (local) return local;
+  if (local && (!accept || accept(local))) return { text: local };
+  try {
+    return { text: await readOnServer(file, kind, what, onProgress) };
+  } catch (err) {
+    if (!local) throw err;
+    const reason = err instanceof Error ? err.message : '';
+    return {
+      text: local,
+      note: `Ho letto il testo del file ma non riesco a riordinarlo da solo${reason ? ` (${reason.replace(/\.$/, '')})` : ''}. Sistemalo qui sotto seguendo l’esempio.`,
+    };
+  }
+}
+
+async function readOnServer(file: WorkoutCardFile, kind: 'training' | 'diet', what: string, onProgress?: (label: string) => void): Promise<string> {
   onProgress?.(`Leggo ${what}…`);
   const base64 = await toBase64(file);
   if (!base64) throw new Error('Non riesco a leggere il file.');
