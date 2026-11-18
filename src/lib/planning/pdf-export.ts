@@ -92,8 +92,8 @@ export async function exportDietPlanPdf(input: DietPlanPdfInput) {
         .map(
           (meal) => `
         <tr>
-          <td class="time">${escapeHtml(meal.time)}<br/>${escapeHtml(meal.label)}</td>
-          <td>${meal.isFreeMeal ? '<em>Pasto libero — scegli tu, senza eccessi</em>' : `<ul>${meal.items.map(formatItemHtml).join('')}</ul>`}</td>
+          <td class="time">${escapeHtml(meal.timeWindow ?? meal.time)}<br/>${escapeHtml(meal.label)}</td>
+          <td>${meal.eatOut ? `<em>Fuori casa — ${escapeHtml(meal.eatOut.guidance.join(' '))}</em>` : meal.isFreeMeal ? '<em>Pasto libero — scegli tu, senza eccessi</em>' : `<ul>${meal.items.map(formatItemHtml).join('')}</ul>`}</td>
           <td class="total">${meal.totalKcal} kcal</td>
         </tr>`
         )

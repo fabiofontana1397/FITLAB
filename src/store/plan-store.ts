@@ -4,7 +4,9 @@ import { persist } from 'zustand/middleware';
 import { buildPlans } from '@/domain/plan-engine';
 import { NEUTRAL_CALIBRATION, recalibrate, type Adherence, type CheckinSignals, type RecalibrationRecord, type RecalibrationResult, type WeightPoint } from '@/domain/recalibration';
 import { computeTargets } from '@/domain/targets';
+import { supervisionReasons } from '@/domain/nutrition/safety';
 import { buildUserContext } from '@/domain/user-context';
+import { buildMealSlotsFromAnswers } from '@/lib/planning/meal-slots';
 import { deleteDietPlan, deleteTrainingPlan, fetchDietPlan, fetchTrainingPlan, insertPlanVersion, type PlanVersionTrigger, upsertDietPlan, upsertTrainingPlan } from '@/lib/api/plans';
 import { fetchPlanStrategy } from '@/lib/api/plan-strategy';
 import { DIET_ENGINE_VERSION } from '@/lib/planning/diet-planner';
@@ -14,8 +16,11 @@ import { TRAINING_ENGINE_VERSION } from '@/lib/planning/training-planner';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
 import { daysAgoISO } from '@/lib/mock/dates';
 import type { DietDayPlan, DietPlan, TrainingDayPlan, TrainingPlan } from '@/lib/planning/types';
+import { applySubstitution as applySubstitutionToPlan, type SubstitutionChange, type SubstitutionRequest } from '@/lib/planning/substitution';
+import { logFreeMeal as logFreeMealOnPlan, type FreeMealLog, type FreeMealLogInput } from '@/lib/planning/free-meal';
 import { withAuthRetry } from '@/lib/supabase/retry';
 import { useAuthStore } from '@/store/auth-store';
+import { useOnboardingStore } from '@/store/onboarding-store';
 import { appJsonStorage } from '@/store/storage';
 
 // Bump whenever the planning logic changes materially — recorded on every
@@ -75,6 +80,19 @@ type PlanState = {
   importCustomDiet: (answers: Record<string, unknown>, week: DietDayPlan[], currentWeightKg?: number) => void;
   /** Drops the custom diet and builds the app's own plan again, keeping the plan's start date. */
   restoreGeneratedDiet: (answers: Record<string, unknown>, currentWeightKg?: number) => Promise<void>;
+  /**
+   * Lifts a professional-review freeze. Allowed only when the questionnaire no longer reports a condition that
+   * needs supervision (age included) AND the person confirms that a professional has re-assessed the plan.
+   * Rebuilds the diet from the current month on; history is kept. Returns the reasons that still block it.
+   */
+  reactivateNutrition: (answers: Record<string, unknown>, confirmation: { professionalAssessment: boolean }, currentWeightKg?: number) => Promise<string[]>;
+  /**
+   * Applies one of an item's suggested alternatives (see lib/planning/substitution.ts): the item, the meal, the day
+   * and the week are recalculated from the catalog; the alternative must still respect restrictions.
+   */
+  applySubstitution: (answers: Record<string, unknown>, req: SubstitutionRequest) => { ok: true; change: SubstitutionChange } | { ok: false; reason: string };
+  /** Logs what was eaten at a free or eaten-out meal (measured, estimated or calories only, never invented). */
+  logFreeMeal: (at: { monthIndex: number; dayIndex: number; slotId: string }, input: FreeMealLogInput) => { ok: true; log: FreeMealLog } | { ok: false; reason: string };
   syncFromServer: () => Promise<void>;
   /** Local-only reset on logout — see user-store.ts's clearLocal for why. */
   clearLocal: () => void;
@@ -132,6 +150,9 @@ export const usePlanStore = create<PlanState>()(
           const carry = (custom || customDiet) && !keepProgress
             ? { calibration: currentDiet?.calibration ?? currentTraining?.calibration, existing: { diet: customDiet, training: custom } }
             : keepProgress ? { calibration: currentDiet?.calibration ?? currentTraining?.calibration, existing: { diet: currentDiet, training: currentTraining }, preserveMonthsBefore: fromMonth } : {};
+          // a diet frozen for professional review stays frozen through any rebuild (questionnaire update included):
+          // only reactivateNutrition lifts it
+          if (currentDiet?.supervision) Object.assign(carry, { existing: { diet: currentDiet, training: (carry as { existing?: { training: TrainingPlan | null } }).existing?.training ?? null } });
           const deterministic = buildPlans(ctx, carry);
           const first = deterministic.monthTargets[0];
           const strategy = skipAi ? null : await fetchPlanStrategy(answers, first.calories, first.macros, deterministic.durationMonths);
@@ -212,10 +233,12 @@ export const usePlanStore = create<PlanState>()(
         const ctx = { ...buildUserContext(input.answers), weightKg: input.currentWeightKg };
         const calibration = dietPlan?.calibration ?? trainingPlan?.calibration ?? NEUTRAL_CALIBRATION;
 
-        // The targets the person actually followed that month (calories as stored in the plan).
+        // The targets the person actually followed that month: calories and macros exactly as stored in the plan
+        // (the model is only used for the pace and the expenditure, at the current weight).
         const followed = computeTargets(ctx, trainingPlan?.months[input.monthIndex - 1]?.weeklySplit ?? null, calibration);
         const storedMonth = dietPlan?.months.find((m) => m.monthIndex === input.monthIndex);
         const targets = storedMonth ? { ...followed, calories: storedMonth.calorieTarget, macros: storedMonth.macroTargetsG } : followed;
+        const history = [...(plan.recalibrations ?? [])].filter((r) => r.monthIndex < input.monthIndex).sort((a, b) => a.monthIndex - b.monthIndex);
 
         const result = recalibrate({
           ctx,
@@ -226,12 +249,29 @@ export const usePlanStore = create<PlanState>()(
           adherence: input.adherence,
           checkin: input.checkin,
           calibration,
+          weeks: {
+            current: trainingPlan?.months[input.monthIndex - 1]?.weeklySplit ?? null,
+            next: trainingPlan?.months[input.monthIndex]?.weeklySplit ?? null,
+          },
+          history,
+          slots: buildMealSlotsFromAnswers(input.answers).map((sl) => sl.id),
+          frozen: !!dietPlan?.supervision,
         });
 
-        const bundle = buildPlans(ctx, {
+        // Safety engine: a condition reported in this check-in freezes the diet before anything is rebuilt
+        // (buildPlans keeps a frozen diet exactly as it is, history included).
+        const dietForBuild =
+          dietPlan && result.decision.supervision && !dietPlan.supervision && dietPlan.source !== 'custom'
+            ? { ...dietPlan, supervision: { status: 'professional_review' as const, reasons: result.decision.interventions.filter((i) => i.kind === 'professional_review').map((i) => i.text), since: new Date().toISOString(), source: 'checkin' as const, monthIndex: input.monthIndex } }
+            : dietPlan;
+        // a regime confirmed explicitly in the check-in updates the profile; the plan is rebuilt with it
+        const regime = result.decision.profileUpdates.dietaryPattern;
+        if (regime) useOnboardingStore.getState().setAnswer('dietaryPattern', regime);
+        const ctxBuild = regime ? { ...buildUserContext({ ...input.answers, dietaryPattern: regime }), weightKg: input.currentWeightKg } : ctx;
+        const bundle = buildPlans(ctxBuild, {
           calibration: result.calibration,
           preserveMonthsBefore: input.monthIndex + 1,
-          existing: { diet: dietPlan, training: trainingPlan },
+          existing: { diet: dietForBuild, training: trainingPlan },
         });
         const record: RecalibrationRecord = {
           monthIndex: input.monthIndex,
@@ -241,14 +281,49 @@ export const usePlanStore = create<PlanState>()(
           expectedWeeklyKg: result.expectedWeeklyKg,
           changes: result.changes,
           calibration: result.calibration,
+          decision: result.decision,
         };
-        const history = [...(plan.recalibrations ?? []).filter((r) => r.monthIndex !== input.monthIndex), record];
-        if (bundle.diet) bundle.diet.recalibrations = history;
-        if (bundle.training) bundle.training.recalibrations = history;
+        // the previous decision gets what really happened after it (memory of the interventions)
+        const previous = history.map((r, i) =>
+          i === history.length - 1 && r.decision && result.previousOutcome ? { ...r, decision: { ...r.decision, observedOutcome: result.previousOutcome } } : r
+        );
+        const updatedHistory = [...previous, ...(plan.recalibrations ?? []).filter((r) => r.monthIndex > input.monthIndex), record].sort((a, b) => a.monthIndex - b.monthIndex);
+        if (bundle.diet) bundle.diet.recalibrations = updatedHistory;
+        if (bundle.training) bundle.training.recalibrations = updatedHistory;
 
         set({ dietPlan: bundle.diet ?? dietPlan, trainingPlan: bundle.training ?? trainingPlan });
         persistPlans(bundle.diet, bundle.training, 'monthly_checkin', false);
         return result;
+      },
+      reactivateNutrition: async (answers, confirmation, currentWeightKg) => {
+        const { dietPlan } = get();
+        const ctx = buildUserContext(answers);
+        const still = supervisionReasons(ctx);
+        if (!confirmation.professionalAssessment) still.push('manca la conferma della valutazione di un professionista');
+        if (still.length > 0) return still;
+        const unfrozen = dietPlan ? { ...dietPlan, supervision: undefined } : null;
+        set({ dietPlan: unfrozen });
+        await get().generatePlans(answers, { only: 'diet', skipAi: true, keepProgress: unfrozen != null, fromMonth: unfrozen ? currentMonthIndex(unfrozen) : undefined, currentWeightKg });
+        return [];
+      },
+      applySubstitution: (answers, req) => {
+        const { dietPlan } = get();
+        if (!dietPlan) return { ok: false, reason: 'nessun piano nutrizionale' };
+        const ctx = buildUserContext(answers);
+        const res = applySubstitutionToPlan(dietPlan, req, { answers, sex: ctx.sex, adapt: dietPlan.calibration?.diet });
+        if (!res.ok) return res;
+        set({ dietPlan: res.plan });
+        persistPlans(res.plan, null, 'adaptation', false);
+        return { ok: true, change: res.change };
+      },
+      logFreeMeal: (at, input) => {
+        const { dietPlan } = get();
+        if (!dietPlan) return { ok: false, reason: 'nessun piano nutrizionale' };
+        const res = logFreeMealOnPlan(dietPlan, at, input);
+        if (!res.ok) return res;
+        set({ dietPlan: res.plan });
+        persistPlans(res.plan, null, 'adaptation', false);
+        return { ok: true, log: res.log };
       },
       syncFromServer: async () => {
         const userId = currentUserId();
@@ -307,6 +382,8 @@ export function isValidTrainingPlan(plan: TrainingPlan | null): boolean {
  * should treat an invalid plan the same as a missing one and regenerate it.
  */
 export function isValidDietPlan(plan: DietPlan | null): boolean {
+  // a diet frozen for professional review is kept as it is: never rebuilt
+  if (plan?.supervision) return true;
   if (!plan || !plan.calibration) return false;
   // The person's own diet has no Fit Lab dishes: it only needs its week of meals.
   if (plan.source === 'custom') return plan.months.length > 0 && plan.months.every((month) => Array.isArray(month.weeklySplit) && month.weeklySplit.length > 0);

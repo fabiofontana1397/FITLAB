@@ -57,7 +57,7 @@ const GENERIC_SUBS: Record<string, string[]> = {
 };
 
 /** Foods named in a free text: by whole name, by a word of the name or a synonym (plural tolerated), or by a generic word. */
-function foodsNamedIn(blob: string): Set<string> {
+export function foodsNamedIn(blob: string): Set<string> {
   const found = new Set<string>();
   if (blob.length === 0) return found;
   const tokens = blob.split(/[^a-z0-9]+/).filter(Boolean);
@@ -107,9 +107,16 @@ export type FitLabPools = {
   /** The foods the person picked as preferred that they can eat (diet, allergens, exclusions). */
   preferredFoods: FitLabFood[];
   isPreferred: (food: FitLabFood) => boolean;
+  /** Asked for in a check-in: it should appear in the week (when the restrictions allow it). */
+  isRequested: (food: FitLabFood) => boolean;
+  /** Dietary regime: without meat, fish is the everyday protein and may be cooked for lunch too. */
+  regime: 'omni' | 'pesc' | 'veg' | 'vegan';
 };
 
-export function buildFitLabPools(answers: Record<string, unknown>): FitLabPools {
+/** Check-in adaptations the pools follow: foods to drop and foods to favour (domain/nutrition DietAdaptations). */
+export type PoolAdaptations = { dislikedFoodIds?: string[]; extraPreferredFoodIds?: string[] };
+
+export function buildFitLabPools(answers: Record<string, unknown>, adapt?: PoolAdaptations): FitLabPools {
   const pattern = answers.dietaryPattern;
   const regime = pattern === 'vegan' ? 'vegan' : pattern === 'vegetarian' ? 'veg' : pattern === 'pescetarian' ? 'pesc' : 'omni';
 
@@ -119,9 +126,10 @@ export function buildFitLabPools(answers: Record<string, unknown>): FitLabPools 
   // lactose intolerance is not milk allergy: lactose-free milk and aged cheese stay
   const lactoseOnly = /lattosio/.test(blob) && !/allergia al latte|proteine del latte|caseina/.test(blob);
 
+  const disliked = new Set(adapt?.dislikedFoodIds ?? []);
   const allowed = (food: FitLabFood): boolean => {
     if (!food.regimes.includes(regime)) return false;
-    if (excludedByName.has(food.id)) return false;
+    if (excludedByName.has(food.id) || disliked.has(food.id)) return false;
     const allergens = norm(food.allergens);
     for (const a of bannedAllergens) {
       if (!allergens.includes(a)) continue;
@@ -133,6 +141,12 @@ export function buildFitLabPools(answers: Record<string, unknown>): FitLabPools 
 
   // what the person picked in the five selectors (food ids; older answers hold broad codes, normalised here)
   const picked = preferredByComponent(answers);
+  // foods asked for in a check-in count as preferred, like the questionnaire's picks
+  for (const id of adapt?.extraPreferredFoodIds ?? []) {
+    const food = FITLAB_FOODS.find((f) => f.id === id);
+    const c = food ? componentOf(food) : null;
+    if (c && !picked[c].includes(id)) picked[c] = [...picked[c], id];
+  }
   const preferredIds = new Set(FOOD_COMPONENTS.flatMap((c) => picked[c]));
   const withPrefs = (food: FitLabFood) => {
     const c = componentOf(food);
@@ -150,7 +164,7 @@ export function buildFitLabPools(answers: Record<string, unknown>): FitLabPools 
     let w = 1;
     // preferred foods are favoured; the others of a component the person has chosen for stay possible, just less likely
     if (withPrefs(food)) w = preferredIds.has(food.id) ? 2 : 0.6;
-    if (included.has(food.id)) w = Math.max(w, 3);
+    if (included.has(food.id) || adapt?.extraPreferredFoodIds?.includes(food.id)) w = Math.max(w, 3);
     if (usual[kind].has(food.id)) w = Math.max(w, 2.2);
     return w;
   };
@@ -159,5 +173,19 @@ export function buildFitLabPools(answers: Record<string, unknown>): FitLabPools 
   const pickedPlant = picked.protein.some((id) => FITLAB_FOODS.find((f) => f.id === id)?.sub === 'Proteine vegetali');
   const namedPlant = [...included].some((id) => FITLAB_FOODS.find((f) => f.id === id)?.sub === 'Proteine vegetali');
   const preferredFoods = FITLAB_FOODS.filter((f) => preferredIds.has(f.id) && allowed(f));
-  return { allowed, weight, preferredFoods, isPreferred: (f: FitLabFood) => preferredIds.has(f.id), eatsOutOften: Number.isFinite(outTimes) && outTimes >= 3, wantsPlantProtein: regime !== 'omni' || pickedPlant || namedPlant };
+  const requested = new Set(adapt?.extraPreferredFoodIds ?? []);
+  const isRequested = (food: FitLabFood) => requested.has(food.id) && allowed(food);
+  return { regime, allowed, weight, preferredFoods, isPreferred: (f: FitLabFood) => preferredIds.has(f.id), isRequested, eatsOutOften: Number.isFinite(outTimes) && outTimes >= 3, wantsPlantProtein: regime !== 'omni' || pickedPlant || namedPlant };
+}
+
+/** Protein category of a food, for rotation and variety metrics: meat, fish, eggs, dairy, legumes, plant. */
+export function proteinCategory(food: FitLabFood | undefined): 'carne' | 'pesce' | 'uova' | 'latticini' | 'legumi' | 'vegetale' | 'altro' {
+  if (!food) return 'altro';
+  if (/Carni|carne|Salumi/.test(food.sub)) return 'carne';
+  if (/Pesce|Crostacei/.test(food.sub)) return 'pesce';
+  if (/Uova/.test(food.sub) || /uov|albume/i.test(food.name)) return 'uova';
+  if (/Formaggi|Latticini|Latte/.test(food.sub)) return 'latticini';
+  if (/Legumi/.test(food.sub)) return 'legumi';
+  if (/vegetal|Tofu|Tempeh|Seitan/i.test(food.sub + food.name)) return 'vegetale';
+  return 'altro';
 }

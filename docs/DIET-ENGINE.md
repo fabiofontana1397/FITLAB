@@ -46,6 +46,10 @@ Eccezioni, solo quando le esclusioni della persona non lasciano alternative:
 - chi non mangia carne trova nel pool le ricette con uova, mozzarella, ricotta e fiocchi di latte; chi non mangia né carne né pesce riceve anche le ricette di riserva con i legumi accanto a un cereale;
 - chi non può mangiare abbastanza colazioni o merende standard (per esempio senza latticini) riceve quelle di riserva: frutta e frutta secca, latte senza lattosio o bevanda di soia con cereali, porridge con bevanda vegetale, pane con burro di arachidi.
 
+## Adattamenti dal check-in mensile
+
+Il check-in può cambiare come si costruiscono i mesi successivi (`DietAdaptations`, `calibration.diet`): orari nuovi o flessibili, distribuzione delle calorie tra i pasti, pasti più densi o più voluminosi, rotazione rafforzata, settimana semplificata, pranzi o cene fuori casa con budget e indicazioni, alimenti da togliere e nuovi preferiti. Il tonno in scatola compare al massimo due volte a settimana. Dettagli e regole in `docs/NUTRITION-ADAPTIVE-ENGINE.md`.
+
 ## Fonti dei dati
 
 | Cosa | Dove | Come si modifica |

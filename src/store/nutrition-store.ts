@@ -24,7 +24,6 @@ import { useAuthStore } from '@/store/auth-store';
 import { appJsonStorage } from '@/store/storage';
 
 /** Catalog food used to record the weekly free meal's calorie budget. */
-const FREE_MEAL_FOOD_ID = 'pizza-margherita';
 
 export type MealSlot =
   | 'colazione'
@@ -68,7 +67,7 @@ type NutritionState = {
   addEntry: (slot: MealSlot, foodId: string, grams: number, date?: string) => void;
   updateEntry: (id: string, foodId: string, grams: number) => void;
   removeEntry: (id: string) => void;
-  seedDayFromPlan: (date: string, dayMeals: { slotId: string; items: { foodId: string; grams: number }[]; isFreeMeal?: boolean; totalKcal?: number }[]) => void;
+  seedDayFromPlan: (date: string, dayMeals: { slotId: string; items: { foodId: string; grams: number }[]; isFreeMeal?: boolean; totalKcal?: number; freeMealLog?: { status: string; items?: { foodId: string; grams: number }[] } }[]) => void;
   /** Reverses seedDayFromPlan for a date — removes only the plan-origin
    * entries (never anything the user logged by hand) and clears the date
    * from seededDates so it can be re-seeded later. Calorie/macro tracking
@@ -112,11 +111,10 @@ export const useNutritionStore = create<NutritionState>()(
         const owner = currentUserId() ?? 'local';
         const newEntries: MealFoodEntry[] = dayMeals.flatMap((meal) => {
           if (meal.isFreeMeal) {
-            // The weekly "pasto libero": record its calorie budget as a typical free meal (pizza) so the
-            // day's calories reflect it; the person can edit or replace it like any other entry.
-            const free = findFood(FREE_MEAL_FOOD_ID);
-            if (!free || !meal.totalKcal) return [];
-            return [{ id: `plan-${owner}-${date}-${meal.slotId}-free`, date, slot: meal.slotId as MealSlot, foodId: free.id, grams: Math.round(((meal.totalKcal / free.kcal100) * 100) / 10) * 10 }];
+            // The weekly "pasto libero": nothing is invented. Only foods the person logged with their grams
+            // (a measured log) go into the diary; otherwise the meal stays to be logged and the day is partial.
+            const logged = meal.freeMealLog?.status === 'measured' ? (meal.freeMealLog.items ?? []) : [];
+            return logged.filter((item) => findFood(item.foodId)).map((item, i) => ({ id: `plan-${owner}-${date}-${meal.slotId}-free-${i}`, date, slot: meal.slotId as MealSlot, foodId: item.foodId, grams: item.grams }));
           }
           return meal.items.map((item, i) => ({
             id: `plan-${owner}-${date}-${meal.slotId}-${i}`,

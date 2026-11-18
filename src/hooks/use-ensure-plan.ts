@@ -1,3 +1,5 @@
+import { supervisionReasons } from '@/domain/nutrition/safety';
+import { buildUserContext } from '@/domain/user-context';
 import { useEffect, useRef } from 'react';
 
 import { useStoreHydrated } from '@/hooks/use-store-hydrated';
@@ -42,6 +44,8 @@ export function useEnsurePlan(kind: 'diet' | 'training'): void {
     if (usePlanStore.getState().isGenerating) return;
     const mode = answers.mode as string | undefined;
     if (mode === (kind === 'diet' ? 'training' : 'diet')) return; // this plan was never requested
+    // safety engine: with a condition that needs a professional no diet is generated (nutrition/safety.ts)
+    if (kind === 'diet' && supervisionReasons(buildUserContext(answers)).length > 0) return;
     const valid = kind === 'diet' ? isValidDietPlan(plan as never) : isValidTrainingPlan(plan as never);
     if (valid) return;
     attempted.current = true; // one attempt per mount: a failed build must not loop

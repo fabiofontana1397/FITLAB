@@ -158,7 +158,9 @@ export function checkTargets(persona: Persona, targets: NutritionTargets, durati
   const { bmr, tdee, dailyCalorieTarget: cal, macroTargetsG: m } = targets;
 
   const ratio = cal / tdee;
-  const expected = persona.expect?.calories;
+  // under 18 (or with a condition that needs a professional) the safety engine proposes maintenance only
+  const supervised = num(a.age) < 18 || (Array.isArray(a.specialConditions) && (a.specialConditions as string[]).some((x) => x !== 'none'));
+  const expected = supervised ? 'maintenance' : persona.expect?.calories;
   if (expected === 'deficit' && !(ratio < 0.95)) f.push({ level: 'FAIL', area: 'target', code: 'T1', message: `Obiettivo di deficit ma target ${cal} kcal = ${(ratio * 100).toFixed(0)}% del fabbisogno (${tdee})` });
   if (expected === 'surplus' && !(ratio > 1.03)) f.push({ level: 'FAIL', area: 'target', code: 'T1', message: `Obiettivo di surplus ma target ${cal} kcal = ${(ratio * 100).toFixed(0)}% del fabbisogno (${tdee})` });
   if (expected === 'maintenance' && Math.abs(ratio - 1) > 0.06) f.push({ level: 'FAIL', area: 'target', code: 'T1', message: `Obiettivo di mantenimento ma target ${cal} kcal = ${(ratio * 100).toFixed(0)}% del fabbisogno (${tdee})` });
@@ -523,7 +525,10 @@ export function checkCoherence(persona: Persona, run: { ctx: UserContext; bundle
   const e = persona.expect;
   if (e?.noDiet && diet) f.push({ level: 'FAIL', area: 'coerenza', code: 'C1', message: 'Utente "solo allenamento" ma esiste un piano alimentare' });
   if (e?.noTraining && training) f.push({ level: 'FAIL', area: 'coerenza', code: 'C1', message: 'Utente "solo dieta" ma esiste un piano di allenamento' });
-  if (!e?.noDiet && a.mode !== 'training' && !diet) f.push({ level: 'FAIL', area: 'coerenza', code: 'C1', message: 'Manca il piano alimentare' });
+  // safety engine: with a condition that needs a professional there must be NO generated diet
+  if (bundle.dietSupervision.length > 0 && diet) f.push({ level: 'FAIL', area: 'coerenza', code: 'C1', message: `Piano alimentare generato nonostante la supervisione (${bundle.dietSupervision.join(', ')})` });
+  if (bundle.dietBlocked) f.push({ level: 'FAIL', area: 'coerenza', code: 'C1', message: `Piano alimentare bloccato dalla validazione: ${bundle.dietIssues.filter((i) => i.level === 'BLOCKER').slice(0, 3).map((i) => i.message).join(' · ')}` });
+  if (!e?.noDiet && a.mode !== 'training' && !diet && bundle.dietSupervision.length === 0 && !bundle.dietBlocked) f.push({ level: 'FAIL', area: 'coerenza', code: 'C1', message: 'Manca il piano alimentare' });
   if (!e?.noTraining && a.mode !== 'diet' && (a.activitiesPracticed as string[] | undefined)?.length && !training) f.push({ level: 'FAIL', area: 'coerenza', code: 'C1', message: 'Manca il piano di allenamento' });
   if (diet && training && diet.durationMonths !== training.durationMonths) f.push({ level: 'FAIL', area: 'coerenza', code: 'C2', message: `Durata dieta (${diet.durationMonths}) ≠ durata allenamento (${training.durationMonths})` });
 

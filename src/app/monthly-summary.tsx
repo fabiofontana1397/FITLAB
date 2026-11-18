@@ -26,6 +26,10 @@ const VERDICT: Record<Verdict, string> = {
   too_fast: 'Progressi più rapidi del previsto',
   low_adherence: 'Dati di aderenza parziali',
   insufficient_data: 'Dati insufficienti per valutare il trend',
+  weight_up: 'Peso in salita rispetto al mantenimento',
+  weight_down: 'Peso in discesa rispetto al mantenimento',
+  temporary_variation: 'Variazione temporanea del peso',
+  professional_review: 'Serve la valutazione di un professionista',
 };
 
 export default function MonthlySummaryScreen() {
