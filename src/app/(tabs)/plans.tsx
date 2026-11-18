@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { DietPlanView, TrainingPlanView } from '@/components/plans/plan-kinds';
+import { NutritionSupervisionCard } from '@/components/plans/nutrition-supervision-card';
 import { CreatePlanPopup, PlanSourceBanner, usePlanNeverRequested } from '@/components/plans/plan-source-banner';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { TabHeader } from '@/components/tab-header';
@@ -12,6 +13,9 @@ import { PrimaryButton } from '@/components/ui/primary-button';
 import { SegmentedControl } from '@/components/ui/segmented-control';
 import { useEnsurePlan } from '@/hooks/use-ensure-plan';
 import { Layout } from '@/constants/theme';
+import { supervisionReasons } from '@/domain/nutrition/safety';
+import { buildUserContext } from '@/domain/user-context';
+import { useOnboardingStore } from '@/store/onboarding-store';
 import { useIsSelectedTab } from '@/hooks/use-is-selected-tab';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
 import { usePlanStore } from '@/store/plan-store';
@@ -35,7 +39,11 @@ export default function PlansScreen() {
   useEnsurePlan('diet');
   const neverRequested = usePlanNeverRequested(kind);
   const [createOpen, setCreateOpen] = useState(false);
-  const shownDietPlan = dietPlan && dietPlan.months.length > 0 && dietPlan.months.every((m) => Array.isArray(m.weeklySplit)) ? dietPlan : null;
+  const answers = useOnboardingStore((s) => s.answers);
+  // safety engine: a frozen plan, or a questionnaire condition that needs a professional, replaces the plan view
+  const questionnaireSupervision = Object.keys(answers).length > 0 ? supervisionReasons(buildUserContext(answers)) : [];
+  const supervision = dietPlan?.supervision ? { reasons: dietPlan.supervision.reasons, frozen: true } : questionnaireSupervision.length > 0 ? { reasons: questionnaireSupervision, frozen: false } : null;
+  const shownDietPlan = !supervision && dietPlan && dietPlan.months.length > 0 && dietPlan.months.every((m) => Array.isArray(m.weeklySplit)) ? dietPlan : null;
 
   // Each time the page becomes the selected tab again, the card is remounted so its bars, ring and numbers play anew.
   const selected = useIsSelectedTab();
@@ -77,6 +85,8 @@ export default function PlansScreen() {
           checkinPendingMonth={checkinPendingMonth}
           onCheckin={() => router.push('/monthly-checkin')}
         />
+      ) : kind === 'diet' && supervision ? (
+        <NutritionSupervisionCard reasons={supervision.reasons} frozen={supervision.frozen} />
       ) : kind === 'diet' && shownDietPlan ? (
         <DietPlanView
           key={cardKey}

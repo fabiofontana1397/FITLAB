@@ -40,6 +40,10 @@ const VERDICT_TITLE: Record<Verdict, string> = {
   too_fast: 'Progressi troppo rapidi',
   low_adherence: 'Il piano è stato seguito solo in parte',
   insufficient_data: 'Dati insufficienti per valutare i progressi',
+  weight_up: 'Il peso sta salendo',
+  weight_down: 'Il peso sta scendendo',
+  temporary_variation: 'Una variazione temporanea',
+  professional_review: 'Serve la valutazione di un professionista',
 };
 
 /**
@@ -76,7 +80,7 @@ export default function MonthlyCheckinScreen() {
   const alreadyDone = completedMonths.includes(endedMonth);
   const available = endedMonth >= 1 && !alreadyDone;
   const visibleQuestions = useMemo(() => MONTHLY_CHECKIN_QUESTIONS.filter((q) => isQuestionVisible(q, answers)), [answers]);
-  const canContinue = useMemo(() => visibleQuestions.every((q) => q.optional || isAnswered(answers[q.id])), [answers, visibleQuestions]);
+  const canContinue = useMemo(() => visibleQuestions.every((q) => q.optional || isAnswered(answers[q.id])), [visibleQuestions, answers]);
 
   const handleSubmit = async () => {
     if (!canContinue || submitting || !plan || !available) return;
@@ -108,7 +112,8 @@ export default function MonthlyCheckinScreen() {
 
       // keep the profile in step with what the plan now prescribes for the month the person is entering
       const nextMonth = usePlanStore.getState().dietPlan?.months.find((m) => m.monthIndex === endedMonth + 1);
-      if (nextMonth) updateProfile({ dailyCalorieTarget: nextMonth.calorieTarget, macroTargetsG: nextMonth.macroTargetsG });
+      // (not under professional review: no calorie target is proposed then)
+      if (nextMonth && recalibration.verdict !== 'professional_review') updateProfile({ dailyCalorieTarget: nextMonth.calorieTarget, macroTargetsG: nextMonth.macroTargetsG });
       setResult(recalibration);
     } finally {
       setSubmitting(false);
@@ -157,6 +162,16 @@ export default function MonthlyCheckinScreen() {
                 </ThemedText>
               </View>
             ))}
+            {result.clarifications.length > 0 ? (
+              <>
+                <ThemedText type="smallBold">Mi serve qualche informazione in più</ThemedText>
+                {result.clarifications.map((q, i) => (
+                  <ThemedText key={i} type="small" themeColor="textSecondary">
+                    {q}
+                  </ThemedText>
+                ))}
+              </>
+            ) : null}
           </GlassSurface>
           <PrimaryButton label="Fatto" onPress={() => goBackOr('/')} />
         </>

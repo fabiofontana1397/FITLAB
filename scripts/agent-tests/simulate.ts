@@ -11,7 +11,8 @@
  */
 import { dayEnergy } from '@/domain/energy';
 import { buildPlans, type PlanBundle } from '@/domain/plan-engine';
-import { MAX_TOTAL_ADJUSTMENT, NEUTRAL_CALIBRATION, recalibrate, type PlanCalibration, type RecalibrationResult } from '@/domain/recalibration';
+import { MAX_TOTAL_ADJUSTMENT, NEUTRAL_CALIBRATION, recalibrate, type PlanCalibration, type RecalibrationRecord, type RecalibrationResult } from '@/domain/recalibration';
+import { buildMealSlotsFromAnswers } from '@/lib/planning/meal-slots';
 import { MIN_CALORIES } from '@/domain/targets';
 import { buildUserContext } from '@/domain/user-context';
 
@@ -43,6 +44,12 @@ export type MonthLog = {
   target: number;
   verdict: RecalibrationResult['verdict'];
   adjustment: number;
+  /** Change of the average daily target decided at this check-in. */
+  targetChange: number;
+  /** Step decided by the engine (the rest of `targetChange` comes from the next month's training). */
+  calorieStep: number;
+  /** A safety limit moved the target (allowed even under supervision). */
+  safetyBlocked: boolean;
   changes: string[];
 };
 
@@ -65,6 +72,7 @@ export function simulate(persona: Persona, scenario: Scenario, months = 6): Simu
   const rand = rng(persona.id.length * 977 + scenario.id.length * 131);
   const ctx0 = buildUserContext(persona.answers);
   let calibration: PlanCalibration = { ...NEUTRAL_CALIBRATION };
+  const history: RecalibrationRecord[] = [];
   let bundle: PlanBundle = buildPlans(ctx0);
   let trueKg = ctx0.weightKg;
   const startDate = '2026-01-05'; // a Monday
@@ -124,7 +132,11 @@ export function simulate(persona: Persona, scenario: Scenario, months = 6): Simu
         hunger: scenario.dietAdherence > 1.1 ? 'never' : 'sometimes',
       },
       calibration,
+      weeks: { current: trainingWeek, next: bundle.training?.months[m]?.weeklySplit ?? null },
+      history,
+      slots: buildMealSlotsFromAnswers(persona.answers).map((x) => x.id),
     });
+    history.push({ monthIndex: m, date: addDays(startDate, m * 30), verdict: result.verdict, weeklyRateKg: result.weeklyRateKg, expectedWeeklyKg: result.expectedWeeklyKg, changes: result.changes, calibration: result.calibration, decision: result.decision });
 
     logs.push({
       month: m,
@@ -134,6 +146,9 @@ export function simulate(persona: Persona, scenario: Scenario, months = 6): Simu
       target: targets.calories,
       verdict: result.verdict,
       adjustment: result.calibration.calorieAdjustment,
+      targetChange: result.decision.newTarget - targets.calories,
+      calorieStep: result.decision.calorieStep,
+      safetyBlocked: result.decision.safety.some((c) => c.blocked && c.id !== 'supervision'),
       changes: result.changes.map((c) => c.text),
     });
 
@@ -160,7 +175,10 @@ export function simulate(persona: Persona, scenario: Scenario, months = 6): Simu
   const laterRates = logs.slice(Math.min(2, logs.length - 1)).map((l) => l.rateKgPerWeek);
   const lateRate = laterRates.length ? laterRates.reduce((a, b) => a + b, 0) / laterRates.length : 0;
   const stable = persona.answers.goal === 'maintainImprove' || persona.answers.goal === 'generalHealth' || persona.answers.goal === 'improveEndurance' || (ctx0.isMinor && ctx0.goal === 'loseFat');
-  if (scenario.id !== 'half-adherent' && logs.length >= 3) {
+  // under 18 the calories are never adjusted automatically (supervision): the convergence check does not apply
+  if (ctx0.isMinor && logs.some((l) => l.verdict !== 'professional_review')) findings.push({ level: 'FAIL', area: 'coerenza', code: 'M8', message: `[${scenario.label}] minorenne: le calorie sono state ricalibrate senza supervisione` });
+  if (ctx0.isMinor && logs.some((l) => l.calorieStep !== 0 && !l.safetyBlocked)) findings.push({ level: 'FAIL', area: 'coerenza', code: 'M8', message: `[${scenario.label}] minorenne: passo calorico applicato senza supervisione` });
+  if (!ctx0.isMinor && scenario.id !== 'half-adherent' && logs.length >= 3) {
     if (stable) {
       if (Math.abs(lateRate) > 0.3) findings.push({ level: 'FAIL', area: 'coerenza', code: 'M6', message: `[${scenario.label}] obiettivo di mantenimento ma dopo la ricalibrazione il peso varia di ${lateRate.toFixed(2)} kg/sett.` });
     } else if (expected !== 0) {
@@ -168,10 +186,10 @@ export function simulate(persona: Persona, scenario: Scenario, months = 6): Simu
       if (ratio < 0.5 || ratio > 1.6) findings.push({ level: 'FAIL', area: 'coerenza', code: 'M6', message: `[${scenario.label}] dal 3° mese il ritmo è ${lateRate.toFixed(2)} kg/sett. contro ${expected.toFixed(2)} previsti (${Math.round(ratio * 100)}%): la ricalibrazione non porta il peso verso l'obiettivo` });
     }
   }
-  if (scenario.id === 'half-adherent' && logs.length >= 2 && !logs.slice(0, 2).some((l) => l.verdict === 'low_adherence')) {
+  if (!ctx0.isMinor && scenario.id === 'half-adherent' && logs.length >= 2 && !logs.slice(0, 2).some((l) => l.verdict === 'low_adherence')) {
     findings.push({ level: 'FAIL', area: 'coerenza', code: 'M7', message: `[${scenario.label}] la bassa aderenza non è stata riconosciuta` });
   }
-  if (scenario.id === 'half-adherent' && logs.some((l) => Math.abs(l.adjustment) > 150)) {
+  if (scenario.id === 'half-adherent' && logs.some((l) => Math.abs(l.targetChange) > 150)) {
     findings.push({ level: 'WARN', area: 'coerenza', code: 'M7', message: `[${scenario.label}] con bassa aderenza le calorie sono state spostate di oltre 150 kcal: il piano non andrebbe corretto sui numeri` });
   }
   return { persona, scenario, months: logs, findings };

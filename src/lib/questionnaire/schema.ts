@@ -412,6 +412,20 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
         ],
       },
       { id: 'allergiesIntolerances', type: 'text', label: 'Hai allergie alimentari, intolleranze o alimenti che digerisci male?', placeholder: 'No, oppure elenca quali', optional: true },
+      {
+        id: 'specialConditions',
+        type: 'multi',
+        optional: true,
+        label: 'C’è una situazione che richiede attenzione particolare per l’alimentazione?',
+        helper: 'In questi casi non generiamo un piano alimentare automatico: va definito con un medico o un nutrizionista.',
+        options: [
+          { value: 'pregnancy', label: 'Gravidanza' },
+          { value: 'breastfeeding', label: 'Allattamento' },
+          { value: 'medical', label: 'Condizione medica o terapia in corso' },
+          { value: 'eatingDisorder', label: 'Storia di disturbi del comportamento alimentare' },
+          { value: 'none', label: 'Nessuna' },
+        ],
+      },
       { id: 'usualBreakfast', type: 'text', label: 'Cosa mangi di solito a colazione?', optional: true },
       {
         id: 'usualMorningSnack',

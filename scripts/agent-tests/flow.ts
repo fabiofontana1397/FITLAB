@@ -39,7 +39,7 @@ export function checkFlow(persona: Persona, ctx: UserContext, bundle: PlanBundle
   // --- Home: weekly goal -------------------------------------------------
   const homeGoal = weeklyBalanceGoal(targets);
   const wantsDeficit = ctx.goal === 'loseFat' && !ctx.isMinor;
-  const wantsSurplus = ctx.goal === 'gainMuscle' || ctx.goal === 'gainStrength';
+  const wantsSurplus = (ctx.goal === 'gainMuscle' || ctx.goal === 'gainStrength') && !ctx.isMinor;
   if (wantsDeficit && homeGoal >= 0) f.push({ level: 'FAIL', area: 'coerenza', code: 'H1', message: `Home mostra un obiettivo settimanale di ${homeGoal} kcal ma l’obiettivo è dimagrire` });
   if (wantsSurplus && homeGoal <= 0) f.push({ level: 'FAIL', area: 'coerenza', code: 'H1', message: `Home mostra un obiettivo settimanale di ${homeGoal} kcal ma l’obiettivo è aumentare` });
 

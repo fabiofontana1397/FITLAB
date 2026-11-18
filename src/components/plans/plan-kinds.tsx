@@ -1,4 +1,4 @@
-import { StyleSheet, View } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
 
 import { GlassSurface } from '@/components/glass/glass-surface';
 import { ExerciseSummaryCard, MealCard } from '@/components/plans/plan-day-cards';
@@ -25,6 +25,7 @@ import { inMealOrder } from '@/lib/planning/meal-slots';
 import type { DietPlan, TrainingPlan } from '@/lib/planning/types';
 import { findQuestion, labelFor } from '@/lib/questionnaire/schema';
 import { useOnboardingStore } from '@/store/onboarding-store';
+import { usePlanStore } from '@/store/plan-store';
 import { latestWeightForExercise, useTrainingProgressStore } from '@/store/training-progress-store';
 import { useUserStore } from '@/store/user-store';
 
@@ -244,7 +245,24 @@ export function DietPlanView({ plan, goal, checkinPendingMonth, onCheckin }: Pla
               {day.calorieTarget ? <ThemedText style={[styles.dayTitle, { color: theme.accent }]}>{` · ${day.calorieTarget} kcal`}</ThemedText> : null}
             </ThemedText>
             {inMealOrder(day.meals).map((meal) => (
-              <MealCard key={meal.slotId} meal={meal} />
+              <MealCard
+                key={meal.slotId}
+                meal={meal}
+                onSubstitute={
+                  plan.source === 'custom'
+                    ? undefined
+                    : (itemIndex, foodId) => {
+                        const res = usePlanStore.getState().applySubstitution(useOnboardingStore.getState().answers, {
+                          monthIndex,
+                          dayIndex: monthOf(monthIndex).weeklySplit.indexOf(day),
+                          slotId: meal.slotId,
+                          itemIndex,
+                          substituteFoodId: foodId,
+                        });
+                        if (!res.ok) Alert.alert('Sostituzione non applicata', res.reason);
+                      }
+                }
+              />
             ))}
           </>
         );

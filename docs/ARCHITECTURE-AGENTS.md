@@ -28,7 +28,8 @@ non ricalcolano nulla: chiamano il dominio.
 | `domain/energy.ts` | `bmr`, `baselineKcal`, `sessionKcal`, `dayEnergy`, `weekEnergy` |
 | `domain/targets.ts` | `computeTargets(ctx, settimana, {calorieAdjustment})` → `PlanTargets` (calorie, macro, idratazione, target per giorno), `weeklyBalanceGoal`, `weeksToGoal`, `planDurationMonths` |
 | `domain/plan-engine.ts` | `buildPlans(ctx, {strategy, calibration, preserveMonthsBefore, existing})` → dieta + allenamento coerenti |
-| `domain/recalibration.ts` | `recalibrate(input)` → verdetto, nuova calibrazione, cambi spiegati; `applyGuardrails` |
+| `domain/recalibration.ts` | `recalibrate(input)` → verdetto, nuova calibrazione, cambi spiegati, `DecisionLog`; `applyGuardrails` |
+| `domain/nutrition/*` | Motore adattivo: monitoraggio, analisi, decisione, limiti di sicurezza, validazione, parametri (`NUTRITION_PARAMS`) |
 | `domain/profile.ts` | `profileFromContext` per il profilo utente |
 | `lib/planning/diet-planner.ts` + `lib/planning/fitlab/*` | Dieta secondo il framework Fit Lab: catalogo per pasto → ricette → quantità risolte su calorie e macro (vedi `docs/DIET-ENGINE.md`) |
 | `lib/planning/training-planner.ts` + `lib/planning/training/*` | Programmazione dell'allenamento: profilo, split, volume per gruppo muscolare, blocchi, prescrizioni con RIR, carichi da calibrare, doppia progressione, mesocicli, corsa, sicurezza (vedi `docs/TRAINING-ENGINE.md`) |
@@ -39,15 +40,17 @@ non ricalcolano nulla: chiamano il dominio.
 Alla fine di ogni mese del piano (anche il primo) l'utente fa il check-in (`app/monthly-checkin.tsx`):
 
 1. `monthWindow` + `weightsInMonth` + `computeMonthAdherence` raccolgono i fatti reali.
-2. `plan-store.recalibrateMonth` chiama `recalibrate`:
-   - misura il trend di peso (kg/settimana) e lo confronta con quello atteso dal piano;
-   - verdetti: `on_track`, `too_slow`, `plateau`, `wrong_direction`, `too_fast`, `low_adherence`,
-     `insufficient_data`;
-   - **bassa aderenza → non si cambiano i numeri** (il problema è seguire il piano, non il piano);
-   - altrimenti aggiorna `PlanCalibration` (`calorieAdjustment`, `mealVariant`)
-     con passo massimo `MAX_MONTHLY_STEP` (150 kcal) e tetto `MAX_TOTAL_ADJUSTMENT` (500 kcal);
+2. `plan-store.recalibrateMonth` chiama `recalibrate` (motore adattivo, `docs/NUTRITION-ADAPTIVE-ENGINE.md`):
+   - monitoraggio → analisi → decisione → limiti → spiegazione (`src/domain/nutrition/*`): legge **ogni**
+     risposta del check-in, note comprese, e sceglie tra calorie, macro, orari, distribuzione, densità,
+     volume, alimenti, pasti fuori casa, settimana più semplice, richiesta di informazioni o di un professionista;
+   - verdetti: `on_track`, `too_slow`, `plateau`, `wrong_direction`, `too_fast`, `weight_up`, `weight_down`,
+     `temporary_variation`, `low_adherence`, `insufficient_data`, `professional_review`;
+   - **bassa aderenza → non si cambiano i numeri**; il nuovo target è il target seguito più il passo deciso
+     (massimo 150 kcal), sempre entro i limiti permanenti (deficit 20%, surplus 15%, soglia individuale);
+   - storico con `DecisionLog` (motivi, regole, alternative escluse, risultato atteso e ottenuto).
    - l'allenamento ha il suo adattamento (`lib/planning/training/adaptation.ts` → `PlanCalibration.training`):
-     prestazioni registrate, recupero, dolore, tempo e richieste decidono volume, RIR, scarico, giorni e split.
+     prestazioni registrate, recupero, sonno, dolore, tempo e richieste decidono volume, RIR, scarico, giorni e split.
 3. `buildPlans` rigenera dieta e allenamento **dal mese successivo**, con la nuova calibrazione.
 4. Calibrazione e storico stanno nel jsonb dei piani (`DietPlan.calibration`, `recalibrations`): nessuna migrazione.
 
