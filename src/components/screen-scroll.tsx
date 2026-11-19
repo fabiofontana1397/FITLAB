@@ -10,6 +10,7 @@ import Animated, {
   useReducedMotion,
   useSharedValue,
   withTiming,
+  type SharedValue,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -51,7 +52,7 @@ export function washColorAt(top: string, middle: string, bottom: string, t: numb
 }
 
 export const ScreenScroll = forwardRef<ScrollView, ScreenScrollProps>(function ScreenScroll(
-  { children, contentContainerStyle, reveal = false, header, onLayout, ...rest },
+  { children, contentContainerStyle, reveal = false, header, pinned, pinnedProgress, scrollOffset, onLayout, ...rest },
   ref
 ) {
   const theme = useTheme();
@@ -85,7 +86,23 @@ export const ScreenScroll = forwardRef<ScrollView, ScreenScrollProps>(function S
 
   const onScroll = useAnimatedScrollHandler((e) => {
     scrollY.value = e.contentOffset.y;
+    if (scrollOffset) scrollOffset.value = e.contentOffset.y;
   });
+
+  // The pinned strip under the header: shown by the screen's own 0→1 progress; it only takes touches once visible.
+  const noPinnedProgress = useSharedValue(0);
+  const pinnedP = pinnedProgress ?? noPinnedProgress;
+  const [pinnedActive, setPinnedActive] = useState(false);
+  useAnimatedReaction(
+    () => pinnedP.value > 0.5,
+    (active, previous) => {
+      if (active !== previous) runOnJS(setPinnedActive)(active);
+    }
+  );
+  const pinnedStyle = useAnimatedStyle(() => ({
+    opacity: pinnedP.value,
+    transform: [{ translateY: reduceMotion ? 0 : (1 - pinnedP.value) * -10 }],
+  }));
 
   // A short while after the scrolling stops the sections check themselves against where they really are, so one
   // that got out of step (a missed scroll event, an interrupted animation, a stale measure) is put right.
@@ -190,6 +207,14 @@ export const ScreenScroll = forwardRef<ScrollView, ScreenScrollProps>(function S
           <LinearGradient colors={[headerFadeColor, `${headerFadeColor}00`]} style={StyleSheet.absoluteFill} />
         </Animated.View>
       ) : null}
+      {header && pinned ? (
+        <Animated.View testID="screen-pinned" style={[styles.pinned, { pointerEvents: pinnedActive ? 'box-none' : 'none' }, pinnedStyle]}>
+          <View style={{ backgroundColor: headerFadeColor }}>
+            <View style={styles.pinnedInner}>{pinned}</View>
+          </View>
+          <LinearGradient colors={[headerFadeColor, `${headerFadeColor}00`]} style={{ height: HEADER_FADE_HEIGHT, pointerEvents: 'none' }} />
+        </Animated.View>
+      ) : null}
       </View>
       {header ? null : (
         <Animated.View style={[styles.topFade, { height: insets.top + 28, pointerEvents: 'none' }, topFadeStyle]}>
@@ -206,6 +231,12 @@ type ScreenScrollProps = ScrollViewProps & {
   /** Stagger the top-level sections in on first paint and reveal the ones
    * below the fold as they scroll into view (see the note on `content`). */
   reveal?: boolean;
+  /** With a `header`: a strip pinned right under it (e.g. a compact summary of a box that has scrolled away),
+   * shown as `pinnedProgress` goes 0→1. */
+  pinned?: ReactNode;
+  pinnedProgress?: SharedValue<number>;
+  /** Mirrors the list's vertical scroll offset, for screens that react to it. */
+  scrollOffset?: SharedValue<number>;
 };
 
 const styles = StyleSheet.create({
@@ -231,6 +262,19 @@ const styles = StyleSheet.create({
     maxWidth: MaxContentWidth,
     paddingHorizontal: Layout.screenGutter,
     gap: Layout.sectionGap,
+  },
+  pinned: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+  },
+  pinnedInner: {
+    width: '100%',
+    maxWidth: MaxContentWidth,
+    alignSelf: 'center',
+    paddingHorizontal: Layout.screenGutter,
+    paddingTop: HEADER_LIST_TOP,
   },
   topFade: {
     position: 'absolute',
