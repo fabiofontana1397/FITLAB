@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Icon, type IconName } from '@/components/ui/icon';
@@ -12,12 +12,13 @@ export type SectionHeaderProps = {
   icon?: IconName;
   iconLabel?: string;
   onIconPress?: () => void;
+  style?: StyleProp<ViewStyle>;
 };
 
-export function SectionHeader({ title, action, onActionPress, icon, iconLabel, onIconPress }: SectionHeaderProps) {
+export function SectionHeader({ title, action, onActionPress, icon, iconLabel, onIconPress, style }: SectionHeaderProps) {
   const theme = useTheme();
   return (
-    <View style={styles.row}>
+    <View style={[styles.row, style]}>
       <ThemedText type="subtitle">{title}</ThemedText>
       {action ? (
         <Pressable onPress={onActionPress} hitSlop={8}>

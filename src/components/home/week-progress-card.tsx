@@ -382,7 +382,7 @@ export function WeekProgressCard(p: WeekProgressCardProps) {
 }
 
 const styles = StyleSheet.create({
-  wrap: { marginTop: 12, gap: 12 },
+  wrap: { marginTop: 10, gap: 10 },
   hero: { borderRadius: 24, padding: 16, gap: 14, overflow: 'hidden' },
   glow: { position: 'absolute', backgroundColor: 'rgba(255,255,255,0.13)' },
   heroTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },

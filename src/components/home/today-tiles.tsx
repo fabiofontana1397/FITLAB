@@ -10,7 +10,7 @@ import { Icon, type IconName } from '@/components/ui/icon';
 import { Brand, OnBrand, Radius } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
-const GAP = 12;
+const GAP = 10;
 
 function withAlpha(hex: string, alpha: number): string {
   if (!/^#([0-9a-f]{6})$/i.test(hex)) return hex;
@@ -212,7 +212,7 @@ function WorkoutTile({ side, isToday, workout, onPress }: { side: number; isToda
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', gap: GAP, marginTop: 12 },
+  row: { flexDirection: 'row', gap: GAP, marginTop: 10 },
   cell: { flex: 1 },
   tile: { padding: 14, justifyContent: 'space-between', gap: 10 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 8 },
