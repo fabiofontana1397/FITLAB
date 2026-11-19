@@ -19,7 +19,6 @@ import { Icon, type IconName } from '@/components/ui/icon';
 import { SectionHeader } from '@/components/ui/section-header';
 import { TodayTiles, type TodayWorkout } from '@/components/home/today-tiles';
 import { WeekProgressCard } from '@/components/home/week-progress-card';
-import { MotivationStrip } from '@/components/home/motivation-strip';
 import { WeekStrip, type WeekStripDay } from '@/components/home/week-strip';
 import { TabHeader } from '@/components/tab-header';
 import { LogActivityModal } from '@/components/training/log-activity-modal';
@@ -315,26 +314,6 @@ export default function HomeScreen() {
         />
 
       </FlatCard>
-
-      {/* The as-is in one line: how it's going right now, and the nudge for what's next. */}
-      <MotivationStrip
-        streakDays={streakDays}
-        todayTracked={todayTracked}
-        todayOnGoal={todayOnGoal}
-        averageBalanceKcal={averageBalance}
-        trackedBalanceDays={trackedBalances.length}
-        dailyGoalKcal={dailyGoalKcal}
-        weeklyGoalKcal={weeklyGoalKcal}
-        workoutsDone={workoutsDone}
-        workoutsPlanned={workoutsPlanned}
-        weekTracked={weekDates.map((date) => loggedDates.has(date))}
-        todayIndex={weekDates.indexOf(today)}
-        onRegisterMeal={() => {
-          // Registered from the message, a meal is today's: that is the day the message talks about.
-          setViewDate(today);
-          openPopup(() => setRegisterMealOpen(true));
-        }}
-      />
 
       <View style={styles.actionsRow}>
         <ActionTile
