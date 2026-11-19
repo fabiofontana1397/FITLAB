@@ -1,29 +1,14 @@
-import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import Animated, {
-  Easing,
-  runOnJS,
-  useAnimatedProps,
-  useAnimatedReaction,
-  useAnimatedStyle,
-  useReducedMotion,
-  useSharedValue,
-  withRepeat,
-  withSequence,
-  withTiming,
-} from 'react-native-reanimated';
+import Animated, { runOnJS, useAnimatedProps, useAnimatedReaction, useAnimatedStyle } from 'react-native-reanimated';
 import Svg, { Circle } from 'react-native-svg';
 
-import { AnimatedFill } from '@/components/motion/animated-fill';
-import { PressableScale } from '@/components/motion/pressable-scale';
 import { useRevealedValue } from '@/components/motion/reveal';
 import { ThemedText } from '@/components/themed-text';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { acceptableRange, balanceHalfRange } from '@/domain/calorie-balance';
-import { OnBrand } from '@/constants/theme';
-import { nextStreakMilestone, pickMotivation, weekAverageState, type MotivationKind, type WeekAverageState } from '@/domain/week-progress';
+import { weekAverageState, type WeekAverageState } from '@/domain/week-progress';
 import { useTheme } from '@/hooks/use-theme';
 import { formatSignedKcal } from '@/lib/format-kcal';
 
@@ -110,138 +95,6 @@ function AverageGauge({ average, goalKcal, state, color, hasData }: { average: n
   );
 }
 
-const TONE_ICON: Record<MotivationKind, IconName> = {
-  todayOnGoal: 'check',
-  streak: 'flame',
-  weekOnTrack: 'target',
-  workoutsDone: 'trophy',
-  startStreak: 'sparkle',
-  keepGoing: 'bolt',
-};
-
-/** The message box is the colour: fire for a streak and for the invitation to track, green for a goal met. Same in both schemes. */
-const HERO_FIRE = ['#FF8A1F', '#F4511E', '#D8311F'] as const;
-const HERO_GOOD = ['#2FBF71', '#17995A', '#0B7A5C'] as const;
-const HERO_INK: Record<'fire' | 'good', string> = { fire: '#D8401B', good: '#0F7F55' };
-
-const WEEK_LETTERS = ['L', 'M', 'M', 'G', 'V', 'S', 'D'];
-
-/** A soft light drifting slowly inside the message box, so the colour is never still. */
-function Glow({ size, top, left, drift, duration }: { size: number; top: number; left: number; drift: number; duration: number }) {
-  const reduceMotion = useReducedMotion();
-  const t = useSharedValue(0);
-  useEffect(() => {
-    t.set(reduceMotion ? 0 : withRepeat(withTiming(1, { duration, easing: Easing.inOut(Easing.sin) }), -1, true));
-  }, [reduceMotion, duration, t]);
-  const style = useAnimatedStyle(() => ({ transform: [{ translateX: t.value * drift }, { translateY: t.value * drift * 0.5 }, { scale: 1 + t.value * 0.12 }] }));
-  return <Animated.View pointerEvents="none" style={[styles.glow, { width: size, height: size, borderRadius: size / 2, top, left }, style]} />;
-}
-
-/** One day of the week in the message box: a white tick once tracked, a breathing ring for today still to track. */
-function DayDot({ letter, tracked, today, future, delay, ink }: { letter: string; tracked: boolean; today: boolean; future: boolean; delay: number; ink: string }) {
-  const reduceMotion = useReducedMotion();
-  const enter = useRevealedValue(1, delay);
-  const pulse = useSharedValue(1);
-  const breathes = today && !tracked && !reduceMotion;
-  useEffect(() => {
-    pulse.set(breathes ? withRepeat(withSequence(withTiming(1.16, { duration: 800 }), withTiming(1, { duration: 800 })), -1) : 1);
-  }, [breathes, pulse]);
-  const style = useAnimatedStyle(() => ({ opacity: enter.value, transform: [{ scale: (0.5 + 0.5 * enter.value) * pulse.value }] }));
-  return (
-    <View style={styles.day}>
-      <Animated.View
-        style={[
-          styles.dayDot,
-          tracked ? { backgroundColor: OnBrand.text } : today ? { borderWidth: 2, borderColor: OnBrand.text } : { backgroundColor: future ? 'rgba(255,255,255,0.14)' : OnBrand.fillStrong },
-          style,
-        ]}>
-        {tracked ? <Icon name="check" size={14} color={ink} /> : null}
-      </Animated.View>
-      <ThemedText style={[styles.dayLetter, { color: today ? OnBrand.text : OnBrand.textFaint }]}>{letter}</ThemedText>
-    </View>
-  );
-}
-
-type HeroProps = {
-  kind: MotivationKind;
-  title: string;
-  text: string;
-  streakDays: number;
-  todayTracked: boolean;
-  /** Monday to Sunday: that day has meals logged. */
-  weekTracked: boolean[];
-  /** Today's place in the week (0 = Monday). */
-  todayIndex: number;
-  onRegisterMeal?: () => void;
-};
-
-/**
- * The motivational message as its own box: a full colour gradient with lights drifting inside, the icon
- * breathing, the week's tracked days as dots, and the next step — "Registra un pasto" while today is still to
- * track, the next streak milestone once it is.
- */
-function MotivationHero({ kind, title, text, streakDays, todayTracked, weekTracked, todayIndex, onRegisterMeal }: HeroProps) {
-  const reduceMotion = useReducedMotion();
-  const tone = kind === 'todayOnGoal' || kind === 'weekOnTrack' || kind === 'workoutsDone' ? 'good' : 'fire';
-  const enter = useRevealedValue(1, 40);
-  const pulse = useSharedValue(1);
-  useEffect(() => {
-    pulse.set(reduceMotion ? 1 : withRepeat(withSequence(withTiming(1.12, { duration: 900 }), withTiming(1, { duration: 900 })), -1));
-  }, [reduceMotion, pulse]);
-  const iconStyle = useAnimatedStyle(() => ({ transform: [{ scale: (0.6 + 0.4 * enter.value) * pulse.value }], opacity: enter.value }));
-  const textStyle = useAnimatedStyle(() => ({ opacity: enter.value, transform: [{ translateY: (1 - enter.value) * 8 }] }));
-
-  const eyebrow = streakDays >= 2 ? `Serie di ${streakDays} giorni` : todayTracked ? 'Oggi tracciato' : 'Oggi tocca a te';
-  const milestone = nextStreakMilestone(streakDays);
-  const toGo = milestone - streakDays;
-  return (
-    <LinearGradient colors={tone === 'good' ? HERO_GOOD : HERO_FIRE} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
-      <Glow size={170} top={-70} left={-40} drift={26} duration={5200} />
-      <Glow size={150} top={150} left={230} drift={-22} duration={6400} />
-
-      <View style={styles.heroTop}>
-        <Animated.View style={[styles.heroIcon, iconStyle]}>
-          <Icon name={TONE_ICON[kind]} size={24} color={HERO_INK[tone]} />
-        </Animated.View>
-        <View style={styles.eyebrow}>
-          <Icon name="flame" size={12} color={OnBrand.text} />
-          <ThemedText style={styles.eyebrowText}>{eyebrow}</ThemedText>
-        </View>
-      </View>
-
-      <Animated.View style={[styles.heroText, textStyle]}>
-        <ThemedText style={styles.heroTitle} accessibilityRole="header">
-          {title}
-        </ThemedText>
-        <ThemedText style={styles.heroBody}>{text}</ThemedText>
-      </Animated.View>
-
-      <View style={styles.days} accessibilityLabel={`Giorni tracciati questa settimana: ${weekTracked.filter(Boolean).length} su 7`}>
-        {WEEK_LETTERS.map((letter, i) => (
-          <DayDot key={i} letter={letter} tracked={weekTracked[i] ?? false} today={i === todayIndex} future={i > todayIndex} delay={160 + i * 60} ink={HERO_INK[tone]} />
-        ))}
-      </View>
-
-      {!todayTracked && onRegisterMeal ? (
-        <PressableScale onPress={onRegisterMeal} haptic="press" style={styles.heroCta} accessibilityRole="button" accessibilityLabel="Registra un pasto" testID="progress-register-meal">
-          <Icon name="plus" size={18} color={HERO_INK[tone]} />
-          <ThemedText style={[styles.heroCtaText, { color: HERO_INK[tone] }]}>Registra un pasto</ThemedText>
-        </PressableScale>
-      ) : (
-        <View style={styles.milestone}>
-          <View style={styles.milestoneLine}>
-            <ThemedText style={styles.milestoneLabel}>Prossimo traguardo: {milestone} giorni</ThemedText>
-            <ThemedText style={styles.milestoneLabel}>{toGo === 1 ? 'manca 1 giorno' : `mancano ${toGo} giorni`}</ThemedText>
-          </View>
-          <View style={styles.milestoneTrack}>
-            <AnimatedFill progress={streakDays / milestone} delay={420} style={styles.milestoneFill} />
-          </View>
-        </View>
-      )}
-    </LinearGradient>
-  );
-}
-
 function Tile({ label, status, statusColor, statusIcon, tint, children }: { label: string; status: string; statusColor: string; statusIcon?: IconName; tint: string; children: React.ReactNode }) {
   return (
     <View style={[styles.tile, { backgroundColor: tint }]}>
@@ -272,12 +125,6 @@ export type WeekProgressCardProps = {
   trackedBalanceDays: number;
   dailyGoalKcal: number;
   weeklyGoalKcal: number;
-  /** Monday to Sunday: that day has meals logged. */
-  weekTracked: boolean[];
-  /** Today's place in the week (0 = Monday). */
-  todayIndex: number;
-  /** The message's own call to action while today is still to track. */
-  onRegisterMeal?: () => void;
 };
 
 const AVERAGE_STATUS: Record<WeekAverageState, string> = {
@@ -288,27 +135,15 @@ const AVERAGE_STATUS: Record<WeekAverageState, string> = {
 };
 
 /**
- * "I tuoi progressi": how the week is going, told encouragingly, in two boxes.
- * First the message — a coloured, moving box that picks the best news of the
- * moment (today on goal, a tracking streak, a week on track, workouts done) and
- * invites the next step. Under it the indicators: workouts, days with meals
- * logged, and a scale for the average deficit/surplus against the goal. Rings
+ * "I tuoi progressi": how the week is going — workouts, days with meals logged,
+ * and a scale for the average deficit/surplus against the goal. The motivational
+ * message lives in its own slim box under the day's gauge (MotivationStrip). Rings
  * sweep and numbers count up every time Home is shown.
  */
 export function WeekProgressCard(p: WeekProgressCardProps) {
   const theme = useTheme();
   const good = theme.balanceGoalScale[2];
-  const goalWord = Math.abs(p.weeklyGoalKcal) < 50 ? 'pareggio' : p.weeklyGoalKcal < 0 ? 'deficit' : 'surplus';
   const average = weekAverageState(p.averageBalanceKcal, p.dailyGoalKcal, p.trackedBalanceDays);
-  const motivation = pickMotivation({
-    streakDays: p.streakDays,
-    todayTracked: p.todayTracked,
-    todayOnGoal: p.todayOnGoal,
-    weekAverage: average.state,
-    workoutsDone: p.workoutsDone,
-    workoutsPlanned: p.workoutsPlanned,
-    goalWord,
-  });
 
   const workoutsLeft = p.workoutsPlanned - p.workoutsDone;
   const workoutsComplete = p.workoutsPlanned > 0 && workoutsLeft <= 0;
@@ -319,17 +154,6 @@ export function WeekProgressCard(p: WeekProgressCardProps) {
 
   return (
     <View style={styles.wrap}>
-      <MotivationHero
-        kind={motivation.kind}
-        title={motivation.title}
-        text={motivation.text}
-        streakDays={p.streakDays}
-        todayTracked={p.todayTracked}
-        weekTracked={p.weekTracked}
-        todayIndex={p.todayIndex}
-        onRegisterMeal={p.onRegisterMeal}
-      />
-
       <FlatCard radius={24} style={styles.card}>
         <ThemedText style={styles.heading} accessibilityRole="header">
           I tuoi progressi
@@ -383,26 +207,6 @@ export function WeekProgressCard(p: WeekProgressCardProps) {
 
 const styles = StyleSheet.create({
   wrap: { marginTop: 10, gap: 10 },
-  hero: { borderRadius: 24, padding: 16, gap: 14, overflow: 'hidden' },
-  glow: { position: 'absolute', backgroundColor: 'rgba(255,255,255,0.13)' },
-  heroTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  heroIcon: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: OnBrand.text },
-  eyebrow: { flexDirection: 'row', alignItems: 'center', gap: 5, height: 28, paddingHorizontal: 10, borderRadius: 14, backgroundColor: OnBrand.fill },
-  eyebrowText: { color: OnBrand.text, fontSize: 12, lineHeight: 16, fontWeight: '700' },
-  heroText: { gap: 4 },
-  heroTitle: { color: OnBrand.text, fontSize: 24, lineHeight: 28, fontWeight: '800', letterSpacing: -0.5 },
-  heroBody: { color: OnBrand.textMuted, fontSize: 14, lineHeight: 19, fontWeight: '600' },
-  days: { flexDirection: 'row', justifyContent: 'space-between' },
-  day: { alignItems: 'center', gap: 4, width: 32 },
-  dayDot: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
-  dayLetter: { fontSize: 11, lineHeight: 14, fontWeight: '700' },
-  heroCta: { height: 48, borderRadius: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: OnBrand.text },
-  heroCtaText: { fontSize: 16, lineHeight: 21, fontWeight: '800' },
-  milestone: { gap: 6 },
-  milestoneLine: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
-  milestoneLabel: { color: OnBrand.textMuted, fontSize: 12, lineHeight: 16, fontWeight: '700' },
-  milestoneTrack: { height: 6, borderRadius: 3, backgroundColor: OnBrand.fillStrong, overflow: 'hidden' },
-  milestoneFill: { height: 6, borderRadius: 3, backgroundColor: OnBrand.text },
   card: { paddingHorizontal: 12, paddingTop: 14, paddingBottom: 12, gap: 12 },
   heading: { paddingHorizontal: 2, fontSize: 14, lineHeight: 18, fontWeight: '700' },
   tiles: { flexDirection: 'row', alignItems: 'stretch', gap: 8 },
