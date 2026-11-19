@@ -38,6 +38,18 @@ const BULLET_RE = /^\s*(?:[-–•*·▪]|\d+[.)])\s+/;
 const TIME_RE = /\b(?:ore\s*)?([01]?\d|2[0-3])[:.,h]([0-5]\d)\b/i;
 /** "200g", "200 gr", "1,5 kg", "250 ml". */
 const WEIGHT_RE = /(\d+(?:[.,]\d+)?)\s*(kg|g|gr|grammi|ml|cl|l|litri?)(?![a-zàèéìòù])/i;
+/** "g 80", "gr. 120", "ml 200": the unit before the number, as many dietitians write it. */
+const UNIT_FIRST_RE = /(?:^|\s)(kg|g|gr|grammi|ml|cl)\.?\s*(\d+(?:[.,]\d+)?)(?![\d])/i;
+/** "Fette biscottate n. 4", "Uova x2", "Gallette 3 pz": the count written after the food. */
+const TRAILING_COUNT_RE = /\s(?:n\.?|nr\.?|x)\s*(\d+)\s*$|\s(\d+)\s*(?:pz|pezz[io])\.?\s*$/i;
+/** "Pane 60 g oppure patate 200 g": only the first option is kept. */
+const ALTERNATIVE_RE = /\s+(?:oppure|o in alternativa|in alternativa|in sostituzione)\s+/i;
+/** A line that only offers an alternative to the line before ("Oppure: ...", "In alternativa ..."). */
+const ALTERNATIVE_LINE_RE = /^(?:oppure|in alternativa|alternativa|o in alternativa|in sostituzione)\b/i;
+/** "Giorno 1", "Day 3", "2° giorno": a numbered day of the week. */
+const DAY_NUMBER_RE = /^(?:giorno|giornata|day)\s*n?\.?\s*([1-7])(?!\d)|^([1-7])\s*[°º^]?\s*giorn[oa]\b/i;
+/** Totals and summaries a dietitian prints under a meal or a day: never a food. */
+const TOTAL_RE = /^(?:totale|tot\.|kcal|calorie|energia|apporto|macronutrienti)\b/i;
 /** "2 uova", "n. 2 fette", "1/2 avocado". */
 const COUNT_RE = /(?:^|\s)(?:n\.?\s*)?(\d+(?:[.,]\d+)?|1\/2)\s+(?=[a-zàèéìòù])|^(mezz[oa]|un[oa]?)\s+(?=[a-zàèéìòù])/i;
 /** Lines that are neither a day, a meal nor a food ("Opzione A", "Note: ..."). */
@@ -117,7 +129,7 @@ export function matchCatalogFood(name: string): FitLabFood | null {
   return best?.food ?? null;
 }
 
-type Quantity = { grams: number | null; label: string | null; rest: string };
+type Quantity = { grams: number | null; label: string | null; rest: string; /** Set when a household measure was used ("4 fette"). */ pieces?: number; measure?: string };
 
 function toNumber(raw: string): number {
   const v = raw.toLowerCase();
@@ -135,6 +147,25 @@ function extractQuantity(text: string): Quantity {
     const factor = unit === 'kg' || unit.startsWith('l') ? 1000 : unit === 'cl' ? 10 : 1;
     return { grams: Math.round(value * factor), label: weight[0].replace(/\s+/g, ' ').trim(), rest: text.replace(weight[0], ' ') };
   }
+  const unitFirst = UNIT_FIRST_RE.exec(text);
+  if (unitFirst) {
+    const value = toNumber(unitFirst[2]);
+    const unit = unitFirst[1].toLowerCase();
+    const factor = unit === 'kg' ? 1000 : unit === 'cl' ? 10 : 1;
+    const short = unit.startsWith('g') ? 'g' : unit;
+    return { grams: Math.round(value * factor), label: `${unitFirst[2]} ${short}`, rest: text.replace(unitFirst[0], ' ') };
+  }
+  const trailing = TRAILING_COUNT_RE.exec(text);
+  if (trailing) {
+    const written = trailing[1] ?? trailing[2];
+    const rest = text.replace(trailing[0], ' ');
+    const measure = MEASURES.find((m) => m.re.test(rest));
+    if (measure) {
+      const word = measure.re.exec(rest)?.[0] ?? '';
+      return { grams: Math.round(toNumber(written) * measure.grams), label: `${written} ${word.toLowerCase()}`.trim(), rest, pieces: toNumber(written), measure: word };
+    }
+    return { grams: -toNumber(written), label: written, rest };
+  }
   const count = COUNT_RE.exec(text);
   if (count) {
     const written = count[1] ?? count[2];
@@ -143,7 +174,7 @@ function extractQuantity(text: string): Quantity {
     const measure = MEASURES.find((m) => m.re.test(rest));
     if (measure) {
       const word = measure.re.exec(rest)?.[0] ?? '';
-      return { grams: Math.round(value * measure.grams), label: `${written} ${word}`.trim(), rest: rest.replace(measure.re, ' ') };
+      return { grams: Math.round(value * measure.grams), label: `${written} ${word.toLowerCase()}`.trim(), rest: rest.replace(measure.re, ' '), pieces: value, measure: word };
     }
     // A bare count ("2 uova"): the grams come from the food's own piece weight, once the food is known.
     return { grams: -value, label: written, rest };
@@ -181,6 +212,11 @@ function parseItem(raw: string): PlanMealItem | null {
     const unit = food ? UNITS[food.name] : undefined;
     grams = unit ? Math.round(pieces * unit.grams) : null;
     label = unit ? `${quantity.label} ${pieces === 1 ? unit.one : unit.many}` : (quantity.label ?? '');
+  }
+  // "4 fette biscottate": the food's own piece weight beats the generic slice.
+  const own = food ? UNITS[food.name] : undefined;
+  if (own && quantity.pieces != null && quantity.measure && normalize(quantity.measure).slice(0, 4) === normalize(own.one).slice(0, 4)) {
+    grams = Math.round(quantity.pieces * own.grams);
   }
   if (grams == null && !label) {
     const unit = food ? UNITS[food.name] : undefined;
@@ -226,17 +262,26 @@ type MealHeader = { kind: 'colazione' | 'pranzo' | 'cena' | 'spuntino'; hint: 'm
 /** A line that opens a meal ("Colazione", "Spuntino pomeriggio (ore 17)", "Pranzo: riso 80g, pollo 150g"). */
 function mealHeader(line: string): MealHeader | null {
   const n = normalize(line);
-  const m = /^(prima colazione|colazione|pranzo|cena|spuntino|merenda|break)\b/.exec(n);
+  const m = /^(prima colazione|colazione|pranzo|cena|spuntino|merenda|snack|spezza ?fame|break|pre (?:allenamento|workout|nanna)|post (?:allenamento|workout)|dopo cena|prima di dormire)\b/.exec(n);
   if (!m) return null;
   const kind = m[1].includes('colazione') ? 'colazione' : m[1] === 'pranzo' ? 'pranzo' : m[1] === 'cena' ? 'cena' : 'spuntino';
   // The colon that opens the foods, not the one inside a time ("ore 8:00").
   const colon = line.search(/:(?!\d)/);
-  const head = colon >= 0 ? line.slice(0, colon) : line;
-  const rest = colon >= 0 ? line.slice(colon + 1).trim() : '';
+  let head = colon >= 0 ? line.slice(0, colon) : line;
+  let rest = colon >= 0 ? line.slice(colon + 1).trim() : '';
+  // "Snack 1 mela", "Pranzo - riso 80g": the foods on the same line without a colon.
+  if (colon < 0) {
+    const word = /^(?:prima colazione|colazione|pranzo|cena|spuntino|merenda|snack)(?:\s+(?:di\s+|del\s+|della\s+)?(?:met[aà]\s+)?(?:mattin[ao]|pomeriggio|sera))?(?![a-zàèéìòù])[\s\-–—.]*/i.exec(line);
+    const after = word ? line.slice(word[0].length) : '';
+    if (word && /\d/.test(after.replace(TIME_RE, '')) && /\d.*[a-zàèéìòù]{2}|[a-zàèéìòù]{2}.*\d/i.test(after.replace(TIME_RE, '').replace(/\bore\b/i, ''))) {
+      head = word[0];
+      rest = after.trim();
+    }
+  }
   // A meal header carries no quantity: "Cena 200g ..." is not one.
   if (rest === '' && WEIGHT_RE.test(line)) return null;
   const headNorm = normalize(head);
-  const hint = /mattin/.test(headNorm) ? 'mattina' : /pomerig/.test(headNorm) || m[1] === 'merenda' ? 'pomeriggio' : /ser[ae]|nanna|dopo cena/.test(headNorm) ? 'sera' : null;
+  const hint = /mattin/.test(headNorm) ? 'mattina' : /pomerig/.test(headNorm) || m[1] === 'merenda' ? 'pomeriggio' : /ser[ae]|nanna|dopo cena|dormire/.test(headNorm) ? 'sera' : null;
   const time = TIME_RE.exec(head);
   return { kind, hint, time: time ? `${time[1].padStart(2, '0')}:${time[2]}` : null, rest };
 }
@@ -269,8 +314,13 @@ export function parseCustomDiet(text: string): CustomDietResult {
   let day: DayBlock | null = null;
   let meal: PlanMeal | null = null;
 
+  let alternatives = false;
+  const orphans: string[] = [];
   const addItems = (target: PlanMeal, raw: string) => {
-    for (const part of raw.split(/,(?!\d)|[;+]|\s+e\s+(?=\d)/)) {
+    // Only the first of the options a dietitian offers ("pane 60 g oppure patate 200 g").
+    const [first, ...others] = raw.split(ALTERNATIVE_RE);
+    if (others.length > 0) alternatives = true;
+    for (const part of first.split(/,(?!\d)|[;+]|\s+e\s+(?=\d)/)) {
       if (!part.trim()) continue;
       const item = parseItem(part);
       if (!item) {
@@ -282,15 +332,29 @@ export function parseCustomDiet(text: string): CustomDietResult {
     }
   };
 
+  // A table with the days in columns ("Lunedì Martedì Mercoledì" on one line) cannot be read row by row.
+  if (lines.some((l) => weekdaysIn(l) >= 2)) {
+    return { ok: false, error: 'La dieta è una tabella con i giorni in colonna: riscrivila un giorno alla volta (il giorno, poi i suoi pasti), oppure caricala come foto o PDF.' };
+  }
+
   for (const line of lines) {
     const bare = line.replace(BULLET_RE, '').trim();
+    if (TOTAL_RE.test(bare)) continue;
+    if (ALTERNATIVE_LINE_RE.test(bare)) {
+      alternatives = true;
+      continue;
+    }
     const weekday = WEEKDAY_RE.exec(bare);
-    if (weekday && !WEIGHT_RE.test(bare)) {
-      day = { weekdayIndex: WEEKDAY_LABELS.findIndex((w) => w.toLowerCase() === weekday[1].slice(0, 3).toLowerCase()), meals: [] };
+    const dayNumber = weekday ? null : DAY_NUMBER_RE.exec(bare);
+    if ((weekday || dayNumber) && !WEIGHT_RE.test(bare)) {
+      const weekdayIndex = weekday
+        ? WEEKDAY_LABELS.findIndex((w) => w.toLowerCase() === weekday[1].slice(0, 3).toLowerCase())
+        : Number(dayNumber![1] ?? dayNumber![2]) - 1;
+      day = { weekdayIndex, meals: [] };
       days.push(day);
       meal = null;
       // "Lunedì - Colazione: ..." on one line
-      const after = bare.slice(weekday[0].length).replace(/^[\s:–\-—.,]+/, '');
+      const after = bare.slice((weekday ?? dayNumber)![0].length).replace(/^[\s:–\-—.,]+/, '');
       if (!after) continue;
       const inline = mealHeader(after);
       if (!inline) continue;
@@ -309,12 +373,22 @@ export function parseCustomDiet(text: string): CustomDietResult {
       continue;
     }
     if (NOISE_RE.test(bare) && !WEIGHT_RE.test(bare)) continue;
-    if (!meal) return { ok: false, error: 'Inizia ogni pasto con il suo nome, ad esempio “Colazione”, e sotto metti gli alimenti.' };
+    // Before the first meal: the dietitian's name, the title, the patient… Kept aside, not an error.
+    if (!meal) {
+      orphans.push(bare);
+      continue;
+    }
     addItems(meal, bare);
   }
 
   const filled = days.map((d) => ({ ...d, meals: d.meals.filter((m) => m.items.length > 0) })).filter((d) => d.meals.length > 0);
-  if (filled.length === 0) return { ok: false, error: 'Non trovo alimenti. Scrivi un alimento per riga, ad esempio “Riso basmati 80g”.' };
+  const orphanFoods = orphans.filter((l) => WEIGHT_RE.test(l) || UNIT_FIRST_RE.test(l));
+  if (filled.length === 0) {
+    if (orphanFoods.length > 0) return { ok: false, error: 'Inizia ogni pasto con il suo nome, ad esempio “Colazione”, e sotto metti gli alimenti.' };
+    return { ok: false, error: 'Non trovo alimenti. Scrivi il nome del pasto (“Colazione”) e sotto un alimento per riga, ad esempio “Riso basmati 80g”.' };
+  }
+  if (orphanFoods.length > 0) warnings.push(`Fuori da un pasto, quindi ignorate: ${orphanFoods.slice(0, 3).map((l) => `“${l}”`).join(', ')}${orphanFoods.length > 3 ? '…' : ''}`);
+  if (alternatives) warnings.push('Dove c’erano alternative (“oppure”) ho tenuto la prima.');
 
   const week: (PlanMeal[] | null)[] = Array(7).fill(null);
   const dated = filled.filter((d) => d.weekdayIndex != null && d.weekdayIndex >= 0);
@@ -352,6 +426,13 @@ export function parseCustomDiet(text: string): CustomDietResult {
     };
   });
   return { ok: true, week: full, warnings, unknownFoods: [...unknown] };
+}
+
+/** How many different weekdays a line names ("Lunedì Martedì Mercoledì" → 3). */
+function weekdaysIn(line: string): number {
+  const found = new Set<string>();
+  for (const m of normalize(line).matchAll(/\b(lun|mar|mer|gio|ven|sab|dom)(?:edi|tedi|coledi|vedi|erdi|ato|enica)?\b/g)) found.add(m[1]);
+  return found.size;
 }
 
 function openMeal(day: DayBlock, header: MealHeader): PlanMeal {
