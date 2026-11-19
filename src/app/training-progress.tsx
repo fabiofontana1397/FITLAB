@@ -76,7 +76,7 @@ export default function TrainingProgressScreen() {
 
 function ExerciseProgressCard({ exercise, sets }: { exercise: TrainingExerciseEntry; sets: LoggedSet[] }) {
   const theme = useTheme();
-  const media = getExerciseMedia(exercise.id);
+  const media = getExerciseMedia(exercise.id, exercise.name);
   const history = historyForExercise(sets, exercise.id);
   const lastWeight = latestWeightForExercise(sets, exercise.id);
   const hasData = history.length >= 2;

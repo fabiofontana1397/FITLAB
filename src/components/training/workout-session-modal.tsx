@@ -181,7 +181,7 @@ function SessionView({ onClose, title, exercises, date }: Omit<WorkoutSessionMod
   const exerciseDone = setsDone >= exercise.sets;
   const timed = isTimed(exercise);
   const load = loads[exercise.id] ?? null;
-  const media = getExerciseMedia(exercise.id);
+  const media = getExerciseMedia(exercise.id, exercise.name);
   const paused = runSince == null && phase !== 'countdown' && phase !== 'done';
 
   useEffect(() => {

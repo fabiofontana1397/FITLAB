@@ -14,8 +14,9 @@
  * With weekday headers each session lands on that weekday. With generic
  * headers ("Giorno A", "Scheda 2", …) the sessions are spread over the week.
  */
-import { GYM_EXERCISES, HOME_EXERCISES, WEEKDAY_LABELS, WEEKDAY_PATTERN, type ExerciseDef } from './exercise-library';
+import { WEEKDAY_LABELS, WEEKDAY_PATTERN } from './exercise-library';
 import { NEUTRAL_CALIBRATION } from '@/domain/recalibration';
+import { matchExerciseName, type KnownExercise } from '@/lib/exercise-media/exercise-match';
 import { TRAINING_ENGINE_VERSION } from './training-planner';
 import type { TrainingDayPlan, TrainingExerciseEntry, TrainingMonthPlan, TrainingPlan } from './types';
 
@@ -87,30 +88,9 @@ function slug(text: string): string {
   return normalize(text).replace(/ /g, '-') || 'esercizio';
 }
 
-const LIBRARY: ExerciseDef[] = (() => {
-  const seen = new Map<string, ExerciseDef>();
-  for (const list of [...Object.values(GYM_EXERCISES), ...Object.values(HOME_EXERCISES)]) {
-    for (const def of list) if (!seen.has(def.id)) seen.set(def.id, def);
-  }
-  return [...seen.values()];
-})();
-
-/** The library exercise a typed name refers to (so it gets the GIF and the instructions), or null. */
-export function matchLibraryExercise(name: string): ExerciseDef | null {
-  const n = normalize(name);
-  if (!n) return null;
-  let best: { def: ExerciseDef; score: number } | null = null;
-  for (const def of LIBRARY) {
-    const candidates = [def.name, ...def.keywords].map(normalize);
-    for (const [i, c] of candidates.entries()) {
-      if (!c) continue;
-      // Same words as another exercise's keyword: the one actually named so wins ("Lat machine" over "Trazioni").
-      const own = i === 0 ? 0.5 : 0;
-      const score = n === c ? 1000 + c.length + own : c.length >= 6 && ` ${n} `.includes(` ${c} `) ? c.length + own : 0;
-      if (score > 0 && (!best || score > best.score)) best = { def, score };
-    }
-  }
-  return best?.def ?? null;
+/** The known exercise a typed name refers to (so it gets the GIF and the instructions), or null. */
+export function matchLibraryExercise(name: string): KnownExercise | null {
+  return matchExerciseName(name);
 }
 
 function restSeconds(line: string): { sec: number | null; rest: string } {

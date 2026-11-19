@@ -31,7 +31,7 @@ export type ExerciseCardItem = {
 export function ExerciseSummaryCard({ item }: { item: ExerciseCardItem }) {
   const theme = useTheme();
   const [infoOpen, setInfoOpen] = useState(false);
-  const media = item.exerciseId ? getExerciseMedia(item.exerciseId) : undefined;
+  const media = item.exerciseId ? getExerciseMedia(item.exerciseId, item.name) : undefined;
 
   return (
     // The same flat surface as the macro-plan box and the meal cards, so the page reads as one set of cards.
