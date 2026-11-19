@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { PressableScale } from '@/components/motion/pressable-scale';
 import { ThemedText } from '@/components/themed-text';
+import { SwipeToStart } from '@/components/training/swipe-to-start';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon } from '@/components/ui/icon';
 import { Brand, OnBrand } from '@/constants/theme';
@@ -35,8 +36,7 @@ export function WorkoutBadge({ size = 60 }: { size?: number }) {
   );
 }
 
-/** The button that starts the session: an orange play triangle in an orange ring,
- * with no fill. 56 pt, comfortably over the HIG's 44 pt touch target. */
+/** The round status/swap disc on the card's left. 56 pt, comfortably over the HIG's 44 pt touch target. */
 const PLAY_SIZE = 56;
 
 export type WorkoutSummaryCardProps = {
@@ -46,7 +46,7 @@ export type WorkoutSummaryCardProps = {
   kcal: number;
   /** Opens the session detail (the text and the chevron). */
   onOpen: () => void;
-  /** Starts the session (the play button): only today's session has one. */
+  /** Starts the session (the "Scorri per iniziare" slider at the bottom): only today's session has one. */
   onStart?: () => void;
   /** Moves this session to today and today's here (the switch button on the days ahead). */
   onSwap?: () => void;
@@ -60,9 +60,9 @@ export type WorkoutSummaryCardProps = {
   progress?: { done: number; total: number };
 };
 
-/** A day's session: the play button that starts it, its name, "Forza - Livello base"
- * and its duration + estimated kcal. The whole box opens the session's sheet,
- * except the play button, which starts it. */
+/** A day's session: its name, "Forza - Livello base" and its duration + estimated
+ * kcal. The whole box opens the session's sheet; today's session also has the
+ * "Scorri per iniziare" slider at the bottom, which starts it. */
 export function WorkoutSummaryCard({ title, subtitle, minutes, kcal, onOpen, onStart, onSwap, status, onRecover, resume, progress }: WorkoutSummaryCardProps) {
   const theme = useTheme();
   const missed = status === 'missed';
@@ -78,13 +78,7 @@ export function WorkoutSummaryCard({ title, subtitle, minutes, kcal, onOpen, onS
       ]}>
       <Pressable onPress={onOpen} accessibilityRole="button" accessibilityLabel={`Dettagli: ${title}`} style={StyleSheet.absoluteFill} />
       <View style={styles.row} pointerEvents="box-none">
-        {onStart ? (
-          <PressableScale onPress={onStart} haptic="press" accessibilityRole="button" accessibilityLabel={`Inizia allenamento: ${title}`}>
-            <View style={[styles.play, { width: PLAY_SIZE, height: PLAY_SIZE, borderRadius: PLAY_SIZE / 2, borderColor: theme.accent }]}>
-              <Icon name="play" size={24} color={theme.accent} />
-            </View>
-          </PressableScale>
-        ) : onSwap ? (
+        {onSwap ? (
           <PressableScale onPress={onSwap} haptic="press" accessibilityRole="button" accessibilityLabel={`Anticipa a oggi: ${title}`}>
             <View style={[styles.play, styles.swap, { width: PLAY_SIZE, height: PLAY_SIZE, borderRadius: PLAY_SIZE / 2, backgroundColor: theme.accentSoft }]}>
               <Icon name="swap" size={26} color={theme.accent} />
@@ -130,6 +124,9 @@ export function WorkoutSummaryCard({ title, subtitle, minutes, kcal, onOpen, onS
           <Icon name="chevronRight" size={18} color={theme.textTertiary} />
         </View>
       </View>
+      {onStart && !resume ? (
+        <SwipeToStart onStart={onStart} accessibilityLabel={`Inizia allenamento: ${title}`} testID="workout-swipe-start" />
+      ) : null}
       {resume ? (
         <PressableScale
           onPress={resume.onResume}
