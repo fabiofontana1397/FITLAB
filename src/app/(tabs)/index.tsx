@@ -302,6 +302,7 @@ export default function HomeScreen() {
         </View>
 
         <GoalRing
+          compact
           band={band}
           copy={bandCopy}
           inactive={isFutureDay}
@@ -369,8 +370,8 @@ export default function HomeScreen() {
         }
       />
 
-      <View style={{ marginTop: 24 }}>
-        <SectionHeader title="Questa settimana" />
+      <View style={{ marginTop: 18 }}>
+        <SectionHeader title="Questa settimana" style={{ marginBottom: 10 }} />
       </View>
       <FlatCard radius={CARD_RADIUS} style={styles.weekCard}>
         <View style={styles.weekTitleRow}>
@@ -445,13 +446,6 @@ export default function HomeScreen() {
         trackedBalanceDays={trackedBalances.length}
         dailyGoalKcal={dailyGoalKcal}
         weeklyGoalKcal={weeklyGoalKcal}
-        weekTracked={weekDates.map((date) => loggedDates.has(date))}
-        todayIndex={weekDates.indexOf(today)}
-        onRegisterMeal={() => {
-          // Registered from the message, a meal is today's: that is the day the message talks about.
-          setViewDate(today);
-          openPopup(() => setRegisterMealOpen(true));
-        }}
       />
 
       {sessionOpen && viewPlanDay?.type === 'workout' ? (
@@ -574,8 +568,9 @@ const styles = StyleSheet.create({
     marginHorizontal: 12,
   },
   weekStrip: {
-    marginTop: 14,
-    marginBottom: 6,
+    // Tucked up under the header: the day cells carry their own vertical padding.
+    marginTop: -6,
+    marginBottom: 0,
   },
   headerIcons: {
     flexDirection: 'row',
@@ -618,7 +613,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   oggiCard: {
-    marginTop: 18,
+    marginTop: 10,
     paddingTop: 14,
     paddingBottom: 14,
     paddingHorizontal: 14,
@@ -634,14 +629,14 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   barsCard: {
-    marginTop: 18,
+    marginTop: 10,
     paddingVertical: 14,
     paddingHorizontal: 14,
   },
   actionsRow: {
     flexDirection: 'row',
-    gap: 12,
-    marginTop: 18,
+    gap: 10,
+    marginTop: 10,
   },
   // Pill-shaped: a short bar whose ends are half circles (radius = half the height), with a round icon disc at its start.
   actionWrap: {

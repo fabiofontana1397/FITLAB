@@ -22,12 +22,12 @@ const STRIPS = 31;
 const MID = (STRIPS - 1) / 2;
 const SPAN = 90;
 const R = 112;
-const LEN = 20;
-const STRIP_W = 7;
+const LEN = 26;
+const STRIP_W = 9;
 const R_IN = R - LEN / 2;
 const R_OUT = R + LEN / 2;
-/** The thin grey scale line over the ring, its dots, and the labels beyond it. */
-const LINE_R = R_OUT + 9;
+/** The thin grey scale line over the ring, its dots, and the labels beyond it: clear of a strip at its fullest swell. */
+const LINE_R = R_OUT + 18;
 const LABEL_R = LINE_R + 15;
 /** Room above the line for the goal's label over the centre strip. */
 const CY = LABEL_R + 26;
@@ -47,6 +47,9 @@ const arc = (r: number, from: number, to: number) => `M ${px(r, from)} ${py(r, f
 /** Height over width of the ring (without its message), and the width it is drawn at on a normal phone: the carousel scales it down to fit. */
 export const GOAL_RING_ASPECT = BASE_H / BASE_W;
 export const GOAL_RING_WIDTH = BASE_W;
+/** Compact (Home): drawing scale, and height down to the end names under the arc's ends (no kcal under them, no message). */
+const COMPACT_SCALE = 0.84;
+const COMPACT_H = CY + 26;
 
 const AnimatedLine = Animated.createAnimatedComponent(Line);
 
@@ -81,6 +84,8 @@ export type GoalRingProps = {
   onPress?: () => void;
   onGoalPress?: () => void;
   accessibilityLabel: string;
+  /** Home: a shorter card — just the ring and the names of its ends, without the kcal under them or the message below. */
+  compact?: boolean;
 };
 
 /**
@@ -95,12 +100,17 @@ export type GoalRingProps = {
  * strip growing as it passes, and the strip at the real value stays enlarged.
  * It rests on an end of the scale when the real value lies beyond it.
  */
-export function GoalRing({ band, copy, value, goalText, inactive = false, onPress, onGoalPress, accessibilityLabel }: GoalRingProps) {
+export function GoalRing({ band, copy, value, goalText, inactive = false, onPress, onGoalPress, accessibilityLabel, compact = false }: GoalRingProps) {
   const theme = useTheme();
   const reduceMotion = useReducedMotion();
   const focused = useIsSelectedTab();
   const [width, setWidth] = useState(BASE_W);
-  const k = Math.min(1.1, width / BASE_W);
+  const fit = Math.min(1.1, width / BASE_W);
+  // k scales the drawing (and every position on it); kt the text, which shrinks less so it stays readable.
+  const k = compact ? fit * COMPACT_SCALE : fit;
+  const kt = compact ? Math.max(k, 0.9) : k;
+  // Compact: the ends' labels sit beside the arc, so nothing hangs below its ends.
+  const drawH = compact ? COMPACT_H : BASE_H;
   const noReading = inactive || band.state === 'missing';
 
   const colors = useMemo(
@@ -166,14 +176,14 @@ export function GoalRing({ band, copy, value, goalText, inactive = false, onPres
     return c ? `rgba(${c[0]},${c[1]},${c[2]},0.13)` : theme.backgroundElement;
   })();
   const onLayout = (e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width);
-  const label = (size: number) => ({ fontSize: size * k, lineHeight: (size + 4) * k });
+  const label = (size: number) => ({ fontSize: size * kt, lineHeight: (size + 4) * kt });
   const lineColor = theme.textTertiary;
 
   return (
     <View style={styles.root}>
       <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={accessibilityLabel} accessibilityHint="Apre la spiegazione del grafico" style={styles.press} onLayout={onLayout}>
-        <View style={{ width: BASE_W * k, height: BASE_H * k }}>
-          <Svg width={BASE_W * k} height={BASE_H * k} viewBox={`0 0 ${BASE_W} ${BASE_H}`} style={StyleSheet.absoluteFill}>
+        <View style={{ width: BASE_W * k, height: drawH * k }}>
+          <Svg width={BASE_W * k} height={drawH * k} viewBox={`0 0 ${BASE_W} ${drawH}`} style={StyleSheet.absoluteFill}>
             {colors.map((c, i) => {
               return <Strip key={i} index={i} color={c} ang={ang} strength={strength} />;
             })}
@@ -216,7 +226,7 @@ export function GoalRing({ band, copy, value, goalText, inactive = false, onPres
             hitSlop={8}
             accessibilityRole="button"
             accessibilityLabel={`Obiettivo ${goalText}`}
-            style={[styles.goalLabel, { top: (CY - LINE_R - 32) * k, left: 0, right: 0, height: 18 * k }]}>
+            style={[styles.goalLabel, { top: (CY - LINE_R - 32) * k - (kt - k) * 14, left: 0, right: 0, height: 18 * kt }]}>
             <ThemedText style={label(12)} themeColor="textSecondary" numberOfLines={1}>
               Obiettivo
             </ThemedText>
@@ -225,31 +235,44 @@ export function GoalRing({ band, copy, value, goalText, inactive = false, onPres
             </ThemedText>
           </Pressable>
 
-          {/* The two ends of the scale. */}
-          <ThemedText themeColor="textSecondary" style={[styles.end, label(12), { left: (px(R, -SPAN) - 40) * k, top: (CY + 10) * k, width: 80 * k }]}>
-            ‹ Surplus
-          </ThemedText>
-          <ThemedText themeColor="textTertiary" style={[styles.end, label(11), { left: (px(R, -SPAN) - 40) * k, top: (CY + 27) * k, width: 80 * k }]}>
-            {formatSignedKcal(SCALE_KCAL)}
-          </ThemedText>
-          <ThemedText themeColor="textTertiary" style={[styles.end, label(11), { left: (px(R, SPAN) - 40) * k, top: (CY + 27) * k, width: 80 * k }]}>
-            {formatSignedKcal(-SCALE_KCAL)}
-          </ThemedText>
-          <ThemedText themeColor="textSecondary" style={[styles.end, label(12), { left: (px(R, SPAN) - 40) * k, top: (CY + 10) * k, width: 80 * k }]}>
-            Deficit ›
-          </ThemedText>
+          {/* The two ends of the scale: under the arc's ends, or (compact) beside them. */}
+          {compact ? (
+            <>
+              <ThemedText themeColor="textSecondary" style={[styles.end, label(12), { left: (px(R, -SPAN) - 40) * k, top: (CY + 6) * k, width: 80 * k }]}>
+                ‹ Surplus
+              </ThemedText>
+              <ThemedText themeColor="textSecondary" style={[styles.end, label(12), { left: (px(R, SPAN) - 40) * k, top: (CY + 6) * k, width: 80 * k }]}>
+                Deficit ›
+              </ThemedText>
+            </>
+          ) : (
+            <>
+            <ThemedText themeColor="textSecondary" style={[styles.end, label(12), { left: (px(R, -SPAN) - 40) * k, top: (CY + 10) * k, width: 80 * k }]}>
+              ‹ Surplus
+            </ThemedText>
+            <ThemedText themeColor="textTertiary" style={[styles.end, label(11), { left: (px(R, -SPAN) - 40) * k, top: (CY + 27) * k, width: 80 * k }]}>
+              {formatSignedKcal(SCALE_KCAL)}
+            </ThemedText>
+            <ThemedText themeColor="textTertiary" style={[styles.end, label(11), { left: (px(R, SPAN) - 40) * k, top: (CY + 27) * k, width: 80 * k }]}>
+              {formatSignedKcal(-SCALE_KCAL)}
+            </ThemedText>
+            <ThemedText themeColor="textSecondary" style={[styles.end, label(12), { left: (px(R, SPAN) - 40) * k, top: (CY + 10) * k, width: 80 * k }]}>
+              Deficit ›
+            </ThemedText>
+            </>
+          )}
 
           {/* The middle: the balance, the goal, the state. */}
-          <View pointerEvents="none" style={[styles.centre, { top: (CY - 82) * k, paddingHorizontal: 70 * k }]}>
-            <ThemedText style={[styles.value, { fontSize: (value.length >= 7 ? 22 : value.length === 6 ? 25 : 28) * k, lineHeight: 32 * k }]} numberOfLines={1}>
+          <View pointerEvents="none" style={[styles.centre, { top: (CY - 82) * k - (kt - k) * 40, paddingHorizontal: 70 * k }]}>
+            <ThemedText style={[styles.value, { fontSize: (value.length >= 7 ? 22 : value.length === 6 ? 25 : 28) * kt, lineHeight: 32 * kt }]} numberOfLines={1}>
               {value}
             </ThemedText>
             <ThemedText style={[styles.unit, label(12)]} themeColor="textSecondary">
               kcal di bilancio
             </ThemedText>
           </View>
-          <View style={[styles.chipRow, { top: (CY - 26) * k, height: 24 * k }]}>
-            <View pointerEvents="none" style={[styles.chip, { backgroundColor: chipBg, height: 24 * k, borderRadius: 12 * k, paddingHorizontal: 11 * k }]}>
+          <View style={[styles.chipRow, { top: (CY - 26) * k - (kt - k) * 10, height: 24 * kt }]}>
+            <View pointerEvents="none" style={[styles.chip, { backgroundColor: chipBg, height: 24 * kt, borderRadius: 12 * kt, paddingHorizontal: 11 * kt }]}>
               <View style={[styles.dot, { backgroundColor: toneColor }]} />
               <ThemedText style={[styles.chipText, { color: toneColor }, label(12)]} numberOfLines={1}>
                 {copy.badge}
@@ -259,8 +282,8 @@ export function GoalRing({ band, copy, value, goalText, inactive = false, onPres
         </View>
       </Pressable>
 
-      <ThemedText style={[styles.message, { color: messageColor }]}>{copy.message}</ThemedText>
-      {copy.cause ? (
+      {compact ? null : <ThemedText style={[styles.message, { color: messageColor }]}>{copy.message}</ThemedText>}
+      {copy.cause && !compact ? (
         <ThemedText style={styles.cause} themeColor="textSecondary">
           {copy.cause}
         </ThemedText>
