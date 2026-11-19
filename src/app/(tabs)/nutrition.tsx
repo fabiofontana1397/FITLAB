@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
+import { interpolate, useDerivedValue, useSharedValue } from 'react-native-reanimated';
 
 import { openPopup } from '@/lib/open-popup';
 import { FoodSearchModal } from '@/components/nutrition/food-search-modal';
 import { MealCard } from '@/components/nutrition/meal-card';
 import { mealSlotColor } from '@/components/nutrition/meal-picker-modal';
-import { ScreenScroll } from '@/components/screen-scroll';
+import { HEADER_LIST_TOP, ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { DayCalendarModal } from '@/components/ui/day-calendar-modal';
 import { FlatCard } from '@/components/ui/flat-card';
@@ -62,6 +63,15 @@ export default function NutritionScreen() {
   // Every meal opens showing its foods; tapping a meal's header folds it.
   const [foldedSlots, setFoldedSlots] = useState<MealSlot[]>([]);
 
+  // Scrolling down, the macro rings stay pinned under the header (compact); back at the top the full card,
+  // calories included, is the only one showing again. The compact copy comes in just as the card's rings
+  // reach the header, so they read as staying put.
+  const scrollOffset = useSharedValue(0);
+  const ringsTop = useSharedValue(1e9);
+  const pinnedProgress = useDerivedValue(() =>
+    interpolate(scrollOffset.value, [ringsTop.value - 8, ringsTop.value + 20], [0, 1], 'clamp')
+  );
+
   useEnsurePlan('diet');
 
   const monthIndex = dietPlan ? currentMonthIndex(dietPlan) : 1;
@@ -105,7 +115,13 @@ export default function NutritionScreen() {
   ];
 
   return (
-    <ScreenScroll reveal header={<TabHeader title="Nutrizione" onCalendarPress={() => openPopup(() => setCalendarOpen(true))} />} contentContainerStyle={styles.page}>
+    <ScreenScroll
+      reveal
+      header={<TabHeader title="Nutrizione" onCalendarPress={() => openPopup(() => setCalendarOpen(true))} />}
+      pinned={<PinnedMacroRings rings={macroRings} totals={totals} />}
+      pinnedProgress={pinnedProgress}
+      scrollOffset={scrollOffset}
+      contentContainerStyle={styles.page}>
       <FlatCard radius={CARD_RADIUS} style={styles.calorieCard}>
         <View style={styles.cardTitleRow}>
           <Icon name="flame" size={20} color={theme.accent} />
@@ -124,7 +140,12 @@ export default function NutritionScreen() {
         </View>
 
         <ThemedText style={[styles.cardTitle, styles.macroHeading]}>Macronutrienti</ThemedText>
-        <View style={styles.ringsRow}>
+        <View
+          style={styles.ringsRow}
+          onLayout={(e) => {
+            // The card is the page's first section: its top sits at the list's top padding (+ its 1px border).
+            ringsTop.set(HEADER_LIST_TOP + 1 + e.nativeEvent.layout.y);
+          }}>
           {macroRings.map((macro) => (
             <View key={macro.key} style={styles.ringCol}>
               <ProgressRing
@@ -218,6 +239,30 @@ export default function NutritionScreen() {
   );
 }
 
+type MacroRing = { key: 'protein' | 'carbs' | 'fats'; label: string; color: string; target: number };
+
+/** The three macro rings in a compact strip, pinned under the header while the full card is scrolled away. */
+function PinnedMacroRings({ rings, totals }: { rings: MacroRing[]; totals: Record<MacroRing['key'], number> }) {
+  const theme = useTheme();
+  return (
+    <FlatCard radius={CARD_RADIUS} style={styles.pinnedCard}>
+      {rings.map((macro) => (
+        <View key={macro.key} style={styles.ringCol}>
+          <ProgressRing
+            size={52}
+            strokeWidth={4}
+            progress={macro.target > 0 ? totals[macro.key] / macro.target : 0}
+            color={macro.color}
+            trackColor={theme.backgroundElement}>
+            <ThemedText style={styles.pinnedRingValue}>{Math.round(totals[macro.key])} g</ThemedText>
+          </ProgressRing>
+          <ThemedText style={styles.pinnedRingLabel}>{macro.label}</ThemedText>
+        </View>
+      ))}
+    </FlatCard>
+  );
+}
+
 const styles = StyleSheet.create({
   page: {
     paddingHorizontal: SCREEN_PADDING,
@@ -303,6 +348,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 18,
     fontWeight: '800',
+  },
+  pinnedCard: {
+    flexDirection: 'row',
+    paddingVertical: 10,
+  },
+  pinnedRingValue: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '800',
+  },
+  pinnedRingLabel: {
+    marginTop: 5,
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '500',
   },
   mealsHeader: {
     marginTop: 20,
