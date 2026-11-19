@@ -24,6 +24,6 @@ export const STRATEGY_MODEL = 'claude-haiku-4-5';
 // Vision analysis of progress photos: low-frequency, on-demand, and quality
 // (not cost) is what matters for a comment the user actually reads.
 export const PHOTO_ANALYSIS_MODEL = 'claude-sonnet-5';
-// Reading a workout card from a photo/PDF: handwriting and tables need a strong vision model, and it runs
-// only when the person picks a file.
-export const WORKOUT_CARD_MODEL = 'claude-sonnet-5';
+// Reading a workout card or a diet from a photo/PDF: the cheapest model with vision and structured outputs
+// (about $0.001 per scan, ~20x less than Sonnet). It runs only when the person picks a file.
+export const WORKOUT_CARD_MODEL = 'claude-haiku-5-5';
