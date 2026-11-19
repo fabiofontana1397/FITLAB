@@ -18,8 +18,6 @@ export type MealCardProps = {
   label: string;
   time: string;
   icon: IconName;
-  /** The meal's accent: its icon, and nothing else (the kcal and the bar are the app's orange). */
-  color: string;
   entries: MealFoodEntry[];
   totals: Totals;
   expanded: boolean;
@@ -34,25 +32,20 @@ export type MealCardProps = {
 const OPEN_TIMING = { duration: 320, easing: Easing.bezier(0.22, 1, 0.36, 1) };
 const CLOSE_TIMING = { duration: 240, easing: Easing.bezier(0.4, 0, 0.2, 1) };
 
-function withAlpha(hex: string, alpha: number): string {
-  if (!/^#([0-9a-f]{6})$/i.test(hex)) return hex;
-  return `${hex}${Math.round(Math.min(Math.max(alpha, 0), 1) * 255).toString(16).padStart(2, '0')}`;
-}
-
 function countLabel(n: number): string {
   return n === 0 ? 'Nessun alimento' : n === 1 ? '1 alimento' : `${n} alimenti`;
 }
 
 /**
  * One meal of the day on Nutrizione, laid out as in the reference:
- * - a round icon, the meal's name and "09:30 · 5 alimenti" on the left; its
+ * - a plain icon, the meal's name and "09:30 · 5 alimenti" on the left; its
  *   kcal in orange on the right;
  * - protein / carbs / fat of the meal on one line;
  * - the foods, each with its picture, grams, kcal and P · C · G, separated by
  *   hairlines, then a full-width "+ Aggiungi alimento" outline button.
  * Tapping the header folds the foods away.
  */
-export function MealCard({ label, time, icon, color, entries, totals, expanded, onToggle, onEditEntry, onDeleteEntry, onAddFood }: MealCardProps) {
+export function MealCard({ label, time, icon, entries, totals, expanded, onToggle, onEditEntry, onDeleteEntry, onAddFood }: MealCardProps) {
   const theme = useTheme();
   // 0 = folded, 1 = open. The foods stay mounted and the frame's height follows
   // `progress`, so the cards below slide in the same frame instead of jumping.
@@ -75,8 +68,8 @@ export function MealCard({ label, time, icon, color, entries, totals, expanded, 
   return (
     <FlatCard radius={24} style={styles.card}>
       <Pressable onPress={onToggle} accessibilityRole="button" accessibilityState={{ expanded }} accessibilityLabel={`${label}, ${Math.round(totals.kcal)} kcal`} style={styles.header}>
-        <View style={[styles.icon, { backgroundColor: withAlpha(color, 0.14) }]}>
-          <Icon name={icon} size={22} color={color} />
+        <View style={styles.icon}>
+          <Icon name={icon} size={30} color={theme.text} />
         </View>
         <View style={styles.titleCol}>
           <ThemedText style={styles.name} numberOfLines={1}>
@@ -171,10 +164,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
+  // As tall as the two text lines beside it, so the icon sits centred on them.
   icon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 32,
+    alignSelf: 'stretch',
     alignItems: 'center',
     justifyContent: 'center',
   },
