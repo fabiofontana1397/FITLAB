@@ -11,7 +11,6 @@ import { ThemedText } from '@/components/themed-text';
 import { DayCalendarModal } from '@/components/ui/day-calendar-modal';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon } from '@/components/ui/icon';
-import { IosSwitch } from '@/components/ui/ios-switch';
 import { TabHeader } from '@/components/tab-header';
 import { ProgressRing } from '@/components/ui/progress-ring';
 import { TickProgressBar } from '@/components/ui/tick-progress-bar';
@@ -50,9 +49,6 @@ export default function NutritionScreen() {
   const theme = useTheme();
   const currentUser = useUserStore();
   const entries = useNutritionStore((s) => s.entries);
-  const seededDates = useNutritionStore((s) => s.seededDates);
-  const seedDayFromPlan = useNutritionStore((s) => s.seedDayFromPlan);
-  const unseedDay = useNutritionStore((s) => s.unseedDay);
   const removeEntry = useNutritionStore((s) => s.removeEntry);
   const dietPlan = usePlanStore((s) => s.dietPlan);
   const [activeSlot, setActiveSlot] = useState<MealSlot | null>(null);
@@ -96,7 +92,6 @@ export default function NutritionScreen() {
         return { id: m.slotId as MealSlot, label: m.label, time: m.time, icon: meta?.icon ?? ('mealSnack' as const) };
       })
     : MEAL_SLOTS;
-  const isFollowingPlan = seededDates.includes(selectedDate);
 
   const mealsHeading =
     selectedDate === today
@@ -118,28 +113,28 @@ export default function NutritionScreen() {
     <ScreenScroll
       reveal
       header={<TabHeader title="Nutrizione" onCalendarPress={() => openPopup(() => setCalendarOpen(true))} />}
-      pinned={<PinnedMacroRings rings={macroRings} totals={totals} />}
+      pinned={<PinnedMacroRings rings={macroRings} totals={totals} calorieTarget={calorieTarget} />}
       pinnedProgress={pinnedProgress}
       scrollOffset={scrollOffset}
       contentContainerStyle={styles.page}>
       <FlatCard radius={CARD_RADIUS} style={styles.calorieCard}>
-        <View style={styles.cardTitleRow}>
-          <Icon name="flame" size={20} color={theme.accent} />
-          <ThemedText style={styles.calorieTitle}>{selectedDate === today ? 'Calorie di oggi' : 'Calorie del giorno'}</ThemedText>
-        </View>
-
-        <View style={styles.bigNumberRow}>
-          <ThemedText style={styles.bigNumber}>{formatKcal(totals.kcal)}</ThemedText>
-          <ThemedText style={styles.bigNumberSuffix} themeColor="textTertiary">
-            / {formatKcal(calorieTarget)} kcal
-          </ThemedText>
+        <View style={styles.calorieHeadRow}>
+          <View style={styles.cardTitleRow}>
+            <Icon name="flame" size={18} color={theme.accent} />
+            <ThemedText style={styles.calorieTitle}>{selectedDate === today ? 'Calorie di oggi' : 'Calorie del giorno'}</ThemedText>
+          </View>
+          <View style={styles.bigNumberRow}>
+            <ThemedText style={styles.bigNumber}>{formatKcal(totals.kcal)}</ThemedText>
+            <ThemedText style={styles.bigNumberSuffix} themeColor="textTertiary">
+              / {formatKcal(calorieTarget)} kcal
+            </ThemedText>
+          </View>
         </View>
 
         <View style={styles.calorieBar}>
-          <TickProgressBar progress={calorieRatio} ticks={false} />
+          <TickProgressBar progress={calorieRatio} height={8} ticks={false} />
         </View>
 
-        <ThemedText style={[styles.cardTitle, styles.macroHeading]}>Macronutrienti</ThemedText>
         <View
           style={styles.ringsRow}
           onLayout={(e) => {
@@ -149,16 +144,18 @@ export default function NutritionScreen() {
           {macroRings.map((macro) => (
             <View key={macro.key} style={styles.ringCol}>
               <ProgressRing
-                size={81}
+                size={58}
                 strokeWidth={5}
                 progress={macro.target > 0 ? totals[macro.key] / macro.target : 0}
                 color={macro.color}
                 trackColor={theme.backgroundElement}>
                 <ThemedText style={styles.ringValue}>{Math.round(totals[macro.key])} g</ThemedText>
               </ProgressRing>
-              <ThemedText style={styles.ringLabel}>{macro.label}</ThemedText>
-              <ThemedText style={styles.ringTarget} themeColor="textSecondary">
-                / {Math.round(macro.target)} g
+              <ThemedText style={styles.ringLabel}>
+                {macro.label}{' '}
+                <ThemedText style={styles.ringTarget} themeColor="textSecondary">
+                  / {Math.round(macro.target)} g
+                </ThemedText>
               </ThemedText>
             </View>
           ))}
@@ -168,21 +165,6 @@ export default function NutritionScreen() {
       <View style={styles.mealsHeader}>
         <ThemedText style={styles.sectionTitle}>{mealsHeading}</ThemedText>
       </View>
-
-      {planDayForSelectedDate ? (
-        <View style={[styles.followRow, { backgroundColor: theme.backgroundElevated, borderColor: theme.boxEdge }]}>
-          <ThemedText style={styles.followText}>
-            {selectedDate === today ? 'Inserisci la dieta di oggi nei pasti' : 'Inserisci la dieta di questo giorno nei pasti'}
-          </ThemedText>
-          <IosSwitch
-            value={isFollowingPlan}
-            onValueChange={(on) => {
-              if (on) seedDayFromPlan(selectedDate, planDayForSelectedDate.meals);
-              else unseedDay(selectedDate);
-            }}
-          />
-        </View>
-      ) : null}
 
       <View style={styles.mealsList}>
         {mealSlots.map((meta) => {
@@ -242,23 +224,44 @@ export default function NutritionScreen() {
 type MacroRing = { key: 'protein' | 'carbs' | 'fats'; label: string; color: string; target: number };
 
 /** The three macro rings in a compact strip, pinned under the header while the full card is scrolled away. */
-function PinnedMacroRings({ rings, totals }: { rings: MacroRing[]; totals: Record<MacroRing['key'], number> }) {
+function PinnedMacroRings({
+  rings,
+  totals,
+  calorieTarget,
+}: {
+  rings: MacroRing[];
+  totals: Record<MacroRing['key'] | 'kcal', number>;
+  calorieTarget: number;
+}) {
   const theme = useTheme();
   return (
     <FlatCard radius={CARD_RADIUS} style={styles.pinnedCard}>
-      {rings.map((macro) => (
-        <View key={macro.key} style={styles.ringCol}>
-          <ProgressRing
-            size={52}
-            strokeWidth={4}
-            progress={macro.target > 0 ? totals[macro.key] / macro.target : 0}
-            color={macro.color}
-            trackColor={theme.backgroundElement}>
-            <ThemedText style={styles.pinnedRingValue}>{Math.round(totals[macro.key])} g</ThemedText>
-          </ProgressRing>
-          <ThemedText style={styles.pinnedRingLabel}>{macro.label}</ThemedText>
+      <View style={styles.pinnedKcalRow}>
+        <ThemedText style={styles.pinnedKcal}>
+          {formatKcal(totals.kcal)}
+          <ThemedText style={styles.pinnedKcalTarget} themeColor="textTertiary">
+            {' '}/ {formatKcal(calorieTarget)} kcal
+          </ThemedText>
+        </ThemedText>
+        <View style={styles.pinnedKcalBar}>
+          <TickProgressBar progress={calorieTarget > 0 ? totals.kcal / calorieTarget : 0} height={6} ticks={false} />
         </View>
-      ))}
+      </View>
+      <View style={styles.pinnedRingsRow}>
+        {rings.map((macro) => (
+          <View key={macro.key} style={styles.pinnedRingCol}>
+            <ProgressRing
+              size={40}
+              strokeWidth={4}
+              progress={macro.target > 0 ? totals[macro.key] / macro.target : 0}
+              color={macro.color}
+              trackColor={theme.backgroundElement}>
+              <ThemedText style={styles.pinnedRingValue}>{Math.round(totals[macro.key])}</ThemedText>
+            </ProgressRing>
+            <ThemedText style={styles.pinnedRingLabel}>{macro.label}</ThemedText>
+          </View>
+        ))}
+      </View>
     </FlatCard>
   );
 }
@@ -282,20 +285,22 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   calorieCard: {
-    padding: CARD_PADDING,
+    paddingHorizontal: CARD_PADDING,
+    paddingTop: 12,
     paddingBottom: 10,
+  },
+  calorieHeadRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
   },
   cardTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   calorieTitle: {
-    fontSize: 19,
-    lineHeight: 24,
-    fontWeight: '700',
-  },
-  cardTitle: {
     fontSize: 15,
     lineHeight: 20,
     fontWeight: '700',
@@ -303,25 +308,21 @@ const styles = StyleSheet.create({
   bigNumberRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    gap: 6,
-    marginTop: 10,
+    gap: 4,
   },
   bigNumber: {
-    fontSize: 32,
-    lineHeight: 42,
+    fontSize: 22,
+    lineHeight: 28,
     fontWeight: '800',
-    letterSpacing: -0.8,
+    letterSpacing: -0.5,
   },
   bigNumberSuffix: {
-    fontSize: 13,
-    lineHeight: 17,
+    fontSize: 12,
+    lineHeight: 16,
     fontWeight: '500',
   },
   calorieBar: {
-    marginTop: 11,
-  },
-  macroHeading: {
-    marginTop: 16,
+    marginTop: 8,
   },
   ringsRow: {
     flexDirection: 'row',
@@ -333,40 +334,68 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   ringValue: {
-    fontSize: 16,
-    lineHeight: 21,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '800',
   },
   ringLabel: {
-    marginTop: 6,
-    fontSize: 13,
-    lineHeight: 17,
-    fontWeight: '500',
-  },
-  ringTarget: {
-    marginTop: 2,
-    fontSize: 14,
-    lineHeight: 18,
-    fontWeight: '800',
-  },
-  pinnedCard: {
-    flexDirection: 'row',
-    paddingVertical: 10,
-  },
-  pinnedRingValue: {
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: '800',
-  },
-  pinnedRingLabel: {
     marginTop: 5,
     fontSize: 12,
     lineHeight: 16,
     fontWeight: '500',
   },
+  ringTarget: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '700',
+  },
+  pinnedCard: {
+    paddingHorizontal: CARD_PADDING,
+    paddingVertical: 8,
+    gap: 6,
+  },
+  pinnedKcalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  pinnedKcal: {
+    fontSize: 13,
+    lineHeight: 17,
+    fontWeight: '800',
+  },
+  pinnedKcalTarget: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '500',
+  },
+  pinnedKcalBar: {
+    flex: 1,
+  },
+  pinnedRingsRow: {
+    flexDirection: 'row',
+    marginHorizontal: -CARD_PADDING,
+  },
+  pinnedRingCol: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  pinnedRingValue: {
+    fontSize: 11,
+    lineHeight: 14,
+    fontWeight: '800',
+  },
+  pinnedRingLabel: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '500',
+  },
   mealsHeader: {
-    marginTop: 20,
-    marginBottom: 9,
+    marginTop: 14,
+    marginBottom: 8,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -378,22 +407,6 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
   },
   mealsList: {
-    gap: 12,
-  },
-  followRow: {
-    marginBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 11,
-    paddingHorizontal: CARD_PADDING,
-    paddingVertical: 10,
-    borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  followText: {
-    flex: 1,
-    fontSize: 15,
-    lineHeight: 20,
-    fontWeight: '500',
+    gap: 10,
   },
 });
