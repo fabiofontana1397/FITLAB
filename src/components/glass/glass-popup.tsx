@@ -1,51 +1,41 @@
-import { BlurView } from 'expo-blur';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Modal, Platform, Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
-import Animated, { Easing, interpolate, runOnJS, useAnimatedProps, useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, withTiming, type SharedValue } from 'react-native-reanimated';
+import { useCallback, useEffect, useState } from 'react';
+import { Modal, Pressable, StyleSheet, View, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
+import Animated, { interpolate, runOnJS, useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, withTiming, type SharedValue } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { GlassSurface } from '@/components/glass/glass-surface';
 import { RevealBoundary } from '@/components/motion/reveal';
-import { SpringPopup } from '@/constants/motion';
+import { SpringSheet, TimingExit } from '@/constants/motion';
 import { Radius, Spacing } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { hapticSoft } from '@/lib/haptics';
 
-const POPUP_MAX_WIDTH = 380;
-const BLUR_INTENSITY = 55;
-/** The blur is at full strength when the card is this far in (it is fully opaque at 0.5): the backdrop is there as the card shows. */
-const BLUR_FULL_AT = 0.4;
-const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
-/** The web draws the backdrop blur with `backdrop-filter`, which is costly to repaint while anything moves: there it
- * comes in only once the popup has landed, and goes first when it leaves. */
-const WEB = Platform.OS === 'web';
-const BLUR_IN_DELAY_MS = 300;
-const BLUR_FADE_MS = 220;
-const EXIT_MS = 170;
+const POPUP_MAX_WIDTH = 420;
+/** Gap between the card and the bottom edge (on top of the home-indicator inset), like a notification banner. */
+const BOTTOM_GAP = Spacing.three;
+/** A long popup can still grow, but never past this share of the screen. */
+const MAX_HEIGHT_SHARE = 0.85;
 
 export type GlassPopupProps = {
   visible: boolean;
   onClose: () => void;
   children: React.ReactNode;
-  /** Extra styles for the glass card itself (padding, gap…). */
+  /** Extra styles for the card itself (padding, gap…). */
   style?: StyleProp<ViewStyle>;
   maxWidth?: number;
 };
 
-/** The app's centered popup: a Liquid-Glass card floating in the middle of
- * the screen while everything behind it is blurred (and slightly dimmed, so
- * the card still reads on Android, where blur support is partial). Tapping
- * outside the card, or swiping it down, dismisses it. Used for calendars, "Registra allenamento"
- * and the "Registra pasto" meal picker.
+/** The app's popup: a card floating just above the bottom edge that slides up from below, the way an iOS
+ * notification or action sheet does. It is as tall as its content, so a short popup (a confirmation, a download)
+ * stays in the lower half of the screen instead of reaching the top. The page behind is only dimmed, never
+ * blurred: a full-screen blur is the costliest thing to animate and was what made opening and closing stutter.
+ * Tapping outside the card, or swiping it down, dismisses it.
  *
- * It animates only what is cheap to animate: the scrim fades, the card rises
- * and grows, and nothing is faded on top of a live backdrop blur (the Modal's
- * own fade did exactly that, over a full-screen blur and a second one inside
- * the card). On the web the card carries no blur of its own, since its
- * backdrop is already blurred. */
+ * Only cheap properties move: the card's translateY (on the UI thread, no bounce) and the scrim's opacity. */
 export function GlassPopup({ visible, onClose, children, style, maxWidth = POPUP_MAX_WIDTH }: GlassPopupProps) {
-  const isDark = useColorScheme() === 'dark';
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
+  const { height } = useWindowDimensions();
   const reduceMotion = useReducedMotion();
 
   // The Modal stays mounted for the exit animation: `visible` going false plays it, then the Modal goes.
@@ -53,67 +43,49 @@ export function GlassPopup({ visible, onClose, children, style, maxWidth = POPUP
   // Opening while unmounted: mount in this very render (adjusting state from a changed prop, the way React asks for it).
   if (visible && !mounted) setMounted(true);
   const progress = useSharedValue(0);
-  const blur = useSharedValue(0);
-  const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const unmount = useCallback(() => setMounted(false), []);
 
   useEffect(() => {
-    if (blurTimer.current) clearTimeout(blurTimer.current);
     if (visible) {
       hapticSoft();
-      progress.value = reduceMotion ? 1 : withSpring(1, SpringPopup);
-      if (WEB) blurTimer.current = setTimeout(() => (blur.value = reduceMotion ? 1 : withTiming(1, { duration: BLUR_FADE_MS })), reduceMotion ? 0 : BLUR_IN_DELAY_MS);
+      progress.value = reduceMotion ? 1 : withSpring(1, SpringSheet);
       return;
     }
-    // Leaving: the blur first (fast), the card and scrim alongside, then the Modal.
-    if (WEB) blur.value = withTiming(0, { duration: 90 });
-    progress.value = withTiming(0, { duration: reduceMotion ? 0 : EXIT_MS, easing: Easing.in(Easing.cubic) }, (finished) => {
+    progress.value = withTiming(0, reduceMotion ? { duration: 0 } : TimingExit, (finished) => {
       if (finished) runOnJS(unmount)();
     });
-    return () => {
-      if (blurTimer.current) clearTimeout(blurTimer.current);
-    };
-  }, [visible, reduceMotion, progress, blur, unmount]);
+  }, [visible, reduceMotion, progress, unmount]);
 
-  const scrimStyle = useAnimatedStyle(() => ({ opacity: interpolate(progress.value, [0, BLUR_FULL_AT], [0, 1], 'clamp') }));
-  // Web: the backdrop blur fades in once the card has landed. Native: its intensity follows the card's own progress
-  // (animated props, no opacity layer over a live blur), so scrim, blur and card all arrive and leave as one motion.
-  const blurStyle = useAnimatedStyle(() => ({ opacity: WEB ? blur.value : 1 }));
-  const blurProps = useAnimatedProps(() => ({ intensity: WEB ? 40 : Math.max(1, Math.min(1, progress.value / BLUR_FULL_AT) * BLUR_INTENSITY) }));
+  const scrimStyle = useAnimatedStyle(() => ({ opacity: interpolate(progress.value, [0, 1], [0, 1], 'clamp') }));
 
   return (
     <Modal visible={mounted} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
       <RevealBoundary>
-      <View style={styles.root}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose}>
-          <Animated.View style={[StyleSheet.absoluteFill, scrimStyle, { backgroundColor: theme.scrimSoft }]} />
-          <Animated.View style={[StyleSheet.absoluteFill, blurStyle]} pointerEvents="none">
-            <AnimatedBlurView animatedProps={blurProps} intensity={WEB ? 40 : 1} tint={isDark ? 'dark' : 'light'} blurMethod="dimezisBlurViewSdk31Plus" style={StyleSheet.absoluteFill} />
-          </Animated.View>
-        </Pressable>
-        <PopupCard progress={progress} style={[styles.cardWrap, { maxWidth }]}>
-          {/* Swiping the card down dismisses it, like an iPhone sheet; the grabber says so. */}
-          <GlassSurface
-            level="overlay"
-            radius={Radius.xlarge}
-            blur={!WEB}
-            style={[styles.card, WEB && !isDark && styles.cardFillLight, isDark && { backgroundColor: theme.surfacePopup }, style]}
-            swipeToDismiss={onClose}>
-            {children}
-          </GlassSurface>
-        </PopupCard>
-      </View>
+        <View style={[styles.root, { paddingBottom: insets.bottom + BOTTOM_GAP }]}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Chiudi">
+            <Animated.View style={[StyleSheet.absoluteFill, scrimStyle, { backgroundColor: theme.scrimSoft }]} />
+          </Pressable>
+          <PopupCard progress={progress} distance={height} style={[styles.cardWrap, { maxWidth, maxHeight: height * MAX_HEIGHT_SHARE }]}>
+            {/* Swiping the card down dismisses it, like an iPhone sheet. */}
+            <GlassSurface
+              level="overlay"
+              radius={Radius.xlarge}
+              blur={false}
+              style={[styles.card, { backgroundColor: theme.surfacePopup }, style]}
+              swipeToDismiss={onClose}>
+              {children}
+            </GlassSurface>
+          </PopupCard>
+        </View>
       </RevealBoundary>
     </Modal>
   );
 }
 
-/** The card springs up from slightly smaller and lower as the scrim comes in — it lands, rather than just appearing —
- * and eases back the other way on exit. */
-function PopupCard({ progress, style, children }: { progress: SharedValue<number>; style?: StyleProp<ViewStyle>; children: React.ReactNode }) {
+/** The card rises from below the bottom edge and settles without overshoot; on exit it slides back down. */
+function PopupCard({ progress, distance, style, children }: { progress: SharedValue<number>; distance: number; style?: StyleProp<ViewStyle>; children: React.ReactNode }) {
   const animatedStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(progress.value, [0, 0.5], [0, 1], 'clamp'),
-    transform: [{ translateY: (1 - progress.value) * 18 }, { scale: 0.94 + progress.value * 0.06 }],
+    transform: [{ translateY: (1 - progress.value) * distance }],
   }));
 
   return <Animated.View style={[style, { pointerEvents: 'box-none' }, animatedStyle]}>{children}</Animated.View>;
@@ -123,18 +95,13 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
-    padding: Spacing.four,
+    justifyContent: 'flex-end',
+    paddingHorizontal: Spacing.three,
   },
   cardWrap: {
     width: '100%',
-    maxHeight: '90%',
   },
   card: {
     padding: Spacing.four,
-  },
-  // Without its own blur the card needs a base fill to read over the (already blurred) page behind it.
-  cardFillLight: {
-    backgroundColor: 'rgba(255,255,255,0.92)',
   },
 });

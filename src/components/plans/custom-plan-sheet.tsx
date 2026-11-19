@@ -21,6 +21,10 @@ import { usePlanStore } from '@/store/plan-store';
 
 export type CustomPlanKind = 'training' | 'diet';
 
+/** Exit durations of the confirmation popup and of the sheet (TimingExit, 240 ms), with a little slack. */
+const POPUP_EXIT_MS = 200;
+const SHEET_EXIT_MS = 280;
+
 const COPY = {
   training: {
     title: 'La tua scheda',
@@ -147,13 +151,20 @@ export function CustomPlanSheet({ kind }: { kind: CustomPlanKind }) {
   const parsed = workout ?? diet;
   const weightKg = ctx.weightKg > 0 ? ctx.weightKg : undefined;
 
+  // One movement at a time: the confirmation popup slides away, then the sheet, and only once both are gone is the
+  // plan rebuilt. Rebuilding (and re-rendering the Piani page under the sheet) while they moved was the stutter.
   const commit = (close: () => void) => {
-    if (workout?.ok) importCustomTraining(answers, workout.week, weightKg);
-    else if (diet?.ok) importCustomDiet(answers, diet.week, weightKg);
-    else return;
+    const importPlan = workout?.ok
+      ? () => importCustomTraining(answers, workout.week, weightKg)
+      : diet?.ok
+        ? () => importCustomDiet(answers, diet.week, weightKg)
+        : null;
+    if (!importPlan) return;
     hapticSuccess();
+    const fromPopup = confirmOpen;
     setConfirmOpen(false);
-    close();
+    setTimeout(close, fromPopup ? POPUP_EXIT_MS : 0);
+    setTimeout(importPlan, (fromPopup ? POPUP_EXIT_MS : 0) + SHEET_EXIT_MS);
   };
 
   const apply = (close: () => void) => {
