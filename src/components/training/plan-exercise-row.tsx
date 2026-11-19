@@ -34,7 +34,7 @@ export function PlanExerciseRow({
   const theme = useTheme();
   const [infoOpen, setInfoOpen] = useState(false);
   const [loadModalOpen, setLoadModalOpen] = useState(false);
-  const media = getExerciseMedia(exercise.id);
+  const media = getExerciseMedia(exercise.id, exercise.name);
   const startingReps = (exercise.reps.match(/\d+/) ?? ['8'])[0];
 
   const isBodyweight = exercise.suggestedKg == null && latestWeightKg == null;
@@ -54,15 +54,16 @@ export function PlanExerciseRow({
     cues: exercise.cues,
   };
   const recentHistory = history.slice(-4);
+  // Cards read from a trainer's sheet often carry the sets in the reps ("4x10+10+max", "2x20, 10, 8"): no second count in front.
+  const setsLabel = /\d\s*[x×]\s*\d/i.test(exercise.reps) ? exercise.reps.replace(/(\d)\s*x\s*(\d)/gi, '$1×$2') : `${exercise.sets}×${exercise.reps}`;
 
   return (
     <FlatCard radius={Radius.large} style={[styles.card, completed ? { opacity: 0.72 } : undefined]}>
       <View style={styles.header}>
         <CompletionToggle completed={completed} onToggle={onToggleCompleted} />
 
-        <ThemedText
-          numberOfLines={1}
-          style={[styles.nameText, completed ? { textDecorationLine: 'line-through' } : undefined]}>
+        {/* The name takes the free width and wraps onto more lines: the card grows instead of cutting it. */}
+        <ThemedText style={[styles.nameText, completed ? { textDecorationLine: 'line-through' } : undefined]}>
           {exercise.name}
         </ThemedText>
 
@@ -72,16 +73,13 @@ export function PlanExerciseRow({
           <View style={[styles.thumb, { backgroundColor: theme.backgroundElement }]} />
         )}
 
-        <View style={styles.headerSpacer} />
-
         <Pressable onPress={() => setInfoOpen(true)} hitSlop={8} style={[styles.iconButton, { borderColor: theme.boxEdge }]}>
           <Icon name="info" size={15} color={theme.textSecondary} />
         </Pressable>
       </View>
 
       <View style={styles.metaRow}>
-        <MetaItem icon="repsHash" value={`${exercise.sets}×${exercise.reps}`} label="Serie x Rip." />
-        <View style={[styles.metaDivider, { backgroundColor: theme.border }]} />
+        <MetaItem icon="repsHash" value={setsLabel} label="Serie x Rip." />
         {exercise.rir != null ? (
           <>
             <View style={[styles.metaDivider, { backgroundColor: theme.border }]} />
@@ -107,10 +105,10 @@ export function PlanExerciseRow({
 
       <View style={styles.loadRow}>
         <View style={styles.loadCol}>
-          <ThemedText type="caption" themeColor="textSecondary" numberOfLines={1}>
+          <ThemedText type="caption" themeColor="textSecondary">
             {isBodyweight ? 'Carico' : deload ? 'Carico di scarico' : calibrating ? 'Da calibrare' : isFirstTime ? 'Stima' : 'Ultimo carico'}
           </ThemedText>
-          <ThemedText style={styles.loadValue} numberOfLines={1}>
+          <ThemedText style={styles.loadValue}>
             {referenceKg != null ? `${referenceKg} kg` : '—'}
           </ThemedText>
         </View>
@@ -156,20 +154,21 @@ export function PlanExerciseRow({
 }
 
 /** One item in the serie×rip / tempo / recupero row: an icon+value on top,
- * a small gray label below — centered within its own flex share of the
- * row, so the vertical dividers between items land evenly regardless of
- * how long each value happens to be. */
+ * a small gray label below — centered within its own equal share of the
+ * row. A value longer than its share ("4×10+10+max") wraps onto more lines
+ * inside it, so the row (and the card) grows instead of overlapping the
+ * next item. */
 function MetaItem({ icon, value, label }: { icon: IconName; value: string; label: string }) {
   const theme = useTheme();
   return (
     <View style={styles.metaItem}>
       <View style={styles.metaItemTopRow}>
-        <Icon name={icon} size={13} color={theme.textSecondary} />
-        <ThemedText style={styles.metaValue} numberOfLines={1}>
-          {value}
-        </ThemedText>
+        <View style={{ marginTop: 2 }}>
+          <Icon name={icon} size={13} color={theme.textSecondary} />
+        </View>
+        <ThemedText style={styles.metaValue}>{value}</ThemedText>
       </View>
-      <ThemedText type="caption" themeColor="textSecondary" numberOfLines={2} style={{ textAlign: 'center' }}>
+      <ThemedText type="caption" themeColor="textSecondary" style={{ textAlign: 'center' }}>
         {label}
       </ThemedText>
     </View>
@@ -214,6 +213,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two,
+    minHeight: 40,
   },
   checkCircle: {
     width: 28,
@@ -224,17 +224,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   nameText: {
-    flexShrink: 1,
+    flex: 1,
+    minWidth: 0,
     fontSize: 14,
+    lineHeight: 19,
     fontWeight: '700',
   },
   thumb: {
     width: 40,
     height: 40,
     borderRadius: Radius.medium,
-  },
-  headerSpacer: {
-    flex: 1,
   },
   iconButton: {
     width: 28,
@@ -246,25 +245,35 @@ const styles = StyleSheet.create({
   },
   metaRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'stretch',
     marginTop: 2,
   },
   metaItem: {
     flex: 1,
+    flexBasis: 0,
+    minWidth: 0,
     alignItems: 'center',
     gap: 3,
+    paddingHorizontal: 4,
   },
   metaItemTopRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    justifyContent: 'center',
     gap: 4,
+    maxWidth: '100%',
   },
   metaValue: {
+    flexShrink: 1,
+    minWidth: 0,
     fontSize: 13,
+    lineHeight: 17,
     fontWeight: '800',
+    textAlign: 'center',
   },
   metaDivider: {
     width: 1,
+    alignSelf: 'center',
     height: 22,
   },
   loadRow: {
@@ -273,6 +282,8 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   loadCol: {
+    flexShrink: 1,
+    minWidth: 0,
     gap: 2,
   },
   loadValue: {
@@ -288,6 +299,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
+    flexShrink: 0,
     marginLeft: 'auto',
     paddingHorizontal: Spacing.two,
     paddingVertical: 7,

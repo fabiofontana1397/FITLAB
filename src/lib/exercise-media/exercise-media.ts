@@ -13,6 +13,8 @@
 import { CATALOG_BY_ID, MUSCLE_LABEL } from '@/lib/planning/training/catalog';
 
 import { EXTRA_MEDIA } from './exercise-media-extra';
+import { NAMED_MEDIA } from './exercise-media-named';
+import { matchExerciseName } from './exercise-match';
 
 const RAW_BASE = 'https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/';
 const ATTRIBUTION = '© Gym visual — gymvisual.com (via hasaneyldrm/exercises-dataset su GitHub)';
@@ -528,11 +530,33 @@ export const EXERCISE_MEDIA: Record<string, ExerciseMedia> = {
   ),
 };
 
-export function getExerciseMedia(exerciseId: string): ExerciseMedia | undefined {
+function mediaById(exerciseId: string): ExerciseMedia | undefined {
   const known = EXERCISE_MEDIA[exerciseId];
   if (known) return known;
   const extra = EXTRA_MEDIA[exerciseId];
   const def = CATALOG_BY_ID.get(exerciseId);
-  if (!extra || !def) return undefined;
-  return entry(extra.gif, [MUSCLE_LABEL[def.primary], ...def.secondary.map((g) => MUSCLE_LABEL[g])].join(', '), extra.instructions, def.cues, []);
+  if (extra && def) return entry(extra.gif, [MUSCLE_LABEL[def.primary], ...def.secondary.map((g) => MUSCLE_LABEL[g])].join(', '), extra.instructions, def.cues, []);
+  const named = NAMED_BY_ID.get(exerciseId);
+  if (named) return entry(named.gif, named.target, named.instructions, [], []);
+  return undefined;
+}
+
+const NAMED_BY_ID = new Map(NAMED_MEDIA.map((m) => [m.id, m]));
+
+/**
+ * GIF and instructions of an exercise. Besides its own id, it tries the id without the "-2" a day's
+ * second block of the same exercise gets, then the name (imported cards saved before the exercise
+ * was known keep a "custom-…" id).
+ */
+export function getExerciseMedia(exerciseId: string, name?: string): ExerciseMedia | undefined {
+  const direct = mediaById(exerciseId);
+  if (direct) return direct;
+  const base = exerciseId.replace(/-\d+$/, '');
+  if (base !== exerciseId) {
+    const viaBase = mediaById(base);
+    if (viaBase) return viaBase;
+  }
+  const typed = name ?? (base.startsWith('custom-') ? base.slice('custom-'.length).replace(/-/g, ' ') : '');
+  const match = typed ? matchExerciseName(typed.replace(/\s*\(per [^)]*\)\s*$/i, '')) : null;
+  return match ? mediaById(match.id) : undefined;
 }
