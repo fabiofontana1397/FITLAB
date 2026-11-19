@@ -5,7 +5,6 @@ import { interpolate, useDerivedValue, useSharedValue } from 'react-native-reani
 import { openPopup } from '@/lib/open-popup';
 import { FoodSearchModal } from '@/components/nutrition/food-search-modal';
 import { MealCard } from '@/components/nutrition/meal-card';
-import { mealSlotColor } from '@/components/nutrition/meal-picker-modal';
 import { HEADER_LIST_TOP, ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { DayCalendarModal } from '@/components/ui/day-calendar-modal';
@@ -175,7 +174,6 @@ export default function NutritionScreen() {
               label={meta.label}
               time={meta.time}
               icon={meta.icon}
-              color={mealSlotColor(theme, meta.id)}
               entries={slotEntries}
               totals={sumMacros(slotEntries)}
               expanded={!foldedSlots.includes(meta.id)}
