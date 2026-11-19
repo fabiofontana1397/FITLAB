@@ -302,6 +302,7 @@ export default function HomeScreen() {
         </View>
 
         <GoalRing
+          compact
           band={band}
           copy={bandCopy}
           inactive={isFutureDay}
