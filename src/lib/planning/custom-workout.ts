@@ -30,13 +30,15 @@ const CARDIO_RE = /\b(corsa|corri|running|run|cardio|camminata|bici|bicicletta|n
 const SCHEME_RE = /(\d{1,2})\s*[x×*]\s*(\d{1,3}(?:\s*[-–/]\s*\d{1,3})*\s*(?:s|sec|")?)/i;
 const REST_TIME_RE = /\b(?:rec(?:upero)?\.?|rest|pausa|r)\s*[:=]?\s*(\d{1,3})\s*(min|m|'|’|′|secondi|sec|se|s|"|″)?/i;
 /** "Giorno 1 — Gambe", "Day A", "Seduta 2", "Scheda B": a numbered or lettered session. */
-const SESSION_HEADER_RE = /^(?:giorno|giornata|day|seduta|sessione|allenamento|workout|scheda|split)\s*(?:n[.°º]?\s*)?(\d{1,2}|[a-g])(?![a-z0-9])/i;
+const SESSION_HEADER_RE = /^(?:(?:giorno|giornata|day|seduta|sessione|allenamento|workout|scheda|split)\s*(?:n[.°º]?\s*)?(\d{1,2}|[a-g])(?![a-z0-9])|(\d{1,2})\s*[°º^]\s*(?:giorno|giornata|seduta|allenamento)\b)/i;
 /** The header row of a printed table ("ESERCIZIO | SERIE E RIP | REC | KG"): each one starts a new session. */
 const TABLE_HEADER_RE = /^esercizi[oi]\b.*\b(?:serie|rip|ripetizioni)\b/i;
 /** Lines on a card that are never exercises: who it is for, dates, slogans, column names. */
 const NOISE_RE = /^(?:nome|cognome|data|atleta|cliente|trainer|coach|istruttore|obiettivo|durata|frequenza|note?|kg|carico|serie e rip|work\.?\s*sweat)\b/i;
 /** "per gamba", "x braccio": the count is per side. */
 const PER_SIDE_RE = /\s*\b(?:per|x)\s+(gamba|braccio|lato)\b/i;
+/** The usual last line of a gym session: after it, the next exercise belongs to the next day. */
+const CLOSER_RE = /^(?:addome|addominali|addome a scelta|core|stretching|defaticamento|cardio finale)\b/i;
 /** "Riscaldamento 5'", "Riscaldamento: 10 min". */
 const WARMUP_RE = /^riscaldamento\b[\s:–\-—]*(?:(\d{1,2})\s*(?:min|m|'|’|′)?)?/i;
 /** Short forms trainers write, spelled out so the name reads well and matches the exercise library. */
@@ -253,7 +255,8 @@ export function parseCustomWorkout(text: string): CustomParseResult {
   const lines = text
     .replace(/\r/g, '')
     .split('\n')
-    .map((l) => l.trim())
+    // Markdown from notes and chats: "## GIORNO 1", "**Squat** 4x8".
+    .map((l) => l.trim().replace(/^#{1,6}\s+/, '').replace(/\*\*|__/g, '').trim())
     .filter(Boolean);
   if (lines.length === 0) return { ok: false, error: 'Incolla o scrivi la tua scheda per continuare.' };
 
@@ -269,6 +272,7 @@ export function parseCustomWorkout(text: string): CustomParseResult {
 
   let globalTempo = DEFAULT_TEMPO;
   let tables = 0;
+  let untitled = false;
 
   for (const line of lines) {
     if (TEMPO_ONLY_RE.test(line) && !SCHEME_RE.test(line)) {
@@ -304,14 +308,33 @@ export function parseCustomWorkout(text: string): CustomParseResult {
         title: sentenceCase(title),
         lines: [],
       });
-    } else if (blocks.length > 0) {
-      blocks[blocks.length - 1].lines.push(line);
-    } else if (hasWeekdays || hasSessionHeaders) {
+    } else if (blocks.length === 0 && (hasWeekdays || hasSessionHeaders)) {
       // Before the first day: the card's own heading (gym name, title). Not an exercise.
       continue;
     } else {
-      return { ok: false, error: 'Inizia ogni giorno con il suo nome, ad esempio “Lunedì – Petto”, e sotto metti gli esercizi.' };
+      const last = blocks[blocks.length - 1];
+      // No day names at all (copied without the coloured day bars): a session ends with its abs/stretching line
+      // and the next one starts with the next exercise, or with a new warm-up.
+      const splitHere =
+        !hasWeekdays &&
+        !hasSessionHeaders &&
+        last != null &&
+        last.lines.length > 0 &&
+        (CLOSER_RE.test(last.lines[last.lines.length - 1].replace(BULLET_RE, '').trim()) || WARMUP_RE.test(bare)) &&
+        !CLOSER_RE.test(bare);
+      if (!last || splitHere) {
+        blocks.push({ weekdayIndex: null, title: '', lines: [] });
+        untitled = true;
+      }
+      blocks[blocks.length - 1].lines.push(line);
     }
+  }
+  if (untitled && !blocks.some((b) => b.title)) {
+    warnings.push(
+      blocks.length === 1
+        ? 'Non trovo i giorni: ho messo tutto in un allenamento. Scrivi “Giorno 1”, “Giorno 2”… sopra gli esercizi di ogni giorno per dividerli.'
+        : `Non trovo i nomi dei giorni: ho diviso la scheda in ${blocks.length} allenamenti dopo ogni “Addome”. Controlla qui sotto.`,
+    );
   }
   // Untitled sessions (a table per day) take a letter: Allenamento A, B, C…
   let letter = 0;

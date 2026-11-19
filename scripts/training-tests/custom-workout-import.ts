@@ -109,6 +109,24 @@ if (table.ok) {
   check('table: name, date and slogan are not exercises', !JSON.stringify(table.week).match(/Fabio|SWEAT|Data/i));
 }
 
+// Copied from a document whose day bars are images: no day names, "* " bullets, blank lines.
+const noDays = parseCustomWorkout(
+  A.split('\n')
+    .filter((l) => !/^GIORNO/.test(l))
+    .map((l) => l.replace('• ', '* '))
+    .join('\n\n'),
+);
+check('copied without day names: loads', noDays.ok, noDays.ok ? '' : noDays.error);
+if (noDays.ok) {
+  const days = noDays.week.filter((d) => d.type === 'workout');
+  check('copied without day names: split after each Addome', days.length === 4 && days.map((d) => d.exercises?.length).join(',') === '7,7,8,8', days.map((d) => d.exercises?.length).join(','));
+  check('copied without day names: says so', noDays.warnings.some((w) => /Non trovo i nomi dei giorni/.test(w)));
+}
+const markdown = parseCustomWorkout(`## GIORNO 1 — GAMBE\n* **Squat**: 4x8\n**GIORNO 2 — PETTO**\n* Panca piana 4x8`);
+check('markdown headers', markdown.ok && markdown.week.filter((d) => d.type === 'workout').map((d) => d.title).join(',') === 'Gambe,Petto');
+const ordinal = parseCustomWorkout(`1° giorno - Gambe\nSquat 4x8\n2° giorno - Petto\nPanca piana 4x8`);
+check('"1° giorno" headers', ordinal.ok && ordinal.week.filter((d) => d.type === 'workout').map((d) => d.title).join(',') === 'Gambe,Petto');
+
 // The format the app suggests still works.
 const classic = parseCustomWorkout(`Lunedì - Petto e tricipiti
 Panca piana 4x8 rec 90s
