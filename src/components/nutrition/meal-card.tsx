@@ -69,7 +69,7 @@ export function MealCard({ label, time, icon, entries, totals, expanded, onToggl
     <FlatCard radius={24} style={styles.card}>
       <Pressable onPress={onToggle} accessibilityRole="button" accessibilityState={{ expanded }} accessibilityLabel={`${label}, ${Math.round(totals.kcal)} kcal`} style={styles.header}>
         <View style={styles.icon}>
-          <Icon name={icon} size={30} color={theme.text} />
+          <Icon name={icon} size={30} color={theme.text} strokeWidth={1.3} />
         </View>
         <View style={styles.titleCol}>
           <ThemedText style={styles.name} numberOfLines={1}>
