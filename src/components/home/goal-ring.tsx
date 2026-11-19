@@ -22,12 +22,12 @@ const STRIPS = 31;
 const MID = (STRIPS - 1) / 2;
 const SPAN = 90;
 const R = 112;
-const LEN = 20;
-const STRIP_W = 7;
+const LEN = 26;
+const STRIP_W = 9;
 const R_IN = R - LEN / 2;
 const R_OUT = R + LEN / 2;
-/** The thin grey scale line over the ring, its dots, and the labels beyond it. */
-const LINE_R = R_OUT + 9;
+/** The thin grey scale line over the ring, its dots, and the labels beyond it: clear of a strip at its fullest swell. */
+const LINE_R = R_OUT + 18;
 const LABEL_R = LINE_R + 15;
 /** Room above the line for the goal's label over the centre strip. */
 const CY = LABEL_R + 26;
@@ -47,10 +47,9 @@ const arc = (r: number, from: number, to: number) => `M ${px(r, from)} ${py(r, f
 /** Height over width of the ring (without its message), and the width it is drawn at on a normal phone: the carousel scales it down to fit. */
 export const GOAL_RING_ASPECT = BASE_H / BASE_W;
 export const GOAL_RING_WIDTH = BASE_W;
-/** Compact (Home): drawing scale, height down to just past the arc's ends, and the width of the labels beside them. */
-const COMPACT_SCALE = 0.72;
-const COMPACT_H = CY + 10;
-const SIDE_W = 64;
+/** Compact (Home): drawing scale, and height down to the end names under the arc's ends (no kcal under them, no message). */
+const COMPACT_SCALE = 0.84;
+const COMPACT_H = CY + 26;
 
 const AnimatedLine = Animated.createAnimatedComponent(Line);
 
@@ -85,7 +84,7 @@ export type GoalRingProps = {
   onPress?: () => void;
   onGoalPress?: () => void;
   accessibilityLabel: string;
-  /** Home: the ring drawn at ~72% with the scale's ends beside the arc instead of under it, so the card is ~30% shorter. */
+  /** Home: a shorter card — just the ring and the names of its ends, without the kcal under them or the message below. */
   compact?: boolean;
 };
 
@@ -239,22 +238,12 @@ export function GoalRing({ band, copy, value, goalText, inactive = false, onPres
           {/* The two ends of the scale: under the arc's ends, or (compact) beside them. */}
           {compact ? (
             <>
-              <View pointerEvents="none" style={[styles.side, { left: px(LINE_R + 8, -SPAN) * k - SIDE_W, top: (CY - 34) * k, width: SIDE_W, alignItems: 'flex-end' }]}>
-                <ThemedText themeColor="textSecondary" style={[styles.endText, label(12)]} numberOfLines={1}>
-                  ‹ Surplus
-                </ThemedText>
-                <ThemedText themeColor="textTertiary" style={[styles.endText, label(11)]} numberOfLines={1}>
-                  {formatSignedKcal(SCALE_KCAL)}
-                </ThemedText>
-              </View>
-              <View pointerEvents="none" style={[styles.side, { left: px(LINE_R + 8, SPAN) * k, top: (CY - 34) * k, width: SIDE_W, alignItems: 'flex-start' }]}>
-                <ThemedText themeColor="textSecondary" style={[styles.endText, label(12)]} numberOfLines={1}>
-                  Deficit ›
-                </ThemedText>
-                <ThemedText themeColor="textTertiary" style={[styles.endText, label(11)]} numberOfLines={1}>
-                  {formatSignedKcal(-SCALE_KCAL)}
-                </ThemedText>
-              </View>
+              <ThemedText themeColor="textSecondary" style={[styles.end, label(12), { left: (px(R, -SPAN) - 40) * k, top: (CY + 6) * k, width: 80 * k }]}>
+                ‹ Surplus
+              </ThemedText>
+              <ThemedText themeColor="textSecondary" style={[styles.end, label(12), { left: (px(R, SPAN) - 40) * k, top: (CY + 6) * k, width: 80 * k }]}>
+                Deficit ›
+              </ThemedText>
             </>
           ) : (
             <>
@@ -293,8 +282,8 @@ export function GoalRing({ band, copy, value, goalText, inactive = false, onPres
         </View>
       </Pressable>
 
-      <ThemedText style={[styles.message, { color: messageColor }]}>{copy.message}</ThemedText>
-      {copy.cause ? (
+      {compact ? null : <ThemedText style={[styles.message, { color: messageColor }]}>{copy.message}</ThemedText>}
+      {copy.cause && !compact ? (
         <ThemedText style={styles.cause} themeColor="textSecondary">
           {copy.cause}
         </ThemedText>
@@ -326,13 +315,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: '600',
     pointerEvents: 'none',
-  },
-  side: {
-    position: 'absolute',
-    gap: 1,
-  },
-  endText: {
-    fontWeight: '600',
   },
   centre: {
     position: 'absolute',
