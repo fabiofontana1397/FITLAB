@@ -72,6 +72,8 @@ async function readOnServer(file: WorkoutCardFile, kind: 'training' | 'diet', wh
     if (status === 404) throw new Error('La lettura da foto non è ancora attiva sul server (funzione extract-workout-card non pubblicata).');
     if (status === 401) throw new Error('Sessione scaduta: esci e rientra, poi riprova.');
     if (/ANTHROPIC_API_KEY/i.test(detail)) throw new Error(`Sul server manca la chiave ANTHROPIC_API_KEY per leggere ${what}.`);
+    if (/x-api-key|authentication_error/i.test(detail)) throw new Error(`La chiave Anthropic sul server non è valida, quindi non posso leggere ${what} da foto: incolla il testo qui sotto.`);
+    if (/credit|billing|rate_limit|overloaded/i.test(detail)) throw new Error(`Il servizio che legge ${what} è al momento non disponibile. Riprova più tardi o incolla il testo.`);
     if (detail) throw new Error(`Non riesco a leggere ${what}: ${detail}`);
     throw new Error(`Non riesco a leggere ${what}${status ? ` (errore ${status})` : ''}. Riprova, oppure incolla il testo.`);
   }
