@@ -18,7 +18,7 @@ import { formatSignedKcal } from '@/lib/format-kcal';
 const BASE_W = 316;
 const CX = BASE_W / 2;
 /** Radial strips, odd so one sits exactly on the goal. */
-const STRIPS = 31;
+const STRIPS = 27;
 const MID = (STRIPS - 1) / 2;
 const SPAN = 90;
 const R = 112;
@@ -37,8 +37,8 @@ const SCALE_KCAL = 1000;
 /** How much the strips swell where the day is (and as it passes): inward, outward and in thickness, in space units. */
 const GROW_IN = 9;
 const GROW_OUT = 6;
-const GROW_STROKE = 3.5;
-/** How far the swelling reaches either side of the marker position, in degrees (the strips are 6° apart). */
+const GROW_STROKE = 3;
+/** How far the swelling reaches either side of the marker position, in degrees (the strips are about 6.9° apart, so a swollen strip stays clear of its neighbours). */
 const REACH = 6;
 const px = (r: number, deg: number) => CX + r * Math.sin((deg * Math.PI) / 180);
 const py = (r: number, deg: number) => CY - r * Math.cos((deg * Math.PI) / 180);
