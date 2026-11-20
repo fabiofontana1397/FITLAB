@@ -176,15 +176,17 @@ export type IconProps = {
   name: IconName;
   size?: number;
   color: string;
+  /** Line weight of the Lucide (food) glyphs; ignored by the filled icon sets. */
+  strokeWidth?: number;
 };
 
-export function Icon({ name, size = 22, color }: IconProps) {
+export function Icon({ name, size = 22, color, strokeWidth = 1.9 }: IconProps) {
   if (name in LUCIDE_ICONS) {
     const Glyph = LUCIDE_ICONS[name as keyof typeof LUCIDE_ICONS];
     // 1.9 at 22px matches the visual weight of the Ionicons outline
     // glyphs it sits beside; lucide's own default (2) reads heavier at
     // the small sizes this app uses most.
-    return <Glyph size={size} color={color} strokeWidth={1.9} />;
+    return <Glyph size={size} color={color} strokeWidth={strokeWidth} />;
   }
   const entry = ICONS[name as keyof typeof ICONS];
   if (entry.set === 'mci') {

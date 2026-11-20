@@ -131,7 +131,7 @@ export default function NutritionScreen() {
         </View>
 
         <View style={styles.calorieBar}>
-          <TickProgressBar progress={calorieRatio} height={8} ticks={false} />
+          <TickProgressBar progress={calorieRatio} height={9} ticks={false} />
         </View>
 
         <View
@@ -143,7 +143,7 @@ export default function NutritionScreen() {
           {macroRings.map((macro) => (
             <View key={macro.key} style={styles.ringCol}>
               <ProgressRing
-                size={58}
+                size={66}
                 strokeWidth={5}
                 progress={macro.target > 0 ? totals[macro.key] / macro.target : 0}
                 color={macro.color}
@@ -242,14 +242,14 @@ function PinnedMacroRings({
           </ThemedText>
         </ThemedText>
         <View style={styles.pinnedKcalBar}>
-          <TickProgressBar progress={calorieTarget > 0 ? totals.kcal / calorieTarget : 0} height={6} ticks={false} />
+          <TickProgressBar progress={calorieTarget > 0 ? totals.kcal / calorieTarget : 0} height={7} ticks={false} />
         </View>
       </View>
       <View style={styles.pinnedRingsRow}>
         {rings.map((macro) => (
           <View key={macro.key} style={styles.pinnedRingCol}>
             <ProgressRing
-              size={40}
+              size={46}
               strokeWidth={4}
               progress={macro.target > 0 ? totals[macro.key] / macro.target : 0}
               color={macro.color}
@@ -284,8 +284,8 @@ const styles = StyleSheet.create({
   },
   calorieCard: {
     paddingHorizontal: CARD_PADDING,
-    paddingTop: 12,
-    paddingBottom: 10,
+    paddingTop: 14,
+    paddingBottom: 12,
   },
   calorieHeadRow: {
     flexDirection: 'row',
@@ -299,8 +299,8 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   calorieTitle: {
-    fontSize: 15,
-    lineHeight: 20,
+    fontSize: 16,
+    lineHeight: 21,
     fontWeight: '700',
   },
   bigNumberRow: {
@@ -309,8 +309,8 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   bigNumber: {
-    fontSize: 22,
-    lineHeight: 28,
+    fontSize: 24,
+    lineHeight: 30,
     fontWeight: '800',
     letterSpacing: -0.5,
   },
@@ -320,11 +320,11 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   calorieBar: {
-    marginTop: 8,
+    marginTop: 10,
   },
   ringsRow: {
     flexDirection: 'row',
-    marginTop: 12,
+    marginTop: 14,
     marginHorizontal: -CARD_PADDING,
   },
   ringCol: {
@@ -332,25 +332,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   ringValue: {
-    fontSize: 13,
-    lineHeight: 17,
+    fontSize: 14,
+    lineHeight: 18,
     fontWeight: '800',
   },
   ringLabel: {
-    marginTop: 5,
-    fontSize: 12,
+    marginTop: 6,
+    fontSize: 13,
     lineHeight: 16,
     fontWeight: '500',
   },
   ringTarget: {
-    fontSize: 12,
+    fontSize: 13,
     lineHeight: 16,
     fontWeight: '700',
   },
   pinnedCard: {
     paddingHorizontal: CARD_PADDING,
-    paddingVertical: 8,
-    gap: 6,
+    paddingVertical: 11,
+    gap: 8,
   },
   pinnedKcalRow: {
     flexDirection: 'row',
@@ -358,12 +358,12 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   pinnedKcal: {
-    fontSize: 13,
-    lineHeight: 17,
+    fontSize: 15,
+    lineHeight: 19,
     fontWeight: '800',
   },
   pinnedKcalTarget: {
-    fontSize: 12,
+    fontSize: 13,
     lineHeight: 16,
     fontWeight: '500',
   },
@@ -382,12 +382,12 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   pinnedRingValue: {
-    fontSize: 11,
-    lineHeight: 14,
+    fontSize: 12,
+    lineHeight: 15,
     fontWeight: '800',
   },
   pinnedRingLabel: {
-    fontSize: 12,
+    fontSize: 13,
     lineHeight: 16,
     fontWeight: '500',
   },
