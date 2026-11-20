@@ -17,16 +17,19 @@ type Candidate = KnownExercise & { terms: { text: string; bonus: number }[] };
 /** Other ways trainers write catalog exercises, beyond the catalog's own keywords. */
 const ALIASES: Record<string, string[]> = {
   'panca-piana': ['distensioni su panca piana', 'panca bilanciere', 'bench press'],
-  'panca-manubri': ['distensioni manubri panca piana', 'panca piana manubri', 'dumbbell press'],
-  'panca-inclinata-manubri': ['panca inclinata manubri', 'distensioni panca inclinata manubri'],
+  'panca-manubri': ['spinte', 'spinte con manubri', 'spinte su panca piana', 'distensioni manubri panca piana', 'panca piana manubri', 'dumbbell press'],
+  'panca-inclinata-manubri': ['spinte a 15', 'spinte a 30', 'spinte a 45', 'spinte inclinate', 'spinte su panca inclinata', 'panca inclinata manubri', 'distensioni panca inclinata manubri'],
   'panca-inclinata-bilanciere': ['panca inclinata', 'panca inclinata bilanciere', 'incline bench'],
   'chest-press-machine': ['chest press', 'distensioni alla macchina'],
-  'croci-cavi': ['croci al cavo', 'croci cavi', 'cable crossover', 'croci ai cavi alti', 'croci cavo'],
+  'croci-cavi': ['cavi incrociati', 'croci ai cavi', 'croci al cavo', 'croci cavi', 'cable crossover', 'croci ai cavi alti', 'croci cavo'],
   'pec-deck': ['pec deck', 'peck deck', 'pectoral machine', 'butterfly'],
   'croci-manubri': ['croci manubri', 'croci panca piana', 'croci su panca piana', 'croci'],
   'dip-parallele': ['dip parallele', 'dips', 'parallele'],
-  'lat-machine': ['lat machine', 'lat pulldown', 'lat machine avanti', 'lat machine presa larga'],
-  'lat-machine-neutra': ['lat machine triangolo', 'lat machine presa stretta', 'lat triangolo'],
+  'lat-machine': ['pull down', 'pulldown', 'lat machine', 'lat pulldown', 'lat machine avanti', 'lat machine presa larga'],
+  'lat-machine-neutra': ['lat machine con triangolo', 'pull down triangolo', 'lat machine triangolo', 'lat machine presa stretta', 'lat triangolo'],
+  crunch: ['addome', 'addominali', 'crunch addome'],
+  'croci-inclinata': ['croci a 30', 'croci a 45', 'croci a 15', 'croci inclinate con manubri'],
+  'lat-presa-inversa': ['lat machine inversa', 'pull down inverso', 'pull down presa inversa'],
   'face-pull': ['face pull', 'face pull corda', 'face pull al cavo'],
   'french-press-bilanciere': ['french press'],
   pulley: ['pulley', 'pulley basso', 'rematore al cavo basso', 'seated row', 'pulley triangolo'],
@@ -36,7 +39,7 @@ const ALIASES: Record<string, string[]> = {
   'shoulder-press-manubri': ['lento manubri', 'distensioni manubri sopra la testa', 'spinte manubri', 'lento avanti manubri'],
   'alzate-laterali': ['alzate laterali', 'alzate laterali manubri', 'lateral raise'],
   'alzate-laterali-cavo': ['alzate laterali cavo', 'alzate laterali al cavo'],
-  'alzate-posteriori-manubri': ['alzate posteriori', 'alzate a 90', 'croci inverse manubri'],
+  'alzate-posteriori-manubri': ['deltoidi posteriori', 'deltoidi posteriori a 45', 'posteriori a 45', 'alzate posteriori', 'alzate a 90', 'croci inverse manubri'],
   'back-squat': ['squat bilanciere', 'squat con bilanciere', 'back squat'],
   'leg-press': ['leg press 45', 'pressa 45', 'pressa orizzontale'],
   'romanian-deadlift': ['stacchi rumeni', 'stacco rumeno bilanciere', 'stacco a gambe tese', 'stacchi a gambe tese', 'stiff leg'],
@@ -48,7 +51,7 @@ const ALIASES: Record<string, string[]> = {
   'curl-bicipiti': ['curl bilanciere', 'curl con bilanciere', 'barbell curl'],
   'curl-manubri': ['curl manubri', 'curl alternato', 'curl alternati', 'curl con manubri'],
   'hammer-curl': ['curl a martello', 'hammer'],
-  'pushdown-cavo': ['push down', 'pushdown', 'push down corda', 'tricipiti al cavo', 'estensioni tricipiti cavo', 'push down al cavo'],
+  'pushdown-cavo': ['cavi incrociati per tricipiti', 'cavi per tricipiti', 'tricipiti ai cavi', 'push down', 'pushdown', 'push down corda', 'tricipiti al cavo', 'estensioni tricipiti cavo', 'push down al cavo'],
   'french-press-manubrio': ['french press manubrio', 'estensioni sopra la testa manubrio', 'french press seduto'],
   'dip-sedia': ['dip su panca', 'dip alla panca', 'bench dip', 'dip tra panche'],
   plank: ['plank', 'plank frontale', 'plank sui gomiti'],
@@ -81,7 +84,8 @@ function allCandidates(): Candidate[] {
   const add = (id: string, name: string, words: string[], bonus = 0) => {
     const terms = words.map((w) => ({ text: normalizeExerciseName(w), bonus }));
     const known = byId.get(id);
-    if (known) known.terms.push(...terms);
+    // Same id named differently by the old library and the catalog: both names are its own.
+    if (known) known.terms.push({ text: normalizeExerciseName(name), bonus: 0.5 }, ...terms);
     else byId.set(id, { id, name, terms: [{ text: normalizeExerciseName(name), bonus: 0.5 }, ...terms] });
   };
   for (const list of [...Object.values(GYM_EXERCISES), ...Object.values(HOME_EXERCISES)]) for (const def of list) add(def.id, def.name, def.keywords);
@@ -90,6 +94,12 @@ function allCandidates(): Candidate[] {
   for (const [id, words] of Object.entries(ALIASES)) if (byId.has(id)) add(id, byId.get(id)!.name, words, 0.25);
   candidates = [...byId.values()];
   return candidates;
+}
+
+/** Every name a known exercise goes by (several when the old library and the catalog name it differently). */
+export function isOwnName(id: string, name: string): boolean {
+  const n = normalizeExerciseName(name);
+  return allCandidates().some((c) => c.id === id && c.terms.some((t) => t.text === n));
 }
 
 /**
