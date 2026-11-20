@@ -14,7 +14,7 @@ import { CATALOG_BY_ID, MUSCLE_LABEL } from '@/lib/planning/training/catalog';
 
 import { EXTRA_MEDIA } from './exercise-media-extra';
 import { NAMED_MEDIA } from './exercise-media-named';
-import { matchExerciseName } from './exercise-match';
+import { isOwnName, matchExerciseName } from './exercise-match';
 
 const RAW_BASE = 'https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/';
 const ATTRIBUTION = '© Gym visual — gymvisual.com (via hasaneyldrm/exercises-dataset su GitHub)';
@@ -544,19 +544,25 @@ function mediaById(exerciseId: string): ExerciseMedia | undefined {
 const NAMED_BY_ID = new Map(NAMED_MEDIA.map((m) => [m.id, m]));
 
 /**
- * GIF and instructions of an exercise. Besides its own id, it tries the id without the "-2" a day's
- * second block of the same exercise gets, then the name (imported cards saved before the exercise
- * was known keep a "custom-…" id).
+ * GIF and instructions of an exercise. When the name is known it decides: a card read from a trainer's
+ * sheet may carry the id of a nearby exercise ("Lat machine inversa" saved as lat-machine, "Alzate
+ * laterali al cavo" as the dumbbell ones) and the GIF must show what is written. Then the id, then the
+ * id without the "-2" a second block of the same exercise gets, then the words of a "custom-…" id.
  */
 export function getExerciseMedia(exerciseId: string, name?: string): ExerciseMedia | undefined {
+  // The engine's own exercises: the name is the id's own, nothing to second-guess.
+  if (name && isOwnName(exerciseId, name)) {
+    const own = mediaById(exerciseId);
+    if (own) return own;
+  }
+  const byName = name ? matchExerciseName(name.replace(/\s*\(per [^)]*\)\s*$/i, '')) : null;
+  const named = byName ? mediaById(byName.id) : undefined;
+  if (named) return named;
   const direct = mediaById(exerciseId);
   if (direct) return direct;
   const base = exerciseId.replace(/-\d+$/, '');
-  if (base !== exerciseId) {
-    const viaBase = mediaById(base);
-    if (viaBase) return viaBase;
-  }
-  const typed = name ?? (base.startsWith('custom-') ? base.slice('custom-'.length).replace(/-/g, ' ') : '');
-  const match = typed ? matchExerciseName(typed.replace(/\s*\(per [^)]*\)\s*$/i, '')) : null;
-  return match ? mediaById(match.id) : undefined;
+  const viaBase = base !== exerciseId ? mediaById(base) : undefined;
+  if (viaBase) return viaBase;
+  const slug = base.startsWith('custom-') ? matchExerciseName(base.slice('custom-'.length).replace(/-/g, ' ')) : null;
+  return slug ? mediaById(slug.id) : undefined;
 }
