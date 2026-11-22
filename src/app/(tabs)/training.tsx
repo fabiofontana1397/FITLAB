@@ -23,6 +23,7 @@ import { levelLabel, WorkoutSummaryCard } from '@/components/training/workout-su
 import { WorkoutSessionModal } from '@/components/training/workout-session-modal';
 import { useEnsurePlan } from '@/hooks/use-ensure-plan';
 import { useUserContext } from '@/hooks/use-user-context';
+import { useSettledValue } from '@/hooks/use-settled-value';
 import { useTabBarClearance } from '@/hooks/use-tab-bar-clearance';
 import { useTheme } from '@/hooks/use-theme';
 import { addDaysISO, currentWeekDates, daysAgoISO, isoMondayIndex } from '@/lib/mock/dates';
@@ -61,6 +62,9 @@ type TrainingMode = 'plan' | 'spot';
 /** Allenamento: two pages behind a switch at the top, the weekly card (Scheda) and the one-off quick workouts (Allenamento veloce). */
 export default function TrainingScreen() {
   const [mode, setMode] = useState<TrainingMode>('plan');
+  // The switch moves at once; the page behind it swaps once the thumb has landed, then fades up.
+  const shown = useSettledValue(mode);
+  const [switched, setSwitched] = useState(false);
   const tabClearance = useTabBarClearance();
   const switcher = (
     <View style={styles.modeSwitch}>
@@ -70,14 +74,18 @@ export default function TrainingScreen() {
           { value: 'spot', label: 'Allenamento veloce' },
         ]}
         value={mode}
-        onChange={(v) => setMode(v as TrainingMode)}
+        onChange={(v) => {
+          setMode(v as TrainingMode);
+          setSwitched(true);
+        }}
       />
     </View>
   );
-  if (mode === 'spot') {
+  if (shown === 'spot') {
     return (
       <ScreenScroll
         testID="training-spot"
+        enterOnMount={switched}
         scrollEnabled={false}
         contentContainerStyle={[styles.spotPage, { paddingBottom: tabClearance }]}
         header={
@@ -90,10 +98,10 @@ export default function TrainingScreen() {
       </ScreenScroll>
     );
   }
-  return <PlanTraining switcher={switcher} />;
+  return <PlanTraining switcher={switcher} enterOnMount={switched} />;
 }
 
-function PlanTraining({ switcher }: { switcher: ReactNode }) {
+function PlanTraining({ switcher, enterOnMount }: { switcher: ReactNode; enterOnMount: boolean }) {
   const theme = useTheme();
   const trainingPlan = usePlanStore((s) => s.trainingPlan);
   const currentUser = useUserStore();
@@ -227,6 +235,7 @@ function PlanTraining({ switcher }: { switcher: ReactNode }) {
       <ScreenScroll
         ref={scrollRef}
         testID="training-list"
+        enterOnMount={enterOnMount}
         contentContainerStyle={styles.list}
         header={
           <>

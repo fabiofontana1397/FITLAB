@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { LayoutChangeEvent, Pressable, ScrollView, StyleSheet } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
@@ -32,12 +32,20 @@ export function SegmentedControl<T extends string>({
   const [positions, setPositions] = useState<Record<string, number>>({});
   const indicatorX = useSharedValue(0);
   const indicatorWidth = useSharedValue(0);
+  const placed = useRef(false);
 
   const activeWidth = widths[value];
   const activeX = positions[value];
 
   useEffect(() => {
     if (activeWidth != null && activeX != null) {
+      // The first time the thumb just sits on the current choice: sliding in from the left on mount reads as a glitch.
+      if (!placed.current) {
+        indicatorX.value = activeX;
+        indicatorWidth.value = activeWidth;
+        placed.current = true;
+        return;
+      }
       indicatorX.value = withTiming(activeX, TimingQuick);
       indicatorWidth.value = withTiming(activeWidth, TimingQuick);
     }
