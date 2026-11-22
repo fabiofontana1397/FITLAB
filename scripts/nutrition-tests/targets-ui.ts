@@ -130,9 +130,9 @@ async function main() {
       await page.getByText('Sostituisci', { exact: true }).click();
       await pause(1800);
 
-      await test(`[${appearance}] Piani shows the summary by month, no menu`, async () => {
+      await test(`[${appearance}] Piani shows the month's summary, no month list, no menu`, async () => {
         assert.ok(await page.getByText('I tuoi obiettivi', { exact: true }).first().isVisible());
-        assert.ok(await page.getByText('Mese per mese', { exact: true }).isVisible());
+        assert.equal(await page.getByText('Mese per mese', { exact: true }).count(), 0);
         assert.match(await page.evaluate(() => document.body.innerText), /2[.\u202f ]?200/);
         assert.equal(await page.getByText('Pranzo', { exact: true }).count(), 0);
         assert.ok(await page.getByText('Calorie e macro scelti da te').isVisible());
