@@ -377,21 +377,20 @@ function CustomPlanSummary({ kind, own, stats, onUpdate }: { kind: 'training' | 
   const isDiet = kind === 'diet';
   const updateLabel = isDiet ? 'Aggiorna dieta' : own ? 'Modifica programma' : 'Aggiorna scheda';
 
+  const dense = stats.length > 3;
+
   return (
-    <FlatCard radius={Radius.medium} style={styles.summary}>
+    <FlatCard radius={Radius.large} style={styles.summary}>
       <View style={styles.summaryHead}>
-        <View style={[styles.summaryBadge, { backgroundColor: theme.accentSoft }]}>
-          <Icon name={isDiet ? 'utensils' : 'dumbbellLine'} size={16} strokeWidth={1.5} color={theme.accent} />
-        </View>
         <View style={styles.flex}>
-          <ThemedText style={styles.summaryOverline} themeColor="textSecondary" numberOfLines={1}>
-            {isDiet ? 'Dieta personale' : own ? 'Creato da te' : 'Scheda personale'}
+          <ThemedText style={styles.summaryOverline} themeColor="textTertiary" numberOfLines={1}>
+            {isDiet ? 'DIETA PERSONALE' : own ? 'CREATO DA TE' : 'SCHEDA PERSONALE'}
           </ThemedText>
           <ThemedText style={styles.summaryTitle} numberOfLines={1} accessibilityRole="header">
             {isDiet ? 'La tua dieta' : own ? 'Il tuo programma' : 'La tua scheda'}
           </ThemedText>
         </View>
-        {/* Small pill in the corner: updating is occasional, so it stays out of the way. */}
+        {/* Solid inverted pill: reads at a glance as a button, in light and dark alike. */}
         <Pressable
           onPress={() => {
             hapticSelection();
@@ -400,22 +399,22 @@ function CustomPlanSummary({ kind, own, stats, onUpdate }: { kind: 'training' | 
           hitSlop={8}
           accessibilityRole="button"
           accessibilityLabel={updateLabel}
-          style={({ pressed }) => [styles.summaryButton, { backgroundColor: theme.accentSoft, opacity: pressed ? 0.6 : 1 }]}
+          style={({ pressed }) => [styles.summaryButton, { backgroundColor: theme.text, transform: [{ scale: pressed ? 0.94 : 1 }], opacity: pressed ? 0.9 : 1 }]}
         >
-          <Icon name={own && !isDiet ? 'edit' : 'refresh'} size={13} color={theme.accent} />
-          <ThemedText style={[styles.summaryButtonLabel, { color: theme.accent }]}>{own && !isDiet ? 'Modifica' : 'Aggiorna'}</ThemedText>
+          <Icon name={own && !isDiet ? 'edit' : 'refresh'} size={14} strokeWidth={2.2} color={theme.background} />
+          <ThemedText style={[styles.summaryButtonLabel, { color: theme.background }]}>{own && !isDiet ? 'Modifica' : 'Aggiorna'}</ThemedText>
         </Pressable>
       </View>
 
       {stats.length > 0 ? (
-        <View style={[styles.summaryStats, { borderTopColor: theme.border }]}>
-          {stats.map((st, i) => (
-            <View key={st.label} style={[styles.fact, i > 0 && [styles.factDivided, { borderLeftColor: theme.border }]]}>
-              <ThemedText style={styles.summaryValue} numberOfLines={1}>
+        <View style={styles.summaryStats}>
+          {stats.map((st) => (
+            <View key={st.label} style={styles.fact}>
+              <ThemedText style={[styles.summaryValue, dense && styles.summaryValueDense]} numberOfLines={1} adjustsFontSizeToFit>
                 {Math.round(st.value).toLocaleString('it-IT')}
-                {st.unit ? <ThemedText style={styles.summaryUnit} themeColor="textSecondary">{` ${st.unit}`}</ThemedText> : null}
+                {st.unit ? <ThemedText style={styles.summaryUnit} themeColor="textTertiary">{` ${st.unit}`}</ThemedText> : null}
               </ThemedText>
-              <ThemedText style={styles.factLabel} themeColor="textSecondary" numberOfLines={1}>
+              <ThemedText style={styles.summaryLabel} themeColor="textTertiary" numberOfLines={1}>
                 {st.label}
               </ThemedText>
             </View>
@@ -428,16 +427,17 @@ function CustomPlanSummary({ kind, own, stats, onUpdate }: { kind: 'training' | 
 
 const styles = StyleSheet.create({
   flex: { flex: 1, minWidth: 0 },
-  summary: { paddingHorizontal: 14, paddingVertical: 12, gap: 10 },
-  summaryHead: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  summaryBadge: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  summaryOverline: { fontSize: 11, lineHeight: 14, fontWeight: '500', letterSpacing: 0.2 },
-  summaryTitle: { fontSize: 16, lineHeight: 21, fontWeight: '600', letterSpacing: -0.3 },
-  summaryStats: { flexDirection: 'row', paddingTop: 10, borderTopWidth: StyleSheet.hairlineWidth },
-  summaryValue: { fontSize: 16, lineHeight: 20, fontWeight: '600', letterSpacing: -0.3, fontVariant: ['tabular-nums'] },
-  summaryUnit: { fontSize: 12, lineHeight: 20, fontWeight: '500' },
-  summaryButton: { height: 28, borderRadius: 14, borderCurve: 'continuous', flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10 },
-  summaryButtonLabel: { fontSize: 13, lineHeight: 16, fontWeight: '600', letterSpacing: -0.1 },
+  summary: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 18, gap: 20 },
+  summaryHead: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  summaryOverline: { fontSize: 11, lineHeight: 14, fontWeight: '500', letterSpacing: 1 },
+  summaryTitle: { fontSize: 21, lineHeight: 26, fontWeight: '600', letterSpacing: -0.5, marginTop: 3 },
+  summaryStats: { flexDirection: 'row', gap: 16 },
+  summaryValue: { fontSize: 28, lineHeight: 32, fontWeight: '300', letterSpacing: -0.8, fontVariant: ['tabular-nums'] },
+  summaryValueDense: { fontSize: 22, lineHeight: 28, letterSpacing: -0.5 },
+  summaryLabel: { fontSize: 12, lineHeight: 16, marginTop: 4 },
+  summaryUnit: { fontSize: 12, fontWeight: '400', letterSpacing: 0 },
+  summaryButton: { height: 34, borderRadius: 17, borderCurve: 'continuous', flexDirection: 'row', alignItems: 'center', gap: 6, paddingLeft: 12, paddingRight: 14 },
+  summaryButtonLabel: { fontSize: 14, lineHeight: 18, fontWeight: '600', letterSpacing: -0.2 },
   stack: { gap: 12 },
   section: { marginTop: 16 },
   center: { textAlign: 'center' },
