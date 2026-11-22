@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-import { deleteBodyPhoto, fetchBodyMetrics, fetchBodyPhotos, upsertBodyMetric, uploadBodyPhoto } from '@/lib/api/body';
+import { deleteBodyMetric, deleteBodyPhoto, fetchBodyMetrics, fetchBodyPhotos, upsertBodyMetric, uploadBodyPhoto } from '@/lib/api/body';
 import { daysAgoISO } from '@/lib/mock/dates';
 import type { BodyMetricSnapshot } from '@/lib/mock/types';
 import { withAuthRetry } from '@/lib/supabase/retry';
@@ -53,6 +53,8 @@ type BodyState = {
   photos: BodyPhoto[];
   addWeightEntry: (weightKg: number, date?: string) => void;
   resetStartingWeight: (weightKg: number, date?: string) => void;
+  /** Deletes the weigh-in of a day (swipe left on the Progressi list). */
+  removeEntry: (date: string) => void;
   addMeasurement: (partial: Partial<Omit<BodyMetricSnapshot, 'date'>>, date?: string) => void;
   addPhoto: (uri: string, pose: BodyPhotoPose, date?: string) => void;
   removePhoto: (id: string) => void;
@@ -118,6 +120,12 @@ export const useBodyStore = create<BodyState>()(
         const userId = currentUserId();
         const saved = get().entries.find((e) => e.date === date);
         if (userId && saved) upsertBodyMetric(userId, saved).catch((err) => console.warn('upsertBodyMetric (baseline) failed', err));
+      },
+
+      removeEntry: (date) => {
+        set((state) => ({ entries: state.entries.filter((e) => e.date !== date) }));
+        const userId = currentUserId();
+        if (userId) deleteBodyMetric(userId, date).catch((err) => console.warn('deleteBodyMetric failed', err));
       },
 
       addMeasurement: (partial, date = daysAgoISO(0)) => {

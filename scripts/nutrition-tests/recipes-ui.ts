@@ -43,7 +43,9 @@ async function main() {
 
       await test(`${vp.height}: selector is under the card, above the tab bar`, async () => {
         const hint = await page.getByText('Scorri per cambiare ricetta').boundingBox();
-        assert.ok(hint && hint.y + hint.height < vp.height - 50, `hint at ${hint?.y}`);
+        // The tab bar's pill starts ~20 px above its label: the hint must end clear of it, not merely above the screen's foot.
+        const tab = await page.getByText('Nutrizione', { exact: true }).last().boundingBox();
+        assert.ok(hint && tab && hint.y + hint.height <= tab.y - 20, `hint ends at ${hint && hint.y + hint.height}, tab label at ${tab?.y}`);
       });
 
       const counter = async () => (await page.getByText(/^\d+ \/ \d+$/).first().textContent())?.trim();

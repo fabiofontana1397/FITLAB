@@ -23,6 +23,7 @@ import { levelLabel, WorkoutSummaryCard } from '@/components/training/workout-su
 import { WorkoutSessionModal } from '@/components/training/workout-session-modal';
 import { useEnsurePlan } from '@/hooks/use-ensure-plan';
 import { useUserContext } from '@/hooks/use-user-context';
+import { useTabBarClearance } from '@/hooks/use-tab-bar-clearance';
 import { useTheme } from '@/hooks/use-theme';
 import { addDaysISO, currentWeekDates, daysAgoISO, isoMondayIndex } from '@/lib/mock/dates';
 import { sessionKcal as plannedSessionKcal, sessionMinutes as plannedSessionMinutes } from '@/domain/energy';
@@ -60,6 +61,7 @@ type TrainingMode = 'plan' | 'spot';
 /** Allenamento: two pages behind a switch at the top, the weekly card (Scheda) and the one-off quick workouts (Allenamento veloce). */
 export default function TrainingScreen() {
   const [mode, setMode] = useState<TrainingMode>('plan');
+  const tabClearance = useTabBarClearance();
   const switcher = (
     <View style={styles.modeSwitch}>
       <SegmentedControl
@@ -76,7 +78,8 @@ export default function TrainingScreen() {
     return (
       <ScreenScroll
         testID="training-spot"
-        contentContainerStyle={styles.list}
+        scrollEnabled={false}
+        contentContainerStyle={[styles.spotPage, { paddingBottom: tabClearance }]}
         header={
           <>
             <TabHeader title="Allenamento" />
@@ -406,6 +409,10 @@ const styles = StyleSheet.create({
   // Tighter than the app's section gap: the week, the button and the days read as one list.
   list: {
     gap: 12,
+  },
+  // Allenamento veloce fits on one screen, like Ricette: the deck takes the height left above the tab bar.
+  spotPage: {
+    flex: 1,
   },
   daySection: {
     marginBottom: 0,

@@ -57,6 +57,11 @@ export type SwipeDeckProps<T> = {
   hint: string;
   prevLabel: string;
   nextLabel: string;
+  /**
+   * Fill the height the parent gives it (a page that does not scroll): every card is as tall as the space left and
+   * the selector sits under the deck, as in Ricette. Without it the cards take their own height, selector on top.
+   */
+  fill?: boolean;
 };
 
 /**
@@ -65,9 +70,11 @@ export type SwipeDeckProps<T> = {
  * behind grows into its place. The stack wraps around. A mostly vertical drag is left to the page's scroll, and a
  * control inside a card that takes the touch first (a slider) keeps it.
  */
-export function SwipeDeck<T>({ items, keyOf, resetKey, renderCard, hint, prevLabel, nextLabel }: SwipeDeckProps<T>) {
+export function SwipeDeck<T>({ items, keyOf, resetKey, renderCard, hint, prevLabel, nextLabel, fill = false }: SwipeDeckProps<T>) {
   const [index, setIndex] = useState(0);
   const [lastReset, setLastReset] = useState(resetKey);
+  // With `fill`: the deck's measured height, the cards are drawn once it is known.
+  const [deckH, setDeckH] = useState(0);
   if (lastReset !== resetKey) {
     setLastReset(resetKey);
     setIndex(0);
@@ -165,72 +172,90 @@ export function SwipeDeck<T>({ items, keyOf, resetKey, renderCard, hint, prevLab
   const current = at(index);
   const position = ((index % n) + n) % n;
 
-  return (
-    <View>
-      <View style={styles.counterRow}>
-        <RoundButton
-          icon="arrowBack"
-          label={prevLabel}
-          disabled={n < 2}
-          onPress={() => {
-            hapticTap();
-            throwCard(-1);
-          }}
-        />
-        <View style={styles.counterText}>
-          <ThemedText style={styles.counter}>
-            {position + 1}
-            <ThemedText style={styles.counterTotal} themeColor="textTertiary">
-              {' '}/ {n}
-            </ThemedText>
+  const cardH = fill ? Math.max(deckH - STACK_TOP, 0) : undefined;
+  const sized = fill ? { height: cardH } : null;
+  const ready = !fill || deckH > 0;
+
+  const selector = (
+    <View style={[styles.counterRow, fill && styles.counterRowBelow]}>
+      <RoundButton
+        icon="arrowBack"
+        label={prevLabel}
+        disabled={n < 2}
+        onPress={() => {
+          hapticTap();
+          throwCard(-1);
+        }}
+      />
+      <View style={styles.counterText}>
+        <ThemedText style={styles.counter}>
+          {position + 1}
+          <ThemedText style={styles.counterTotal} themeColor="textTertiary">
+            {' '}/ {n}
           </ThemedText>
-          <ThemedText style={styles.hint} themeColor="textSecondary">
-            {hint}
-          </ThemedText>
-        </View>
-        <RoundButton
-          icon="chevronRight"
-          label={nextLabel}
-          disabled={n < 2}
-          onPress={() => {
-            hapticTap();
-            throwCard(1);
-          }}
-        />
+        </ThemedText>
+        <ThemedText style={styles.hint} themeColor="textSecondary">
+          {hint}
+        </ThemedText>
       </View>
+      <RoundButton
+        icon="chevronRight"
+        label={nextLabel}
+        disabled={n < 2}
+        onPress={() => {
+          hapticTap();
+          throwCard(1);
+        }}
+      />
+    </View>
+  );
+
+  return (
+    <View style={fill ? styles.fillRoot : undefined}>
+      {fill ? null : selector}
 
       <View
-        style={styles.deck}
+        style={[styles.deck, fill && styles.deckFill]}
         onLayout={(e: LayoutChangeEvent) => {
           width.set(e.nativeEvent.layout.width);
+          if (fill) {
+            const h = Math.round(e.nativeEvent.layout.height);
+            setDeckH((prev) => (prev === h ? prev : h));
+          }
         }}>
-        {/* The two cards behind, cut to the deck's height: only their top edge shows until the top card moves. */}
-        <View aria-hidden importantForAccessibility="no-hide-descendants" style={[styles.behindClip, { pointerEvents: 'none' }]}>
-          {n > 2 ? (
-            <Animated.View style={[styles.behind, behind2]}>
-              {renderCard(at(index + 2), false)}
-              <Animated.View style={[styles.veil, { backgroundColor: shade.color }, veil2]} />
-            </Animated.View>
-          ) : null}
-          {n > 1 ? (
-            <Animated.View style={[styles.behind, behind1]}>
-              {renderCard(at(index + 1), false)}
-              <Animated.View style={[styles.veil, { backgroundColor: shade.color }, veil1]} />
-            </Animated.View>
-          ) : null}
-        </View>
+        {ready ? (
+          <>
+            {/* The two cards behind, cut to the deck's height: only their top edge shows until the top card moves. */}
+            <View aria-hidden importantForAccessibility="no-hide-descendants" style={[styles.behindClip, fill && styles.behindClipFill, { pointerEvents: 'none' }]}>
+              {n > 2 ? (
+                <Animated.View style={[styles.behind, sized, behind2]}>
+                  {renderCard(at(index + 2), false)}
+                  <Animated.View style={[styles.veil, { backgroundColor: shade.color }, veil2]} />
+                </Animated.View>
+              ) : null}
+              {n > 1 ? (
+                <Animated.View style={[styles.behind, sized, behind1]}>
+                  {renderCard(at(index + 1), false)}
+                  <Animated.View style={[styles.veil, { backgroundColor: shade.color }, veil1]} />
+                </Animated.View>
+              ) : null}
+            </View>
 
-        <KeepDragContext.Provider value={keepDrag}>
-          {/* every new press starts unheld (a mouse release outside the slider never reaches it); the slider then holds again. On touch screens the end of a touch always reaches the view it started on. */}
-          <Animated.View
-            key={`${resetKey}-${keyOf(current)}`}
-            style={[styles.top, topStyle]}
-            onPointerDownCapture={keepDrag.release}
-            {...(n > 1 ? responder.panHandlers : {})}>
-            {renderCard(current, true)}
-          </Animated.View>
-        </KeepDragContext.Provider>
+            <KeepDragContext.Provider value={keepDrag}>
+              {/* every new press starts unheld (a mouse release outside the slider never reaches it); the slider then holds again. On touch screens the end of a touch always reaches the view it started on. */}
+              <Animated.View
+                key={`${resetKey}-${keyOf(current)}`}
+                style={[styles.top, sized, topStyle]}
+                onPointerDownCapture={keepDrag.release}
+                {...(n > 1 ? responder.panHandlers : {})}>
+                {renderCard(current, true)}
+              </Animated.View>
+            </KeepDragContext.Provider>
+          </>
+        ) : null}
       </View>
+
+      {fill ? selector : null}
     </View>
   );
 }
@@ -254,6 +279,9 @@ function RoundButton({ icon, label, disabled, onPress }: { icon: 'arrowBack' | '
 
 const styles = StyleSheet.create({
   counterRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  counterRowBelow: { marginTop: 10 },
+  fillRoot: { flex: 1 },
+  deckFill: { flex: 1, minHeight: 0 },
   counterText: { flex: 1, alignItems: 'center' },
   counter: { fontSize: 15, lineHeight: 19, fontWeight: '700', fontVariant: ['tabular-nums'] },
   counterTotal: { fontSize: 15, lineHeight: 19, fontWeight: '500' },
@@ -262,6 +290,7 @@ const styles = StyleSheet.create({
   deck: { marginTop: 4, paddingTop: STACK_TOP },
   // stops short of the deck's bottom so a longer card behind never shows under the top card's rounded corners
   behindClip: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 48, overflow: 'hidden' },
+  behindClipFill: { bottom: 0 },
   behind: { position: 'absolute', top: 0, left: 0, right: 0, transformOrigin: 'top' },
   veil: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 30, borderCurve: 'continuous' },
   top: { transformOrigin: 'bottom' },
