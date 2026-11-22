@@ -1,38 +1,41 @@
 import { Image } from 'expo-image';
 import { StyleSheet, View } from 'react-native';
 
+import { useTheme } from '@/hooks/use-theme';
+
 export type MeasurementZone = 'shouldersCm' | 'chestCm' | 'bicepsCm' | 'waistCm' | 'hipsCm' | 'thighCm';
 
-const IMAGES: Record<MeasurementZone, number> = {
-  shouldersCm: require('@/assets/images/body-measures/shoulders.webp'),
-  chestCm: require('@/assets/images/body-measures/chest.webp'),
-  bicepsCm: require('@/assets/images/body-measures/biceps.webp'),
-  waistCm: require('@/assets/images/body-measures/waist.webp'),
-  hipsCm: require('@/assets/images/body-measures/hips.webp'),
-  thighCm: require('@/assets/images/body-measures/thigh.webp'),
+/**
+ * Each illustration is two transparent layers: the body outline and the spot where the tape goes. Both are white
+ * masks tinted at render time, so the figure reads on dark and light backgrounds alike, with no white box behind it.
+ */
+const IMAGES: Record<MeasurementZone, { body: number; zone: number }> = {
+  shouldersCm: { body: require('@/assets/images/body-measures/shoulders-body.png'), zone: require('@/assets/images/body-measures/shoulders-zone.png') },
+  chestCm: { body: require('@/assets/images/body-measures/chest-body.png'), zone: require('@/assets/images/body-measures/chest-zone.png') },
+  bicepsCm: { body: require('@/assets/images/body-measures/biceps-body.png'), zone: require('@/assets/images/body-measures/biceps-zone.png') },
+  waistCm: { body: require('@/assets/images/body-measures/waist-body.png'), zone: require('@/assets/images/body-measures/waist-zone.png') },
+  hipsCm: { body: require('@/assets/images/body-measures/hips-body.png'), zone: require('@/assets/images/body-measures/hips-zone.png') },
+  thighCm: { body: require('@/assets/images/body-measures/thigh-body.png'), zone: require('@/assets/images/body-measures/thigh-zone.png') },
 };
+
+/** Width / height of the artwork (cropped tight around the figure). */
+export const SILHOUETTE_RATIO = 255 / 479;
 
 export type BodySilhouetteProps = {
   zone: MeasurementZone;
-  /** Rendered width; the images have a 5:6 aspect ratio. */
-  width?: number;
+  /** Rendered height; the width follows the artwork's ratio. */
   height?: number;
-  radius?: number;
 };
 
-/** Illustration of the body with the highlighted spot where a measurement is taken. */
-export function BodySilhouette({ zone, width = 180, height = (width * 6) / 5, radius = 12 }: BodySilhouetteProps) {
+/** The body with the highlighted spot where a measurement is taken: outline in the text colour, spot in the accent. */
+export function BodySilhouette({ zone, height = 200 }: BodySilhouetteProps) {
+  const theme = useTheme();
+  const width = Math.round(height * SILHOUETTE_RATIO);
+  const size = { width, height };
   return (
-    <View style={[styles.tile, { width, height, borderRadius: radius }]}>
-      <Image source={IMAGES[zone]} style={{ width, height }} contentFit="contain" accessibilityIgnoresInvertColors />
+    <View style={size} accessibilityIgnoresInvertColors>
+      <Image source={IMAGES[zone].body} style={[StyleSheet.absoluteFill, size]} contentFit="contain" tintColor={theme.text} />
+      <Image source={IMAGES[zone].zone} style={[StyleSheet.absoluteFill, size]} contentFit="contain" tintColor={theme.accent} />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  // The artwork is drawn on a white background, so keep it on a white tile in dark mode too.
-  tile: {
-    backgroundColor: '#FFFFFF',
-    overflow: 'hidden',
-  },
-});
