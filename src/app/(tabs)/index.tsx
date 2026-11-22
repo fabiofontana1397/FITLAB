@@ -10,7 +10,7 @@ import { EnergyBars } from '@/components/home/energy-bars';
 import { goalBandCopy } from '@/components/home/goal-band-copy';
 import { GoalRing } from '@/components/home/goal-ring';
 import { DayCalendarModal } from '@/components/ui/day-calendar-modal';
-import { GrowBar } from '@/components/motion/animated-fill';
+import { AnimatedFill, GrowBar } from '@/components/motion/animated-fill';
 import { PressableScale } from '@/components/motion/pressable-scale';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
@@ -346,19 +346,16 @@ export default function HomeScreen() {
             <Icon name="chevronRight" size={13} color={theme.accent} />
           </Pressable>
         </View>
-        {/* The weekly goal is the headline; what has been done so far sits under it. */}
+        {/* This week's balance so far against the week's goal, read like Assunte: the figure, "/ goal kcal", and a bar towards it. */}
         <View style={styles.weekHero}>
           <View style={styles.weekGoalRow}>
-            <ThemedText style={styles.weekGoalValue}>{formatSignedKcal(weeklyGoalKcal)}</ThemedText>
-            <ThemedText style={styles.weekGoalUnit} themeColor="textSecondary">
-              kcal
+            <ThemedText style={styles.weekGoalValue}>{formatSignedKcal(weeklySoFarKcal)}</ThemedText>
+            <ThemedText style={styles.weekGoalUnit} themeColor="textTertiary">
+              / {formatSignedKcal(weeklyGoalKcal)} kcal
             </ThemedText>
           </View>
-          <View style={styles.weekSoFarRow}>
-            <ThemedText style={styles.weekSoFarLabel} themeColor="textSecondary">
-              Finora
-            </ThemedText>
-            <ThemedText style={[styles.weekSoFarValue, { color: theme.accent }]}>{formatSignedKcal(weeklySoFarKcal)} kcal</ThemedText>
+          <View style={[styles.weekTrack, { backgroundColor: withAlpha(theme.accent, 0.18) }]}>
+            <AnimatedFill progress={weeklyProgress} delay={160} style={[styles.weekFill, { backgroundColor: theme.accent }]} />
           </View>
         </View>
 
@@ -658,25 +655,20 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
   },
   weekGoalUnit: {
-    fontSize: 12,
-    lineHeight: 15,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '600',
-  },
-  weekSoFarRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 6,
-  },
-  weekSoFarLabel: {
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: '600',
-  },
-  weekSoFarValue: {
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: '800',
     fontVariant: ['tabular-nums'],
+  },
+  weekTrack: {
+    height: 6,
+    borderRadius: 3,
+    overflow: 'hidden',
+    marginTop: 8,
+  },
+  weekFill: {
+    height: 6,
+    borderRadius: 3,
   },
   chartRow: {
     flexDirection: 'row',
