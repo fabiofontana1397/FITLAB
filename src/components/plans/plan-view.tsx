@@ -60,6 +60,8 @@ export type PlanViewProps = {
   /** The ended month still waiting for its check-in, or null when none is due. */
   checkinPendingMonth: number | null;
   onCheckin: () => void;
+  /** The person's own card or diet: no months, no check-in, only a summary and the way to update it. */
+  custom?: { onUpdate: () => void };
 };
 
 /**
@@ -67,7 +69,7 @@ export type PlanViewProps = {
  * and the chosen month (ring, name, download, check-in); descriptions, objectives and numbers sit behind a tap and
  * open by growing in place. Right under it comes the week of workouts or meals, which is what the page is for.
  */
-export function PlanView({ kind, plan, title, description, objective, phaseDetail, monthStats, renderDay, exportPdf, notice, footer, checkinPendingMonth, onCheckin }: PlanViewProps) {
+export function PlanView({ kind, plan, title, description, objective, phaseDetail, monthStats, renderDay, exportPdf, notice, footer, checkinPendingMonth, onCheckin, custom }: PlanViewProps) {
   const theme = useTheme();
   const completedMonths = useMonthlyCheckinStore((s) => s.completedMonths);
 
@@ -90,7 +92,8 @@ export function PlanView({ kind, plan, title, description, objective, phaseDetai
   const unlockedThrough = checkinUnlockedThroughMonth(completedMonths);
   // A month needs BOTH real time to have passed AND the check-in of the month before it (spec §0.4 punto 2).
   const timeElapsed = selectedMonth <= currentMonth;
-  const unlocked = timeElapsed && selectedMonth <= unlockedThrough;
+  // A card or diet the person loaded is followed as written: every week is open, nothing waits for a check-in.
+  const unlocked = custom != null || (timeElapsed && selectedMonth <= unlockedThrough);
   const needsCheckin = timeElapsed && !unlocked;
   const isCurrent = selectedMonth === currentMonth;
   const isDone = selectedMonth < currentMonth;
@@ -131,6 +134,11 @@ export function PlanView({ kind, plan, title, description, objective, phaseDetai
   return (
     <>
       {/* The macro plan, in one small box: where the plan stands, the month selector, the chosen month. */}
+      {custom ? (
+        <Reveal index={0}>
+          <CustomPlanSummary kind={kind} stats={monthStats(selectedMonth)} onUpdate={custom.onUpdate} />
+        </Reveal>
+      ) : (
       <Reveal index={0}>
         <FlatCard radius={Radius.medium} style={styles.box}>
           <View>
@@ -312,6 +320,7 @@ export function PlanView({ kind, plan, title, description, objective, phaseDetai
           )}
         </FlatCard>
       </Reveal>
+      )}
 
       {notice ? <View style={styles.section}>{notice}</View> : null}
 
@@ -358,8 +367,74 @@ export function PlanView({ kind, plan, title, description, objective, phaseDetai
   );
 }
 
+/**
+ * The summary of a card or diet the person loaded: what it is, its key numbers in one row, and a single button to
+ * update it. No duration, no months, no progress: the app follows it as written.
+ */
+function CustomPlanSummary({ kind, stats, onUpdate }: { kind: 'training' | 'diet'; stats: PlanStat[]; onUpdate: () => void }) {
+  const theme = useTheme();
+  const isDiet = kind === 'diet';
+  const updateLabel = isDiet ? 'Aggiorna dieta' : 'Aggiorna scheda';
+
+  return (
+    <FlatCard radius={Radius.medium} style={styles.summary}>
+      <View style={styles.summaryHead}>
+        <View style={[styles.summaryBadge, { backgroundColor: theme.accentSoft }]}>
+          <Icon name={isDiet ? 'utensils' : 'dumbbellLine'} size={20} strokeWidth={1.5} color={theme.accent} />
+        </View>
+        <View style={styles.flex}>
+          <ThemedText style={styles.summaryOverline} themeColor="textSecondary" numberOfLines={1}>
+            {isDiet ? 'Dieta personale' : 'Scheda personale'}
+          </ThemedText>
+          <ThemedText style={styles.title} numberOfLines={1} accessibilityRole="header">
+            {isDiet ? 'La tua dieta' : 'La tua scheda'}
+          </ThemedText>
+        </View>
+      </View>
+
+      {stats.length > 0 ? (
+        <View style={styles.summaryStats}>
+          {stats.map((st, i) => (
+            <View key={st.label} style={[styles.fact, i > 0 && [styles.factDivided, { borderLeftColor: theme.border }]]}>
+              <ThemedText style={styles.summaryValue} numberOfLines={1}>
+                {Math.round(st.value).toLocaleString('it-IT')}
+                {st.unit ? <ThemedText style={styles.summaryUnit} themeColor="textSecondary">{` ${st.unit}`}</ThemedText> : null}
+              </ThemedText>
+              <ThemedText style={styles.factLabel} themeColor="textSecondary" numberOfLines={1}>
+                {st.label}
+              </ThemedText>
+            </View>
+          ))}
+        </View>
+      ) : null}
+
+      <Pressable
+        onPress={() => {
+          hapticSelection();
+          onUpdate();
+        }}
+        accessibilityRole="button"
+        accessibilityLabel={updateLabel}
+        style={({ pressed }) => [styles.summaryButton, { backgroundColor: theme.accentSoft, opacity: pressed ? 0.6 : 1 }]}
+      >
+        <Icon name="refresh" size={16} color={theme.accent} />
+        <ThemedText style={[styles.summaryButtonLabel, { color: theme.accent }]}>{updateLabel}</ThemedText>
+      </Pressable>
+    </FlatCard>
+  );
+}
+
 const styles = StyleSheet.create({
   flex: { flex: 1, minWidth: 0 },
+  summary: { padding: 16, gap: 16 },
+  summaryHead: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  summaryBadge: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  summaryOverline: { fontSize: 12, lineHeight: 16, fontWeight: '500', letterSpacing: 0.2 },
+  summaryStats: { flexDirection: 'row' },
+  summaryValue: { fontSize: 17, lineHeight: 22, fontWeight: '600', letterSpacing: -0.3, fontVariant: ['tabular-nums'] },
+  summaryUnit: { fontSize: 13, lineHeight: 22, fontWeight: '500' },
+  summaryButton: { minHeight: 44, borderRadius: 22, borderCurve: 'continuous', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 16 },
+  summaryButtonLabel: { fontSize: 15, lineHeight: 20, fontWeight: '600', letterSpacing: -0.2 },
   stack: { gap: 12 },
   section: { marginTop: 16 },
   center: { textAlign: 'center' },

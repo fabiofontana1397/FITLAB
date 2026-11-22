@@ -7,6 +7,7 @@ import {
   ConciergeBell,
   Crosshair,
   Droplet,
+  Dumbbell,
   Drumstick,
   Flame,
   GlassWater,
@@ -56,6 +57,8 @@ const LUCIDE_ICONS = {
   categoryAll: LayoutGrid,
   categoryDairy: Milk,
   categoryLegumes: Bean,
+  // A thin, line-drawn dumbbell: the stand-in picture of an exercise with no animation of its own.
+  dumbbellLine: Dumbbell,
 } satisfies Record<string, LucideIcon>;
 
 /**
