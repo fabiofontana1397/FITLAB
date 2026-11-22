@@ -16,9 +16,7 @@ import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon, type IconName } from '@/components/ui/icon';
-import { SectionHeader } from '@/components/ui/section-header';
 import { TodayTiles, type TodayWorkout } from '@/components/home/today-tiles';
-import { WeekProgressCard } from '@/components/home/week-progress-card';
 import { WeekStrip, type WeekStripDay } from '@/components/home/week-strip';
 import { TabHeader } from '@/components/tab-header';
 import { LogActivityModal } from '@/components/training/log-activity-modal';
@@ -34,7 +32,6 @@ import { useTheme } from '@/hooks/use-theme';
 import { currentWeekDates, dayOfMonth, daysAgoISO, isoMondayIndex } from '@/lib/mock/dates';
 import { balanceCaption as captionFor, calorieBalance, goalBand, readBalance } from '@/domain/calorie-balance';
 import { dayEnergy, sessionMinutes } from '@/domain/energy';
-import { trackingStreak } from '@/domain/week-progress';
 import { Brand, Layout, OnBrand, Radius } from '@/constants/theme';
 import { useUserContext } from '@/hooks/use-user-context';
 import { formatKcal, formatSignedKcal } from '@/lib/format-kcal';
@@ -198,45 +195,13 @@ export default function HomeScreen() {
     return { date: d.date, isToday: d.isToday, balance: tracked ? d.eatenKcal - d.estimatedExpenditureKcal : null };
   });
   const maxAbsBalance = Math.max(1, ...dayBalances.map((d) => (d.balance == null ? 0 : Math.abs(d.balance))));
+  const trackedBalances = dayBalances.filter((d) => d.balance != null).map((d) => d.balance as number);
+  const averageBalance = trackedBalances.length > 0 ? trackedBalances.reduce((a, b) => a + b, 0) / trackedBalances.length : 0;
   const monthLabel = (() => {
     const label = new Date(weekDates[3]).toLocaleDateString('it-IT', { month: 'long' });
     return label.charAt(0).toUpperCase() + label.slice(1);
   })();
 
-  // Workouts: planned slots this week vs. the ones actually finished (a
-  // workout day counts when every exercise is ticked, a cardio day when
-  // any activity was logged that day).
-  let workoutsPlanned = 0;
-  let workoutsDone = 0;
-  weekDates.forEach((date, i) => {
-    const day = weeklySplit[i];
-    if (!day || day.type === 'rest') return;
-    workoutsPlanned++;
-    if (date > today) return;
-    if (day.type === 'workout') {
-      const exercises = day.exercises ?? [];
-      if (exercises.length > 0 && exercises.every((ex) => isExerciseCompleted(completedExercises, ex.id, date))) workoutsDone++;
-    } else if (activityLogEntries.some((e) => e.date === date)) {
-      workoutsDone++;
-    }
-  });
-  const trackedMealDays = weekDates.filter((date) => nutritionEntries.some((e) => e.date === date)).length;
-  const trackedBalances = dayBalances.filter((d) => d.balance != null).map((d) => d.balance as number);
-  const averageBalance = trackedBalances.length > 0 ? trackedBalances.reduce((a, b) => a + b, 0) / trackedBalances.length : 0;
-  // Motivation: days in a row with meals logged, and whether today's balance already sits on the day's goal.
-  const loggedDates = new Set(nutritionEntries.map((e) => e.date));
-  const streakDays = trackingStreak(loggedDates, today);
-  const todayTracked = loggedDates.has(today);
-  const todayWeek = weekDaysWithActivity.find((d) => d.isToday);
-  const todayOnGoal = todayWeek
-    ? goalBand({
-        reading: readBalance({ eatenKcal: todayWeek.eatenKcal, burnedKcal: todayWeek.estimatedExpenditureKcal, goalKcal: weeklyGoalKcal / 7 }),
-        eatenKcal: todayWeek.eatenKcal,
-        burnedKcal: todayWeek.estimatedExpenditureKcal,
-        plannedEatenKcal: todayWeek.targetKcal,
-        dayComplete: false,
-      }).state === 'reached'
-    : false;
 
   const infoContent: Record<InfoTopic, { icon: IconName; title: string; body: string }> = {
     burned: {
@@ -368,13 +333,12 @@ export default function HomeScreen() {
         }
       />
 
-      <View style={{ marginTop: 18 }}>
-        <SectionHeader title="Questa settimana" style={{ marginBottom: 10 }} />
-      </View>
       <FlatCard radius={CARD_RADIUS} style={styles.weekCard}>
         <View style={styles.weekTitleRow}>
           <View style={styles.weekTitleLeft}>
-            <Icon name="target" size={22} color={theme.accent} />
+            <View style={[styles.weekIcon, { backgroundColor: withAlpha(theme.accent, 0.16) }]}>
+              <Icon name="target" size={14} color={theme.accent} />
+            </View>
             <ThemedText style={styles.weekTitle}>Obiettivo {weeklyGoalKcal >= 0 ? 'surplus' : 'deficit'} settimanale</ThemedText>
           </View>
           <Pressable onPress={() => router.push('/weekly-guide' as Href)} hitSlop={8} style={styles.linkRow} accessibilityRole="button" accessibilityLabel="Dettagli: come leggere il grafico della settimana">
@@ -433,18 +397,6 @@ export default function HomeScreen() {
         </ThemedText>
       </FlatCard>
 
-      <WeekProgressCard
-        workoutsDone={workoutsDone}
-        workoutsPlanned={workoutsPlanned}
-        trackedMealDays={trackedMealDays}
-        streakDays={streakDays}
-        todayTracked={todayTracked}
-        todayOnGoal={todayOnGoal}
-        averageBalanceKcal={averageBalance}
-        trackedBalanceDays={trackedBalances.length}
-        dailyGoalKcal={dailyGoalKcal}
-        weeklyGoalKcal={weeklyGoalKcal}
-      />
 
       {sessionOpen && viewPlanDay?.type === 'workout' ? (
         <WorkoutSessionModal visible onClose={() => setSessionOpen(false)} title={viewPlanDay.title} exercises={viewPlanDay.exercises ?? []} date={today} />
@@ -661,45 +613,53 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   weekCard: {
+    marginTop: 10,
     paddingHorizontal: 14,
     paddingTop: 14,
-    paddingBottom: 10,
+    paddingBottom: 12,
   },
   weekTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  weekIcon: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   weekTitleLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 9,
+    gap: 8,
   },
   weekTitle: {
-    fontSize: 13,
+    fontSize: 14,
     lineHeight: 18,
     fontWeight: '700',
   },
   weekHero: {
-    marginTop: 10,
-    marginBottom: 6,
+    marginTop: 12,
+    marginBottom: 4,
     gap: 2,
   },
   weekGoalRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    gap: 6,
+    gap: 4,
   },
   weekGoalValue: {
-    fontSize: 40,
-    lineHeight: 52,
+    fontSize: 30,
+    lineHeight: 34,
     fontWeight: '800',
-    letterSpacing: -1.2,
+    letterSpacing: -0.8,
     fontVariant: ['tabular-nums'],
   },
   weekGoalUnit: {
-    fontSize: 16,
-    lineHeight: 22,
+    fontSize: 12,
+    lineHeight: 15,
     fontWeight: '600',
   },
   weekSoFarRow: {
@@ -708,21 +668,21 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   weekSoFarLabel: {
-    fontSize: 13,
-    lineHeight: 18,
-    fontWeight: '500',
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '600',
   },
   weekSoFarValue: {
-    fontSize: 15,
-    lineHeight: 20,
-    fontWeight: '700',
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '800',
     fontVariant: ['tabular-nums'],
   },
   chartRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    height: 96,
-    marginTop: 14,
+    height: 88,
+    marginTop: 12,
   },
   chartCol: {
     flex: 1,
@@ -731,13 +691,14 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   barValue: {
-    fontSize: 13,
-    lineHeight: 17,
+    fontSize: 11,
+    lineHeight: 14,
     fontWeight: '700',
+    fontVariant: ['tabular-nums'],
   },
   bar: {
-    width: 26,
-    borderRadius: 6,
+    width: 22,
+    borderRadius: 5,
   },
   dayLabelsRow: {
     flexDirection: 'row',
@@ -746,15 +707,15 @@ const styles = StyleSheet.create({
   dayLabel: {
     flex: 1,
     textAlign: 'center',
-    fontSize: 13,
-    lineHeight: 17,
-    fontWeight: '500',
+    fontSize: 11,
+    lineHeight: 14,
+    fontWeight: '600',
   },
   chartMonth: {
-    marginTop: 6,
+    marginTop: 4,
     textAlign: 'center',
-    fontSize: 13,
-    lineHeight: 17,
-    fontWeight: '500',
+    fontSize: 11,
+    lineHeight: 14,
+    fontWeight: '600',
   },
 });
