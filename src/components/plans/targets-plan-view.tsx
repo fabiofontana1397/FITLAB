@@ -13,6 +13,7 @@ import { SegmentedControl } from '@/components/ui/segmented-control';
 import { OnBrand, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { hapticTap } from '@/lib/haptics';
+import { mondayIndex } from '@/lib/mock/dates';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
 import { macroPercents, monthDayTargets, planMonthName, type DayKind } from '@/lib/planning/targets-plan';
 import type { DietPlan } from '@/lib/planning/types';
@@ -39,7 +40,7 @@ export function TargetsPlanView({ plan, checkinPendingMonth, onCheckin }: { plan
   const trainingDays = plan.ownTargets?.trainingDays ?? [];
   // Two kinds of day only when the week has both; otherwise every day shares one target.
   const split = trainingDays.length > 0 && trainingDays.length < 7;
-  const [kind, setKind] = useState<DayKind>(() => (trainingDays.includes((new Date(now).getDay() + 6) % 7) ? 'training' : 'rest'));
+  const [kind, setKind] = useState<DayKind>(() => (trainingDays.includes(mondayIndex(new Date(now))) ? 'training' : 'rest'));
   const shownKind: DayKind = split ? kind : trainingDays.length === 7 ? 'training' : 'rest';
 
   const monthStart = (i: number) => new Date(startMs + (i - 1) * 30 * DAY_MS);
