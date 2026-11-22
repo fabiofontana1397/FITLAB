@@ -19,6 +19,7 @@ import {
   type LucideIcon,
 } from 'lucide-react-native';
 import type { ComponentProps } from 'react';
+import Svg, { Path } from 'react-native-svg';
 
 type MCIName = ComponentProps<typeof MaterialCommunityIcons>['name'];
 type IonName = ComponentProps<typeof Ionicons>['name'];
@@ -77,6 +78,9 @@ const ICONS = {
   profile: { set: 'ion', name: 'person-circle-outline' },
 
   gym: { set: 'mci', name: 'weight-lifter' },
+  kettlebell: { set: 'mci', name: 'kettlebell' },
+  rowing: { set: 'mci', name: 'rowing' },
+  jumpRope: { set: 'mci', name: 'jump-rope' },
   functional: { set: 'mci', name: 'lightning-bolt-outline' },
   running: { set: 'mci', name: 'run' },
   swimming: { set: 'mci', name: 'swim' },
@@ -173,7 +177,13 @@ const ICONS = {
   mail: { set: 'ion', name: 'mail-outline' },
 } as const satisfies Record<string, { set: 'mci' | 'ion'; name: MCIName | IonName }>;
 
-export type IconName = keyof typeof ICONS | keyof typeof LUCIDE_ICONS;
+/** Glyphs no icon set draws well, drawn here as filled silhouettes in a 24-pt box like the MCI ones. */
+const CUSTOM_ICONS = {
+  // A stylized leg seen from the side, knee slightly bent, foot forward (the "Gambe" workout).
+  leg: 'M6 1h7.5c.9 3.2 1.6 6.3 1.5 9.5-.1 2.8-1.6 5.4-2.3 8.4 2 .5 4.4.9 6.1 1.5 1.2.5 1.1 2.2-.3 2.2H10.6c-.9 0-1.3-.7-1.1-1.6.3-1.1.5-2.1.3-3.1-.3-1.6-1.3-3-.9-4.8.2-1 .9-1.9 1.6-2.6C9.4 7.6 7.4 4.4 6 1z',
+} as const;
+
+export type IconName = keyof typeof ICONS | keyof typeof LUCIDE_ICONS | keyof typeof CUSTOM_ICONS;
 
 export type IconProps = {
   name: IconName;
@@ -184,6 +194,13 @@ export type IconProps = {
 };
 
 export function Icon({ name, size = 22, color, strokeWidth = 1.9 }: IconProps) {
+  if (name in CUSTOM_ICONS) {
+    return (
+      <Svg width={size} height={size} viewBox="0 0 24 24">
+        <Path d={CUSTOM_ICONS[name as keyof typeof CUSTOM_ICONS]} fill={color} />
+      </Svg>
+    );
+  }
   if (name in LUCIDE_ICONS) {
     const Glyph = LUCIDE_ICONS[name as keyof typeof LUCIDE_ICONS];
     // 1.9 at 22px matches the visual weight of the Ionicons outline

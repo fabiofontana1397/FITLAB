@@ -58,7 +58,7 @@ export type WorkoutSessionModalProps = {
   exercises: TrainingExerciseEntry[];
   /** Day the sets are logged against. */
   date: string;
-  /** Allenamento spot: a one-off workout outside the plan. It never resumes or ticks the plan's exercises; when it
+  /** Allenamento veloce: a one-off workout outside the plan. It never resumes or ticks the plan's exercises; when it
    * ends with at least one set done, `onFinish` logs it (minutes, sets) and returns the kcal it recorded. */
   spot?: { onFinish: (elapsedMs: number) => number };
 };
