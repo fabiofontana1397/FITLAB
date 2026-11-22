@@ -75,12 +75,14 @@ async function main() {
       await page.getByText('Nutrizione', { exact: true }).first().click();
       await pause(900);
 
-      await test(`[${appearance}] the Nutrizione line offers Imposta next to Carica`, async () => {
-        assert.ok(await page.getByRole('button', { name: 'Imposta calorie e macro del tuo piano' }).isVisible());
-        await shot(page, `${appearance}-01-banner`);
+      await test(`[${appearance}] Nutrizione offers FitLab (in use), Caricata and Fai da te`, async () => {
+        assert.ok(await page.getByRole('radio', { name: /^FitLab, .*in uso$/ }).isVisible());
+        assert.ok(await page.getByRole('radio', { name: /^Caricata,/ }).isVisible());
+        assert.ok(await page.getByRole('radio', { name: /^Fai da te, Kcal e macro$/ }).isVisible());
+        await shot(page, `${appearance}-01-sources`);
       });
 
-      await page.getByRole('button', { name: 'Imposta calorie e macro del tuo piano' }).click();
+      await page.getByRole('radio', { name: /^Fai da te,/ }).click();
       await pause(1500);
       await test(`[${appearance}] the editor opens with three months from today's targets`, async () => {
         assert.ok(await page.getByText('Imposta il tuo piano').first().isVisible());
@@ -129,7 +131,7 @@ async function main() {
         assert.ok(await page.getByText('Mese per mese').isVisible());
         assert.match(await page.evaluate(() => document.body.innerText), /2[.\u202f ]?200/);
         assert.equal(await page.getByText('Pranzo', { exact: true }).count(), 0);
-        assert.ok(await page.getByText('Stai seguendo i tuoi obiettivi').isVisible());
+        assert.ok(await page.getByRole('radio', { name: /^Fai da te, .*in uso$/ }).isVisible());
         await shot(page, `${appearance}-05-summary`);
         await page.mouse.wheel(0, 700);
         await pause(700);
@@ -151,6 +153,16 @@ async function main() {
         assert.match(text, /2[.  ]?200 kcal/);
         assert.match(text, /Colazione/);
         await shot(page, `${appearance}-08-nutrition`);
+      });
+
+      await test(`[${appearance}] FitLab brings the app's plan back`, async () => {
+        await page.getByRole('tab', { name: /Piani/ }).first().click().catch(async () => page.getByText('Piani', { exact: true }).last().click());
+        await pause(1200);
+        await page.getByRole('radio', { name: /^FitLab,/ }).click();
+        await pause(600);
+        assert.ok(await page.getByText('Riprendere il piano FitLab?').isVisible());
+        await shot(page, `${appearance}-09-restore`);
+        await page.getByText('Annulla', { exact: true }).last().click();
       });
       await page.context().close();
     }

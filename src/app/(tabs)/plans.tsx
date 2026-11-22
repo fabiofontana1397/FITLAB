@@ -27,7 +27,7 @@ import { useUserStore } from '@/store/user-store';
 type PlanKind = 'training' | 'diet';
 
 /** Piani: the training and the nutrition plan, one at a time behind a switch. Under the switch, a line to load a card or
- * diet the person already has (or to go back to the app's plan). Each plan opens with a small box for the macro
+ * diet the person already has, build their own, or go back to FitLab's plan. Each plan opens with a small box for the macro
  * plan (name, progress, month selector, the chosen month), then the week of workouts or meals, and the check-in.
  * The page replays its entrance every time it opens. */
 export default function PlansScreen() {
@@ -61,7 +61,6 @@ export default function PlansScreen() {
   const endedMonth = plan ? currentMonthIndex(plan) - 1 : 0;
   const checkinPendingMonth = endedMonth >= 1 && !completedMonths.includes(endedMonth) ? endedMonth : null;
   const cardKey = `${kind}-${replay}`;
-  const isCustom = (kind === 'training' ? trainingPlan?.source : dietPlan?.source) === 'custom';
 
   return (
     <ScreenScroll header={<TabHeader title="Piani" />} contentContainerStyle={styles.page}>
@@ -76,14 +75,10 @@ export default function PlansScreen() {
         />
       </View>
 
-      {/* Once the person follows their own card or diet, its summary box carries the only action (update it). */}
-      {isCustom ? (
-        <View style={styles.bannerSpacer} />
-      ) : (
-        <View style={styles.banner}>
-          <PlanSourceBanner kind={kind} />
-        </View>
-      )}
+      {/* The three ways to have the plan (FitLab, loaded, built by the person), the one in use highlighted. */}
+      <View style={styles.banner}>
+        <PlanSourceBanner kind={kind} />
+      </View>
 
       {kind === 'training' && trainingPlan ? (
         <TrainingPlanView
@@ -123,7 +118,6 @@ const styles = StyleSheet.create({
   page: { paddingHorizontal: Layout.screenGutter, gap: 0 },
   switcher: { marginTop: 12 },
   banner: { marginTop: 8, marginBottom: 12 },
-  bannerSpacer: { height: 16 },
   empty: { padding: 20, gap: 6 },
   emptyAction: { marginTop: 8, alignSelf: 'flex-start' },
 });

@@ -76,8 +76,8 @@ export function TrainingPlanView({ plan, goal, checkinPendingMonth, onCheckin }:
     <PlanView
       kind="training"
       plan={plan}
-      title={plan.source === 'custom' ? 'La tua scheda' : GOAL_NAME[goal]}
-      description={plan.source === 'custom' ? 'La scheda che hai caricato: l’app la segue così com’è e adatta dieta e calorie ai tuoi allenamenti.' : TRAINING_GOAL_COPY[goal].why}
+      title={plan.source === 'custom' ? (plan.ownBuilt ? 'Il tuo programma' : 'La tua scheda') : GOAL_NAME[goal]}
+      description={plan.source === 'custom' ? `${plan.ownBuilt ? 'Il programma che hai creato' : 'La scheda che hai caricato'}: l’app la segue così com’è e adatta dieta e calorie ai tuoi allenamenti.` : TRAINING_GOAL_COPY[goal].why}
       objective={TRAINING_GOAL_TEXT[goal]}
       phaseDetail={TRAINING_PHASE_DETAIL}
       monthStats={(monthIndex) => {
@@ -195,7 +195,7 @@ export function TrainingPlanView({ plan, goal, checkinPendingMonth, onCheckin }:
       }
       checkinPendingMonth={checkinPendingMonth}
       onCheckin={onCheckin}
-      custom={plan.source === 'custom' ? { onUpdate: () => router.push('/custom-workout') } : undefined}
+      custom={plan.source === 'custom' ? { onUpdate: () => router.push(plan.ownBuilt ? '/own-workout' : '/custom-workout'), own: plan.ownBuilt } : undefined}
     />
   );
 }

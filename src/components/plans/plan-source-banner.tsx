@@ -4,36 +4,33 @@ import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import { GlassPopup } from '@/components/glass/glass-popup';
 import { ThemedText } from '@/components/themed-text';
+import { Icon, type IconName } from '@/components/ui/icon';
 import { PrimaryButton } from '@/components/ui/primary-button';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useUserContext } from '@/hooks/use-user-context';
-import { hapticSuccess, hapticTap } from '@/lib/haptics';
+import { hapticSelection, hapticSuccess } from '@/lib/haptics';
 import { useOnboardingStore } from '@/store/onboarding-store';
-import { isTargetsPlan } from '@/lib/planning/targets-plan';
+import { dietPlanSource, PLAN_SOURCE_ROUTE, trainingPlanSource, type PlanSource } from '@/lib/planning/plan-source';
 import { usePlanStore } from '@/store/plan-store';
 
 type Kind = 'training' | 'diet';
 
 const COPY = {
   training: {
-    ask: 'Hai già una scheda?',
-    askSub: 'Caricala e seguila qui.',
-    active: 'Stai seguendo la tua scheda',
-    replace: 'Sostituiscila',
-    route: '/custom-workout',
-    restoreTitle: 'Tornare al programma dell’app?',
-    restoreBody: 'La tua scheda viene sostituita dal programma creato dalle tue risposte al questionario.',
+    restoreTitle: 'Riprendere il programma FitLab?',
+    restoreBody: {
+      file: 'La scheda che hai caricato viene sostituita dal programma creato da FitLab con le tue risposte al questionario.',
+      own: 'Il programma che hai creato viene sostituito da quello di FitLab, costruito con le tue risposte al questionario.',
+    },
     createBody: 'Il tuo percorso non prevede l’allenamento. Per creare il programma servono le tue risposte: rifai il questionario dal Profilo.',
   },
   diet: {
-    ask: 'Hai già una dieta?',
-    askSub: 'Caricala o imposta i macro.',
-    active: 'Stai seguendo la tua dieta',
-    replace: 'Sostituiscila',
-    route: '/custom-diet',
-    restoreTitle: 'Tornare al piano dell’app?',
-    restoreBody: 'La tua dieta viene sostituita dal piano alimentare creato dalle tue risposte al questionario.',
+    restoreTitle: 'Riprendere il piano FitLab?',
+    restoreBody: {
+      file: 'La dieta che hai caricato viene sostituita dal piano alimentare creato da FitLab con le tue risposte al questionario.',
+      own: 'I tuoi obiettivi di calorie e macro vengono sostituiti dal piano alimentare di FitLab, costruito con le tue risposte al questionario.',
+    },
     createBody: 'Il tuo percorso non prevede l’alimentazione. Per creare il piano servono le tue risposte: rifai il questionario dal Profilo.',
   },
 } as const;
@@ -66,18 +63,33 @@ export function CreatePlanPopup({ kind, visible, onClose }: { kind: Kind; visibl
   );
 }
 
+type Option = { source: PlanSource; icon: IconName; title: string; sub: string };
+
+const OPTIONS: Record<Kind, Option[]> = {
+  training: [
+    { source: 'fitlab', icon: 'sparkle', title: 'FitLab', sub: 'Creato per te' },
+    { source: 'file', icon: 'camera', title: 'Caricata', sub: 'Foto, file, testo' },
+    { source: 'own', icon: 'edit', title: 'Fai da te', sub: 'Scegli gli esercizi' },
+  ],
+  diet: [
+    { source: 'fitlab', icon: 'sparkle', title: 'FitLab', sub: 'Creato per te' },
+    { source: 'file', icon: 'camera', title: 'Caricata', sub: 'Foto, file, testo' },
+    { source: 'own', icon: 'edit', title: 'Fai da te', sub: 'Kcal e macro' },
+  ],
+};
+
 /**
- * The line under the Allenamento / Nutrizione switch: an invitation to load a card or diet the person already has
- * and, once one is in place, the way back to the app's own plan (or to creating it, when it never existed).
+ * The three ways to have a plan, under the Allenamento / Nutrizione switch: the one FitLab builds from the
+ * questionnaire, the person's own card or diet loaded from a photo, file or text, or one they build themselves
+ * (exercises chosen one by one; calories and macros month by month). The one in use is highlighted; tapping FitLab
+ * from another source brings the app's plan back, tapping the others opens their screen (to load, build or edit).
  */
 export function PlanSourceBanner({ kind }: { kind: Kind }) {
   const theme = useTheme();
   const copy = COPY[kind];
   const answers = useOnboardingStore((s) => s.answers);
   const ctx = useUserContext();
-  const isCustom = usePlanStore((s) => (kind === 'training' ? s.trainingPlan?.source : s.dietPlan?.source) === 'custom');
-  // the person's own calorie and macro targets (no menu): tapping the line edits them instead of loading a diet
-  const ownTargets = usePlanStore((s) => kind === 'diet' && isTargetsPlan(s.dietPlan));
+  const current = usePlanStore((s) => (kind === 'training' ? trainingPlanSource(s.trainingPlan) : dietPlanSource(s.dietPlan)));
   const isGenerating = usePlanStore((s) => s.isGenerating);
   const restoreTraining = usePlanStore((s) => s.restoreGeneratedTraining);
   const restoreDiet = usePlanStore((s) => s.restoreGeneratedDiet);
@@ -85,13 +97,16 @@ export function PlanSourceBanner({ kind }: { kind: Kind }) {
   const [restoreOpen, setRestoreOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
 
-  const openSheet = () => {
-    hapticTap();
-    router.push(ownTargets ? '/custom-targets' : copy.route);
-  };
-  const openTargets = () => {
-    hapticTap();
-    router.push('/custom-targets');
+  const choose = (source: PlanSource) => {
+    hapticSelection();
+    if (source === 'fitlab') {
+      if (current === 'fitlab' || isGenerating) return;
+      if (neverRequested) setCreateOpen(true);
+      else if (current == null) return; // the app's plan is being prepared
+      else setRestoreOpen(true);
+      return;
+    }
+    router.push(PLAN_SOURCE_ROUTE[kind][source]);
   };
   const restore = () => {
     const weightKg = ctx.weightKg > 0 ? ctx.weightKg : undefined;
@@ -101,69 +116,47 @@ export function PlanSourceBanner({ kind }: { kind: Kind }) {
   };
 
   return (
-    <View style={styles.row}>
-      {isCustom ? (
-        <Pressable
-          onPress={openSheet}
-          accessibilityRole="button"
-          accessibilityLabel={ownTargets ? 'Stai seguendo i tuoi obiettivi. Modificali' : `${copy.active}. ${copy.replace}`}
-          style={({ pressed }) => [styles.texts, { opacity: pressed ? 0.6 : 1 }]}
-        >
-          <ThemedText style={styles.title} numberOfLines={1}>
-            {ownTargets ? 'Stai seguendo i tuoi obiettivi' : copy.active}
-          </ThemedText>
-          <ThemedText style={[styles.sub, { color: theme.accent, fontWeight: '600' }]} numberOfLines={1}>
-            {ownTargets ? 'Modificali' : copy.replace}
-          </ThemedText>
-        </Pressable>
-      ) : (
-        <View style={styles.texts}>
-          <ThemedText style={styles.title} numberOfLines={1}>
-            {copy.ask}
-          </ThemedText>
-          <ThemedText style={styles.sub} themeColor="textSecondary" numberOfLines={1}>
-            {copy.askSub}
-          </ThemedText>
-        </View>
-      )}
-
-      {isCustom ? (
-        <Pressable
-          onPress={() => {
-            hapticTap();
-            if (neverRequested) setCreateOpen(true);
-            else setRestoreOpen(true);
-          }}
-          disabled={isGenerating}
-          hitSlop={4}
-          accessibilityRole="button"
-          accessibilityState={{ disabled: isGenerating, busy: isGenerating }}
-          style={({ pressed }) => [styles.button, { backgroundColor: theme.backgroundElement, opacity: pressed ? 0.6 : 1 }]}
-        >
-          {isGenerating ? <ActivityIndicator size="small" color={theme.textSecondary} /> : null}
-          <ThemedText style={styles.buttonLabel}>{neverRequested ? 'Crea il tuo piano' : 'Piano originale'}</ThemedText>
-        </Pressable>
-      ) : (
-        <View style={styles.buttons}>
-          {kind === 'diet' ? (
-            <Pressable onPress={openTargets} hitSlop={4} accessibilityRole="button" accessibilityLabel="Imposta calorie e macro del tuo piano" style={({ pressed }) => [styles.button, { backgroundColor: theme.backgroundElement, opacity: pressed ? 0.6 : 1 }]}>
-              <ThemedText style={styles.buttonLabel}>Imposta</ThemedText>
+    <View style={styles.wrap}>
+      <View style={styles.tiles} accessibilityRole="radiogroup" accessibilityLabel={kind === 'training' ? 'Come vuoi il programma di allenamento' : 'Come vuoi il piano alimentare'}>
+        {OPTIONS[kind].map((o) => {
+          const on = current === o.source;
+          const busy = o.source === 'fitlab' && isGenerating;
+          return (
+            <Pressable
+              key={o.source}
+              onPress={() => choose(o.source)}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: on, busy }}
+              aria-checked={on}
+              accessibilityLabel={`${o.title}, ${o.sub}${on ? ', in uso' : ''}`}
+              style={({ pressed }) => [
+                styles.tile,
+                { backgroundColor: on ? theme.accentSoft : theme.backgroundElement, borderColor: on ? theme.accent : 'transparent', opacity: pressed ? 0.7 : 1 },
+              ]}
+            >
+              <View style={styles.tileHead}>
+                {busy ? <ActivityIndicator size="small" color={theme.accent} /> : <Icon name={o.icon} size={18} color={on ? theme.accent : theme.textSecondary} />}
+                {on ? <Icon name="checkCircle" size={16} color={theme.accent} /> : null}
+              </View>
+              <ThemedText style={[styles.tileTitle, on ? { color: theme.accent } : null]} numberOfLines={1}>
+                {o.title}
+              </ThemedText>
+              <ThemedText style={styles.tileSub} themeColor="textSecondary" numberOfLines={1}>
+                {on && o.source !== 'fitlab' ? 'In uso · modifica' : o.sub}
+              </ThemedText>
             </Pressable>
-          ) : null}
-          <Pressable onPress={openSheet} hitSlop={4} accessibilityRole="button" accessibilityLabel={`${copy.ask} Carica`} style={({ pressed }) => [styles.button, { backgroundColor: theme.accentSoft, opacity: pressed ? 0.6 : 1 }]}>
-            <ThemedText style={[styles.buttonLabel, { color: theme.accent }]}>Carica</ThemedText>
-          </Pressable>
-        </View>
-      )}
+          );
+        })}
+      </View>
 
       <GlassPopup visible={restoreOpen} onClose={() => setRestoreOpen(false)} style={styles.popup}>
         <ThemedText type="title" style={styles.center}>
           {copy.restoreTitle}
         </ThemedText>
         <ThemedText themeColor="textSecondary" style={styles.center}>
-          {ownTargets ? 'I tuoi obiettivi di calorie e macro vengono sostituiti dal piano alimentare creato dalle tue risposte al questionario.' : copy.restoreBody}
+          {copy.restoreBody[current === 'own' ? 'own' : 'file']}
         </ThemedText>
-        <PrimaryButton label="Torna al piano originale" onPress={restore} />
+        <PrimaryButton label="Riprendi il piano FitLab" onPress={restore} />
         <PrimaryButton label="Annulla" variant="outline" onPress={() => setRestoreOpen(false)} />
       </GlassPopup>
       <CreatePlanPopup kind={kind} visible={createOpen} onClose={() => setCreateOpen(false)} />
@@ -172,13 +165,12 @@ export function PlanSourceBanner({ kind }: { kind: Kind }) {
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44, paddingHorizontal: 4 },
-  texts: { flex: 1, minWidth: 0 },
-  title: { fontSize: 15, lineHeight: 20, fontWeight: '600', letterSpacing: -0.2 },
-  sub: { fontSize: 13, lineHeight: 18 },
-  buttons: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  button: { minHeight: 36, borderRadius: 18, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
-  buttonLabel: { fontSize: 15, lineHeight: 20, fontWeight: '600' },
+  wrap: { gap: 8 },
+  tiles: { flexDirection: 'row', gap: 8 },
+  tile: { flex: 1, minWidth: 0, minHeight: 76, borderRadius: 18, borderCurve: 'continuous', borderWidth: 1.5, paddingHorizontal: 12, paddingVertical: 10, gap: 2 },
+  tileHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: 20, marginBottom: 4 },
+  tileTitle: { fontSize: 15, lineHeight: 20, fontWeight: '600', letterSpacing: -0.2 },
+  tileSub: { fontSize: 12, lineHeight: 16 },
   popup: { padding: Spacing.four, gap: Spacing.three, alignItems: 'stretch' },
   center: { textAlign: 'center' },
 });

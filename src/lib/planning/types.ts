@@ -346,6 +346,8 @@ export type TrainingPlan = {
   engine?: string;
   /** 'custom' = the person's own card, imported as written: never rebuilt by the generator or the monthly recalibration. */
   source?: 'generated' | 'custom';
+  /** Set on a 'custom' plan the person built themselves in the app ("Fai da te"), rather than loaded from a photo, file or text. */
+  ownBuilt?: boolean;
   calibration?: PlanCalibration;
   recalibrations?: RecalibrationRecord[];
   /** True if any exercise anywhere in the plan needed the safe-fallback
