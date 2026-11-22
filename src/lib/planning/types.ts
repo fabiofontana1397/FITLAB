@@ -108,9 +108,10 @@ export type DietPlan = {
   source?: 'generated' | 'custom';
   /**
    * Set on a 'custom' plan the person built by typing calories and macros month by month (lib/planning/targets-plan.ts):
-   * no meals, only the targets, which the whole app then follows. `macroMode` is how they entered the macros.
+   * no meals, only the targets, which the whole app then follows. `trainingDays` (0 = Monday) get the training-day
+   * targets, the other days the rest-day ones. `macroMode` only on plans saved before training/rest days existed.
    */
-  ownTargets?: { macroMode: 'percent' | 'grams' };
+  ownTargets?: { trainingDays?: number[]; macroMode?: 'percent' | 'grams' };
   /** Monthly recalibration state and history (see domain/recalibration.ts). */
   calibration?: PlanCalibration;
   recalibrations?: RecalibrationRecord[];

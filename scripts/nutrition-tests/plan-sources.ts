@@ -19,7 +19,7 @@ function check(name: string, cond: boolean, detail = '') {
 check('no plan → no source', trainingPlanSource(null) === null && dietPlanSource(undefined) === null);
 check('generated → fitlab', trainingPlanSource({ source: 'generated' }) === 'fitlab' && dietPlanSource({ source: 'generated' }) === 'fitlab');
 check('loaded card → file', trainingPlanSource({ source: 'custom' }) === 'file' && dietPlanSource({ source: 'custom' }) === 'file');
-check('own program / own targets → own', trainingPlanSource({ source: 'custom', ownBuilt: true }) === 'own' && dietPlanSource(buildTargetsPlan([{ calories: 2000, protein: 150, carbs: 200, fats: 66 }], { goal: 'maintainImprove', macroMode: 'grams' })) === 'own');
+check('own program / own targets → own', trainingPlanSource({ source: 'custom', ownBuilt: true }) === 'own' && dietPlanSource(buildTargetsPlan([{ calories: 2000, protein: 150, carbs: 200, fats: 66 }], { goal: 'maintainImprove' })) === 'own');
 
 // search
 check('search puts names starting with the text first', searchExercises('panca', null)[0].name.startsWith('Panca'), searchExercises('panca', null)[0].name);

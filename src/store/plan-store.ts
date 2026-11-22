@@ -12,7 +12,7 @@ import { deleteDietPlan, deleteTrainingPlan, fetchDietPlan, fetchTrainingPlan, i
 import { fetchPlanStrategy } from '@/lib/api/plan-strategy';
 import { DIET_ENGINE_VERSION } from '@/lib/planning/diet-planner';
 import { buildCustomDietPlan } from '@/lib/planning/custom-diet';
-import { buildTargetsPlan, isTargetsPlan, type MacroMode, type MonthTargets } from '@/lib/planning/targets-plan';
+import { buildTargetsPlan, isTargetsPlan, type MonthDayTargets } from '@/lib/planning/targets-plan';
 import { buildCustomTrainingPlan } from '@/lib/planning/custom-workout';
 import { TRAINING_ENGINE_VERSION } from '@/lib/planning/training-planner';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
@@ -89,7 +89,8 @@ type PlanState = {
    * Puts the person's own targets (calories and macros, month by month, no menu) in place of the nutrition plan. A
    * new plan starts today; editing one already of this kind keeps its start date and the months already lived.
    */
-  setOwnTargets: (months: MonthTargets[], macroMode: MacroMode) => void;
+  /** Saves the person's own targets: per month, training-day and rest-day ones; `trainingDays` are 0 = Monday. */
+  setOwnTargets: (months: MonthDayTargets[], trainingDays: number[]) => void;
   /** Drops the custom diet and builds the app's own plan again, keeping the plan's start date. */
   restoreGeneratedDiet: (answers: Record<string, unknown>, currentWeightKg?: number) => Promise<void>;
   /**
@@ -226,13 +227,13 @@ export const usePlanStore = create<PlanState>()(
         set({ dietPlan: diet });
         persistPlans(diet, null, 'regenerate', false);
       },
-      setOwnTargets: (months, macroMode) => {
+      setOwnTargets: (months, trainingDays) => {
         const { dietPlan, trainingPlan } = get();
         const editing = isTargetsPlan(dietPlan) ? dietPlan : null;
         const lived = editing ? currentMonthIndex(editing) : 1;
         const diet = buildTargetsPlan(months, {
           goal: dietPlan?.goal ?? buildUserContext(useOnboardingStore.getState().answers).goal,
-          macroMode,
+          trainingDays,
           generatedAt: editing?.generatedAt,
           calibration: dietPlan?.calibration ?? trainingPlan?.calibration,
           recalibrations: dietPlan?.recalibrations ?? trainingPlan?.recalibrations,

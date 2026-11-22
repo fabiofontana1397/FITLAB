@@ -32,7 +32,7 @@ const COPY = {
     restoreTitle: 'Riprendere il piano FitLab?',
     restoreBody: {
       file: 'La dieta che hai caricato viene sostituita dal piano alimentare creato da FitLab con le tue risposte al questionario.',
-      own: 'I tuoi obiettivi di calorie e macro vengono sostituiti dal piano alimentare di FitLab, costruito con le tue risposte al questionario.',
+      own: 'Il tuo piano di calorie e macro viene sostituito dal piano alimentare di FitLab, costruito con le tue risposte al questionario.',
     },
     createBody: 'Il tuo percorso non prevede l’alimentazione. Per creare il piano servono le tue risposte: rifai il questionario dal Profilo.',
   },

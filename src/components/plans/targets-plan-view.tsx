@@ -9,11 +9,12 @@ import { FlatCard } from '@/components/ui/flat-card';
 import { Icon } from '@/components/ui/icon';
 import { ListGroup, ListRow } from '@/components/ui/list-group';
 import { PrimaryButton } from '@/components/ui/primary-button';
+import { SegmentedControl } from '@/components/ui/segmented-control';
 import { OnBrand, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { hapticTap } from '@/lib/haptics';
-import { currentMonthIndex, monthProgress } from '@/lib/planning/plan-progress';
-import { macroPercents } from '@/lib/planning/targets-plan';
+import { currentMonthIndex } from '@/lib/planning/plan-progress';
+import { macroPercents, monthDayTargets, planMonthName, type DayKind } from '@/lib/planning/targets-plan';
 import type { DietPlan } from '@/lib/planning/types';
 
 const DAY_MS = 86_400_000;
@@ -21,8 +22,9 @@ const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
 const shortDate = (d: Date) => d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' });
 
 /**
- * The Piani page for a plan of the person's own targets: no menu, only the numbers. A summary of the months (the
- * path, then the chosen month's calories and macros, then every month in a list) and the way to update them.
+ * The Piani page for a plan of the person's own targets: no menu, only the numbers. "Il tuo piano": the path of the
+ * months (each named after its calendar month), the chosen month's calories and macros — for training days and for
+ * rest days — and the way to change them; then every month in a list.
  */
 export function TargetsPlanView({ plan, checkinPendingMonth, onCheckin }: { plan: DietPlan; checkinPendingMonth: number | null; onCheckin: () => void }) {
   const theme = useTheme();
@@ -34,19 +36,25 @@ export function TargetsPlanView({ plan, checkinPendingMonth, onCheckin }: { plan
   const startMs = new Date(plan.generatedAt).getTime();
   const elapsedMonths = clamp01((now - startMs) / (total * 30 * DAY_MS)) * total;
 
+  const trainingDays = plan.ownTargets?.trainingDays ?? [];
+  // Two kinds of day only when the week has both; otherwise every day shares one target.
+  const split = trainingDays.length > 0 && trainingDays.length < 7;
+  const [kind, setKind] = useState<DayKind>(() => (trainingDays.includes((new Date(now).getDay() + 6) % 7) ? 'training' : 'rest'));
+  const shownKind: DayKind = split ? kind : trainingDays.length === 7 ? 'training' : 'rest';
+
   const monthStart = (i: number) => new Date(startMs + (i - 1) * 30 * DAY_MS);
   const monthRange = (i: number) => `${shortDate(monthStart(i))} – ${shortDate(new Date(monthStart(i + 1).getTime() - DAY_MS))}`;
-  const end = new Date(startMs + total * 30 * DAY_MS - DAY_MS);
+  const monthName = (i: number, style: 'long' | 'short' = 'long') => planMonthName(startMs, i, style);
 
   const month = plan.months.find((m) => m.monthIndex === selected) ?? plan.months[0];
-  const t = { calories: month.calorieTarget, ...month.macroTargetsG };
+  const t = monthDayTargets(month)[shownKind];
   const pct = macroPercents(t);
-  const { dayInMonth } = monthProgress(plan, selected);
-  const status = selected < current ? 'Concluso' : selected === current ? `In corso · giorno ${dayInMonth} di 30` : 'Da iniziare';
+  const status = selected < current ? 'Concluso' : selected === current ? 'In corso' : 'Da iniziare';
+  // Same colours as Home and Nutrizione, so a macro reads the same everywhere.
   const macros = [
     { label: 'Proteine', grams: t.protein, pct: pct.protein, color: theme.accent },
-    { label: 'Carboidrati', grams: t.carbs, pct: pct.carbs, color: theme.text },
-    { label: 'Grassi', grams: t.fats, pct: pct.fats, color: theme.textSecondary },
+    { label: 'Carboidrati', grams: t.carbs, pct: pct.carbs, color: theme.brandGreen },
+    { label: 'Grassi', grams: t.fats, pct: pct.fats, color: theme.brandYellow },
   ];
   const edit = () => {
     hapticTap();
@@ -57,35 +65,52 @@ export function TargetsPlanView({ plan, checkinPendingMonth, onCheckin }: { plan
     <View style={styles.stack}>
       <Reveal index={0}>
         <FlatCard radius={Radius.medium} style={styles.box}>
-          <View style={styles.headRow}>
-            <View style={styles.flex}>
-              <ThemedText style={styles.title} numberOfLines={1} accessibilityRole="header">
-                I tuoi obiettivi
-              </ThemedText>
-              <ThemedText style={styles.caption} themeColor="textSecondary">
-                {`${total} ${total === 1 ? 'mese' : 'mesi'} · dal ${shortDate(new Date(startMs))} al ${end.toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' })}`}
-              </ThemedText>
-            </View>
-            <Pressable onPress={edit} hitSlop={6} accessibilityRole="button" accessibilityLabel="Modifica gli obiettivi" style={({ pressed }) => [styles.iconButton, { backgroundColor: theme.backgroundElement, opacity: pressed ? 0.6 : 1 }]}>
-              <Icon name="edit" size={18} color={theme.text} />
-            </Pressable>
-          </View>
+          <ThemedText style={styles.title} numberOfLines={1} accessibilityRole="header">
+            Il tuo piano
+          </ThemedText>
 
-          <MonthTimeline months={plan.months.map((m) => m.monthIndex)} current={current} selected={selected} elapsedMonths={elapsedMonths} onSelect={setSelected} />
+          <View>
+            <MonthTimeline months={plan.months.map((m) => m.monthIndex)} current={current} selected={selected} elapsedMonths={elapsedMonths} onSelect={setSelected} />
+            <View style={styles.monthLabels} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
+              {plan.months.map((m) => (
+                <ThemedText
+                  key={m.monthIndex}
+                  numberOfLines={1}
+                  style={[
+                    styles.monthLabel,
+                    { color: m.monthIndex === selected ? (m.monthIndex === current ? theme.accent : theme.text) : theme.textTertiary, fontWeight: m.monthIndex === selected ? '700' : '500' },
+                  ]}
+                >
+                  {monthName(m.monthIndex, total > 6 ? 'short' : 'long')}
+                </ThemedText>
+              ))}
+            </View>
+          </View>
 
           <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
           <View style={styles.monthHead}>
-            <ThemedText style={styles.monthTitle}>{`Mese ${selected} · ${monthRange(selected)}`}</ThemedText>
+            <ThemedText style={styles.monthTitle}>{`${monthName(selected)} · ${monthRange(selected)}`}</ThemedText>
             <View style={[styles.pill, { backgroundColor: selected === current ? theme.accentSoft : theme.backgroundElement }]}>
               <ThemedText style={[styles.pillText, { color: selected === current ? theme.accent : theme.textSecondary }]}>{status}</ThemedText>
             </View>
           </View>
 
+          {split ? (
+            <SegmentedControl
+              options={[
+                { value: 'training', label: 'Allenamento' },
+                { value: 'rest', label: 'Riposo' },
+              ]}
+              value={kind}
+              onChange={setKind}
+            />
+          ) : null}
+
           <View style={styles.kcalRow} accessibilityLabel={`${t.calories} kcal al giorno`}>
             <ThemedText style={styles.kcal}>{t.calories.toLocaleString('it-IT')}</ThemedText>
             <ThemedText style={styles.kcalUnit} themeColor="textSecondary">
-              kcal al giorno
+              {split ? `kcal nei giorni di ${shownKind === 'training' ? 'allenamento' : 'riposo'}` : 'kcal al giorno'}
             </ThemedText>
           </View>
 
@@ -93,7 +118,10 @@ export function TargetsPlanView({ plan, checkinPendingMonth, onCheckin }: { plan
             {macros.map((m) => (
               <View key={m.label} style={styles.macro} accessibilityLabel={`${m.label} ${m.grams} grammi, ${m.pct} per cento`}>
                 <View style={styles.macroHead}>
-                  <ThemedText style={styles.macroLabel}>{m.label}</ThemedText>
+                  <View style={styles.macroName}>
+                    <View style={[styles.dot, { backgroundColor: m.color }]} />
+                    <ThemedText style={styles.macroLabel}>{m.label}</ThemedText>
+                  </View>
                   <ThemedText style={styles.macroValue}>
                     {`${m.grams} g`}
                     <ThemedText style={styles.macroPct} themeColor="textSecondary">{`  ${m.pct}%`}</ThemedText>
@@ -106,36 +134,46 @@ export function TargetsPlanView({ plan, checkinPendingMonth, onCheckin }: { plan
             ))}
           </View>
 
+          <PrimaryButton label="Modifica il tuo piano" icon="edit" variant="outline" onPress={edit} />
+
           {checkinPendingMonth ? (
             <Pressable onPress={onCheckin} accessibilityRole="button" style={({ pressed }) => [styles.checkin, { backgroundColor: theme.accent, opacity: pressed ? 0.85 : 1 }]}>
               <Icon name="checkCircle" size={18} color={OnBrand.text} />
-              <ThemedText style={[styles.checkinText, { color: OnBrand.text }]}>{`Fai il check-in · Mese ${checkinPendingMonth}`}</ThemedText>
+              <ThemedText style={[styles.checkinText, { color: OnBrand.text }]}>{`Fai il check-in · ${monthName(checkinPendingMonth)}`}</ThemedText>
             </Pressable>
           ) : null}
         </FlatCard>
       </Reveal>
 
       <Reveal index={1}>
-        <ListGroup header="Mese per mese" footer="Questi obiettivi valgono in tutta l’app: Home, Nutrizione e il riepilogo della settimana li usano al posto del piano alimentare.">
-          {plan.months.map((m) => (
-            <ListRow
-              key={m.monthIndex}
-              title={`Mese ${m.monthIndex}${m.monthIndex === current ? ' · in corso' : m.monthIndex < current ? ' · concluso' : ''}`}
-              subtitle={monthRange(m.monthIndex)}
-              onPress={() => setSelected(m.monthIndex)}
-              trailing={
-                <View style={styles.rowValues}>
-                  <ThemedText type="smallBold" style={[styles.tabular, m.monthIndex === selected ? { color: theme.accent } : null]}>{`${m.calorieTarget.toLocaleString('it-IT')} kcal`}</ThemedText>
-                  <ThemedText type="caption" themeColor="textSecondary" style={styles.tabular}>{`P ${m.macroTargetsG.protein} · C ${m.macroTargetsG.carbs} · G ${m.macroTargetsG.fats}`}</ThemedText>
-                </View>
-              }
-            />
-          ))}
+        <ListGroup
+          header="Mese per mese"
+          footer={`${split ? `Valori dei giorni di ${shownKind === 'training' ? 'allenamento' : 'riposo'}. ` : ''}Il tuo piano vale in tutta l’app: Home, Nutrizione e il riepilogo della settimana lo usano al posto del piano alimentare.`}
+        >
+          {plan.months.map((m) => {
+            const mt = monthDayTargets(m)[shownKind];
+            return (
+              <ListRow
+                key={m.monthIndex}
+                title={`${monthName(m.monthIndex)}${m.monthIndex === current ? ' · in corso' : m.monthIndex < current ? ' · concluso' : ''}`}
+                subtitle={monthRange(m.monthIndex)}
+                onPress={() => setSelected(m.monthIndex)}
+                trailing={
+                  <View style={styles.rowValues}>
+                    <ThemedText type="smallBold" style={[styles.tabular, m.monthIndex === selected ? { color: theme.accent } : null]}>{`${mt.calories.toLocaleString('it-IT')} kcal`}</ThemedText>
+                    <ThemedText type="caption" style={styles.tabular}>
+                      <ThemedText type="caption" style={{ color: theme.accent }}>{`P ${mt.protein}`}</ThemedText>
+                      <ThemedText type="caption" themeColor="textTertiary">{' · '}</ThemedText>
+                      <ThemedText type="caption" style={{ color: theme.brandGreen }}>{`C ${mt.carbs}`}</ThemedText>
+                      <ThemedText type="caption" themeColor="textTertiary">{' · '}</ThemedText>
+                      <ThemedText type="caption" style={{ color: theme.brandYellow }}>{`G ${mt.fats}`}</ThemedText>
+                    </ThemedText>
+                  </View>
+                }
+              />
+            );
+          })}
         </ListGroup>
-      </Reveal>
-
-      <Reveal index={2}>
-        <PrimaryButton label="Aggiorna gli obiettivi" icon="edit" variant="outline" onPress={edit} />
       </Reveal>
     </View>
   );
@@ -143,12 +181,10 @@ export function TargetsPlanView({ plan, checkinPendingMonth, onCheckin }: { plan
 
 const styles = StyleSheet.create({
   stack: { gap: Spacing.four },
-  flex: { flex: 1, minWidth: 0 },
   box: { padding: 14, gap: 12 },
-  headRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   title: { fontSize: 17, lineHeight: 22, fontWeight: '700', letterSpacing: -0.3 },
-  caption: { fontSize: 13, lineHeight: 18 },
-  iconButton: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  monthLabels: { flexDirection: 'row', marginTop: 2 },
+  monthLabel: { flex: 1, textAlign: 'center', fontSize: 11, lineHeight: 14 },
   divider: { height: StyleSheet.hairlineWidth },
   monthHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' },
   monthTitle: { fontSize: 15, lineHeight: 20, fontWeight: '600', letterSpacing: -0.2 },
@@ -160,6 +196,8 @@ const styles = StyleSheet.create({
   macros: { gap: 10 },
   macro: { gap: 5 },
   macroHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
+  macroName: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  dot: { width: 8, height: 8, borderRadius: 4 },
   macroLabel: { fontSize: 14, lineHeight: 19, fontWeight: '500' },
   macroValue: { fontSize: 14, lineHeight: 19, fontWeight: '700', fontVariant: ['tabular-nums'] },
   macroPct: { fontSize: 13, fontWeight: '500' },
