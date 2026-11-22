@@ -63,18 +63,24 @@ export default function PlansScreen() {
   const cardKey = `${kind}-${replay}`;
 
   return (
-    <ScreenScroll header={<TabHeader title="Piani" />} contentContainerStyle={styles.page}>
-      <View style={styles.switcher}>
-        <SegmentedControl
-          options={[
-            { value: 'training', label: 'Allenamento' },
-            { value: 'diet', label: 'Nutrizione' },
-          ]}
-          value={kind}
-          onChange={(v) => setKind(v as PlanKind)}
-        />
-      </View>
-
+    <ScreenScroll
+      contentContainerStyle={styles.page}
+      header={
+        <>
+          <TabHeader title="Piani" />
+          {/* Fixed under the title, as in Allenamento and Nutrizione. */}
+          <View style={styles.switcher}>
+            <SegmentedControl
+              options={[
+                { value: 'training', label: 'Allenamento' },
+                { value: 'diet', label: 'Nutrizione' },
+              ]}
+              value={kind}
+              onChange={(v) => setKind(v as PlanKind)}
+            />
+          </View>
+        </>
+      }>
       {/* The three ways to have the plan (FitLab, loaded, built by the person), the one in use highlighted. */}
       <View style={styles.banner}>
         <PlanSourceBanner kind={kind} />
@@ -116,8 +122,8 @@ export default function PlansScreen() {
 
 const styles = StyleSheet.create({
   page: { paddingHorizontal: Layout.screenGutter, gap: 0 },
-  switcher: { marginTop: 12 },
-  banner: { marginTop: 8, marginBottom: 12 },
+  switcher: { marginTop: -4, marginBottom: 10 },
+  banner: { marginBottom: 12 },
   empty: { padding: 20, gap: 6 },
   emptyAction: { marginTop: 8, alignSelf: 'flex-start' },
 });
