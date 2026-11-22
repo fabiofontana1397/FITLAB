@@ -9,6 +9,7 @@ import { MeasurementTrendModal } from '@/components/body/measurement-trend-modal
 import { PhotoDetailModal } from '@/components/body/photo-detail-modal';
 import { PosePickerSheet } from '@/components/body/pose-picker-sheet';
 import { QuickMeasurementSheet } from '@/components/body/quick-measurement-sheet';
+import { TipsCard, type TipSection } from '@/components/body/tips-card';
 import { WeightEntryModal } from '@/components/body/weight-entry-modal';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
@@ -18,7 +19,6 @@ import { Icon } from '@/components/ui/icon';
 import { TabHeader } from '@/components/tab-header';
 import { InsightCard } from '@/components/ui/insight-card';
 import { SegmentedControl } from '@/components/ui/segmented-control';
-import { TrendChart } from '@/components/ui/trend-chart';
 import { Layout, Radius } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useRecentWeightSeries } from '@/hooks/use-weight-series';
@@ -40,6 +40,41 @@ const MEASUREMENTS: { zone: MeasurementZone; label: string }[] = [
   { zone: 'hipsCm', label: 'Fianchi' },
   { zone: 'thighCm', label: 'Coscia' },
 ];
+
+const MEASURE_TIPS: TipSection[] = [
+  {
+    icon: 'ruler',
+    title: 'Come misurarti',
+    points: [
+      'Metro da sarta morbido, aderente alla pelle ma senza stringere.',
+      'Sempre nelle stesse condizioni: al mattino, a digiuno, prima dell’allenamento.',
+      'Ogni 2–4 settimane: bastano 5 minuti. Tocca ⓘ su ogni zona per sapere dove misurare.',
+    ],
+  },
+  {
+    icon: 'trendDown',
+    title: 'Perché prendere le misure',
+    points: [
+      'Se perdi grasso e metti muscolo il peso può restare fermo, mentre vita e fianchi scendono.',
+      'I centimetri mostrano dove cambia il corpo e se il piano sta funzionando.',
+    ],
+  },
+];
+
+const PHOTO_TIPS: TipSection[] = [
+  {
+    icon: 'camera',
+    title: 'Come scattare le foto',
+    points: [
+      'Un posto ben illuminato, con luce uniforme.',
+      '6 foto a corpo intero: frontale, laterale destro e sinistro, posteriore rilassato, poi frontale e posteriore in flessione.',
+      'Sempre alla stessa ora: idealmente al mattino, a digiuno.',
+      'Ripeti l’intera sequenza una volta al mese.',
+    ],
+  },
+];
+
+const GRID_GAP = 10;
 
 /** "-0,8" — Italian decimal comma, explicit sign. */
 function signedKg(n: number): string {
@@ -68,6 +103,8 @@ export default function ProgressScreen() {
   const [posePickerOpen, setPosePickerOpen] = useState(false);
   const [detailPhoto, setDetailPhoto] = useState<BodyPhoto | null>(null);
   const [tab, setTab] = useState<'peso' | 'misure' | 'foto'>('peso');
+  const [gridWidth, setGridWidth] = useState(0);
+  const tileSize = gridWidth > 0 ? Math.floor((gridWidth - GRID_GAP * 2) / 3) : 0;
   const weightSeries = useRecentWeightSeries(entries, 30);
 
   const latest = useMemo(() => latestSnapshot(entries), [entries]);
@@ -99,7 +136,7 @@ export default function ProgressScreen() {
       return `Ultime misure del ${formatFullDay(lastMeasured.date)}: è passato quasi un mese, è il momento di aggiornarle.`;
     }
     const missing = MEASUREMENTS.filter((m) => !Number.isFinite(latest[m.zone])).length;
-    if (missing > 0) return `Ti mancano ${missing} ${missing === 1 ? 'zona' : 'zone'} da misurare per avere il quadro completo.`;
+    if (missing > 0) return missing === 1 ? 'Ti manca 1 zona da misurare per avere il quadro completo.' : `Ti mancano ${missing} zone da misurare per avere il quadro completo.`;
     return null;
   }, [entries, latest]);
 
@@ -274,63 +311,68 @@ export default function ProgressScreen() {
 
       {tab === 'misure' ? (
       <View style={styles.measureList}>
-        <InsightCard
-          icon="bulb"
-          tone="positive"
-          headline="Perché prendere le misure"
-          body={
-            'La bilancia non racconta tutto: se perdi grasso e metti muscolo il peso può restare fermo, mentre vita e fianchi scendono e spalle e braccia crescono.\n' +
-            'I centimetri ti mostrano dove sta cambiando il corpo, ti tengono motivato nelle settimane in cui il peso non si muove e aiutano a capire se il piano sta funzionando.'
-          }
-        />
-        <InsightCard
-          icon="ruler"
-          tone="neutral"
-          headline="Come misurarti"
-          body={
-            'Usa un metro da sarta morbido, aderente alla pelle ma senza stringere.\n' +
-            'Misurati sempre nelle stesse condizioni: al mattino, a digiuno, prima dell’allenamento.\n' +
-            'Ripeti ogni 2–4 settimane: bastano 5 minuti. Tocca ⓘ accanto a ogni zona per sapere esattamente dove misurare.'
-          }
-        />
         {measureStatus ? (
           <ThemedText style={styles.hint} themeColor="textTertiary">
             {measureStatus}
           </ThemedText>
         ) : null}
-        {MEASUREMENTS.map((m) => {
-          // Entries logged before this zone existed (or never recorded) carry
-          // no value for it — filter those out rather than let a missing
-          // number reach the chart as NaN.
-          const series = seriesOf(entries, m.zone).filter((v) => Number.isFinite(v));
-          const latestValue = latest[m.zone];
-          const hasValue = Number.isFinite(latestValue);
-          // A single value has no line to draw — the sparkline (and the
-          // "andamento" popup it opens) needs at least two measurements.
-          const hasTrend = series.length >= 2;
-          return (
-            <FlatCard key={m.zone} radius={16} style={styles.measureRow}>
-              <BodySilhouette zone={m.zone} width={48} radius={10} />
-              <View style={{ flex: 1, gap: 2 }}>
-                <ThemedText style={styles.measureLabel}>{m.label}</ThemedText>
-                <ThemedText style={styles.measureValue}>{hasValue ? `${latestValue} cm` : 'Non ancora misurato'}</ThemedText>
-              </View>
-              {hasTrend ? (
-                <Pressable onPress={() => setTrendMeasurement(m)} hitSlop={8}>
-                  <TrendChart data={series} width={56} height={28} color={theme.accent} />
-                </Pressable>
-              ) : (
-                <View style={{ width: 56, height: 28 }} />
-              )}
-              <Pressable onPress={() => setAddMeasurementZone(m)} hitSlop={8} style={[styles.roundButton, { backgroundColor: theme.accentSoft }]}>
-                <Icon name="plus" size={16} color={theme.accent} />
-              </Pressable>
-              <Pressable onPress={() => setInfoZone(m.zone)} hitSlop={8} style={[styles.roundButton, { backgroundColor: theme.backgroundElement }]}>
-                <Icon name="info" size={16} color={theme.textSecondary} />
-              </Pressable>
-            </FlatCard>
-          );
-        })}
+        <View style={styles.measureGrid} onLayout={(e) => setGridWidth(e.nativeEvent.layout.width)}>
+          {tileSize > 0
+            ? MEASUREMENTS.map((m) => {
+                // Entries logged before this zone existed carry no value for it.
+                const series = seriesOf(entries, m.zone).filter((v) => Number.isFinite(v));
+                const latestValue = latest[m.zone];
+                const hasValue = Number.isFinite(latestValue);
+                // With two or more values the tile opens the "andamento" popup.
+                const hasTrend = series.length >= 2;
+                return (
+                  <Pressable
+                    key={m.zone}
+                    disabled={!hasTrend}
+                    onPress={() => setTrendMeasurement(m)}
+                    style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
+                  >
+                    <FlatCard radius={22} style={[styles.measureTile, { width: tileSize, height: tileSize }]}>
+                      <View style={styles.tileTop}>
+                        <Pressable onPress={() => setInfoZone(m.zone)} hitSlop={6} accessibilityLabel={`Come misurare: ${m.label}`}>
+                          <BodySilhouette zone={m.zone} width={30} radius={9} />
+                        </Pressable>
+                        <Pressable
+                          onPress={() => setAddMeasurementZone(m)}
+                          hitSlop={10}
+                          accessibilityLabel={`Aggiungi misura: ${m.label}`}
+                          style={[styles.tileAdd, { backgroundColor: theme.accentSoft }]}
+                        >
+                          <Icon name="plus" size={15} color={theme.accent} />
+                        </Pressable>
+                      </View>
+                      <View style={styles.tileBottom}>
+                        <Pressable onPress={() => setInfoZone(m.zone)} hitSlop={6} style={styles.tileLabelRow}>
+                          <ThemedText style={styles.tileLabel} themeColor="textSecondary" numberOfLines={1}>
+                            {m.label}
+                          </ThemedText>
+                          <Icon name="info" size={12} color={theme.textTertiary} />
+                        </Pressable>
+                        {hasValue ? (
+                          <View style={styles.tileValueRow}>
+                            <ThemedText style={styles.tileValue}>{String(latestValue).replace('.', ',')}</ThemedText>
+                            <ThemedText style={styles.tileUnit} themeColor="textSecondary">
+                              cm
+                            </ThemedText>
+                          </View>
+                        ) : (
+                          <ThemedText style={styles.tileValue} themeColor="textTertiary">
+                            —
+                          </ThemedText>
+                        )}
+                      </View>
+                    </FlatCard>
+                  </Pressable>
+                );
+              })
+            : null}
+        </View>
+        <TipsCard sections={MEASURE_TIPS} />
       </View>
 
       ) : null}
@@ -338,18 +380,6 @@ export default function ProgressScreen() {
       {tab === 'foto' ? (
         <>
       <View style={{ gap: 14 }}>
-        <InsightCard
-          icon="camera"
-          tone="neutral"
-          headline="Come scattare le foto"
-          body={
-            'Scegli un posto ben illuminato, con luce uniforme.\n' +
-            'Scatta 6 foto a corpo intero: frontale, laterale destro, laterale sinistro e posteriore rilassato, poi frontale e posteriore flettendo i muscoli.\n' +
-            'Sempre alla stessa ora — idealmente al mattino, a digiuno e dopo essere andato in bagno.\n' +
-            'Ripeti l’intera sequenza una volta al mese.'
-          }
-        />
-
         <Pressable onPress={() => setPosePickerOpen(true)} style={[styles.addPhotoRow, { borderColor: theme.boxEdge }]}>
           <Icon name="camera" size={20} color={theme.accent} />
           <ThemedText style={[styles.addPhotoLabel, { color: theme.accent }]}>Aggiungi foto</ThemedText>
@@ -384,6 +414,8 @@ export default function ProgressScreen() {
             Aggiungi almeno 2 foto nel tempo per ricevere un confronto automatico dei tuoi progressi.
           </ThemedText>
         ) : null}
+
+        <TipsCard sections={PHOTO_TIPS} />
       </View>
 
         </>
@@ -627,28 +659,62 @@ const styles = StyleSheet.create({
   measureList: {
     gap: 12,
   },
-  measureRow: {
+  measureGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: GRID_GAP,
+  },
+  measureTile: {
+    padding: 12,
+    justifyContent: 'space-between',
+  },
+  tileTop: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+  },
+  tileAdd: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tileBottom: {
+    gap: 1,
+  },
+  tileLabelRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    padding: 12,
+    gap: 4,
+  },
+  tileLabel: {
+    flexShrink: 1,
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '500',
+    letterSpacing: 0.1,
+  },
+  tileValueRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 3,
+  },
+  tileValue: {
+    fontSize: 24,
+    lineHeight: 29,
+    fontWeight: '700',
+    letterSpacing: -0.8,
+  },
+  tileUnit: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '500',
   },
   measureLabel: {
     fontSize: 15,
     lineHeight: 20,
     fontWeight: '700',
-  },
-  measureValue: {
-    fontSize: 14,
-    lineHeight: 18,
-    fontWeight: '600',
-  },
-  roundButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   addPhotoRow: {
     flexDirection: 'row',
