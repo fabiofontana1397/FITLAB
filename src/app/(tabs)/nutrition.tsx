@@ -16,7 +16,7 @@ import { TabHeader } from '@/components/tab-header';
 import { ProgressRing } from '@/components/ui/progress-ring';
 import { TickProgressBar } from '@/components/ui/tick-progress-bar';
 import { useEnsurePlan } from '@/hooks/use-ensure-plan';
-import { Layout, Radius } from '@/constants/theme';
+import { BottomTabInset, Layout, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { daysAgoISO, isoMondayIndex } from '@/lib/mock/dates';
 import { inMealOrder } from '@/lib/planning/meal-slots';
@@ -115,7 +115,8 @@ function Recipes({ switcher }: { switcher: ReactNode }) {
           {switcher}
         </>
       }
-      contentContainerStyle={styles.page}>
+      scrollEnabled={false}
+      contentContainerStyle={[styles.page, styles.recipesPage]}>
       <RecipeDeck cards={cards} portionLabel={personal ? 'Porzione per te' : 'Porzione standard'} slotLabelFor={(kind) => slotFor(kind).label} onAdd={add} />
     </ScreenScroll>
   );
@@ -355,6 +356,11 @@ const styles = StyleSheet.create({
   page: {
     paddingHorizontal: SCREEN_PADDING,
     gap: 0,
+  },
+  // Ricette fits on one screen: the deck takes the height left between the header and the tab bar.
+  recipesPage: {
+    flex: 1,
+    paddingBottom: BottomTabInset + Spacing.four,
   },
   headerRow: {
     flexDirection: 'row',
