@@ -1,100 +1,113 @@
-import Svg, { Circle, Ellipse, Path, Rect } from 'react-native-svg';
+import Svg, { Circle, Ellipse, G, Path, Rect } from 'react-native-svg';
 
 import type { SpotFocus } from '@/lib/planning/training/spot-workouts';
 
 /**
- * The goals of Allenamento veloce as small "muscle maps": a stylised figure
- * drawn in quiet segments, with the muscles the workout trains lit in the
- * accent. Total body lights them all; the three styles that are not about a
- * muscle (functional, cross training, HIIT) get a tool drawn the same way —
- * a muted body with the meaningful part in the accent.
+ * The goals of Allenamento veloce as line icons: a single thin outline of a
+ * figure, with only the muscles the workout trains filled in. The three
+ * styles that are not about a muscle (functional, cross training, HIIT) get a
+ * tool drawn with the same thin line and one filled detail.
  */
 
-/** An ellipse (cx, cy, rx, ry, rotation) or a path, in a 40×60 box. */
-type Shape = { e: [number, number, number, number, number?] } | { d: string };
-type Part = 'traps' | 'delts' | 'chest' | 'arms' | 'forearms' | 'abs' | 'obliques' | 'glutes' | 'quads' | 'calves';
+const STROKE = 1.5;
 
-/** Left-side shapes; the right side is mirrored around x = 20. */
-const LEFT: Record<Part, Shape[]> = {
-  traps: [{ d: 'M20 10.2C18 10.2 16.2 11 15 12.6C16.8 12.9 18.6 13.3 20 14Z' }],
-  delts: [{ e: [12.2, 14.9, 3.2, 2.7, -28] }],
-  chest: [{ d: 'M19.4 13.6C16.6 13.1 14.2 14.1 14 16.6C13.9 19 16 20.4 19.4 19.8Z' }],
-  arms: [{ e: [10, 22.4, 1.95, 4.4, 12] }],
-  forearms: [{ e: [8.2, 31.6, 1.65, 4.3, 14] }],
-  abs: [
-    { e: [18.3, 22.6, 1.35, 1.5] },
-    { e: [18.3, 26.2, 1.35, 1.5] },
-    { e: [18.4, 29.8, 1.3, 1.6] },
-  ],
-  obliques: [{ d: 'M15 21.2C13.8 24 13.8 28.4 15.3 32.2L16.6 32.2C16.2 28.6 16.2 24.6 16.6 21.4Z' }],
-  glutes: [{ e: [17, 36.4, 3.3, 2.9] }],
-  quads: [{ e: [17.1, 45.6, 2.85, 6.3, 3] }],
-  calves: [{ e: [17.6, 55.2, 1.95, 3.9, 2] }],
-};
+// viewBox 0 0 40 60. The body outline in one closed path, left half then its mirror.
+const BODY =
+  'M18.3 10.4C16.6 11.1 14.6 11.5 13.1 12.4C11.5 13.4 11.1 15.5 10.9 18L9.5 32.4Q9.6 33.9 11.1 33.4L12.9 20.6L14.3 19.2' +
+  'C14.6 24 14 28 14.4 32.8L15.2 56.6Q15.4 57.9 16.6 57.9H17.9Q18.8 57.9 18.9 57L19.4 38.4Q19.6 37.2 20 37.2' +
+  'Q20.4 37.2 20.6 38.4L21.1 57Q21.2 57.9 22.1 57.9H23.4Q24.6 57.9 24.8 56.6L25.6 32.8C26 28 25.4 24 25.7 19.2' +
+  'L27.1 20.6L28.9 33.4Q30.4 33.9 30.5 32.4L29.1 18C28.9 15.5 28.5 13.4 26.9 12.4C25.4 11.5 23.4 11.1 21.7 10.4Z';
 
-const ALL_PARTS = Object.keys(LEFT) as Part[];
-
-const LIT: Partial<Record<SpotFocus, Part[]>> = {
-  glutes: ['glutes'],
-  legs: ['quads', 'calves'],
-  chest: ['chest'],
-  back: ['traps', 'obliques'],
-  shoulders: ['delts'],
-  arms: ['arms', 'forearms'],
-  core: ['abs', 'obliques'],
-  total: ALL_PARTS,
-};
-
-function ShapeEl({ shape, fill, mirror }: { shape: Shape; fill: string; mirror: boolean }) {
-  const flip = mirror ? 'translate(40 0) scale(-1 1)' : undefined;
-  if ('d' in shape) return <Path d={shape.d} fill={fill} transform={flip} />;
-  const [cx, cy, rx, ry, rot = 0] = shape.e;
-  return <Ellipse cx={cx} cy={cy} rx={rx} ry={ry} fill={fill} transform={`${flip ?? ''} rotate(${rot} ${cx} ${cy})`.trim()} />;
+/** The filled zone of each muscle goal, inside the outline. */
+function Zone({ focus, fill }: { focus: SpotFocus; fill: string }) {
+  switch (focus) {
+    case 'glutes':
+      return (
+        <>
+          <Ellipse cx={17.5} cy={34.6} rx={2.3} ry={2} fill={fill} />
+          <Ellipse cx={22.5} cy={34.6} rx={2.3} ry={2} fill={fill} />
+        </>
+      );
+    case 'legs':
+      return (
+        <>
+          <Ellipse cx={17.3} cy={44.5} rx={1.7} ry={5.2} fill={fill} />
+          <Ellipse cx={22.7} cy={44.5} rx={1.7} ry={5.2} fill={fill} />
+        </>
+      );
+    case 'chest':
+      return (
+        <>
+          <Ellipse cx={17.4} cy={16} rx={2.4} ry={1.8} fill={fill} />
+          <Ellipse cx={22.6} cy={16} rx={2.4} ry={1.8} fill={fill} />
+        </>
+      );
+    case 'back':
+      return <Path d="M15.6 15.2H24.4L22.6 25.5Q20 27 17.4 25.5Z" fill={fill} />;
+    case 'shoulders':
+      return (
+        <>
+          <Circle cx={13.9} cy={14.4} r={1.9} fill={fill} />
+          <Circle cx={26.1} cy={14.4} r={1.9} fill={fill} />
+        </>
+      );
+    case 'arms':
+      return (
+        <>
+          <Ellipse cx={11.7} cy={22.5} rx={1} ry={3.2} fill={fill} transform="rotate(8 11.7 22.5)" />
+          <Ellipse cx={28.3} cy={22.5} rx={1} ry={3.2} fill={fill} transform="rotate(-8 28.3 22.5)" />
+        </>
+      );
+    case 'core':
+      return <Rect x={17.6} y={20.2} width={4.8} height={9.6} rx={2} fill={fill} />;
+    default:
+      return null;
+  }
 }
 
-export function FocusGlyph({ focus, size = 50, muted, accent }: { focus: SpotFocus; size?: number; muted: string; accent: string }) {
+export function FocusGlyph({ focus, size = 50, line, accent }: { focus: SpotFocus; size?: number; line: string; accent: string }) {
   const width = (size * 40) / 60;
-  const lit = LIT[focus];
+  const common = { stroke: line, strokeWidth: STROKE, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
 
-  if (lit) {
+  if (focus === 'functional' || focus === 'cross' || focus === 'hiit') {
+    // Tools are drawn small and scaled up to the figure's presence, keeping the same line weight.
+    const k = 1.4;
+    const tool = { ...common, strokeWidth: STROKE / k };
     return (
       <Svg width={width} height={size} viewBox="0 0 40 60">
-        <Ellipse cx={20} cy={5.4} rx={3.3} ry={3.9} fill={focus === 'total' ? accent : muted} />
-        {ALL_PARTS.map((part) =>
-          LEFT[part].flatMap((shape, i) =>
-            [false, true].map((mirror) => (
-              <ShapeEl key={`${part}-${i}-${mirror}`} shape={shape} mirror={mirror} fill={lit.includes(part) ? accent : muted} />
-            ))
-          )
+        <G transform={`translate(20 31) scale(${k}) translate(-20 -31)`}>
+        {focus === 'functional' ? (
+          <>
+            <Path d="M14.6 28.4C13.6 26.6 13.3 25 13.3 23.8a6.7 4.6 0 0 1 13.4 0c0 1.2-.3 2.8-1.3 4.6" fill="none" {...tool} />
+            <Circle cx={20} cy={33.2} r={7.6} fill="none" {...tool} />
+            <Circle cx={20} cy={33.2} r={2.6} fill={accent} />
+          </>
+        ) : focus === 'cross' ? (
+          <>
+            <Path d="M4 30h32" fill="none" {...tool} />
+            <Rect x={8} y={23} width={3.6} height={14} rx={1.6} fill={accent} />
+            <Rect x={28.4} y={23} width={3.6} height={14} rx={1.6} fill={accent} />
+            <Rect x={12.6} y={25.5} width={2.4} height={9} rx={1.2} fill="none" {...tool} />
+            <Rect x={25} y={25.5} width={2.4} height={9} rx={1.2} fill="none" {...tool} />
+          </>
+        ) : (
+          <>
+            <Path d="M17.5 17.5h5M20 17.5v3" fill="none" {...tool} />
+            <Circle cx={20} cy={32} r={11} fill="none" {...tool} />
+            <Path d="M21.3 24.8 16.6 32.6h3.8l-1.3 6.6 4.7-7.8H20z" fill={accent} />
+          </>
         )}
+        </G>
       </Svg>
     );
   }
 
-  // Tools, centred in the same 40×60 box so every tile lines up.
   return (
     <Svg width={width} height={size} viewBox="0 0 40 60">
-      {focus === 'functional' ? (
-        <>
-          <Path d="M13.5 26v-4a6.5 6.5 0 0 1 13 0v4" stroke={muted} strokeWidth={3} strokeLinecap="round" fill="none" />
-          <Circle cx={20} cy={35} r={10} fill={accent} />
-          <Rect x={15} y={40.5} width={10} height={2.4} rx={1.2} fill={muted} opacity={0.6} />
-        </>
-      ) : focus === 'cross' ? (
-        <>
-          <Rect x={2} y={28.8} width={36} height={2.4} rx={1.2} fill={muted} />
-          <Rect x={6.5} y={21} width={4.6} height={18} rx={2} fill={accent} />
-          <Rect x={11.8} y={24} width={3} height={12} rx={1.5} fill={accent} />
-          <Rect x={28.9} y={21} width={4.6} height={18} rx={2} fill={accent} />
-          <Rect x={25.2} y={24} width={3} height={12} rx={1.5} fill={accent} />
-        </>
-      ) : (
-        <>
-          <Rect x={17} y={15} width={6} height={3} rx={1.5} fill={muted} />
-          <Circle cx={20} cy={33} r={12} stroke={muted} strokeWidth={3} fill="none" />
-          <Path d="M21.6 23.5 15.5 34h4.6l-1.7 8.5 6.1-10.5h-4.6z" fill={accent} />
-        </>
-      )}
+      {focus === 'total' ? <Path d={BODY} fill={accent} opacity={0.35} /> : null}
+      <Zone focus={focus} fill={accent} />
+      <Circle cx={20} cy={5.8} r={3.4} fill="none" {...common} />
+      <Path d={BODY} fill="none" {...common} />
     </Svg>
   );
 }

@@ -93,7 +93,7 @@ export function SpotWorkoutView() {
                   ? { backgroundColor: theme.accentSoft, borderColor: theme.accent, borderWidth: 1.5 }
                   : { backgroundColor: theme.backgroundElevated, borderColor: theme.boxEdge },
               ]}>
-              <FocusGlyph focus={f.value} size={56} muted={active ? theme.textTertiary : theme.backgroundSelected} accent={active ? theme.accent : theme.textSecondary} />
+              <FocusGlyph focus={f.value} size={52} line={active ? theme.text : theme.textTertiary} accent={active ? theme.accent : theme.textSecondary} />
               <ThemedText style={[styles.goalLabel, { color: active ? theme.text : theme.textSecondary }]} numberOfLines={1}>
                 {TILE_LABEL[f.value] ?? f.label}
               </ThemedText>
