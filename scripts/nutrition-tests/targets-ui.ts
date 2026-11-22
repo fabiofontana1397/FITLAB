@@ -76,17 +76,17 @@ async function main() {
       await pause(900);
 
       await test(`[${appearance}] Cambia offers FitLab (in use), load and build`, async () => {
-        assert.ok(await page.getByText('Creato da FitLab', { exact: true }).first().isVisible());
+        assert.ok(await page.getByText('Piano creato da FitLab', { exact: true }).first().isVisible());
         await shot(page, `${appearance}-01-line`);
         await page.getByRole('button', { name: 'Cambia il tipo di piano' }).click();
         await pause(700);
-        assert.ok(await page.getByRole('radio', { name: /^Creato da FitLab\./, checked: true }).isVisible());
-        assert.ok(await page.getByRole('radio', { name: /^Carica la tua dieta\./ }).isVisible());
-        assert.ok(await page.getByRole('radio', { name: /^Crealo tu\. Calorie e macro/ }).isVisible());
+        assert.ok(await page.getByRole('radio', { name: /^Piano creato da FitLab\./, checked: true }).isVisible());
+        assert.ok(await page.getByRole('radio', { name: /^Carica il tuo piano\./ }).isVisible());
+        assert.ok(await page.getByRole('radio', { name: /^Crea il tuo piano\. Calorie e macro/ }).isVisible());
         await shot(page, `${appearance}-01-menu`);
       });
 
-      await page.getByRole('radio', { name: /^Crealo tu\./ }).click();
+      await page.getByRole('radio', { name: /^Crea il tuo piano\./ }).click();
       await pause(1500);
       await test(`[${appearance}] the editor opens with three months from today's targets`, async () => {
         assert.ok(await page.getByText('Imposta il tuo piano').first().isVisible());
@@ -164,7 +164,7 @@ async function main() {
         await pause(1200);
         await page.getByRole('button', { name: 'Cambia il tipo di piano' }).click();
         await pause(700);
-        await page.getByRole('radio', { name: /^Creato da FitLab\./ }).click();
+        await page.getByRole('radio', { name: /^Piano creato da FitLab\./ }).click();
         await pause(900);
         assert.ok(await page.getByText('Riprendere il piano FitLab?').isVisible());
         await shot(page, `${appearance}-09-restore`);

@@ -47,11 +47,11 @@ async function main() {
       await test(`[${appearance}] Cambia shows the three sources`, async () => {
         await page.getByRole('button', { name: 'Cambia il tipo di programma' }).click();
         await pause(700);
-        for (const n of [/^Creato da FitLab\./, /^Carica la tua scheda\./, /^Crealo tu\. Scegli giorni/]) assert.ok(await page.getByRole('radio', { name: n }).isVisible());
+        for (const n of [/^Piano creato da FitLab\./, /^Carica il tuo piano\./, /^Crea il tuo piano\. Scegli giorni/]) assert.ok(await page.getByRole('radio', { name: n }).isVisible());
         await shot(page, `${appearance}-t01-menu`);
       });
 
-      await page.getByRole('radio', { name: /^Crealo tu\./ }).click();
+      await page.getByRole('radio', { name: /^Crea il tuo piano\./ }).click();
       await pause(1500);
       await test(`[${appearance}] the builder opens with three days`, async () => {
         assert.ok(await page.getByText('Crea il tuo programma').first().isVisible());
@@ -94,7 +94,7 @@ async function main() {
       await pause(2000);
 
       await test(`[${appearance}] Piani shows the program built by the person`, async () => {
-        assert.ok(await page.getByText('Creato da te', { exact: true }).first().isVisible());
+        assert.ok(await page.getByText('Piano creato da te', { exact: true }).first().isVisible());
         assert.ok(await page.getByText('Il tuo programma').first().isVisible());
         assert.ok(await page.getByText('L’app lo segue così com’è').first().isVisible());
         assert.ok(await page.getByText('Modifica programma').first().isVisible());

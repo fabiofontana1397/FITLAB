@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import { GlassPopup } from '@/components/glass/glass-popup';
 import { ThemedText } from '@/components/themed-text';
+import { BrandMark } from '@/components/ui/brand-mark';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { PrimaryButton } from '@/components/ui/primary-button';
 import { Spacing } from '@/constants/theme';
@@ -41,12 +42,12 @@ export function usePlanNeverRequested(kind: Kind): boolean {
   return mode === (kind === 'training' ? 'diet' : 'training');
 }
 
-/** "Crea il tuo piano": the plan needs questionnaire answers the person never gave, so it sends them to redo it. */
+/** "Piano creato da FitLab" when the plan needs questionnaire answers the person never gave, so it sends them to redo it. */
 export function CreatePlanPopup({ kind, visible, onClose }: { kind: Kind; visible: boolean; onClose: () => void }) {
   return (
     <GlassPopup visible={visible} onClose={onClose} style={styles.popup}>
       <ThemedText type="title" style={styles.center}>
-        Crea il tuo piano
+        Piano creato da FitLab
       </ThemedText>
       <ThemedText themeColor="textSecondary" style={styles.center}>
         {COPY[kind].createBody}
@@ -63,32 +64,33 @@ export function CreatePlanPopup({ kind, visible, onClose }: { kind: Kind; visibl
   );
 }
 
-type Option = { source: PlanSource; icon: IconName; title: string; sub: string };
+/** `brand`: the FitLab mark, as in the page header. */
+type Option = { source: PlanSource; icon: IconName | 'brand'; title: string; sub: string };
 
 const OPTIONS: Record<Kind, Option[]> = {
   training: [
-    { source: 'fitlab', icon: 'sparkle', title: 'Creato da FitLab', sub: 'Dalle tue risposte al questionario, adattato a ogni check-in' },
-    { source: 'file', icon: 'camera', title: 'Carica la tua scheda', sub: 'Da una foto, un file o un testo' },
-    { source: 'own', icon: 'edit', title: 'Crealo tu', sub: 'Scegli giorni, esercizi, serie e ripetizioni' },
+    { source: 'fitlab', icon: 'brand', title: 'Piano creato da FitLab', sub: 'Dalle tue risposte al questionario, adattato a ogni check-in' },
+    { source: 'own', icon: 'edit', title: 'Crea il tuo piano', sub: 'Scegli giorni, esercizi, serie e ripetizioni' },
+    { source: 'file', icon: 'camera', title: 'Carica il tuo piano', sub: 'Da una foto, un file o un testo' },
   ],
   diet: [
-    { source: 'fitlab', icon: 'sparkle', title: 'Creato da FitLab', sub: 'Dalle tue risposte al questionario, adattato a ogni check-in' },
-    { source: 'file', icon: 'camera', title: 'Carica la tua dieta', sub: 'Da una foto, un file o un testo' },
-    { source: 'own', icon: 'edit', title: 'Crealo tu', sub: 'Calorie e macro mese per mese, senza menù' },
+    { source: 'fitlab', icon: 'brand', title: 'Piano creato da FitLab', sub: 'Dalle tue risposte al questionario, adattato a ogni check-in' },
+    { source: 'own', icon: 'edit', title: 'Crea il tuo piano', sub: 'Calorie e macro mese per mese, senza menù' },
+    { source: 'file', icon: 'camera', title: 'Carica il tuo piano', sub: 'Da una foto, un file o un testo' },
   ],
 };
 
 /** What the line says for the plan in use: the source and, for the person's own plans, the way to change them. */
 const CURRENT: Record<Kind, Record<PlanSource, { title: string; sub: string }>> = {
   training: {
-    fitlab: { title: 'Creato da FitLab', sub: 'Puoi anche caricare la tua scheda o crearla' },
-    file: { title: 'La tua scheda caricata', sub: 'L’app la segue così com’è' },
-    own: { title: 'Creato da te', sub: 'L’app lo segue così com’è' },
+    fitlab: { title: 'Piano creato da FitLab', sub: 'Puoi anche creare o caricare il tuo' },
+    file: { title: 'Piano caricato da te', sub: 'L’app lo segue così com’è' },
+    own: { title: 'Piano creato da te', sub: 'L’app lo segue così com’è' },
   },
   diet: {
-    fitlab: { title: 'Creato da FitLab', sub: 'Puoi anche caricare la tua dieta o crearla' },
-    file: { title: 'La tua dieta caricata', sub: 'L’app la segue così com’è' },
-    own: { title: 'Creato da te', sub: 'Calorie e macro scelti da te' },
+    fitlab: { title: 'Piano creato da FitLab', sub: 'Puoi anche creare o caricare il tuo' },
+    file: { title: 'Piano caricato da te', sub: 'L’app lo segue così com’è' },
+    own: { title: 'Piano creato da te', sub: 'Calorie e macro scelti da te' },
   },
 };
 
@@ -116,7 +118,7 @@ export function PlanSourceBanner({ kind }: { kind: Kind }) {
   const [restoreOpen, setRestoreOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
 
-  const line = current ? CURRENT[kind][current] : { title: neverRequested ? 'Nessun piano' : 'Piano in preparazione', sub: 'Puoi caricarne uno o crearlo tu' };
+  const line = current ? CURRENT[kind][current] : { title: neverRequested ? 'Nessun piano' : 'Piano in preparazione', sub: 'Puoi anche creare o caricare il tuo' };
 
   const choose = (source: PlanSource) => {
     hapticSelection();
@@ -188,7 +190,9 @@ export function PlanSourceBanner({ kind }: { kind: Kind }) {
                 accessibilityLabel={`${o.title}. ${o.sub}`}
                 style={({ pressed }) => [styles.option, i > 0 && [styles.optionDivided, { borderTopColor: theme.border }], { opacity: pressed ? 0.6 : 1 }]}
               >
-                <Icon name={o.icon} size={20} color={on ? theme.accent : theme.textSecondary} />
+                <View style={styles.optionIcon}>
+                  {o.icon === 'brand' ? <BrandMark height={15} color={on ? theme.accent : theme.textSecondary} /> : <Icon name={o.icon} size={20} color={on ? theme.accent : theme.textSecondary} />}
+                </View>
                 <View style={styles.flex}>
                   <ThemedText style={styles.optionTitle}>{o.title}</ThemedText>
                   <ThemedText style={styles.optionSub} themeColor="textSecondary">
@@ -230,6 +234,7 @@ const styles = StyleSheet.create({
   list: { borderRadius: 18, borderCurve: 'continuous', overflow: 'hidden' },
   option: { flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 64, paddingHorizontal: Spacing.three, paddingVertical: 10 },
   optionDivided: { borderTopWidth: StyleSheet.hairlineWidth },
+  optionIcon: { width: 24, alignItems: 'center' },
   optionTitle: { fontSize: 16, lineHeight: 21, fontWeight: '600' },
   optionSub: { fontSize: 13, lineHeight: 18 },
   popup: { padding: Spacing.four, gap: Spacing.three, alignItems: 'stretch' },

@@ -104,9 +104,9 @@ export default function PlansScreen() {
         <FlatCard radius={28} style={styles.empty}>
           <ThemedText type="smallBold">{kind === 'training' ? 'Nessun programma di allenamento' : 'Nessun piano alimentare'}</ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
-            {neverRequested ? 'Il tuo percorso non lo prevede. Puoi caricare il tuo qui sopra oppure crearne uno.' : 'Il piano è in preparazione.'}
+            {neverRequested ? 'Il tuo percorso non lo prevede. Con “Cambia” puoi crearne uno o caricare il tuo.' : 'Il piano è in preparazione.'}
           </ThemedText>
-          {neverRequested ? <PrimaryButton label="Crea il tuo piano" variant="ghost" dense onPress={() => setCreateOpen(true)} style={styles.emptyAction} /> : null}
+          {neverRequested ? <PrimaryButton label="Piano creato da FitLab" variant="ghost" dense onPress={() => setCreateOpen(true)} style={styles.emptyAction} /> : null}
         </FlatCard>
       )}
       <CreatePlanPopup kind={kind} visible={createOpen} onClose={() => setCreateOpen(false)} />
