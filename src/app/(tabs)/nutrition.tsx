@@ -84,8 +84,9 @@ export default function NutritionScreen() {
   const calorieTarget = planDayForSelectedDate?.calorieTarget ?? currentMonthData?.calorieTarget ?? currentUser.dailyCalorieTarget;
   const macroTargets = planDayForSelectedDate?.macroTargetsG ?? currentMonthData?.macroTargetsG ?? currentUser.macroTargetsG;
 
-  // The meals the person actually has (from the plan); only a user without a diet plan sees the six generic slots.
-  const mealSlots = planDayForSelectedDate
+  // The meals the person actually has (from the plan); a user without a menu (no plan, or only their own calorie and
+  // macro targets) sees the six generic slots.
+  const mealSlots = planDayForSelectedDate && planDayForSelectedDate.meals.length > 0
     ? inMealOrder(planDayForSelectedDate.meals).map((m) => {
         const meta = MEAL_SLOTS.find((x) => x.id === m.slotId);
         return { id: m.slotId as MealSlot, label: m.label, time: m.time, icon: meta?.icon ?? ('mealSnack' as const) };
