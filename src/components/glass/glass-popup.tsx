@@ -23,7 +23,12 @@ export type GlassPopupProps = {
   /** Extra styles for the card itself (padding, gap…). */
   style?: StyleProp<ViewStyle>;
   maxWidth?: number;
+  /** A sheet attached to the bottom edge, full width, at least half the screen tall (instead of a floating card). */
+  sheet?: boolean;
 };
+
+/** The minimum height of a `sheet` popup, as a share of the screen. */
+const SHEET_MIN_SHARE = 0.5;
 
 /** The app's popup: a card floating just above the bottom edge that slides up from below, the way an iOS
  * notification or action sheet does. It is as tall as its content, so a short popup (a confirmation, a download)
@@ -32,7 +37,7 @@ export type GlassPopupProps = {
  * Tapping outside the card, or swiping it down, dismisses it.
  *
  * Only cheap properties move: the card's translateY (on the UI thread, no bounce) and the scrim's opacity. */
-export function GlassPopup({ visible, onClose, children, style, maxWidth = POPUP_MAX_WIDTH }: GlassPopupProps) {
+export function GlassPopup({ visible, onClose, children, style, maxWidth = POPUP_MAX_WIDTH, sheet = false }: GlassPopupProps) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
@@ -61,17 +66,25 @@ export function GlassPopup({ visible, onClose, children, style, maxWidth = POPUP
   return (
     <Modal visible={mounted} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
       <RevealBoundary>
-        <View style={[styles.root, { paddingBottom: insets.bottom + BOTTOM_GAP }]}>
+        <View style={[styles.root, sheet ? styles.rootSheet : { paddingBottom: insets.bottom + BOTTOM_GAP }]}>
           <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Chiudi">
             <Animated.View style={[StyleSheet.absoluteFill, scrimStyle, { backgroundColor: theme.scrimSoft }]} />
           </Pressable>
-          <PopupCard progress={progress} distance={height} style={[styles.cardWrap, { maxWidth, maxHeight: height * MAX_HEIGHT_SHARE }]}>
+          <PopupCard
+            progress={progress}
+            distance={height}
+            style={[styles.cardWrap, sheet ? { minHeight: height * SHEET_MIN_SHARE, maxHeight: height * MAX_HEIGHT_SHARE } : { maxWidth, maxHeight: height * MAX_HEIGHT_SHARE }]}>
             {/* Swiping the card down dismisses it, like an iPhone sheet. */}
             <GlassSurface
               level="overlay"
               radius={Radius.xlarge}
               blur={false}
-              style={[styles.card, { backgroundColor: theme.surfacePopup }, style]}
+              style={[
+                styles.card,
+                { backgroundColor: theme.surfacePopup },
+                sheet && [styles.sheetCard, { minHeight: height * SHEET_MIN_SHARE, paddingBottom: insets.bottom + Spacing.four }],
+                style,
+              ]}
               swipeToDismiss={onClose}>
               {children}
             </GlassSurface>
@@ -98,8 +111,17 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     paddingHorizontal: Spacing.three,
   },
+  rootSheet: {
+    paddingHorizontal: 0,
+  },
   cardWrap: {
     width: '100%',
+  },
+  // Attached to the bottom edge: only the top corners are rounded.
+  sheetCard: {
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+    paddingTop: Spacing.three,
   },
   card: {
     padding: Spacing.four,

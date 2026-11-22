@@ -161,6 +161,9 @@ export function GlassSurface({
             StyleSheet.absoluteFill,
             {
               borderRadius: radius,
+              // A surface with square corners somewhere (a sheet attached to the bottom edge) keeps them in its hairline too.
+              borderBottomLeftRadius: outerStyle.borderBottomLeftRadius as number | undefined,
+              borderBottomRightRadius: outerStyle.borderBottomRightRadius as number | undefined,
               borderWidth: StyleSheet.hairlineWidth * 1.5,
               borderColor: GlassMaterial.surfaceBorder[isDark ? 'dark' : 'light'],
               borderTopColor: GlassMaterial.surfaceBorderTop[isDark ? 'dark' : 'light'],

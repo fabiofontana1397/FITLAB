@@ -8,7 +8,7 @@ import { Icon } from '@/components/ui/icon';
 import { OnBrand } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { daysAgoISO } from '@/lib/mock/dates';
-import { hapticSuccess } from '@/lib/haptics';
+import { hapticSelection, hapticSuccess } from '@/lib/haptics';
 
 const STEP_PX = 9; // width of one 0.1 kg tick
 const RANGE_KG = 15; // how far either side of the starting weight the wheel reaches
@@ -26,12 +26,11 @@ export type WeightEntryModalProps = {
   onSave: (weightKg: number, date?: string) => void;
 };
 
-/** "Nuova misurazione" popup: a horizontal ruler wheel (drag it, or tap − / +
- * for 0.1 kg steps) in a centered glass card with the rest of the screen
- * blurred. The date and time default to the moment the popup opens. */
+/** "Nuova misurazione": a sheet attached to the bottom edge, half the screen tall, with a horizontal ruler wheel
+ * (drag it, or tap / hold − and + for 0.1 kg steps). The date and time default to the moment the popup opens. */
 export function WeightEntryModal({ visible, initialWeightKg, date, markedDates, onClose, onSave }: WeightEntryModalProps) {
   return (
-    <GlassPopup visible={visible} onClose={onClose}>
+    <GlassPopup visible={visible} onClose={onClose} sheet>
       <WeightEntryForm initialWeightKg={initialWeightKg} date={date} markedDates={markedDates} onClose={onClose} onSave={onSave} />
     </GlassPopup>
   );
@@ -88,22 +87,68 @@ function WeightEntryForm({
 
   const indexFromX = (x: number) => Math.min(Math.max(Math.round(x / STEP_PX), 0), tickCount - 1);
 
+  // While − / + animate the wheel to a value, the scroll events of that animation are not the person dragging: they
+  // must not move the number back through the values in between, nor trigger the web snap (both made the steps jump).
+  const target = useRef<number | null>(null);
+  const targetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastTick = useRef(initialIndex);
+
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const i = indexFromX(e.nativeEvent.contentOffset.x);
-    setIndex(i);
-    // Web has no native snapping for this ScrollView — settle on the nearest
-    // tick shortly after the user stops moving it.
+    if (target.current != null) {
+      if (i === target.current) target.current = null;
+      return;
+    }
+    if (i !== lastTick.current) {
+      lastTick.current = i;
+      setIndex(i);
+      hapticSelection();
+    }
+    // Web has no native snapping for this ScrollView: settle on the nearest tick shortly after the drag stops.
     if (Platform.OS === 'web') {
       if (snapTimer.current) clearTimeout(snapTimer.current);
-      snapTimer.current = setTimeout(() => scrollToIndex(i, true), 140);
+      snapTimer.current = setTimeout(() => {
+        target.current = i;
+        scrollToIndex(i, true);
+      }, 140);
     }
   };
 
   const nudge = (delta: number) => {
-    const next = Math.min(Math.max(index + delta, 0), tickCount - 1);
+    const next = Math.min(Math.max((target.current ?? lastTick.current) + delta, 0), tickCount - 1);
+    if (snapTimer.current) clearTimeout(snapTimer.current);
+    target.current = next;
+    lastTick.current = next;
     setIndex(next);
+    hapticSelection();
     scrollToIndex(next, true);
+    // Safety net: if the animation is interrupted before reaching the tick, the wheel listens to drags again.
+    if (targetTimer.current) clearTimeout(targetTimer.current);
+    targetTimer.current = setTimeout(() => (target.current = null), 450);
   };
+
+  // Holding − or + keeps stepping, faster after the first few steps.
+  const repeat = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const startRepeat = (delta: number) => {
+    let n = 0;
+    const tick = () => {
+      nudge(delta);
+      n += 1;
+      repeat.current = setTimeout(tick, n < 6 ? 140 : 60);
+    };
+    repeat.current = setTimeout(tick, 0);
+  };
+  const stopRepeat = () => {
+    if (repeat.current) clearTimeout(repeat.current);
+    repeat.current = null;
+  };
+  useEffect(
+    () => () => {
+      if (repeat.current) clearTimeout(repeat.current);
+      if (targetTimer.current) clearTimeout(targetTimer.current);
+    },
+    []
+  );
 
   const dateLabel = new Date(selectedDate + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' });
   const timeLabel = openedAt.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
@@ -122,17 +167,17 @@ function WeightEntryForm({
       </View>
 
       <View style={styles.valueRow}>
-        <ThemedText style={styles.value}>{weight.toFixed(1)}</ThemedText>
+        <ThemedText style={styles.value}>{weight.toFixed(1).replace('.', ',')}</ThemedText>
         <ThemedText style={styles.unit} themeColor="textSecondary">
           kg
         </ThemedText>
       </View>
 
       <View style={styles.wheelRow}>
-        <Pressable onPress={() => nudge(-1)} accessibilityLabel="Diminuisci" style={[styles.roundButton, { backgroundColor: theme.backgroundElement }]}>
+        <Pressable onPress={() => nudge(-1)} onLongPress={() => startRepeat(-1)} onPressOut={stopRepeat} delayLongPress={350} accessibilityLabel="Diminuisci" style={[styles.roundButton, { backgroundColor: theme.backgroundElement }]}>
           <View style={[styles.minusBar, { backgroundColor: theme.text }]} />
         </Pressable>
-        <Pressable onPress={() => nudge(1)} accessibilityLabel="Aumenta" style={[styles.roundButton, { backgroundColor: theme.accentSoft }]}>
+        <Pressable onPress={() => nudge(1)} onLongPress={() => startRepeat(1)} onPressOut={stopRepeat} delayLongPress={350} accessibilityLabel="Aumenta" style={[styles.roundButton, { backgroundColor: theme.accentSoft }]}>
           <Icon name="plus" size={22} color={theme.accent} />
         </Pressable>
       </View>
@@ -216,6 +261,7 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: 6,
     marginBottom: 4,
   },
   rulerBadge: {
@@ -242,6 +288,7 @@ const styles = StyleSheet.create({
     lineHeight: 68,
     fontWeight: '800',
     letterSpacing: -1.5,
+    fontVariant: ['tabular-nums'],
   },
   unit: {
     fontSize: 17,
