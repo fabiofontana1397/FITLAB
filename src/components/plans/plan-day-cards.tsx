@@ -39,7 +39,10 @@ export function ExerciseSummaryCard({ item }: { item: ExerciseCardItem }) {
       {media ? (
         <Image source={{ uri: media.gifUrl }} style={[styles.thumb, { backgroundColor: theme.backgroundElement }]} />
       ) : (
-        <View style={[styles.thumb, { backgroundColor: theme.backgroundElement }]} />
+        // No animation for this exercise (warm-up, a card's own wording…): a thin dumbbell keeps the row tidy.
+        <View style={[styles.thumb, styles.thumbIcon, { backgroundColor: theme.backgroundElement }]}>
+          <Icon name="dumbbellLine" size={22} strokeWidth={1.4} color={theme.textSecondary} />
+        </View>
       )}
       <View style={{ flex: 1, gap: 2 }}>
         <ThemedText type="smallBold">{item.name}</ThemedText>
@@ -268,6 +271,7 @@ const CARD_INSET = 14;
 const styles = StyleSheet.create({
   exerciseCard: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, padding: Spacing.three },
   thumb: { width: 48, height: 48, borderRadius: Radius.medium },
+  thumbIcon: { alignItems: 'center', justifyContent: 'center' },
   infoButton: { padding: 4 },
   mealHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: CARD_INSET },
   mealTexts: { flex: 1, minWidth: 0, gap: 2 },

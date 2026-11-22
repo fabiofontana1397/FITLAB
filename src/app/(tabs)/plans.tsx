@@ -59,6 +59,7 @@ export default function PlansScreen() {
   const endedMonth = plan ? currentMonthIndex(plan) - 1 : 0;
   const checkinPendingMonth = endedMonth >= 1 && !completedMonths.includes(endedMonth) ? endedMonth : null;
   const cardKey = `${kind}-${replay}`;
+  const isCustom = (kind === 'training' ? trainingPlan?.source : dietPlan?.source) === 'custom';
 
   return (
     <ScreenScroll header={<TabHeader title="Piani" />} contentContainerStyle={styles.page}>
@@ -73,9 +74,14 @@ export default function PlansScreen() {
         />
       </View>
 
-      <View style={styles.banner}>
-        <PlanSourceBanner kind={kind} />
-      </View>
+      {/* Once the person follows their own card or diet, its summary box carries the only action (update it). */}
+      {isCustom ? (
+        <View style={styles.bannerSpacer} />
+      ) : (
+        <View style={styles.banner}>
+          <PlanSourceBanner kind={kind} />
+        </View>
+      )}
 
       {kind === 'training' && trainingPlan ? (
         <TrainingPlanView
@@ -113,6 +119,7 @@ const styles = StyleSheet.create({
   page: { paddingHorizontal: Layout.screenGutter, gap: 0 },
   switcher: { marginTop: 12 },
   banner: { marginTop: 8, marginBottom: 12 },
+  bannerSpacer: { height: 16 },
   empty: { padding: 20, gap: 6 },
   emptyAction: { marginTop: 8, alignSelf: 'flex-start' },
 });

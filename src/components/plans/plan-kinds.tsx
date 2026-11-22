@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { Alert, StyleSheet, View } from 'react-native';
 
 import { GlassSurface } from '@/components/glass/glass-surface';
@@ -194,6 +195,7 @@ export function TrainingPlanView({ plan, goal, checkinPendingMonth, onCheckin }:
       }
       checkinPendingMonth={checkinPendingMonth}
       onCheckin={onCheckin}
+      custom={plan.source === 'custom' ? { onUpdate: () => router.push('/custom-workout') } : undefined}
     />
   );
 }
@@ -296,6 +298,7 @@ export function DietPlanView({ plan, goal, checkinPendingMonth, onCheckin }: Pla
       }
       checkinPendingMonth={checkinPendingMonth}
       onCheckin={onCheckin}
+      custom={plan.source === 'custom' ? { onUpdate: () => router.push('/custom-diet') } : undefined}
     />
   );
 }
