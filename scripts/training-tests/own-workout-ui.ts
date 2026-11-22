@@ -44,12 +44,14 @@ async function main() {
       });
       await pause(2500);
 
-      await test(`[${appearance}] Allenamento shows the three sources`, async () => {
-        for (const n of [/^FitLab,/, /^Caricata,/, /^Fai da te, Scegli gli esercizi/]) assert.ok(await page.getByRole('radio', { name: n }).isVisible());
-        await shot(page, `${appearance}-t01-sources`);
+      await test(`[${appearance}] Cambia shows the three sources`, async () => {
+        await page.getByRole('button', { name: 'Cambia il tipo di programma' }).click();
+        await pause(700);
+        for (const n of [/^Creato da FitLab\./, /^Carica la tua scheda\./, /^Crealo tu\. Scegli giorni/]) assert.ok(await page.getByRole('radio', { name: n }).isVisible());
+        await shot(page, `${appearance}-t01-menu`);
       });
 
-      await page.getByRole('radio', { name: /^Fai da te,/ }).click();
+      await page.getByRole('radio', { name: /^Crealo tu\./ }).click();
       await pause(1500);
       await test(`[${appearance}] the builder opens with three days`, async () => {
         assert.ok(await page.getByText('Crea il tuo programma').first().isVisible());
@@ -92,9 +94,9 @@ async function main() {
       await pause(2000);
 
       await test(`[${appearance}] Piani shows the program built by the person`, async () => {
-        assert.ok(await page.getByRole('radio', { name: /^Fai da te, .*in uso$/ }).isVisible());
+        assert.ok(await page.getByText('Creato da te', { exact: true }).first().isVisible());
         assert.ok(await page.getByText('Il tuo programma').first().isVisible());
-        assert.ok(await page.getByText('In uso · modifica').first().isVisible());
+        assert.ok(await page.getByText('L’app lo segue così com’è').first().isVisible());
         assert.ok(await page.getByText('Modifica programma').first().isVisible());
         await shot(page, `${appearance}-t04-plans`);
       });

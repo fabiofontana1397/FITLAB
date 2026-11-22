@@ -9,7 +9,7 @@ import { PrimaryButton } from '@/components/ui/primary-button';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useUserContext } from '@/hooks/use-user-context';
-import { hapticSelection, hapticSuccess } from '@/lib/haptics';
+import { hapticSelection, hapticSuccess, hapticTap } from '@/lib/haptics';
 import { useOnboardingStore } from '@/store/onboarding-store';
 import { dietPlanSource, PLAN_SOURCE_ROUTE, trainingPlanSource, type PlanSource } from '@/lib/planning/plan-source';
 import { usePlanStore } from '@/store/plan-store';
@@ -67,22 +67,40 @@ type Option = { source: PlanSource; icon: IconName; title: string; sub: string }
 
 const OPTIONS: Record<Kind, Option[]> = {
   training: [
-    { source: 'fitlab', icon: 'sparkle', title: 'FitLab', sub: 'Creato per te' },
-    { source: 'file', icon: 'camera', title: 'Caricata', sub: 'Foto, file, testo' },
-    { source: 'own', icon: 'edit', title: 'Fai da te', sub: 'Scegli gli esercizi' },
+    { source: 'fitlab', icon: 'sparkle', title: 'Creato da FitLab', sub: 'Dalle tue risposte al questionario, adattato a ogni check-in' },
+    { source: 'file', icon: 'camera', title: 'Carica la tua scheda', sub: 'Da una foto, un file o un testo' },
+    { source: 'own', icon: 'edit', title: 'Crealo tu', sub: 'Scegli giorni, esercizi, serie e ripetizioni' },
   ],
   diet: [
-    { source: 'fitlab', icon: 'sparkle', title: 'FitLab', sub: 'Creato per te' },
-    { source: 'file', icon: 'camera', title: 'Caricata', sub: 'Foto, file, testo' },
-    { source: 'own', icon: 'edit', title: 'Fai da te', sub: 'Kcal e macro' },
+    { source: 'fitlab', icon: 'sparkle', title: 'Creato da FitLab', sub: 'Dalle tue risposte al questionario, adattato a ogni check-in' },
+    { source: 'file', icon: 'camera', title: 'Carica la tua dieta', sub: 'Da una foto, un file o un testo' },
+    { source: 'own', icon: 'edit', title: 'Crealo tu', sub: 'Calorie e macro mese per mese, senza menù' },
   ],
 };
 
+/** What the line says for the plan in use: the source and, for the person's own plans, the way to change them. */
+const CURRENT: Record<Kind, Record<PlanSource, { title: string; sub: string }>> = {
+  training: {
+    fitlab: { title: 'Creato da FitLab', sub: 'Puoi anche caricare la tua scheda o crearla' },
+    file: { title: 'La tua scheda caricata', sub: 'L’app la segue così com’è' },
+    own: { title: 'Creato da te', sub: 'L’app lo segue così com’è' },
+  },
+  diet: {
+    fitlab: { title: 'Creato da FitLab', sub: 'Puoi anche caricare la tua dieta o crearla' },
+    file: { title: 'La tua dieta caricata', sub: 'L’app la segue così com’è' },
+    own: { title: 'Creato da te', sub: 'Calorie e macro scelti da te' },
+  },
+};
+
+/** Exit duration of a popup (TimingExit), with a little slack, before the next one opens. */
+const POPUP_SWAP_MS = 220;
+
 /**
- * The three ways to have a plan, under the Allenamento / Nutrizione switch: the one FitLab builds from the
- * questionnaire, the person's own card or diet loaded from a photo, file or text, or one they build themselves
- * (exercises chosen one by one; calories and macros month by month). The one in use is highlighted; tapping FitLab
- * from another source brings the app's plan back, tapping the others opens their screen (to load, build or edit).
+ * The line under the Allenamento / Nutrizione switch: where the plan in use comes from, and "Cambia", which opens
+ * the three ways to have one — the plan FitLab builds from the questionnaire, the person's own card or diet loaded
+ * from a photo, file or text, or one they build themselves (exercises one by one; calories and macros per month).
+ * Choosing FitLab from another source brings the app's plan back; the others open their screen. Editing the plan in use
+ * stays in its own box below ("Modifica programma", the pencil of the targets).
  */
 export function PlanSourceBanner({ kind }: { kind: Kind }) {
   const theme = useTheme();
@@ -94,19 +112,21 @@ export function PlanSourceBanner({ kind }: { kind: Kind }) {
   const restoreTraining = usePlanStore((s) => s.restoreGeneratedTraining);
   const restoreDiet = usePlanStore((s) => s.restoreGeneratedDiet);
   const neverRequested = usePlanNeverRequested(kind);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [restoreOpen, setRestoreOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
 
+  const line = current ? CURRENT[kind][current] : { title: neverRequested ? 'Nessun piano' : 'Piano in preparazione', sub: 'Puoi caricarne uno o crearlo tu' };
+
   const choose = (source: PlanSource) => {
     hapticSelection();
+    setMenuOpen(false);
     if (source === 'fitlab') {
-      if (current === 'fitlab' || isGenerating) return;
-      if (neverRequested) setCreateOpen(true);
-      else if (current == null) return; // the app's plan is being prepared
-      else setRestoreOpen(true);
+      if (current === 'fitlab' || isGenerating || (current == null && !neverRequested)) return;
+      setTimeout(() => (neverRequested ? setCreateOpen(true) : setRestoreOpen(true)), POPUP_SWAP_MS);
       return;
     }
-    router.push(PLAN_SOURCE_ROUTE[kind][source]);
+    setTimeout(() => router.push(PLAN_SOURCE_ROUTE[kind][source]), POPUP_SWAP_MS);
   };
   const restore = () => {
     const weightKg = ctx.weightKg > 0 ? ctx.weightKg : undefined;
@@ -116,38 +136,71 @@ export function PlanSourceBanner({ kind }: { kind: Kind }) {
   };
 
   return (
-    <View style={styles.wrap}>
-      <View style={styles.tiles} accessibilityRole="radiogroup" accessibilityLabel={kind === 'training' ? 'Come vuoi il programma di allenamento' : 'Come vuoi il piano alimentare'}>
-        {OPTIONS[kind].map((o) => {
-          const on = current === o.source;
-          const busy = o.source === 'fitlab' && isGenerating;
-          return (
-            <Pressable
-              key={o.source}
-              onPress={() => choose(o.source)}
-              accessibilityRole="radio"
-              accessibilityState={{ selected: on, busy }}
-              aria-checked={on}
-              accessibilityLabel={`${o.title}, ${o.sub}${on ? ', in uso' : ''}`}
-              style={({ pressed }) => [
-                styles.tile,
-                { backgroundColor: on ? theme.accentSoft : theme.backgroundElement, borderColor: on ? theme.accent : 'transparent', opacity: pressed ? 0.7 : 1 },
-              ]}
-            >
-              <View style={styles.tileHead}>
-                {busy ? <ActivityIndicator size="small" color={theme.accent} /> : <Icon name={o.icon} size={18} color={on ? theme.accent : theme.textSecondary} />}
-                {on ? <Icon name="checkCircle" size={16} color={theme.accent} /> : null}
-              </View>
-              <ThemedText style={[styles.tileTitle, on ? { color: theme.accent } : null]} numberOfLines={1}>
-                {o.title}
-              </ThemedText>
-              <ThemedText style={styles.tileSub} themeColor="textSecondary" numberOfLines={1}>
-                {on && o.source !== 'fitlab' ? 'In uso · modifica' : o.sub}
-              </ThemedText>
-            </Pressable>
-          );
-        })}
-      </View>
+    <View style={styles.row}>
+      <Pressable
+        onPress={() => {
+          hapticTap();
+          setMenuOpen(true);
+        }}
+        accessibilityRole="button"
+        accessibilityLabel={`${line.title}. ${line.sub}`}
+        style={({ pressed }) => [styles.texts, { opacity: pressed ? 0.6 : 1 }]}
+      >
+        <ThemedText style={styles.title} numberOfLines={1}>
+          {line.title}
+        </ThemedText>
+        <ThemedText style={styles.sub} themeColor="textSecondary" numberOfLines={1}>
+          {line.sub}
+        </ThemedText>
+      </Pressable>
+
+      <Pressable
+        onPress={() => {
+          hapticTap();
+          setMenuOpen(true);
+        }}
+        disabled={isGenerating}
+        hitSlop={4}
+        accessibilityRole="button"
+        accessibilityLabel={kind === 'training' ? 'Cambia il tipo di programma' : 'Cambia il tipo di piano'}
+        accessibilityState={{ disabled: isGenerating, busy: isGenerating }}
+        style={({ pressed }) => [styles.button, { backgroundColor: theme.backgroundElement, opacity: pressed ? 0.6 : 1 }]}
+      >
+        {isGenerating ? <ActivityIndicator size="small" color={theme.textSecondary} /> : null}
+        <ThemedText style={styles.buttonLabel}>Cambia</ThemedText>
+        <Icon name="chevronDown" size={14} color={theme.textSecondary} />
+      </Pressable>
+
+      <GlassPopup visible={menuOpen} onClose={() => setMenuOpen(false)} style={styles.menu}>
+        <ThemedText type="title" style={styles.menuTitle}>
+          {kind === 'training' ? 'Il tuo allenamento' : 'La tua alimentazione'}
+        </ThemedText>
+        <View style={[styles.list, { backgroundColor: theme.backgroundElement }]} accessibilityRole="radiogroup">
+          {OPTIONS[kind].map((o, i) => {
+            const on = current === o.source;
+            return (
+              <Pressable
+                key={o.source}
+                onPress={() => choose(o.source)}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: on }}
+                aria-checked={on}
+                accessibilityLabel={`${o.title}. ${o.sub}`}
+                style={({ pressed }) => [styles.option, i > 0 && [styles.optionDivided, { borderTopColor: theme.border }], { opacity: pressed ? 0.6 : 1 }]}
+              >
+                <Icon name={o.icon} size={20} color={on ? theme.accent : theme.textSecondary} />
+                <View style={styles.flex}>
+                  <ThemedText style={styles.optionTitle}>{o.title}</ThemedText>
+                  <ThemedText style={styles.optionSub} themeColor="textSecondary">
+                    {o.sub}
+                  </ThemedText>
+                </View>
+                {on ? <Icon name="check" size={18} color={theme.accent} /> : null}
+              </Pressable>
+            );
+          })}
+        </View>
+      </GlassPopup>
 
       <GlassPopup visible={restoreOpen} onClose={() => setRestoreOpen(false)} style={styles.popup}>
         <ThemedText type="title" style={styles.center}>
@@ -165,12 +218,20 @@ export function PlanSourceBanner({ kind }: { kind: Kind }) {
 }
 
 const styles = StyleSheet.create({
-  wrap: { gap: 8 },
-  tiles: { flexDirection: 'row', gap: 8 },
-  tile: { flex: 1, minWidth: 0, minHeight: 76, borderRadius: 18, borderCurve: 'continuous', borderWidth: 1.5, paddingHorizontal: 12, paddingVertical: 10, gap: 2 },
-  tileHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: 20, marginBottom: 4 },
-  tileTitle: { fontSize: 15, lineHeight: 20, fontWeight: '600', letterSpacing: -0.2 },
-  tileSub: { fontSize: 12, lineHeight: 16 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44, paddingHorizontal: 4 },
+  texts: { flex: 1, minWidth: 0 },
+  flex: { flex: 1, minWidth: 0 },
+  title: { fontSize: 15, lineHeight: 20, fontWeight: '600', letterSpacing: -0.2 },
+  sub: { fontSize: 13, lineHeight: 18 },
+  button: { minHeight: 36, borderRadius: 18, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  buttonLabel: { fontSize: 15, lineHeight: 20, fontWeight: '600' },
+  menu: { padding: Spacing.four, gap: Spacing.three, alignItems: 'stretch' },
+  menuTitle: { textAlign: 'center' },
+  list: { borderRadius: 18, borderCurve: 'continuous', overflow: 'hidden' },
+  option: { flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 64, paddingHorizontal: Spacing.three, paddingVertical: 10 },
+  optionDivided: { borderTopWidth: StyleSheet.hairlineWidth },
+  optionTitle: { fontSize: 16, lineHeight: 21, fontWeight: '600' },
+  optionSub: { fontSize: 13, lineHeight: 18 },
   popup: { padding: Spacing.four, gap: Spacing.three, alignItems: 'stretch' },
   center: { textAlign: 'center' },
 });

@@ -75,14 +75,18 @@ async function main() {
       await page.getByText('Nutrizione', { exact: true }).first().click();
       await pause(900);
 
-      await test(`[${appearance}] Nutrizione offers FitLab (in use), Caricata and Fai da te`, async () => {
-        assert.ok(await page.getByRole('radio', { name: /^FitLab, .*in uso$/ }).isVisible());
-        assert.ok(await page.getByRole('radio', { name: /^Caricata,/ }).isVisible());
-        assert.ok(await page.getByRole('radio', { name: /^Fai da te, Kcal e macro$/ }).isVisible());
-        await shot(page, `${appearance}-01-sources`);
+      await test(`[${appearance}] Cambia offers FitLab (in use), load and build`, async () => {
+        assert.ok(await page.getByText('Creato da FitLab', { exact: true }).first().isVisible());
+        await shot(page, `${appearance}-01-line`);
+        await page.getByRole('button', { name: 'Cambia il tipo di piano' }).click();
+        await pause(700);
+        assert.ok(await page.getByRole('radio', { name: /^Creato da FitLab\./, checked: true }).isVisible());
+        assert.ok(await page.getByRole('radio', { name: /^Carica la tua dieta\./ }).isVisible());
+        assert.ok(await page.getByRole('radio', { name: /^Crealo tu\. Calorie e macro/ }).isVisible());
+        await shot(page, `${appearance}-01-menu`);
       });
 
-      await page.getByRole('radio', { name: /^Fai da te,/ }).click();
+      await page.getByRole('radio', { name: /^Crealo tu\./ }).click();
       await pause(1500);
       await test(`[${appearance}] the editor opens with three months from today's targets`, async () => {
         assert.ok(await page.getByText('Imposta il tuo piano').first().isVisible());
@@ -131,7 +135,7 @@ async function main() {
         assert.ok(await page.getByText('Mese per mese').isVisible());
         assert.match(await page.evaluate(() => document.body.innerText), /2[.\u202f ]?200/);
         assert.equal(await page.getByText('Pranzo', { exact: true }).count(), 0);
-        assert.ok(await page.getByRole('radio', { name: /^Fai da te, .*in uso$/ }).isVisible());
+        assert.ok(await page.getByText('Calorie e macro scelti da te').isVisible());
         await shot(page, `${appearance}-05-summary`);
         await page.mouse.wheel(0, 700);
         await pause(700);
@@ -158,8 +162,10 @@ async function main() {
       await test(`[${appearance}] FitLab brings the app's plan back`, async () => {
         await page.getByRole('tab', { name: /Piani/ }).first().click().catch(async () => page.getByText('Piani', { exact: true }).last().click());
         await pause(1200);
-        await page.getByRole('radio', { name: /^FitLab,/ }).click();
-        await pause(600);
+        await page.getByRole('button', { name: 'Cambia il tipo di piano' }).click();
+        await pause(700);
+        await page.getByRole('radio', { name: /^Creato da FitLab\./ }).click();
+        await pause(900);
         assert.ok(await page.getByText('Riprendere il piano FitLab?').isVisible());
         await shot(page, `${appearance}-09-restore`);
         await page.getByText('Annulla', { exact: true }).last().click();
