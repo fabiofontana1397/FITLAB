@@ -1,10 +1,9 @@
-import { Modal, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
-import { GlassSurface } from '@/components/glass/glass-surface';
+import { GlassPopup } from '@/components/glass/glass-popup';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
-import { Radius, Spacing } from '@/constants/theme';
-import { useMotionPreference } from '@/hooks/use-motion-preference';
+import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { BodySilhouette, type MeasurementZone } from './body-silhouette';
 
@@ -47,16 +46,12 @@ export type MeasurementInfoModalProps = {
 };
 
 export function MeasurementInfoModal({ zone, onClose }: MeasurementInfoModalProps) {
-  const { modalAnimation } = useMotionPreference();
   const theme = useTheme();
   if (!zone) return null;
   const copy = COPY[zone];
 
   return (
-    <Modal visible={zone != null} transparent animationType={modalAnimation('fade')} onRequestClose={onClose}>
-      <Pressable style={[styles.backdrop, { backgroundColor: theme.scrim }]} onPress={onClose}>
-        <Pressable onPress={(e) => e.stopPropagation()}>
-          <GlassSurface swipeToDismiss={onClose} level="overlay" radius={Radius.xlarge} style={styles.card}>
+    <GlassPopup visible={zone != null} onClose={onClose} style={styles.card}>
             <View style={styles.header}>
               <ThemedText type="subtitle">Come misurare: {copy.title}</ThemedText>
               <Pressable onPress={onClose} hitSlop={11} accessibilityRole="button" accessibilityLabel="Chiudi">
@@ -69,22 +64,12 @@ export function MeasurementInfoModal({ zone, onClose }: MeasurementInfoModalProp
             <ThemedText type="small" themeColor="textSecondary">
               {copy.instructions}
             </ThemedText>
-          </GlassSurface>
-        </Pressable>
-      </Pressable>
-    </Modal>
+    </GlassPopup>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: Spacing.four,
-  },
   card: {
-    width: 300,
     padding: Spacing.four,
     gap: Spacing.three,
   },

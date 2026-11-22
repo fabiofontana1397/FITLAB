@@ -82,17 +82,17 @@ const OPTIONS: Record<Kind, Option[]> = {
   ],
 };
 
-/** What the line says for the plan in use: the source and, for the person's own plans, the way to change them. */
-const CURRENT: Record<Kind, Record<PlanSource, { title: string; sub: string }>> = {
+/** What the button says for the plan in use: just where it comes from, on one line. */
+const CURRENT: Record<Kind, Record<PlanSource, { title: string }>> = {
   training: {
-    fitlab: { title: 'Piano creato da FitLab', sub: 'Puoi anche creare o caricare il tuo' },
-    file: { title: 'Piano caricato da te', sub: 'L’app lo segue così com’è' },
-    own: { title: 'Piano creato da te', sub: 'L’app lo segue così com’è' },
+    fitlab: { title: 'Piano creato da FitLab' },
+    file: { title: 'Piano caricato da te' },
+    own: { title: 'Piano creato da te' },
   },
   diet: {
-    fitlab: { title: 'Piano creato da FitLab', sub: 'Puoi anche creare o caricare il tuo' },
-    file: { title: 'Piano caricato da te', sub: 'L’app lo segue così com’è' },
-    own: { title: 'Piano creato da te', sub: 'Calorie e macro scelti da te' },
+    fitlab: { title: 'Piano creato da FitLab' },
+    file: { title: 'Piano caricato da te' },
+    own: { title: 'Piano creato da te' },
   },
 };
 
@@ -122,7 +122,7 @@ export function PlanSourceBanner({ kind }: { kind: Kind }) {
   const [restoreOpen, setRestoreOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
 
-  const line = current ? CURRENT[kind][current] : { title: neverRequested ? 'Nessun piano' : 'Piano in preparazione', sub: 'Puoi anche creare o caricare il tuo' };
+  const line = current ? CURRENT[kind][current] : { title: neverRequested ? 'Nessun piano' : 'Piano in preparazione' };
 
   const choose = (source: PlanSource) => {
     hapticSelection();
@@ -163,19 +163,14 @@ export function PlanSourceBanner({ kind }: { kind: Kind }) {
             {isGenerating ? (
               <ActivityIndicator size="small" color={iconColor} />
             ) : currentOption?.icon === 'brand' || !currentOption ? (
-              <BrandMark height={14} color={iconColor} />
+              <BrandMark height={12} color={iconColor} />
             ) : (
-              <Icon name={currentOption.icon} size={18} color={iconColor} />
+              <Icon name={currentOption.icon} size={16} color={iconColor} />
             )}
           </View>
-          <View style={styles.flex}>
-            <ThemedText style={styles.title} numberOfLines={1}>
-              {line.title}
-            </ThemedText>
-            <ThemedText style={styles.sub} themeColor="textSecondary" numberOfLines={1}>
-              {line.sub}
-            </ThemedText>
-          </View>
+          <ThemedText style={[styles.flex, styles.title]} numberOfLines={1}>
+            {line.title}
+          </ThemedText>
           <Icon name={menuOpen ? 'chevronUp' : 'chevronDown'} size={18} color={theme.textSecondary} />
         </Pressable>
 
@@ -225,11 +220,10 @@ export function PlanSourceBanner({ kind }: { kind: Kind }) {
 
 const styles = StyleSheet.create({
   dropdown: { overflow: 'hidden' },
-  head: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 60, paddingHorizontal: 14, paddingVertical: 10 },
-  badge: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  head: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 44, paddingHorizontal: 12, paddingVertical: 6 },
+  badge: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
   flex: { flex: 1, minWidth: 0 },
-  title: { fontSize: 16, lineHeight: 21, fontWeight: '600', letterSpacing: -0.2 },
-  sub: { fontSize: 13, lineHeight: 18 },
+  title: { fontSize: 15, lineHeight: 20, fontWeight: '600', letterSpacing: -0.2 },
   option: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 60, paddingHorizontal: 14, paddingVertical: 10, borderTopWidth: StyleSheet.hairlineWidth },
   optionIcon: { width: 36, alignItems: 'center' },
   optionTitle: { fontSize: 15, lineHeight: 20, fontWeight: '600' },

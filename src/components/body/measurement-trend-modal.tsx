@@ -1,12 +1,11 @@
-import { Modal, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '@/components/ui/app-text';
 import Svg, { Circle, Defs, Line, LinearGradient, Path, Stop } from 'react-native-svg';
 
-import { GlassSurface } from '@/components/glass/glass-surface';
+import { GlassPopup } from '@/components/glass/glass-popup';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
-import { Radius, Spacing } from '@/constants/theme';
-import { useMotionPreference } from '@/hooks/use-motion-preference';
+import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { formatDayMonth } from '@/lib/mock/dates';
 import type { BodyMetricSnapshot } from '@/lib/mock/types';
@@ -64,7 +63,6 @@ export type MeasurementTrendModalProps = {
  * plotted over every entry logged so far, with real axes instead of a bare
  * sparkline. */
 export function MeasurementTrendModal({ zone, label, entries, color, onClose }: MeasurementTrendModalProps) {
-  const { modalAnimation } = useMotionPreference();
   const theme = useTheme();
   if (!zone) return null;
 
@@ -78,10 +76,7 @@ export function MeasurementTrendModal({ zone, label, entries, color, onClose }: 
   const chart = hasEnoughData ? buildChart(values) : null;
 
   return (
-    <Modal visible={zone != null} transparent animationType={modalAnimation('fade')} onRequestClose={onClose}>
-      <Pressable style={[styles.backdrop, { backgroundColor: theme.scrim }]} onPress={onClose}>
-        <Pressable onPress={(e) => e.stopPropagation()}>
-          <GlassSurface swipeToDismiss={onClose} level="overlay" radius={Radius.xlarge} style={styles.card}>
+    <GlassPopup visible={zone != null} onClose={onClose} style={styles.card}>
             <View style={styles.header}>
               <ThemedText type="subtitle">Andamento: {label}</ThemedText>
               <Pressable onPress={onClose} hitSlop={11} accessibilityRole="button" accessibilityLabel="Chiudi">
@@ -90,7 +85,7 @@ export function MeasurementTrendModal({ zone, label, entries, color, onClose }: 
             </View>
 
             {chart ? (
-              <View style={{ width: CHART_WIDTH, height: CHART_HEIGHT }}>
+              <View style={{ width: CHART_WIDTH, height: CHART_HEIGHT, alignSelf: 'center' }}>
                 <Svg width={CHART_WIDTH} height={CHART_HEIGHT}>
                   <Defs>
                     <LinearGradient id="measurementTrendFill" x1="0" y1="0" x2="0" y2="1">
@@ -147,24 +142,15 @@ export function MeasurementTrendModal({ zone, label, entries, color, onClose }: 
                 </Text>
               </View>
             ) : (
-              <ThemedText type="small" themeColor="textSecondary" style={{ width: CHART_WIDTH }}>
+              <ThemedText type="small" themeColor="textSecondary" style={{ textAlign: 'center' }}>
                 Aggiungi almeno due misurazioni per vedere l’andamento nel tempo.
               </ThemedText>
             )}
-          </GlassSurface>
-        </Pressable>
-      </Pressable>
-    </Modal>
+    </GlassPopup>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: Spacing.four,
-  },
   card: {
     padding: Spacing.four,
     gap: Spacing.three,

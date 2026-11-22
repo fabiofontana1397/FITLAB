@@ -161,6 +161,8 @@ export function GlassSurface({
             StyleSheet.absoluteFill,
             {
               borderRadius: radius,
+              // Corners the caller squared off (a sheet flush with the screen edge) stay square on the hairline too.
+              ...cornerOverrides(outerStyle),
               borderWidth: StyleSheet.hairlineWidth * 1.5,
               borderColor: GlassMaterial.surfaceBorder[isDark ? 'dark' : 'light'],
               borderTopColor: GlassMaterial.surfaceBorderTop[isDark ? 'dark' : 'light'],
@@ -174,6 +176,14 @@ export function GlassSurface({
   );
 
   return swipeToDismiss ? <ScrollRegistryContext.Provider value={swipe.registry}>{surface}</ScrollRegistryContext.Provider> : surface;
+}
+
+const CORNER_KEYS = ['borderTopLeftRadius', 'borderTopRightRadius', 'borderBottomLeftRadius', 'borderBottomRightRadius'] as const;
+
+function cornerOverrides(style: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const key of CORNER_KEYS) if (style[key] != null) out[key] = style[key];
+  return out;
 }
 
 const styles = StyleSheet.create({
