@@ -6,12 +6,12 @@ import { WEEKDAY_LABELS } from './exercise-library';
 import type { DietDayPlan, DietMonthPlan, DietPlan, PlanPhaseKind } from './types';
 
 /**
- * "Imposta il tuo piano": the person sets, month by month, the calories and the macros they want to eat. There is
- * no menu: the plan only carries the numbers, and those numbers become the target everywhere in the app (Home,
- * Nutrizione, the week, the assistant), exactly as the app's own plan would.
+ * "Crea il tuo piano" (nutrition): the person sets, month by month, the calories, protein and fats they want to eat
+ * on training days and on rest days; the carbs fill the calories left. There is no menu: the plan only carries the
+ * numbers, and those numbers become the target everywhere in the app (Home, Nutrizione, the week, the assistant),
+ * exactly as the app's own plan would.
  */
 
-export type MacroMode = 'percent' | 'grams';
 export type MonthTargets = { calories: number; protein: number; carbs: number; fats: number };
 
 /** Energy per gram (Atwater): what turns grams into calories and back. */
@@ -53,28 +53,31 @@ export function kcalFromGrams(g: Omit<MonthTargets, 'calories'>): number {
 export type TargetIssue = { level: 'blocker' | 'warning'; text: string };
 
 /**
- * Checks one month as the person typed it. Blockers stop the plan from being saved (a target that makes no sense
- * would then be shown everywhere); warnings are shown and the person decides.
+ * Carbohydrates are not typed: they fill the calories that protein and fats leave (Atwater). Never negative: when
+ * protein and fats alone exceed the calories, validation blocks the day.
  */
-export function validateMonthTargets(
-  t: MonthTargets,
-  mode: MacroMode,
-  pct: { protein: number; carbs: number; fats: number },
-  weightKg?: number
-): TargetIssue[] {
+export function carbsForCalories(calories: number, protein: number, fats: number): number {
+  return Math.max(0, Math.round((calories - protein * KCAL_PER_G.protein - fats * KCAL_PER_G.fats) / KCAL_PER_G.carbs));
+}
+
+/** One day's targets from calories, protein and fats: the carbs close the calories. */
+export function dayTargets(calories: number, protein: number, fats: number): MonthTargets {
+  return { calories, protein, fats, carbs: carbsForCalories(calories, protein, fats) };
+}
+
+/**
+ * Checks one day as the person typed it (calories, protein, fats; carbs follow). Blockers stop the plan from being
+ * saved (a target that makes no sense would then be shown everywhere); warnings are shown and the person decides.
+ */
+export function validateDayTargets(t: Pick<MonthTargets, 'calories' | 'protein' | 'fats'>, weightKg?: number): TargetIssue[] {
   const issues: TargetIssue[] = [];
   if (!Number.isFinite(t.calories) || t.calories < TARGET_LIMITS.minCalories || t.calories > TARGET_LIMITS.maxCalories) {
     issues.push({ level: 'blocker', text: `Le calorie devono stare tra ${TARGET_LIMITS.minCalories.toLocaleString('it-IT')} e ${TARGET_LIMITS.maxCalories.toLocaleString('it-IT')} kcal al giorno.` });
     return issues;
   }
-  if (mode === 'percent') {
-    const sum = pct.protein + pct.carbs + pct.fats;
-    if (Math.abs(sum - 100) > 0.5) issues.push({ level: 'blocker', text: `Le percentuali sommano ${Math.round(sum)}%: devono fare 100%.` });
-  } else {
-    const fromGrams = kcalFromGrams(t);
-    if (Math.abs(fromGrams - t.calories) / t.calories > 0.05) {
-      issues.push({ level: 'blocker', text: `Le macro valgono ${fromGrams.toLocaleString('it-IT')} kcal, le calorie impostate sono ${t.calories.toLocaleString('it-IT')}: allinea i due valori.` });
-    }
+  const fixed = t.protein * KCAL_PER_G.protein + t.fats * KCAL_PER_G.fats;
+  if (fixed > t.calories) {
+    issues.push({ level: 'blocker', text: `Proteine e grassi valgono ${Math.round(fixed).toLocaleString('it-IT')} kcal, più delle calorie impostate: non resta spazio per i carboidrati.` });
   }
   if (t.calories < TARGET_LIMITS.lowCalories) issues.push({ level: 'warning', text: 'Sotto le 1.200 kcal al giorno è meglio farsi seguire da un professionista.' });
   const fatShare = (t.fats * KCAL_PER_G.fats) / t.calories;
@@ -87,11 +90,30 @@ export function validateMonthTargets(
   return issues;
 }
 
+/**
+ * The calendar month a plan month is named after: the plan's start month, then the next ones (a plan started on
+ * 22 November reads Novembre, Dicembre, Gennaio…). `monthIndex` starts at 1.
+ */
+export function planMonthName(startedAt: string | number, monthIndex: number, style: 'long' | 'short' = 'long'): string {
+  const start = new Date(startedAt);
+  const d = new Date(start.getFullYear(), start.getMonth() + monthIndex - 1, 1);
+  const name = d.toLocaleDateString('it-IT', { month: style }).replace('.', '');
+  return name.charAt(0).toUpperCase() + name.slice(1);
+}
+
+/** Training-day and rest-day targets of one month. */
+export type MonthDayTargets = { training: MonthTargets; rest: MonthTargets };
+export type DayKind = keyof MonthDayTargets;
+
+/** Weekdays (0 = Monday) the person trains on when nothing else says so. */
+export const DEFAULT_TRAINING_DAYS = [0, 2, 4];
+
 const PHASE = (i: number, n: number): PlanPhaseKind => (i === 0 ? 'adattamento' : i === n - 1 ? 'consolidamento' : 'progressione');
 
 export type TargetsPlanBase = {
   goal: Goal;
-  macroMode: MacroMode;
+  /** Weekdays (0 = Monday) that get the training-day targets; the others get the rest-day ones. */
+  trainingDays?: number[];
   /** Keeps the start date of a plan being edited; a new plan starts today. */
   generatedAt?: string;
   calibration?: DietPlan['calibration'];
@@ -100,22 +122,35 @@ export type TargetsPlanBase = {
   keepMonths?: DietMonthPlan[];
 };
 
-/** The person's targets as a diet plan with no meals: one target per month, the same on every day of that month. */
-export function buildTargetsPlan(months: MonthTargets[], base: TargetsPlanBase): DietPlan {
+const roundTargets = (t: MonthTargets): MonthTargets => ({ calories: Math.round(t.calories), protein: Math.round(t.protein), carbs: Math.round(t.carbs), fats: Math.round(t.fats) });
+
+/**
+ * The person's targets as a diet plan with no meals: one target per month, different on training and rest days.
+ * Each weekday carries its own target (the whole app reads the day's one); the month target is the week's average.
+ * A month given as a single target uses it on every day.
+ */
+export function buildTargetsPlan(months: (MonthTargets | MonthDayTargets)[], base: TargetsPlanBase): DietPlan {
   const n = months.length;
-  const built: DietMonthPlan[] = months.map((t, i) => {
+  const trainingDays = [...new Set(base.trainingDays ?? [])].filter((d) => d >= 0 && d < 7).sort((a, b) => a - b);
+  const built: DietMonthPlan[] = months.map((input, i) => {
     const kept = base.keepMonths?.find((m) => m.monthIndex === i + 1);
     if (kept) return kept;
-    const macroTargetsG = { protein: Math.round(t.protein), carbs: Math.round(t.carbs), fats: Math.round(t.fats) };
-    const calorieTarget = Math.round(t.calories);
-    const weeklySplit: DietDayPlan[] = WEEKDAY_LABELS.map((weekday) => ({ weekday, meals: [], calorieTarget, macroTargetsG: { ...macroTargetsG } }));
+    const pair: MonthDayTargets = 'training' in input ? input : { training: input, rest: input };
+    const training = roundTargets(pair.training);
+    const rest = roundTargets(pair.rest);
+    const weeklySplit: DietDayPlan[] = WEEKDAY_LABELS.map((weekday, d) => {
+      const isTrainingDay = trainingDays.includes(d);
+      const t = isTrainingDay ? training : rest;
+      return { weekday, meals: [], calorieTarget: t.calories, macroTargetsG: { protein: t.protein, carbs: t.carbs, fats: t.fats }, isTrainingDay };
+    });
+    const avg = (pick: (t: MonthTargets) => number) => Math.round(weeklySplit.reduce((sum, _, d) => sum + pick(trainingDays.includes(d) ? training : rest), 0) / 7);
     return {
       monthIndex: i + 1,
       phase: PHASE(i, n),
-      title: `Mese ${i + 1} · I tuoi obiettivi`,
-      focusNote: 'Obiettivi impostati da te: calorie e macro del giorno, senza un menù.',
-      calorieTarget,
-      macroTargetsG,
+      title: `Mese ${i + 1} · Il tuo piano`,
+      focusNote: 'Piano impostato da te: calorie e macro del giorno, senza un menù.',
+      calorieTarget: avg((t) => t.calories),
+      macroTargetsG: { protein: avg((t) => t.protein), carbs: avg((t) => t.carbs), fats: avg((t) => t.fats) },
       weeklySplit,
     };
   });
@@ -127,10 +162,22 @@ export function buildTargetsPlan(months: MonthTargets[], base: TargetsPlanBase):
     engine: DIET_ENGINE_VERSION,
     // 'custom' like an imported diet: the generator and the monthly recalibration never change it
     source: 'custom',
-    ownTargets: { macroMode: base.macroMode },
+    ownTargets: { trainingDays },
     calibration: base.calibration ?? NEUTRAL_CALIBRATION,
     recalibrations: base.recalibrations,
   };
+}
+
+/**
+ * A month's targets for training days and for rest days, read back from its weekdays. A month whose days all share
+ * one target (older plans, or no training day) returns it for both.
+ */
+export function monthDayTargets(month: DietMonthPlan): MonthDayTargets {
+  const of = (d: DietDayPlan | undefined): MonthTargets =>
+    d?.calorieTarget != null && d.macroTargetsG ? { calories: d.calorieTarget, ...d.macroTargetsG } : { calories: month.calorieTarget, ...month.macroTargetsG };
+  const training = month.weeklySplit.find((d) => d.isTrainingDay);
+  const rest = month.weeklySplit.find((d) => !d.isTrainingDay);
+  return { training: of(training ?? rest), rest: of(rest ?? training) };
 }
 
 /** A plan of the person's own targets (no menu), as opposed to an imported diet or the app's plan. */
