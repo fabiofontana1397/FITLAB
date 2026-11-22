@@ -1,18 +1,22 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useState } from 'react';
 import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
+import Animated, { useAnimatedStyle, type SharedValue } from 'react-native-reanimated';
 
 import { PressableScale } from '@/components/motion/pressable-scale';
+import { useRevealedValue } from '@/components/motion/reveal';
 import { ThemedText } from '@/components/themed-text';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon, type IconName } from '@/components/ui/icon';
-import { ProgressRing } from '@/components/ui/progress-ring';
 import { Brand, OnBrand, Radius } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 const GAP = 10;
-/** The macros' progress rings. */
-const RING = 36;
+/** A macro's silo: horizontal segments stacked from the bottom, lit up to the share eaten. */
+const SILO_SEGMENTS = 10;
+const SILO_W = 28;
+const SEG_H = 5;
+const SEG_GAP = 3;
 
 function withAlpha(hex: string, alpha: number): string {
   if (!/^#([0-9a-f]{6})$/i.test(hex)) return hex;
@@ -84,41 +88,49 @@ function TileHeader({ icon, color, title }: { icon: IconName; color: string; tit
   );
 }
 
+function SiloSegment({ value, index, color, track }: { value: SharedValue<number>; index: number; color: string; track: string }) {
+  const style = useAnimatedStyle(() => ({ backgroundColor: value.value * SILO_SEGMENTS >= index + 0.5 ? color : track }));
+  return <Animated.View style={[styles.siloSeg, style]} />;
+}
+
+/** Fills from the bottom, one segment at a time, when Home comes into view. */
+function Silo({ progress, delay, color, track }: { progress: number; delay: number; color: string; track: string }) {
+  const value = useRevealedValue(Math.min(Math.max(progress, 0), 1), delay);
+  return (
+    <View style={styles.silo}>
+      {Array.from({ length: SILO_SEGMENTS }, (_, k) => SILO_SEGMENTS - 1 - k).map((index) => (
+        <SiloSegment key={index} value={value} index={index} color={color} track={track} />
+      ))}
+    </View>
+  );
+}
+
 function MacroTile({ side, inactive, macros, onPress }: { side: number; inactive?: boolean; macros: TodayMacros; onPress: () => void }) {
   const theme = useTheme();
   // Same colours as the Nutrizione tab, so a macro reads the same everywhere.
   const rows = [
-    { key: 'protein', label: 'Proteine', color: theme.accent, ...macros.protein },
-    { key: 'carbs', label: 'Carboidrati', color: theme.brandGreen, ...macros.carbs },
-    { key: 'fats', label: 'Grassi', color: theme.brandYellow, ...macros.fats },
+    { key: 'protein', label: 'Proteine', short: 'P', color: theme.accent, ...macros.protein },
+    { key: 'carbs', label: 'Carboidrati', short: 'C', color: theme.brandGreen, ...macros.carbs },
+    { key: 'fats', label: 'Grassi', short: 'G', color: theme.brandYellow, ...macros.fats },
   ];
   const a11y = rows.map((r) => `${r.label} ${Math.round(inactive ? 0 : r.eaten)} di ${Math.round(r.target)} grammi`).join(', ');
   return (
     <PressableScale onPress={onPress} scaleTo={0.97} style={styles.cell} accessibilityRole="button" accessibilityLabel={`Macronutrienti. ${a11y}. Apri Nutrizione`}>
       <FlatCard radius={Radius.large} style={[styles.tile, { minHeight: side }]}>
         <TileHeader icon="nutrition" color={theme.accent} title="Macro" />
-        <View style={styles.macroRows}>
-          {rows.map((r) => {
+        <View style={styles.siloRow}>
+          {rows.map((r, i) => {
             const eaten = inactive ? 0 : r.eaten;
-            const share = r.target > 0 ? eaten / r.target : 0;
             return (
-              <View key={r.key} style={styles.macroRow}>
-                <ProgressRing size={RING} strokeWidth={4} progress={share} color={r.color} trackColor={withAlpha(r.color, 0.18)}>
-                  <ThemedText style={[styles.ringPct, { color: r.color }]} numberOfLines={1}>
-                    {Math.round(Math.min(share, 9.99) * 100)}%
+              <View key={r.key} style={styles.siloCol}>
+                <Silo progress={r.target > 0 ? eaten / r.target : 0} delay={120 + i * 90} color={r.color} track={withAlpha(r.color, 0.16)} />
+                <ThemedText style={[styles.macroLetter, { color: r.color }]}>{r.short}</ThemedText>
+                <ThemedText style={styles.macroValue} numberOfLines={1}>
+                  {Math.round(eaten)}
+                  <ThemedText style={styles.macroTarget} themeColor="textTertiary">
+                    {' g'}
                   </ThemedText>
-                </ProgressRing>
-                <View style={styles.macroText}>
-                  <ThemedText style={styles.macroLabel} themeColor="textSecondary" numberOfLines={1}>
-                    {r.label}
-                  </ThemedText>
-                  <ThemedText style={styles.macroValue} numberOfLines={1}>
-                    {Math.round(eaten)}
-                    <ThemedText style={styles.macroTarget} themeColor="textTertiary">
-                      /{Math.round(r.target)} g
-                    </ThemedText>
-                  </ThemedText>
-                </View>
+                </ThemedText>
               </View>
             );
           })}
@@ -223,13 +235,13 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   headerIcon: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { flex: 1, fontSize: 14, lineHeight: 18, fontWeight: '700' },
-  macroRows: { gap: 10 },
-  macroRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  macroText: { flex: 1, gap: 1 },
-  ringPct: { fontSize: 9, lineHeight: 11, fontWeight: '800', fontVariant: ['tabular-nums'] },
-  macroLabel: { flexShrink: 1, fontSize: 12, lineHeight: 16, fontWeight: '600' },
-  macroValue: { fontSize: 13, lineHeight: 16, fontWeight: '800', fontVariant: ['tabular-nums'] },
-  macroTarget: { fontSize: 11, lineHeight: 16, fontWeight: '600' },
+  siloRow: { flexDirection: 'row', justifyContent: 'space-around' },
+  siloCol: { alignItems: 'center' },
+  silo: { width: SILO_W, gap: SEG_GAP, marginBottom: 6 },
+  siloSeg: { height: SEG_H, borderRadius: 2 },
+  macroLetter: { fontSize: 12, lineHeight: 15, fontWeight: '800' },
+  macroValue: { fontSize: 12, lineHeight: 15, fontWeight: '800', fontVariant: ['tabular-nums'] },
+  macroTarget: { fontSize: 11, lineHeight: 15, fontWeight: '600' },
   workoutText: { flex: 1, justifyContent: 'center', gap: 2 },
   workoutTitle: { fontSize: 18, lineHeight: 22, fontWeight: '800', letterSpacing: -0.3 },
   workoutMeta: { fontSize: 12, lineHeight: 16, fontWeight: '600' },
