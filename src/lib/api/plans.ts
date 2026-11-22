@@ -13,7 +13,7 @@ import type { DietMonthPlan, DietPlan, TrainingMonthPlan, TrainingPlan } from '@
  * and the notification function read it that way), so it travels on the first month under `planMeta` and is lifted
  * back out on read. Without it a plan read from the server looked outdated and was rebuilt, losing a custom card.
  */
-type PlanMeta = Pick<TrainingPlan, 'engine' | 'source' | 'calibration' | 'recalibrations'> & { needsManualReview?: boolean; supervision?: DietPlan['supervision']; ownTargets?: DietPlan['ownTargets'] };
+type PlanMeta = Pick<TrainingPlan, 'engine' | 'source' | 'calibration' | 'recalibrations'> & { needsManualReview?: boolean; supervision?: DietPlan['supervision']; ownTargets?: DietPlan['ownTargets']; ownBuilt?: boolean };
 
 function packMonths<M extends object>(months: M[], meta: PlanMeta): M[] {
   return months.map((month, i) => (i === 0 ? { ...month, planMeta: meta } : month));
@@ -61,7 +61,7 @@ export async function fetchTrainingPlan(userId: string): Promise<TrainingPlan | 
   if (error) throw error;
   if (!data) return null;
   const { months, meta } = unpackMonths<TrainingMonthPlan>(data.plan);
-  return { generatedAt: data.generated_at, durationMonths: data.duration_months, months, engine: meta.engine, source: meta.source, calibration: meta.calibration, recalibrations: meta.recalibrations, needsManualReview: meta.needsManualReview };
+  return { generatedAt: data.generated_at, durationMonths: data.duration_months, months, engine: meta.engine, source: meta.source, calibration: meta.calibration, recalibrations: meta.recalibrations, needsManualReview: meta.needsManualReview, ownBuilt: meta.ownBuilt };
 }
 
 export async function upsertTrainingPlan(userId: string, plan: TrainingPlan): Promise<void> {
@@ -70,7 +70,7 @@ export async function upsertTrainingPlan(userId: string, plan: TrainingPlan): Pr
       user_id: userId,
       generated_at: plan.generatedAt,
       duration_months: plan.durationMonths,
-      plan: packMonths(plan.months, { engine: plan.engine, source: plan.source, calibration: plan.calibration, recalibrations: plan.recalibrations, needsManualReview: plan.needsManualReview }),
+      plan: packMonths(plan.months, { engine: plan.engine, source: plan.source, calibration: plan.calibration, recalibrations: plan.recalibrations, needsManualReview: plan.needsManualReview, ownBuilt: plan.ownBuilt }),
     },
     { onConflict: 'user_id' }
   );

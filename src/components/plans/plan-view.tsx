@@ -61,7 +61,8 @@ export type PlanViewProps = {
   checkinPendingMonth: number | null;
   onCheckin: () => void;
   /** The person's own card or diet: no months, no check-in, only a summary and the way to update it. */
-  custom?: { onUpdate: () => void };
+  /** A plan the person loaded (`own`: built in the app instead): a summary box with one button to update it. */
+  custom?: { onUpdate: () => void; own?: boolean };
 };
 
 /**
@@ -136,7 +137,7 @@ export function PlanView({ kind, plan, title, description, objective, phaseDetai
       {/* The macro plan, in one small box: where the plan stands, the month selector, the chosen month. */}
       {custom ? (
         <Reveal index={0}>
-          <CustomPlanSummary kind={kind} stats={monthStats(selectedMonth)} onUpdate={custom.onUpdate} />
+          <CustomPlanSummary kind={kind} own={custom.own} stats={monthStats(selectedMonth)} onUpdate={custom.onUpdate} />
         </Reveal>
       ) : (
       <Reveal index={0}>
@@ -371,10 +372,10 @@ export function PlanView({ kind, plan, title, description, objective, phaseDetai
  * The summary of a card or diet the person loaded: what it is, its key numbers in one row, and a single button to
  * update it. No duration, no months, no progress: the app follows it as written.
  */
-function CustomPlanSummary({ kind, stats, onUpdate }: { kind: 'training' | 'diet'; stats: PlanStat[]; onUpdate: () => void }) {
+function CustomPlanSummary({ kind, own, stats, onUpdate }: { kind: 'training' | 'diet'; own?: boolean; stats: PlanStat[]; onUpdate: () => void }) {
   const theme = useTheme();
   const isDiet = kind === 'diet';
-  const updateLabel = isDiet ? 'Aggiorna dieta' : 'Aggiorna scheda';
+  const updateLabel = isDiet ? 'Aggiorna dieta' : own ? 'Modifica programma' : 'Aggiorna scheda';
 
   return (
     <FlatCard radius={Radius.medium} style={styles.summary}>
@@ -384,10 +385,10 @@ function CustomPlanSummary({ kind, stats, onUpdate }: { kind: 'training' | 'diet
         </View>
         <View style={styles.flex}>
           <ThemedText style={styles.summaryOverline} themeColor="textSecondary" numberOfLines={1}>
-            {isDiet ? 'Dieta personale' : 'Scheda personale'}
+            {isDiet ? 'Dieta personale' : own ? 'Creato da te' : 'Scheda personale'}
           </ThemedText>
           <ThemedText style={styles.title} numberOfLines={1} accessibilityRole="header">
-            {isDiet ? 'La tua dieta' : 'La tua scheda'}
+            {isDiet ? 'La tua dieta' : own ? 'Il tuo programma' : 'La tua scheda'}
           </ThemedText>
         </View>
       </View>

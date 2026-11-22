@@ -332,13 +332,18 @@ export function parseCustomWorkout(text: string): CustomParseResult {
 }
 
 /** The imported week as a full plan: every month repeats the card, which the person then follows as written. */
-export function buildCustomTrainingPlan(week: TrainingDayPlan[], base: Pick<TrainingPlan, 'generatedAt' | 'durationMonths' | 'calibration' | 'recalibrations'> | null): TrainingPlan {
+export function buildCustomTrainingPlan(
+  week: TrainingDayPlan[],
+  base: Pick<TrainingPlan, 'generatedAt' | 'durationMonths' | 'calibration' | 'recalibrations'> | null,
+  /** `own`: built by the person in the app ("Fai da te") instead of loaded from a photo, file or text. */
+  opts: { own?: boolean } = {}
+): TrainingPlan {
   const durationMonths = base?.durationMonths ?? 3;
   const months: TrainingMonthPlan[] = Array.from({ length: durationMonths }, (_, i) => ({
     monthIndex: i + 1,
     phase: i === 0 ? 'adattamento' : i === durationMonths - 1 ? 'consolidamento' : 'progressione',
-    title: `Mese ${i + 1} · La tua scheda`,
-    focusNote: 'Scheda inserita da te: l’app la segue così com’è e adatta dieta e calorie ai tuoi allenamenti.',
+    title: `Mese ${i + 1} · ${opts.own ? 'Il tuo programma' : 'La tua scheda'}`,
+    focusNote: `${opts.own ? 'Programma creato da te' : 'Scheda inserita da te'}: l’app lo segue così com’è e adatta dieta e calorie ai tuoi allenamenti.`,
     weeklySplit: week.map((d) => ({ ...d, exercises: d.exercises?.map((e) => ({ ...e })) })),
   }));
   return {
@@ -347,6 +352,7 @@ export function buildCustomTrainingPlan(week: TrainingDayPlan[], base: Pick<Trai
     months,
     engine: TRAINING_ENGINE_VERSION,
     source: 'custom',
+    ...(opts.own ? { ownBuilt: true } : {}),
     calibration: base?.calibration ?? NEUTRAL_CALIBRATION,
     recalibrations: base?.recalibrations,
   };

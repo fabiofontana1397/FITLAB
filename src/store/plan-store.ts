@@ -76,7 +76,8 @@ type PlanState = {
    * Puts the person's own card in place of the training plan (even when a plan already exists). The diet is rebuilt
    * around it, since calories follow the training. Returns false when there is no questionnaire/plan to anchor it to.
    */
-  importCustomTraining: (answers: Record<string, unknown>, week: TrainingDayPlan[], currentWeightKg?: number) => void;
+  /** `own`: the program the person built in the app ("Fai da te"), not one loaded from a photo, file or text. */
+  importCustomTraining: (answers: Record<string, unknown>, week: TrainingDayPlan[], currentWeightKg?: number, opts?: { own?: boolean }) => void;
   /** Drops the custom card and builds the app's own plan again. */
   restoreGeneratedTraining: (answers: Record<string, unknown>, currentWeightKg?: number) => Promise<void>;
   /**
@@ -179,9 +180,9 @@ export const usePlanStore = create<PlanState>()(
           set({ isGenerating: false });
         }
       },
-      importCustomTraining: (answers, week, currentWeightKg) => {
+      importCustomTraining: (answers, week, currentWeightKg, opts) => {
         const { dietPlan, trainingPlan } = get();
-        const training = buildCustomTrainingPlan(week, trainingPlan ?? dietPlan);
+        const training = buildCustomTrainingPlan(week, trainingPlan ?? dietPlan, opts);
         const base = buildUserContext(answers);
         const ctx = currentWeightKg ? { ...base, weightKg: currentWeightKg } : base;
         // The diet (if the person has one) follows the new training week; months already lived stay as they were.

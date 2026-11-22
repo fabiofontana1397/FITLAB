@@ -75,12 +75,18 @@ async function main() {
       await page.getByText('Nutrizione', { exact: true }).first().click();
       await pause(900);
 
-      await test(`[${appearance}] the Nutrizione line offers Imposta next to Carica`, async () => {
-        assert.ok(await page.getByRole('button', { name: 'Imposta calorie e macro del tuo piano' }).isVisible());
-        await shot(page, `${appearance}-01-banner`);
+      await test(`[${appearance}] Cambia offers FitLab (in use), load and build`, async () => {
+        assert.ok(await page.getByText('Piano creato da FitLab', { exact: true }).first().isVisible());
+        await shot(page, `${appearance}-01-line`);
+        await page.getByRole('button', { name: /Cambia il tipo di piano$/ }).click();
+        await pause(700);
+        assert.equal(await page.getByRole('button', { name: /^Piano creato da FitLab\. Dalle/ }).count(), 0); // the plan in use is on the button, not in the list
+        assert.ok(await page.getByRole('button', { name: /^Carica il tuo piano\./ }).isVisible());
+        assert.ok(await page.getByRole('button', { name: /^Crea il tuo piano\. Calorie e macro/ }).isVisible());
+        await shot(page, `${appearance}-01-menu`);
       });
 
-      await page.getByRole('button', { name: 'Imposta calorie e macro del tuo piano' }).click();
+      await page.getByRole('button', { name: /^Crea il tuo piano\./ }).click();
       await pause(1500);
       await test(`[${appearance}] the editor opens with three months from today's targets`, async () => {
         assert.ok(await page.getByText('Imposta il tuo piano').first().isVisible());
@@ -126,10 +132,10 @@ async function main() {
 
       await test(`[${appearance}] Piani shows the summary by month, no menu`, async () => {
         assert.ok(await page.getByText('I tuoi obiettivi', { exact: true }).first().isVisible());
-        assert.ok(await page.getByText('Mese per mese').isVisible());
+        assert.ok(await page.getByText('Mese per mese', { exact: true }).isVisible());
         assert.match(await page.evaluate(() => document.body.innerText), /2[.\u202f ]?200/);
         assert.equal(await page.getByText('Pranzo', { exact: true }).count(), 0);
-        assert.ok(await page.getByText('Stai seguendo i tuoi obiettivi').isVisible());
+        assert.ok(await page.getByText('Calorie e macro scelti da te').isVisible());
         await shot(page, `${appearance}-05-summary`);
         await page.mouse.wheel(0, 700);
         await pause(700);
@@ -151,6 +157,18 @@ async function main() {
         assert.match(text, /2[.  ]?200 kcal/);
         assert.match(text, /Colazione/);
         await shot(page, `${appearance}-08-nutrition`);
+      });
+
+      await test(`[${appearance}] FitLab brings the app's plan back`, async () => {
+        await page.getByRole('tab', { name: /Piani/ }).first().click().catch(async () => page.getByText('Piani', { exact: true }).last().click());
+        await pause(1200);
+        await page.getByRole('button', { name: /Cambia il tipo di piano$/ }).click();
+        await pause(700);
+        await page.getByRole('button', { name: /^Piano creato da FitLab\./ }).click();
+        await pause(900);
+        assert.ok(await page.getByText('Riprendere il piano FitLab?').isVisible());
+        await shot(page, `${appearance}-09-restore`);
+        await page.getByText('Annulla', { exact: true }).last().click();
       });
       await page.context().close();
     }
