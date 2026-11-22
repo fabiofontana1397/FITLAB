@@ -1,6 +1,6 @@
 import { dayForWeek, weekOfMonth } from '@/lib/planning/training/week';
 import { router } from 'expo-router';
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
 import { ScrollView, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 
 import { openPopup } from '@/lib/open-popup';
@@ -15,7 +15,9 @@ import { TabHeader } from '@/components/tab-header';
 import { LogActivityModal } from '@/components/training/log-activity-modal';
 import { LoggedActivitiesCard } from '@/components/training/logged-activities-card';
 import { MissedWorkoutsCard, type MissedWorkout } from '@/components/training/missed-workouts-card';
+import { SpotWorkoutView } from '@/components/training/spot-workout-view';
 import { SwapSlide } from '@/components/training/swap-slide';
+import { SegmentedControl } from '@/components/ui/segmented-control';
 import { TrainingWeekCard } from '@/components/training/training-week-card';
 import { levelLabel, WorkoutSummaryCard } from '@/components/training/workout-summary-card';
 import { WorkoutSessionModal } from '@/components/training/workout-session-modal';
@@ -53,7 +55,42 @@ const GOAL_SHORT_LABEL: Record<Goal, string> = {
   generalHealth: 'Benessere',
 };
 
+type TrainingMode = 'plan' | 'spot';
+
+/** Allenamento: two pages behind a switch at the top, the weekly card (Scheda) and the one-off spot workouts. */
 export default function TrainingScreen() {
+  const [mode, setMode] = useState<TrainingMode>('plan');
+  const switcher = (
+    <View style={styles.modeSwitch}>
+      <SegmentedControl
+        options={[
+          { value: 'plan', label: 'Scheda' },
+          { value: 'spot', label: 'Allenamento spot' },
+        ]}
+        value={mode}
+        onChange={(v) => setMode(v as TrainingMode)}
+      />
+    </View>
+  );
+  if (mode === 'spot') {
+    return (
+      <ScreenScroll
+        testID="training-spot"
+        contentContainerStyle={styles.list}
+        header={
+          <>
+            <TabHeader title="Allenamento" />
+            {switcher}
+          </>
+        }>
+        <SpotWorkoutView />
+      </ScreenScroll>
+    );
+  }
+  return <PlanTraining switcher={switcher} />;
+}
+
+function PlanTraining({ switcher }: { switcher: ReactNode }) {
   const theme = useTheme();
   const trainingPlan = usePlanStore((s) => s.trainingPlan);
   const currentUser = useUserStore();
@@ -188,7 +225,12 @@ export default function TrainingScreen() {
         ref={scrollRef}
         testID="training-list"
         contentContainerStyle={styles.list}
-        header={<TabHeader title="Allenamento" onCalendarPress={() => openPopup(() => setCalendarOpen(true))} />}>
+        header={
+          <>
+            <TabHeader title="Allenamento" onCalendarPress={() => openPopup(() => setCalendarOpen(true))} />
+            {switcher}
+          </>
+        }>
         <Reveal index={0}>
         <TrainingWeekCard
           weekDates={viewedWeekDates}
@@ -357,6 +399,10 @@ export default function TrainingScreen() {
 }
 
 const styles = StyleSheet.create({
+  modeSwitch: {
+    marginTop: -4,
+    marginBottom: 10,
+  },
   // Tighter than the app's section gap: the week, the button and the days read as one list.
   list: {
     gap: 12,

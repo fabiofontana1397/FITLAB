@@ -503,10 +503,21 @@ export class NoCompatibleDishError extends Error {
   }
 }
 
-export function buildFitLabMeal(args: { kind: SlotKind; slotId: string; target: Macros; pools: FitLabPools; seed: number; day: DayState; week: WeekUsage; adapt?: MealAdaptations }): BuiltMeal {
-  const { kind, slotId, target, pools, seed, day, week, adapt } = args;
+export function buildFitLabMeal(args: {
+  kind: SlotKind;
+  slotId: string;
+  target: Macros;
+  pools: FitLabPools;
+  seed: number;
+  day: DayState;
+  week: WeekUsage;
+  adapt?: MealAdaptations;
+  /** Builds this recipe only (the Ricette page sizes every recipe of the pool on the person's targets). */
+  onlyDishId?: string;
+}): BuiltMeal {
+  const { kind, slotId, target, pools, seed, day, week, adapt, onlyDishId } = args;
   const kcalTarget = kcalOfMacros(target);
-  const candidates = candidateDishes(kind, slotId, pools, seed, day, week, adapt);
+  const candidates = candidateDishes(kind, slotId, pools, seed, day, week, adapt).filter((c) => !onlyDishId || c.r.dish.id === onlyDishId);
   if (candidates.length === 0) throw new NoCompatibleDishError(slotId, kind);
   const isMain = kind === 'lunch' || kind === 'dinner';
   const eggRoom = Math.max(200 - day.eggGrams, 0);
