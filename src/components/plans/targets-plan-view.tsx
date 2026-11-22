@@ -114,24 +114,26 @@ export function TargetsPlanView({ plan, checkinPendingMonth, onCheckin }: { plan
             </ThemedText>
           </View>
 
-          <View style={styles.macros}>
-            {macros.map((m) => (
-              <View key={m.label} style={styles.macro} accessibilityLabel={`${m.label} ${m.grams} grammi, ${m.pct} per cento`}>
-                <View style={styles.macroHead}>
+          {/* One bar split by each macro's share of the calories, then the three values under it — as in Ricette. */}
+          <View style={styles.macros} accessibilityLabel={macros.map((m) => `${m.label} ${m.grams} grammi, ${m.pct} per cento`).join(', ')}>
+            <View style={styles.splitBar}>
+              {macros.map((m) => (
+                <View key={m.label} style={{ flex: Math.max(m.pct, 2), backgroundColor: m.color }} />
+              ))}
+            </View>
+            <View style={styles.macroRow}>
+              {macros.map((m) => (
+                <View key={m.label} style={styles.macroCol}>
                   <View style={styles.macroName}>
                     <View style={[styles.dot, { backgroundColor: m.color }]} />
-                    <ThemedText style={styles.macroLabel}>{m.label}</ThemedText>
+                    <ThemedText style={styles.macroLabel} themeColor="textSecondary" numberOfLines={1}>
+                      {m.label}
+                    </ThemedText>
                   </View>
-                  <ThemedText style={styles.macroValue}>
-                    {`${m.grams} g`}
-                    <ThemedText style={styles.macroPct} themeColor="textSecondary">{`  ${m.pct}%`}</ThemedText>
-                  </ThemedText>
+                  <ThemedText style={styles.macroValue}>{`${m.grams} g`}</ThemedText>
                 </View>
-                <View style={[styles.track, { backgroundColor: theme.backgroundElement }]}>
-                  <View style={[styles.fill, { width: `${Math.min(100, m.pct)}%`, backgroundColor: m.color }]} />
-                </View>
-              </View>
-            ))}
+              ))}
+            </View>
           </View>
 
           <PrimaryButton label="Modifica il tuo piano" icon="edit" variant="outline" onPress={edit} />
@@ -150,6 +152,14 @@ export function TargetsPlanView({ plan, checkinPendingMonth, onCheckin }: { plan
 }
 
 const styles = StyleSheet.create({
+  macros: { gap: 10 },
+  splitBar: { flexDirection: 'row', height: 8, borderRadius: 4, overflow: 'hidden', gap: 3 },
+  macroRow: { flexDirection: 'row' },
+  macroCol: { flex: 1, gap: 2 },
+  macroName: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  dot: { width: 8, height: 8, borderRadius: 4 },
+  macroLabel: { fontSize: 14, lineHeight: 18, fontWeight: '500' },
+  macroValue: { fontSize: 18, lineHeight: 23, fontWeight: '700', letterSpacing: -0.3, fontVariant: ['tabular-nums'] },
   stack: { gap: Spacing.four },
   box: { padding: 14, gap: 12 },
   title: { fontSize: 17, lineHeight: 22, fontWeight: '700', letterSpacing: -0.3 },
@@ -163,16 +173,6 @@ const styles = StyleSheet.create({
   kcalRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8 },
   kcal: { fontSize: 34, lineHeight: 40, fontWeight: '700', letterSpacing: -0.8, fontVariant: ['tabular-nums'] },
   kcalUnit: { fontSize: 15, lineHeight: 20 },
-  macros: { gap: 10 },
-  macro: { gap: 5 },
-  macroHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
-  macroName: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  dot: { width: 8, height: 8, borderRadius: 4 },
-  macroLabel: { fontSize: 14, lineHeight: 19, fontWeight: '500' },
-  macroValue: { fontSize: 14, lineHeight: 19, fontWeight: '700', fontVariant: ['tabular-nums'] },
-  macroPct: { fontSize: 13, fontWeight: '500' },
-  track: { height: 6, borderRadius: 3, overflow: 'hidden' },
-  fill: { height: 6, borderRadius: 3 },
   checkin: { minHeight: 44, borderRadius: 14, borderCurve: 'continuous', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 16 },
   checkinText: { fontSize: 15, lineHeight: 20, fontWeight: '600' },
 });
