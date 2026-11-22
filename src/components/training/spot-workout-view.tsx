@@ -4,11 +4,11 @@ import { Image, Modal, ScrollView, StyleSheet, View, type LayoutChangeEvent } fr
 import { PressableScale } from '@/components/motion/pressable-scale';
 import { ThemedText } from '@/components/themed-text';
 import { ExerciseInfoModal } from '@/components/training/exercise-info-modal';
+import { FocusGlyph } from '@/components/training/focus-glyph';
 import { SwipeToStart } from '@/components/training/swipe-to-start';
 import { WorkoutSessionModal } from '@/components/training/workout-session-modal';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { ListGroup } from '@/components/ui/list-group';
-import { SegmentedControl } from '@/components/ui/segmented-control';
 import { SheetScreen } from '@/components/ui/sheet-screen';
 import { SwipeDeck, SwipeDeckKeepDrag } from '@/components/ui/swipe-deck';
 import { HorizontalScrollDefaults } from '@/constants/scroll';
@@ -22,19 +22,8 @@ import { SPOT_FOCUS, spotProposals, type SpotFocus, type SpotPlace, type SpotWor
 import type { TrainingExerciseEntry } from '@/lib/planning/types';
 import { useActivityLogStore } from '@/store/activity-log-store';
 
-const FOCUS_ICON: Record<SpotFocus, IconName> = {
-  glutes: 'muscleGlutes',
-  legs: 'muscleLegs',
-  chest: 'muscleChest',
-  back: 'muscleBack',
-  shoulders: 'muscleShoulders',
-  arms: 'bicepsLine',
-  core: 'muscleCore',
-  total: 'personLine',
-  functional: 'kettlebellLine',
-  cross: 'barbellLine',
-  hiit: 'timerLine',
-};
+/** Tile labels where the full name does not fit the tile (the card keeps the full one). */
+const TILE_LABEL: Partial<Record<SpotFocus, string>> = { cross: 'Cross' };
 
 const PLACE_LABEL: Record<SpotPlace, string> = { gym: 'Palestra', home: 'Casa' };
 
@@ -85,38 +74,57 @@ export function SpotWorkoutView() {
 
   return (
     <View style={styles.root}>
-      {/* Every goal on one row that scrolls sideways. */}
+      {/* Every goal on one row that scrolls sideways: a tile with the muscles it trains lit on a small figure. */}
       <ScrollView {...HorizontalScrollDefaults} style={styles.goalsScroll} contentContainerStyle={styles.goals}>
         {SPOT_FOCUS.map((f) => {
           const active = f.value === focus;
-          const fg = active ? theme.background : theme.text;
           return (
             <PressableScale
               key={f.value}
               onPress={() => setFocus(f.value)}
               haptic="tap"
-              scaleTo={0.94}
+              scaleTo={0.95}
               accessibilityRole="button"
               accessibilityState={{ selected: active }}
               accessibilityLabel={`${f.label}: ${f.blurb}`}
-              style={[styles.goal, { backgroundColor: active ? theme.text : theme.backgroundElevated, borderColor: active ? theme.text : theme.boxEdge }]}>
-              <Icon name={FOCUS_ICON[f.value]} size={17} color={fg} strokeWidth={1.8} />
-              <ThemedText style={[styles.goalLabel, { color: fg }]} numberOfLines={1}>
-                {f.label}
+              style={[
+                styles.goal,
+                active
+                  ? { backgroundColor: theme.accentSoft, borderColor: theme.accent, borderWidth: 1.5 }
+                  : { backgroundColor: theme.backgroundElevated, borderColor: theme.boxEdge },
+              ]}>
+              <FocusGlyph focus={f.value} size={54} line={active ? theme.text : theme.textTertiary} accent={active ? theme.accent : theme.textSecondary} />
+              <ThemedText style={[styles.goalLabel, { color: active ? theme.text : theme.textSecondary }]} numberOfLines={1}>
+                {TILE_LABEL[f.value] ?? f.label}
               </ThemedText>
             </PressableScale>
           );
         })}
       </ScrollView>
 
-      <SegmentedControl
-        options={[
-          { value: 'gym', label: 'Palestra' },
-          { value: 'home', label: 'Casa' },
-        ]}
-        value={place}
-        onChange={(v) => setPlace(v as SpotPlace)}
-      />
+      {/* What the goal works, and where: a compact switch instead of a full-width bar. */}
+      <View style={styles.placeRow}>
+        <ThemedText style={styles.placeBlurb} themeColor="textSecondary" numberOfLines={1}>
+          {SPOT_FOCUS.find((f) => f.value === focus)?.blurb}
+        </ThemedText>
+        <View style={[styles.placeSwitch, { backgroundColor: theme.backgroundElement }]} accessibilityRole="tablist">
+          {(['gym', 'home'] as SpotPlace[]).map((p) => {
+            const active = p === place;
+            return (
+              <PressableScale
+                key={p}
+                onPress={() => setPlace(p)}
+                haptic="tap"
+                scaleTo={0.96}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: active }}
+                style={[styles.placeOption, active && { backgroundColor: theme.text }]}>
+                <ThemedText style={[styles.placeLabel, { color: active ? theme.background : theme.textSecondary }]}>{PLACE_LABEL[p]}</ThemedText>
+              </PressableScale>
+            );
+          })}
+        </View>
+      </View>
 
       <View style={styles.deckArea}>
         <SwipeDeck
@@ -536,18 +544,24 @@ const styles = StyleSheet.create({
   // The page does not scroll: the deck takes the height left under the two selectors.
   root: { flex: 1, gap: 12 },
   goalsScroll: { marginHorizontal: -16, flexGrow: 0 },
-  goals: { paddingHorizontal: 16, gap: 6 },
+  goals: { paddingHorizontal: 16, gap: 8 },
   goal: {
-    flexDirection: 'row',
+    width: 80,
+    height: 100,
     alignItems: 'center',
-    gap: 6,
-    height: 36,
-    paddingLeft: 11,
-    paddingRight: 13,
-    borderRadius: 18,
+    justifyContent: 'center',
+    gap: 4,
+    paddingHorizontal: 4,
+    borderRadius: 24,
+    borderCurve: 'continuous',
     borderWidth: StyleSheet.hairlineWidth,
   },
-  goalLabel: { fontSize: 13, lineHeight: 17, fontWeight: '600' },
+  goalLabel: { fontSize: 12, lineHeight: 15, fontWeight: '600', letterSpacing: -0.1 },
+  placeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  placeBlurb: { flex: 1, fontSize: 13, lineHeight: 17, fontWeight: '500' },
+  placeSwitch: { flexDirection: 'row', padding: 3, borderRadius: 999, gap: 2 },
+  placeOption: { height: 28, paddingHorizontal: 13, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
+  placeLabel: { fontSize: 13, lineHeight: 17, fontWeight: '600' },
   deckArea: { flex: 1, minHeight: 0, marginTop: -6 },
   card: { flex: 1, borderRadius: 30, borderCurve: 'continuous', borderWidth: StyleSheet.hairlineWidth, padding: 16, gap: 12, overflow: 'hidden' },
   cardHead: { gap: 3 },
