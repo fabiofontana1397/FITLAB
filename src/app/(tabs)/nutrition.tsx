@@ -76,6 +76,7 @@ const DEFAULT_SLOT: Record<SlotKind, MealSlot> = { breakfast: 'colazione', lunch
 function Recipes({ switcher }: { switcher: ReactNode }) {
   // The page does not scroll: the selector under the card must end above the floating tab bar.
   const tabClearance = useTabBarClearance();
+  const [viewport, setViewport] = useState(0);
   const currentUser = useUserStore();
   const dietPlan = usePlanStore((s) => s.dietPlan);
   const answers = useOnboardingStore((s) => s.answers);
@@ -119,7 +120,13 @@ function Recipes({ switcher }: { switcher: ReactNode }) {
         </>
       }
       scrollEnabled={false}
-      contentContainerStyle={[styles.page, styles.recipesPage, { paddingBottom: tabClearance }]}>
+      onLayout={(e) => {
+        const h = Math.round(e.nativeEvent.layout.height);
+        setViewport((v) => (v === h ? v : h));
+      }}
+      // An explicit height (the visible area under the header), not `flex: 1`: inside a scroll view Safari does
+      // not always resolve a flex height, and the deck then grew past the screen, its selector under the tab bar.
+      contentContainerStyle={[styles.page, viewport ? { height: viewport, flexGrow: 0 } : styles.recipesPage, { paddingBottom: tabClearance }]}>
       <RecipeDeck cards={cards} portionLabel={personal ? 'Porzione per te' : 'Porzione standard'} slotLabelFor={(kind) => slotFor(kind).label} onAdd={add} />
     </ScreenScroll>
   );
