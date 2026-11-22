@@ -5,7 +5,7 @@
  * light theme a faint grey (they turn a touch greyer than the white card on top).
  */
 export const DECK_SHADE = {
-  dark: { color: '#000000', first: 0.38, second: 0.62 },
+  dark: { color: '#000000', first: 0.3, second: 0.55 },
   light: { color: '#1C1C22', first: 0.09, second: 0.17 },
 } as const;
 

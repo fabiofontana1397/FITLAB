@@ -20,7 +20,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { hapticSelection, hapticTap } from '@/lib/haptics';
 
 /** How far the card behind the top one sits (pt): the edge of the stack peeks out above the top card. */
-const PEEK = 9;
+const PEEK = 12;
 const STACK_TOP = PEEK * 2;
 /** A drag past this share of the card's width (or a quick flick) sends the card away. */
 const THROW = 0.28;
