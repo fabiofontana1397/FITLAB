@@ -16,7 +16,8 @@ import { TabHeader } from '@/components/tab-header';
 import { ProgressRing } from '@/components/ui/progress-ring';
 import { TickProgressBar } from '@/components/ui/tick-progress-bar';
 import { useEnsurePlan } from '@/hooks/use-ensure-plan';
-import { BottomTabInset, Layout, Radius, Spacing } from '@/constants/theme';
+import { Layout, Radius } from '@/constants/theme';
+import { useTabBarClearance } from '@/hooks/use-tab-bar-clearance';
 import { useTheme } from '@/hooks/use-theme';
 import { daysAgoISO, isoMondayIndex } from '@/lib/mock/dates';
 import { inMealOrder } from '@/lib/planning/meal-slots';
@@ -73,6 +74,8 @@ export default function NutritionScreen() {
 const DEFAULT_SLOT: Record<SlotKind, MealSlot> = { breakfast: 'colazione', lunch: 'pranzo', dinner: 'cena', snack: 'spuntinoPomeriggio' };
 
 function Recipes({ switcher }: { switcher: ReactNode }) {
+  // The page does not scroll: the selector under the card must end above the floating tab bar.
+  const tabClearance = useTabBarClearance();
   const currentUser = useUserStore();
   const dietPlan = usePlanStore((s) => s.dietPlan);
   const answers = useOnboardingStore((s) => s.answers);
@@ -116,7 +119,7 @@ function Recipes({ switcher }: { switcher: ReactNode }) {
         </>
       }
       scrollEnabled={false}
-      contentContainerStyle={[styles.page, styles.recipesPage]}>
+      contentContainerStyle={[styles.page, styles.recipesPage, { paddingBottom: tabClearance }]}>
       <RecipeDeck cards={cards} portionLabel={personal ? 'Porzione per te' : 'Porzione standard'} slotLabelFor={(kind) => slotFor(kind).label} onAdd={add} />
     </ScreenScroll>
   );
@@ -360,7 +363,6 @@ const styles = StyleSheet.create({
   // Ricette fits on one screen: the deck takes the height left between the header and the tab bar.
   recipesPage: {
     flex: 1,
-    paddingBottom: BottomTabInset + Spacing.four,
   },
   headerRow: {
     flexDirection: 'row',

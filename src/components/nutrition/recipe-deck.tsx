@@ -18,7 +18,9 @@ import { DishPhoto, DishPlaceholder, mealImageUri } from '@/components/nutrition
 import { RecipeDetailSheet } from '@/components/nutrition/recipe-detail-sheet';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
+import { DECK_SHADE } from '@/constants/deck-depth';
 import { HorizontalScrollDefaults } from '@/constants/scroll';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { hapticSelection, hapticTap } from '@/lib/haptics';
 import { openPopup } from '@/lib/open-popup';
@@ -315,6 +317,18 @@ function DeckSlot({
   interactive: boolean;
   children: React.ReactNode;
 }) {
+  const shade = DECK_SHADE[useColorScheme() === 'dark' ? 'dark' : 'light'];
+  // The veil over the card: none on top, darker one and two places back; it follows the same drag as the stack.
+  const veil = useAnimatedStyle(() => {
+    const r = slot - pos.value;
+    const p = progress.value;
+    const b = back.value;
+    let o = 0;
+    if (r === 0) o = b * shade.first;
+    else if (r === 1) o = interpolate(p, [0, 1], [shade.first, 0]) + b * (shade.second - shade.first);
+    else if (r === 2) o = interpolate(p, [0, 1], [shade.second, shade.first]);
+    return { opacity: o };
+  });
   const style = useAnimatedStyle(() => {
     const r = slot - pos.value;
     const w = width.value;
@@ -381,6 +395,7 @@ function DeckSlot({
       importantForAccessibility={interactive ? 'auto' : 'no-hide-descendants'}
       style={[styles.slot, { height, pointerEvents: interactive ? 'auto' : 'none' }, style]}>
       {children}
+      <Animated.View style={[styles.veil, { backgroundColor: shade.color }, veil]} />
     </Animated.View>
   );
 }
@@ -483,6 +498,7 @@ const styles = StyleSheet.create({
   chipText: { fontSize: 14, lineHeight: 18, fontWeight: '600' },
   deck: { flex: 1, marginTop: 6 },
   slot: { position: 'absolute', top: 0, left: 0, right: 0, transformOrigin: 'top' },
+  veil: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 32, borderCurve: 'continuous', pointerEvents: 'none' },
   card: {
     flex: 1,
     borderRadius: 32,

@@ -14,11 +14,13 @@ import Animated, {
 import { PressableScale } from '@/components/motion/pressable-scale';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
+import { DECK_SHADE } from '@/constants/deck-depth';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { hapticSelection, hapticTap } from '@/lib/haptics';
 
 /** How far the card behind the top one sits (pt): the edge of the stack peeks out above the top card. */
-const PEEK = 9;
+const PEEK = 12;
 const STACK_TOP = PEEK * 2;
 /** A drag past this share of the card's width (or a quick flick) sends the card away. */
 const THROW = 0.28;
@@ -147,6 +149,10 @@ export function SwipeDeck<T>({ items, keyOf, resetKey, renderCard, hint, prevLab
       { rotate: `${interpolate(tx.value, [-width.value, width.value], [-9, 9])}deg` },
     ],
   }));
+  // Depth: a veil over each card behind, darker the further back, lifted as the card comes forward.
+  const shade = DECK_SHADE[useColorScheme() === 'dark' ? 'dark' : 'light'];
+  const veil1 = useAnimatedStyle(() => ({ opacity: interpolate(progress.value, [0, 1], [shade.first, 0]) }));
+  const veil2 = useAnimatedStyle(() => ({ opacity: interpolate(progress.value, [0, 1], [shade.second, shade.first]) }));
   const behind1 = useAnimatedStyle(() => ({
     transform: [{ translateY: interpolate(progress.value, [0, 1], [PEEK, STACK_TOP]) }, { scale: interpolate(progress.value, [0, 1], [0.95, 1]) }],
   }));
@@ -200,8 +206,18 @@ export function SwipeDeck<T>({ items, keyOf, resetKey, renderCard, hint, prevLab
         }}>
         {/* The two cards behind, cut to the deck's height: only their top edge shows until the top card moves. */}
         <View aria-hidden importantForAccessibility="no-hide-descendants" style={[styles.behindClip, { pointerEvents: 'none' }]}>
-          {n > 2 ? <Animated.View style={[styles.behind, behind2]}>{renderCard(at(index + 2), false)}</Animated.View> : null}
-          {n > 1 ? <Animated.View style={[styles.behind, behind1]}>{renderCard(at(index + 1), false)}</Animated.View> : null}
+          {n > 2 ? (
+            <Animated.View style={[styles.behind, behind2]}>
+              {renderCard(at(index + 2), false)}
+              <Animated.View style={[styles.veil, { backgroundColor: shade.color }, veil2]} />
+            </Animated.View>
+          ) : null}
+          {n > 1 ? (
+            <Animated.View style={[styles.behind, behind1]}>
+              {renderCard(at(index + 1), false)}
+              <Animated.View style={[styles.veil, { backgroundColor: shade.color }, veil1]} />
+            </Animated.View>
+          ) : null}
         </View>
 
         <KeepDragContext.Provider value={keepDrag}>
@@ -247,5 +263,6 @@ const styles = StyleSheet.create({
   // stops short of the deck's bottom so a longer card behind never shows under the top card's rounded corners
   behindClip: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 48, overflow: 'hidden' },
   behind: { position: 'absolute', top: 0, left: 0, right: 0, transformOrigin: 'top' },
+  veil: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 30, borderCurve: 'continuous' },
   top: { transformOrigin: 'bottom' },
 });
