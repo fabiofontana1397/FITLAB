@@ -1,25 +1,16 @@
-import { useLayoutEffect, useMemo, useState } from 'react';
-import { PanResponder, ScrollView, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
-import Animated, {
-  Easing,
-  interpolate,
-  runOnJS,
-  useAnimatedStyle,
-  useDerivedValue,
-  useSharedValue,
-  withSpring,
-  withTiming,
-} from 'react-native-reanimated';
+import { useMemo, useState } from 'react';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { PressableScale } from '@/components/motion/pressable-scale';
 import { DishPhoto, DishPlaceholder } from '@/components/nutrition/dish-photo';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
+import { SwipeDeck } from '@/components/ui/swipe-deck';
 import { HorizontalScrollDefaults } from '@/constants/scroll';
 import { OnBrand } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
-import { hapticSelection, hapticSuccess, hapticTap } from '@/lib/haptics';
+import { hapticSuccess } from '@/lib/haptics';
 import type { SlotKind } from '@/lib/planning/fitlab/catalog';
 import { RECIPE_KIND_LABEL, type RecipeCard } from '@/lib/planning/fitlab/recipe-book';
 import { WEIGHT_BASIS_NOTE } from '@/lib/planning/fitlab/recipes';
@@ -32,12 +23,6 @@ const FILTERS: { value: Filter; label: string }[] = [
   { value: 'dinner', label: 'Cena' },
   { value: 'snack', label: 'Merenda' },
 ];
-
-/** How far the card behind the top one sits (pt) and how much smaller it is: the edge of the stack peeks out above. */
-const PEEK = 9;
-const STACK_TOP = PEEK * 2;
-/** A drag past this share of the card's width (or a quick flick) sends the card away. */
-const THROW = 0.28;
 
 export type RecipeDeckProps = {
   cards: RecipeCard[];
@@ -57,105 +42,8 @@ export type RecipeDeckProps = {
 export function RecipeDeck({ cards, portionLabel, slotLabelFor, onAdd }: RecipeDeckProps) {
   const theme = useTheme();
   const [filter, setFilter] = useState<Filter>('all');
-  const [index, setIndex] = useState(0);
   const [added, setAdded] = useState<Record<string, boolean>>({});
   const shown = useMemo(() => (filter === 'all' ? cards : cards.filter((c) => c.kind === filter)), [cards, filter]);
-  const n = shown.length;
-  const at = (i: number) => shown[((i % n) + n) % n];
-
-  // The drag of the top card, its width, and `lock`: held at 1 from the moment a thrown card has left until the
-  // next one is on screen, so the card behind (already grown to full size) never shrinks back for a frame.
-  const tx = useSharedValue(0);
-  const width = useSharedValue(360);
-  const lock = useSharedValue(0);
-  const topOpacity = useSharedValue(1);
-  const progress = useDerivedValue(() => Math.max(Math.min(Math.abs(tx.value) / (width.value * 0.45), 1), lock.value));
-  // Shared value rather than a ref: the handlers below read and write it while the finger is down.
-  const crossed = useSharedValue(false);
-
-  const step = (dir: 1 | -1) => {
-    setIndex((i) => i + dir);
-  };
-
-  // A new top card: it is already where the one behind had grown to, so it simply takes its place.
-  useLayoutEffect(() => {
-    tx.set(0);
-    topOpacity.set(1);
-    lock.set(0);
-  }, [index, filter, tx, topOpacity, lock]);
-
-  const throwCard = (dir: 1 | -1) => {
-    // left (−) = next recipe, right (+) = previous one
-    const to = (dir === 1 ? -1 : 1) * width.value * 1.4;
-    tx.set(
-      withTiming(to, { duration: 230, easing: Easing.out(Easing.quad) }, (done) => {
-        if (!done) return;
-        lock.set(1);
-        topOpacity.set(0);
-        runOnJS(step)(dir);
-      })
-    );
-  };
-
-  const responder = useMemo(
-    () =>
-      PanResponder.create({
-        // Only a mostly horizontal drag: a vertical one scrolls the page.
-        onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 10 && Math.abs(g.dx) > Math.abs(g.dy) * 1.4,
-        onPanResponderTerminationRequest: () => false,
-        onPanResponderGrant: () => {
-          crossed.set(false);
-        },
-        onPanResponderMove: (_, g) => {
-          tx.set(g.dx);
-          const past = Math.abs(g.dx) > width.value * THROW;
-          if (past !== crossed.value) {
-            crossed.set(past);
-            hapticSelection();
-          }
-        },
-        onPanResponderRelease: (_, g) => {
-          if (Math.abs(g.dx) > width.value * THROW || Math.abs(g.vx) > 0.7) throwCard(g.dx < 0 ? 1 : -1);
-          else tx.set(withSpring(0, { damping: 16, stiffness: 180 }));
-        },
-        onPanResponderTerminate: () => {
-          tx.set(withSpring(0, { damping: 16, stiffness: 180 }));
-        },
-      }),
-    // throwCard only touches shared values and a state setter
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
-  );
-
-  const topStyle = useAnimatedStyle(() => ({
-    opacity: topOpacity.value,
-    transform: [
-      { translateX: tx.value },
-      { translateY: Math.abs(tx.value) * 0.04 },
-      { rotate: `${interpolate(tx.value, [-width.value, width.value], [-9, 9])}deg` },
-    ],
-  }));
-  const behind1 = useAnimatedStyle(() => ({
-    transform: [{ translateY: interpolate(progress.value, [0, 1], [PEEK, STACK_TOP]) }, { scale: interpolate(progress.value, [0, 1], [0.95, 1]) }],
-  }));
-  const behind2 = useAnimatedStyle(() => ({
-    opacity: interpolate(progress.value, [0, 1], [0.55, 1]),
-    transform: [{ translateY: interpolate(progress.value, [0, 1], [0, PEEK]) }, { scale: interpolate(progress.value, [0, 1], [0.9, 0.95]) }],
-  }));
-
-  if (n === 0) {
-    return (
-      <View style={styles.empty}>
-        <ThemedText type="smallBold">Nessuna ricetta</ThemedText>
-        <ThemedText type="small" themeColor="textSecondary">
-          Con le tue preferenze non ci sono ricette per questo pasto.
-        </ThemedText>
-      </View>
-    );
-  }
-
-  const current = at(index);
-  const position = ((index % n) + n) % n;
 
   return (
     <View>
@@ -166,9 +54,7 @@ export function RecipeDeck({ cards, portionLabel, slotLabelFor, onAdd }: RecipeD
             <PressableScale
               key={f.value}
               onPress={() => {
-                if (active) return;
-                setFilter(f.value);
-                setIndex(0);
+                if (!active) setFilter(f.value);
               }}
               haptic="tap"
               scaleTo={0.94}
@@ -181,72 +67,40 @@ export function RecipeDeck({ cards, portionLabel, slotLabelFor, onAdd }: RecipeD
         })}
       </ScrollView>
 
-      <View style={styles.counterRow}>
-        <RoundButton icon="arrowBack" label="Ricetta precedente" onPress={() => { hapticTap(); throwCard(-1); }} />
-        <View style={styles.counterText}>
-          <ThemedText style={styles.counter}>
-            {position + 1}
-            <ThemedText style={styles.counterTotal} themeColor="textTertiary">
-              {' '}/ {n}
-            </ThemedText>
-          </ThemedText>
-          <ThemedText style={styles.hint} themeColor="textSecondary">
-            Scorri per cambiare ricetta
+      {shown.length === 0 ? (
+        <View style={styles.empty}>
+          <ThemedText type="smallBold">Nessuna ricetta</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            Con le tue preferenze non ci sono ricette per questo pasto.
           </ThemedText>
         </View>
-        <RoundButton icon="chevronRight" label="Ricetta successiva" onPress={() => { hapticTap(); throwCard(1); }} />
-      </View>
-
-      <View
-        style={styles.deck}
-        onLayout={(e: LayoutChangeEvent) => {
-          width.set(e.nativeEvent.layout.width);
-        }}>
-        {/* The two cards behind, cut to the deck's height: only their top edge shows until the top card moves. */}
-        <View aria-hidden importantForAccessibility="no-hide-descendants" style={[styles.behindClip, { pointerEvents: 'none' }]}>
-          {n > 2 ? (
-            <Animated.View style={[styles.behind, behind2]}>
-              <RecipeCardView card={at(index + 2)} portionLabel={portionLabel} slotLabel={slotLabelFor(at(index + 2).kind)} added={false} onAdd={() => {}} />
-            </Animated.View>
-          ) : null}
-          {n > 1 ? (
-            <Animated.View style={[styles.behind, behind1]}>
-              <RecipeCardView card={at(index + 1)} portionLabel={portionLabel} slotLabel={slotLabelFor(at(index + 1).kind)} added={false} onAdd={() => {}} />
-            </Animated.View>
-          ) : null}
-        </View>
-
-        <Animated.View key={`${filter}-${current.recipe.id}`} style={[styles.top, topStyle]} {...responder.panHandlers}>
-          <RecipeCardView
-            card={current}
-            portionLabel={portionLabel}
-            slotLabel={slotLabelFor(current.kind)}
-            added={!!added[current.recipe.id]}
-            onAdd={() => {
-              hapticSuccess();
-              onAdd(current);
-              setAdded((a) => ({ ...a, [current.recipe.id]: true }));
-            }}
+      ) : (
+        <View style={styles.deckWrap}>
+          <SwipeDeck
+            items={shown}
+            keyOf={(c) => c.recipe.id}
+            resetKey={filter}
+            hint="Scorri per cambiare ricetta"
+            prevLabel="Ricetta precedente"
+            nextLabel="Ricetta successiva"
+            renderCard={(card, top) => (
+              <RecipeCardView
+                card={card}
+                portionLabel={portionLabel}
+                slotLabel={slotLabelFor(card.kind)}
+                added={top && !!added[card.recipe.id]}
+                onAdd={() => {
+                  if (!top) return;
+                  hapticSuccess();
+                  onAdd(card);
+                  setAdded((a) => ({ ...a, [card.recipe.id]: true }));
+                }}
+              />
+            )}
           />
-        </Animated.View>
-      </View>
+        </View>
+      )}
     </View>
-  );
-}
-
-function RoundButton({ icon, label, onPress }: { icon: 'arrowBack' | 'chevronRight'; label: string; onPress: () => void }) {
-  const theme = useTheme();
-  return (
-    <PressableScale
-      onPress={onPress}
-      haptic={false}
-      scaleTo={0.9}
-      hitSlop={6}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      style={[styles.round, { backgroundColor: theme.backgroundElevated, borderColor: theme.boxEdge }]}>
-      <Icon name={icon} size={18} color={theme.text} />
-    </PressableScale>
   );
 }
 
@@ -422,18 +276,9 @@ function Section({ title, aside, children }: { title: string; aside?: string; ch
 const styles = StyleSheet.create({
   filtersScroll: { marginHorizontal: -16 },
   filters: { paddingHorizontal: 16, gap: 8 },
+  deckWrap: { marginTop: 14 },
   chip: { height: 34, paddingHorizontal: 15, borderRadius: 17, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center' },
   chipText: { fontSize: 14, lineHeight: 18, fontWeight: '600' },
-  counterRow: { flexDirection: 'row', alignItems: 'center', marginTop: 14, gap: 12 },
-  counterText: { flex: 1, alignItems: 'center' },
-  counter: { fontSize: 15, lineHeight: 19, fontWeight: '700', fontVariant: ['tabular-nums'] },
-  counterTotal: { fontSize: 15, lineHeight: 19, fontWeight: '500' },
-  hint: { fontSize: 12, lineHeight: 15, marginTop: 1 },
-  round: { width: 40, height: 40, borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center' },
-  deck: { marginTop: 4, paddingTop: STACK_TOP },
-  behindClip: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden' },
-  behind: { position: 'absolute', top: 0, left: 0, right: 0, transformOrigin: 'top' },
-  top: { transformOrigin: 'bottom' },
   card: { borderRadius: 32, borderCurve: 'continuous', borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
   photoWell: { alignItems: 'center', justifyContent: 'center', paddingTop: 20, paddingBottom: 8 },
   photoWellDark: { margin: 10, borderRadius: 24, borderCurve: 'continuous', paddingTop: 12 },

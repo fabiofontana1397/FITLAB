@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Image, StyleSheet, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, View } from 'react-native';
 
 import { PressableScale } from '@/components/motion/pressable-scale';
 import { Reveal } from '@/components/motion/reveal';
@@ -9,25 +9,32 @@ import { SwipeToStart } from '@/components/training/swipe-to-start';
 import { WorkoutSessionModal } from '@/components/training/workout-session-modal';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { SegmentedControl } from '@/components/ui/segmented-control';
+import { SwipeDeck, SwipeDeckKeepDrag } from '@/components/ui/swipe-deck';
+import { HorizontalScrollDefaults } from '@/constants/scroll';
 import { useTheme } from '@/hooks/use-theme';
 import { useUserContext } from '@/hooks/use-user-context';
 import { getExerciseMedia } from '@/lib/exercise-media/exercise-media';
 import { daysAgoISO } from '@/lib/mock/dates';
 import type { Level } from '@/lib/planning/training/profile';
-import { SPOT_FOCUS, spotWorkoutOfDay, type SpotFocus, type SpotPlace } from '@/lib/planning/training/spot-workouts';
+import { SPOT_FOCUS, spotProposals, type SpotFocus, type SpotPlace, type SpotWorkout } from '@/lib/planning/training/spot-workouts';
 import type { TrainingExerciseEntry } from '@/lib/planning/types';
 import { useActivityLogStore } from '@/store/activity-log-store';
 
 const FOCUS_ICON: Record<SpotFocus, IconName> = {
   glutes: 'body',
-  legs: 'footsteps',
+  legs: 'leg',
   chest: 'barbell',
-  back: 'gym',
+  back: 'rowing',
   shoulders: 'dumbbellLine',
   arms: 'armFlex',
   core: 'target',
-  total: 'bolt',
+  total: 'standing',
+  functional: 'kettlebell',
+  cross: 'gym',
+  hiit: 'bolt',
 };
+
+const PLACE_LABEL: Record<SpotPlace, string> = { gym: 'Palestra', home: 'Casa' };
 
 const LEVEL_OF: Record<string, Level> = { beginner: 'beginner', intermediate: 'intermediate', expert: 'advanced' };
 
@@ -39,9 +46,10 @@ function restText(sec: number): string {
 }
 
 /**
- * Allenamento spot: pick what to train (and where), get the workout of the day for it — exercises with their GIF,
- * sets, reps, rest and starting load, duration and estimated calories — run it in the guided session, and at the end
- * it is logged to today's calories as an activity.
+ * Allenamento veloce: pick what to train (one row of goals, from glutes to HIIT) and where, then swipe through the
+ * proposals for it like the recipes — each one with its exercises (GIF, sets, reps, rest, starting load), duration
+ * and estimated calories. Start one with the slider, run it in the guided session, and at the end it is logged to
+ * today's calories as an activity.
  */
 export function SpotWorkoutView() {
   const theme = useTheme();
@@ -50,40 +58,36 @@ export function SpotWorkoutView() {
   const today = daysAgoISO(0);
   const [focus, setFocus] = useState<SpotFocus>('glutes');
   const [place, setPlace] = useState<SpotPlace>(ctx.training?.location === 'home' ? 'home' : 'gym');
-  const [running, setRunning] = useState(false);
+  const [running, setRunning] = useState<SpotWorkout | null>(null);
   const [info, setInfo] = useState<TrainingExerciseEntry | null>(null);
   // Workouts finished today (by id): minutes and kcal logged.
   const [doneToday, setDoneToday] = useState<Record<string, { minutes: number; kcal: number }>>({});
 
   const level = LEVEL_OF[ctx.training?.gym?.skill ?? ''] ?? 'intermediate';
-  const workout = useMemo(
-    () => spotWorkoutOfDay(focus, place, today, { weightKg: ctx.weightKg, sex: ctx.sex, age: ctx.age, level }),
+  const proposals = useMemo(
+    () => spotProposals(focus, place, today, { weightKg: ctx.weightKg, sex: ctx.sex, age: ctx.age, level }),
     [focus, place, today, ctx.weightKg, ctx.sex, ctx.age, level]
   );
-  const done = doneToday[workout.id];
 
   return (
     <>
       <Reveal index={0}>
-        <View style={styles.headRow}>
-          <ThemedText style={styles.sectionTitle} accessibilityRole="header">
-            Cosa alleni oggi?
-          </ThemedText>
-        </View>
-        <View style={styles.place}>
-          <SegmentedControl
-            options={[
-              { value: 'gym', label: 'Palestra' },
-              { value: 'home', label: 'Casa' },
-            ]}
-            value={place}
-            onChange={(v) => setPlace(v as SpotPlace)}
-          />
-        </View>
+        <ThemedText style={styles.sectionTitle} accessibilityRole="header">
+          Cosa alleni oggi?
+        </ThemedText>
+        <SegmentedControl
+          options={[
+            { value: 'gym', label: 'Palestra' },
+            { value: 'home', label: 'Casa' },
+          ]}
+          value={place}
+          onChange={(v) => setPlace(v as SpotPlace)}
+        />
       </Reveal>
 
       <Reveal index={1}>
-        <View style={styles.grid}>
+        {/* Every goal on one row that scrolls sideways. */}
+        <ScrollView {...HorizontalScrollDefaults} style={styles.goalsScroll} contentContainerStyle={styles.goals}>
           {SPOT_FOCUS.map((f) => {
             const active = f.value === focus;
             return (
@@ -91,13 +95,13 @@ export function SpotWorkoutView() {
                 key={f.value}
                 onPress={() => setFocus(f.value)}
                 haptic="tap"
-                scaleTo={0.95}
+                scaleTo={0.94}
                 accessibilityRole="button"
                 accessibilityState={{ selected: active }}
                 accessibilityLabel={`${f.label}: ${f.blurb}`}
                 style={[styles.tile, { backgroundColor: active ? theme.text : theme.backgroundElevated, borderColor: active ? theme.text : theme.boxEdge }]}>
                 <View style={[styles.tileIcon, { backgroundColor: active ? 'rgba(255,255,255,0.14)' : theme.backgroundElement }]}>
-                  <Icon name={FOCUS_ICON[f.value]} size={18} color={active ? theme.background : theme.text} />
+                  <Icon name={FOCUS_ICON[f.value]} size={19} color={active ? theme.background : theme.text} />
                 </View>
                 <ThemedText style={[styles.tileLabel, { color: active ? theme.background : theme.text }]} numberOfLines={1}>
                   {f.label}
@@ -105,63 +109,31 @@ export function SpotWorkoutView() {
               </PressableScale>
             );
           })}
-        </View>
+        </ScrollView>
       </Reveal>
 
       <Reveal index={2}>
-        <View style={[styles.card, { backgroundColor: theme.backgroundElevated, borderColor: theme.boxEdge }]}>
-          <View style={styles.cardHead}>
-            <ThemedText style={[styles.eyebrow, { color: theme.accent }]}>Allenamento del giorno · {workout.focusLabel}</ThemedText>
-            <ThemedText style={styles.title}>{workout.title}</ThemedText>
-            <ThemedText style={styles.note} themeColor="textSecondary">
-              {workout.note}
-            </ThemedText>
-          </View>
-
-          <View style={[styles.stats, { backgroundColor: theme.backgroundElement }]}>
-            <Stat icon="clock" value={`${workout.minutes}`} unit="min" label="Durata" />
-            <Stat icon="flame" value={`${workout.kcal}`} unit="kcal" label="Calorie" divider />
-            <Stat icon="dumbbellLine" value={`${workout.exercises.length}`} label="Esercizi" divider />
-            <Stat icon="repsHash" value={`${workout.totalSets}`} label="Serie" divider />
-          </View>
-
-          <View style={styles.chips}>
-            {workout.muscles.map((m) => (
-              <View key={`m-${m}`} style={[styles.chip, { backgroundColor: theme.accentSoft }]}>
-                <ThemedText style={[styles.chipText, { color: theme.accent }]}>{m}</ThemedText>
-              </View>
-            ))}
-            {workout.equipment.map((e) => (
-              <View key={`e-${e}`} style={[styles.chip, { backgroundColor: theme.backgroundElement }]}>
-                <ThemedText style={styles.chipText} themeColor="textSecondary">
-                  {e}
-                </ThemedText>
-              </View>
-            ))}
-          </View>
-
-          <View style={styles.list}>
-            {workout.exercises.map((ex, i) => (
-              <ExerciseRow key={ex.id} index={i} exercise={ex} first={i === 0} onPress={() => setInfo(ex)} />
-            ))}
-          </View>
-
-          {done ? (
-            <View style={[styles.doneBanner, { backgroundColor: theme.successSoft }]}>
-              <Icon name="checkCircle" size={20} color={theme.brandGreen} />
-              <ThemedText style={styles.doneText}>
-                Fatto oggi · {done.minutes} min · {done.kcal} kcal registrate
-              </ThemedText>
-            </View>
-          ) : null}
-
-          <SwipeToStart
-            key={`${workout.id}-${done ? 'again' : 'new'}`}
-            onStart={() => setRunning(true)}
-            accessibilityLabel={`Avvia ${workout.title}`}
-            label={done ? 'Scorri per rifarlo' : 'Scorri per iniziare'}
-          />
-        </View>
+        <SwipeDeck
+          items={proposals}
+          keyOf={(w) => w.id}
+          resetKey={`${focus}-${place}`}
+          hint="Scorri per cambiare proposta"
+          prevLabel="Proposta precedente"
+          nextLabel="Proposta successiva"
+          renderCard={(w, top) => (
+            <WorkoutCard
+              workout={w}
+              placeLabel={PLACE_LABEL[place]}
+              done={doneToday[w.id]}
+              onStart={() => {
+                if (top) setRunning(w);
+              }}
+              onExercise={(ex) => {
+                if (top) setInfo(ex);
+              }}
+            />
+          )}
+        />
       </Reveal>
 
       <Reveal index={3}>
@@ -170,23 +142,25 @@ export function SpotWorkoutView() {
         </ThemedText>
       </Reveal>
 
-      <WorkoutSessionModal
-        visible={running}
-        onClose={() => setRunning(false)}
-        title={workout.title}
-        exercises={workout.exercises}
-        date={today}
-        spot={{
-          onFinish: (ms) => {
-            const minutes = Math.max(1, Math.round(ms / 60000));
-            addActivity(workout.activity, workout.intensity, minutes, ctx.weightKg, today);
-            const entry = useActivityLogStore.getState().entries.at(-1);
-            const kcal = entry?.estimatedKcal ?? 0;
-            setDoneToday((d) => ({ ...d, [workout.id]: { minutes, kcal } }));
-            return kcal;
-          },
-        }}
-      />
+      {running ? (
+        <WorkoutSessionModal
+          visible
+          onClose={() => setRunning(null)}
+          title={running.title}
+          exercises={running.exercises}
+          date={today}
+          spot={{
+            onFinish: (ms) => {
+              const minutes = Math.max(1, Math.round(ms / 60000));
+              addActivity(running.activity, running.intensity, minutes, ctx.weightKg, today);
+              const entry = useActivityLogStore.getState().entries.at(-1);
+              const kcal = entry?.estimatedKcal ?? 0;
+              setDoneToday((d) => ({ ...d, [running.id]: { minutes, kcal } }));
+              return kcal;
+            },
+          }}
+        />
+      ) : null}
 
       {info ? (
         <ExerciseInfoModal
@@ -201,6 +175,82 @@ export function SpotWorkoutView() {
         />
       ) : null}
     </>
+  );
+}
+
+/** One proposal: the card of the deck. */
+function WorkoutCard({
+  workout,
+  placeLabel,
+  done,
+  onStart,
+  onExercise,
+}: {
+  workout: SpotWorkout;
+  placeLabel: string;
+  done?: { minutes: number; kcal: number };
+  onStart: () => void;
+  onExercise: (ex: TrainingExerciseEntry) => void;
+}) {
+  const theme = useTheme();
+  return (
+    <View style={[styles.card, { backgroundColor: theme.backgroundElevated, borderColor: theme.boxEdge }]}>
+      <View style={styles.cardHead}>
+        <ThemedText style={[styles.eyebrow, { color: theme.accent }]}>
+          {workout.focusLabel} · {placeLabel}
+        </ThemedText>
+        <ThemedText style={styles.title}>{workout.title}</ThemedText>
+        <ThemedText style={styles.note} themeColor="textSecondary">
+          {workout.note}
+        </ThemedText>
+      </View>
+
+      <View style={[styles.stats, { backgroundColor: theme.backgroundElement }]}>
+        <Stat icon="clock" value={`${workout.minutes}`} unit="min" label="Durata" />
+        <Stat icon="flame" value={`${workout.kcal}`} unit="kcal" label="Calorie" divider />
+        <Stat icon="dumbbellLine" value={`${workout.exercises.length}`} label="Esercizi" divider />
+        <Stat icon="repsHash" value={`${workout.totalSets}`} label="Serie" divider />
+      </View>
+
+      <View style={styles.chips}>
+        {workout.muscles.map((m) => (
+          <View key={`m-${m}`} style={[styles.chip, { backgroundColor: theme.accentSoft }]}>
+            <ThemedText style={[styles.chipText, { color: theme.accent }]}>{m}</ThemedText>
+          </View>
+        ))}
+        {workout.equipment.map((e) => (
+          <View key={`e-${e}`} style={[styles.chip, { backgroundColor: theme.backgroundElement }]}>
+            <ThemedText style={styles.chipText} themeColor="textSecondary">
+              {e}
+            </ThemedText>
+          </View>
+        ))}
+      </View>
+
+      <View style={styles.list}>
+        {workout.exercises.map((ex, i) => (
+          <ExerciseRow key={ex.id} exercise={ex} first={i === 0} onPress={() => onExercise(ex)} />
+        ))}
+      </View>
+
+      {done ? (
+        <View style={[styles.doneBanner, { backgroundColor: theme.successSoft }]}>
+          <Icon name="checkCircle" size={20} color={theme.brandGreen} />
+          <ThemedText style={styles.doneText}>
+            Fatto oggi · {done.minutes} min · {done.kcal} kcal registrate
+          </ThemedText>
+        </View>
+      ) : null}
+
+      <SwipeDeckKeepDrag>
+        <SwipeToStart
+          key={done ? 'again' : 'new'}
+          onStart={onStart}
+          accessibilityLabel={`Avvia ${workout.title}`}
+          label={done ? 'Scorri per rifarlo' : 'Scorri per iniziare'}
+        />
+      </SwipeDeckKeepDrag>
+    </View>
   );
 }
 
@@ -225,7 +275,7 @@ function Stat({ icon, value, unit, label, divider }: { icon: IconName; value: st
   );
 }
 
-function ExerciseRow({ exercise, index, first, onPress }: { exercise: TrainingExerciseEntry; index: number; first: boolean; onPress: () => void }) {
+function ExerciseRow({ exercise, first, onPress }: { exercise: TrainingExerciseEntry; first: boolean; onPress: () => void }) {
   const theme = useTheme();
   const media = getExerciseMedia(exercise.id, exercise.name);
   const load = exercise.suggestedKg != null && exercise.suggestedKg > 0 ? ` · ${String(exercise.suggestedKg).replace('.', ',')} kg` : '';
@@ -243,9 +293,6 @@ function ExerciseRow({ exercise, index, first, onPress }: { exercise: TrainingEx
         ) : (
           <Icon name="dumbbellLine" size={22} color={theme.textTertiary} />
         )}
-        <View style={[styles.thumbIndex, { backgroundColor: theme.text }]}>
-          <ThemedText style={[styles.thumbIndexText, { color: theme.background }]}>{index + 1}</ThemedText>
-        </View>
       </View>
       <View style={styles.rowText}>
         <ThemedText style={styles.rowTitle}>{exercise.name}</ThemedText>
@@ -265,16 +312,13 @@ function ExerciseRow({ exercise, index, first, onPress }: { exercise: TrainingEx
 }
 
 const styles = StyleSheet.create({
-  headRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
-  sectionTitle: { fontSize: 20, lineHeight: 26, fontWeight: '700', letterSpacing: -0.2 },
-  place: {},
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  sectionTitle: { fontSize: 20, lineHeight: 26, fontWeight: '700', letterSpacing: -0.2, marginBottom: 10 },
+  goalsScroll: { marginHorizontal: -16 },
+  goals: { paddingHorizontal: 16, gap: 8 },
   tile: {
-    flexBasis: '23%',
-    flexGrow: 1,
-    minWidth: 72,
+    minWidth: 84,
     paddingVertical: 12,
-    paddingHorizontal: 6,
+    paddingHorizontal: 14,
     borderRadius: 20,
     borderCurve: 'continuous',
     borderWidth: StyleSheet.hairlineWidth,
@@ -300,8 +344,6 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 11 },
   thumb: { width: 60, height: 60, borderRadius: 16, borderCurve: 'continuous', backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   thumbImage: { width: 60, height: 60 },
-  thumbIndex: { position: 'absolute', top: 4, left: 4, width: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
-  thumbIndexText: { fontSize: 10, lineHeight: 12, fontWeight: '800' },
   rowText: { flex: 1, minWidth: 0, gap: 2 },
   rowTitle: { fontSize: 15, lineHeight: 20, fontWeight: '600' },
   rowMeta: { fontSize: 13, lineHeight: 17, fontVariant: ['tabular-nums'] },

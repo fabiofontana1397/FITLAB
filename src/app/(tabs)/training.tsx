@@ -57,7 +57,7 @@ const GOAL_SHORT_LABEL: Record<Goal, string> = {
 
 type TrainingMode = 'plan' | 'spot';
 
-/** Allenamento: two pages behind a switch at the top, the weekly card (Scheda) and the one-off spot workouts. */
+/** Allenamento: two pages behind a switch at the top, the weekly card (Scheda) and the one-off quick workouts (Allenamento veloce). */
 export default function TrainingScreen() {
   const [mode, setMode] = useState<TrainingMode>('plan');
   const switcher = (
@@ -65,7 +65,7 @@ export default function TrainingScreen() {
       <SegmentedControl
         options={[
           { value: 'plan', label: 'Scheda' },
-          { value: 'spot', label: 'Allenamento spot' },
+          { value: 'spot', label: 'Allenamento veloce' },
         ]}
         value={mode}
         onChange={(v) => setMode(v as TrainingMode)}
