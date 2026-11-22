@@ -2,15 +2,17 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useState } from 'react';
 import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 
-import { AnimatedFill } from '@/components/motion/animated-fill';
 import { PressableScale } from '@/components/motion/pressable-scale';
 import { ThemedText } from '@/components/themed-text';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon, type IconName } from '@/components/ui/icon';
+import { ProgressRing } from '@/components/ui/progress-ring';
 import { Brand, OnBrand, Radius } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 const GAP = 10;
+/** The macros' progress rings. */
+const RING = 36;
 
 function withAlpha(hex: string, alpha: number): string {
   if (!/^#([0-9a-f]{6})$/i.test(hex)) return hex;
@@ -96,11 +98,17 @@ function MacroTile({ side, inactive, macros, onPress }: { side: number; inactive
       <FlatCard radius={Radius.large} style={[styles.tile, { minHeight: side }]}>
         <TileHeader icon="nutrition" color={theme.accent} title="Macro" />
         <View style={styles.macroRows}>
-          {rows.map((r, i) => {
+          {rows.map((r) => {
             const eaten = inactive ? 0 : r.eaten;
+            const share = r.target > 0 ? eaten / r.target : 0;
             return (
               <View key={r.key} style={styles.macroRow}>
-                <View style={styles.macroLine}>
+                <ProgressRing size={RING} strokeWidth={4} progress={share} color={r.color} trackColor={withAlpha(r.color, 0.18)}>
+                  <ThemedText style={[styles.ringPct, { color: r.color }]} numberOfLines={1}>
+                    {Math.round(Math.min(share, 9.99) * 100)}%
+                  </ThemedText>
+                </ProgressRing>
+                <View style={styles.macroText}>
                   <ThemedText style={styles.macroLabel} themeColor="textSecondary" numberOfLines={1}>
                     {r.label}
                   </ThemedText>
@@ -110,9 +118,6 @@ function MacroTile({ side, inactive, macros, onPress }: { side: number; inactive
                       /{Math.round(r.target)} g
                     </ThemedText>
                   </ThemedText>
-                </View>
-                <View style={[styles.macroTrack, { backgroundColor: withAlpha(r.color, 0.18) }]}>
-                  <AnimatedFill progress={r.target > 0 ? eaten / r.target : 0} delay={120 + i * 90} style={[styles.macroFill, { backgroundColor: r.color }]} />
                 </View>
               </View>
             );
@@ -219,13 +224,12 @@ const styles = StyleSheet.create({
   headerIcon: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { flex: 1, fontSize: 14, lineHeight: 18, fontWeight: '700' },
   macroRows: { gap: 10 },
-  macroRow: { gap: 5 },
-  macroLine: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 6 },
+  macroRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  macroText: { flex: 1, gap: 1 },
+  ringPct: { fontSize: 9, lineHeight: 11, fontWeight: '800', fontVariant: ['tabular-nums'] },
   macroLabel: { flexShrink: 1, fontSize: 12, lineHeight: 16, fontWeight: '600' },
   macroValue: { fontSize: 13, lineHeight: 16, fontWeight: '800', fontVariant: ['tabular-nums'] },
   macroTarget: { fontSize: 11, lineHeight: 16, fontWeight: '600' },
-  macroTrack: { height: 6, borderRadius: 3, overflow: 'hidden' },
-  macroFill: { height: 6, borderRadius: 3 },
   workoutText: { flex: 1, justifyContent: 'center', gap: 2 },
   workoutTitle: { fontSize: 18, lineHeight: 22, fontWeight: '800', letterSpacing: -0.3 },
   workoutMeta: { fontSize: 12, lineHeight: 16, fontWeight: '600' },

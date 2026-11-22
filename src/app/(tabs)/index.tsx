@@ -334,21 +334,19 @@ export default function HomeScreen() {
         />
       </View>
 
-      {/* Assunte and bruciate: their own widget, below the two register buttons, apart from the balance gauge. */}
-      <FlatCard radius={CARD_RADIUS} style={styles.barsCard}>
-        <EnergyBars
-          eatenKcal={isFutureDay ? 0 : eatenKcal}
-          eatenTargetKcal={calorieTarget > 0 ? calorieTarget : fullDay.total}
-          basalKcal={isFutureDay ? 0 : basalKcal}
-          basalDayKcal={fullDay.resting + fullDay.everyday}
-          exerciseKcal={isFutureDay ? 0 : trainingBurnKcal}
-          exerciseDayKcal={fullDay.exercise}
-          inactive={isFutureDay}
-          running={viewDate === today}
-          onEatenPress={() => setInfoTopic('eaten')}
-          onBurnedPress={() => setInfoTopic('burned')}
-        />
-      </FlatCard>
+      {/* Assunte and bruciate: two tiles side by side, below the two register buttons, like the ones under them. */}
+      <EnergyBars
+        eatenKcal={isFutureDay ? 0 : eatenKcal}
+        eatenTargetKcal={calorieTarget > 0 ? calorieTarget : fullDay.total}
+        basalKcal={isFutureDay ? 0 : basalKcal}
+        basalDayKcal={fullDay.resting + fullDay.everyday}
+        exerciseKcal={isFutureDay ? 0 : trainingBurnKcal}
+        exerciseDayKcal={fullDay.exercise}
+        inactive={isFutureDay}
+        running={viewDate === today}
+        onEatenPress={() => setInfoTopic('eaten')}
+        onBurnedPress={() => setInfoTopic('burned')}
+      />
 
       {/* The day's progress, side by side: macros against the plan, and the plan's session with its start. */}
       <TodayTiles
@@ -627,11 +625,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 18,
     fontWeight: '700',
-  },
-  barsCard: {
-    marginTop: 10,
-    paddingVertical: 14,
-    paddingHorizontal: 14,
   },
   actionsRow: {
     flexDirection: 'row',
