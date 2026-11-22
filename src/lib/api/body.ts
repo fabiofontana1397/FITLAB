@@ -2,7 +2,7 @@
 // async functions operating on the app's existing types (BodyMetricSnapshot,
 // BodyPhoto), not raw DB rows — snake_case<->camelCase mapping happens
 // here, at this one boundary, so the store and every component above it
-// (body.tsx, measurement-trend-modal.tsx, photo-detail-modal.tsx, ...)
+// (body.tsx, measurement-trend-chart.tsx, photo-detail-modal.tsx, ...)
 // never has to know the difference. This is the pattern each fast-follow
 // domain (nutrition, training, plans, onboarding) repeats later.
 import { decode } from 'base64-arraybuffer';

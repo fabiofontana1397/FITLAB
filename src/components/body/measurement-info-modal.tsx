@@ -3,9 +3,13 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { GlassPopup } from '@/components/glass/glass-popup';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
+import { PrimaryButton } from '@/components/ui/primary-button';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { formatDayMonth } from '@/lib/mock/dates';
+import type { BodyMetricSnapshot } from '@/lib/mock/types';
 import { BodySilhouette, type MeasurementZone } from './body-silhouette';
+import { MeasurementTrendChart } from './measurement-trend-chart';
 
 const COPY: Record<MeasurementZone, { title: string; instructions: string }> = {
   shouldersCm: {
@@ -42,28 +46,68 @@ const COPY: Record<MeasurementZone, { title: string; instructions: string }> = {
 
 export type MeasurementInfoModalProps = {
   zone: MeasurementZone | null;
+  /** Logged entries: the latest value and the trend come from here. */
+  entries: BodyMetricSnapshot[];
   onClose: () => void;
+  /** Opens the sheet to log a new value for this zone. */
+  onAdd: (zone: MeasurementZone) => void;
 };
 
-export function MeasurementInfoModal({ zone, onClose }: MeasurementInfoModalProps) {
+/**
+ * The one popup of a body measurement, opened by tapping its tile: where and how to measure (figure and
+ * instructions), the latest value, the trend over time and the button to log a new value.
+ */
+export function MeasurementInfoModal({ zone, entries, onClose, onAdd }: MeasurementInfoModalProps) {
   const theme = useTheme();
   if (!zone) return null;
   const copy = COPY[zone];
+  const logged = entries.filter((e) => Number.isFinite(Number(e[zone])));
+  const last = logged[logged.length - 1];
 
   return (
     <GlassPopup visible={zone != null} onClose={onClose} style={styles.card}>
-            <View style={styles.header}>
-              <ThemedText type="subtitle">Come misurare: {copy.title}</ThemedText>
-              <Pressable onPress={onClose} hitSlop={11} accessibilityRole="button" accessibilityLabel="Chiudi">
-                <Icon name="close" size={22} color={theme.text} />
-              </Pressable>
+      <View style={styles.header}>
+        <ThemedText type="subtitle">{copy.title}</ThemedText>
+        <Pressable onPress={onClose} hitSlop={11} accessibilityRole="button" accessibilityLabel="Chiudi">
+          <Icon name="close" size={22} color={theme.text} />
+        </Pressable>
+      </View>
+
+      <View style={styles.howTo}>
+        <BodySilhouette zone={zone} height={150} />
+        <View style={styles.howToText}>
+          <ThemedText type="smallBold">Come misurare</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            {copy.instructions}
+          </ThemedText>
+        </View>
+      </View>
+
+      <View style={[styles.divider, { backgroundColor: theme.border }]} />
+
+      <View style={styles.valueRow}>
+        <View>
+          <ThemedText type="small" themeColor="textSecondary">
+            {last ? `Ultima misura · ${formatDayMonth(last.date)}` : 'Ultima misura'}
+          </ThemedText>
+          {last ? (
+            <View style={styles.value}>
+              <ThemedText style={styles.valueNumber}>{String(last[zone]).replace('.', ',')}</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">
+                cm
+              </ThemedText>
             </View>
-            <View style={styles.silhouetteWrap}>
-              <BodySilhouette zone={zone} width={200} radius={16} />
-            </View>
-            <ThemedText type="small" themeColor="textSecondary">
-              {copy.instructions}
+          ) : (
+            <ThemedText style={styles.valueNumber} themeColor="textTertiary">
+              —
             </ThemedText>
+          )}
+        </View>
+      </View>
+
+      <MeasurementTrendChart zone={zone} entries={entries} color={theme.accent} />
+
+      <PrimaryButton label="Aggiungi misura" icon="plus" onPress={() => onAdd(zone)} />
     </GlassPopup>
   );
 }
@@ -78,7 +122,33 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  silhouetteWrap: {
+  howTo: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: Spacing.three,
+  },
+  howToText: {
+    flex: 1,
+    gap: 4,
+  },
+  divider: {
+    height: StyleSheet.hairlineWidth,
+  },
+  valueRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+  },
+  value: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 4,
+  },
+  valueNumber: {
+    fontSize: 28,
+    lineHeight: 34,
+    fontWeight: '700',
+    letterSpacing: -0.8,
+    fontVariant: ['tabular-nums'],
   },
 });

@@ -1,11 +1,8 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 import { AppText as Text } from '@/components/ui/app-text';
 import Svg, { Circle, Defs, Line, LinearGradient, Path, Stop } from 'react-native-svg';
 
-import { GlassPopup } from '@/components/glass/glass-popup';
 import { ThemedText } from '@/components/themed-text';
-import { Icon } from '@/components/ui/icon';
-import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { formatDayMonth } from '@/lib/mock/dates';
 import type { BodyMetricSnapshot } from '@/lib/mock/types';
@@ -51,39 +48,23 @@ function buildChart(values: number[]) {
   return { xy, path, area, yTicks, tickIndices };
 }
 
-export type MeasurementTrendModalProps = {
-  zone: MeasurementZone | null;
-  label: string;
+export type MeasurementTrendChartProps = {
+  zone: MeasurementZone;
   entries: BodyMetricSnapshot[];
   color: string;
-  onClose: () => void;
 };
 
-/** Popup opened by tapping a measurement's sparkline — the same value
- * plotted over every entry logged so far, with real axes instead of a bare
- * sparkline. */
-export function MeasurementTrendModal({ zone, label, entries, color, onClose }: MeasurementTrendModalProps) {
+/** A measurement plotted over every entry logged so far, with real axes; shown in the measurement popup. */
+export function MeasurementTrendChart({ zone, entries, color }: MeasurementTrendChartProps) {
   const theme = useTheme();
-  if (!zone) return null;
-
-  // Entries logged before this zone existed (or simply never recorded for
-  // it) carry no value — drop those rather than let a missing number reach
-  // the chart as NaN. `entries` is filtered in lockstep so date labels
-  // still line up with `values` by index.
+  // Entries logged before this zone existed (or never recorded for it) carry no value: drop them rather than let a
+  // missing number reach the chart as NaN. `entries` is filtered in lockstep so date labels line up with `values`.
   const entriesWithValue = entries.filter((e) => Number.isFinite(Number(e[zone])));
   const values = entriesWithValue.map((e) => Number(e[zone]));
-  const hasEnoughData = values.length >= 2;
-  const chart = hasEnoughData ? buildChart(values) : null;
+  const chart = values.length >= 2 ? buildChart(values) : null;
 
   return (
-    <GlassPopup visible={zone != null} onClose={onClose} style={styles.card}>
-            <View style={styles.header}>
-              <ThemedText type="subtitle">Andamento: {label}</ThemedText>
-              <Pressable onPress={onClose} hitSlop={11} accessibilityRole="button" accessibilityLabel="Chiudi">
-                <Icon name="close" size={22} color={theme.text} />
-              </Pressable>
-            </View>
-
+    <>
             {chart ? (
               <View style={{ width: CHART_WIDTH, height: CHART_HEIGHT, alignSelf: 'center' }}>
                 <Svg width={CHART_WIDTH} height={CHART_HEIGHT}>
@@ -146,19 +127,6 @@ export function MeasurementTrendModal({ zone, label, entries, color, onClose }: 
                 Aggiungi almeno due misurazioni per vedere l’andamento nel tempo.
               </ThemedText>
             )}
-    </GlassPopup>
+    </>
   );
 }
-
-const styles = StyleSheet.create({
-  card: {
-    padding: Spacing.four,
-    gap: Spacing.three,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.three,
-  },
-});

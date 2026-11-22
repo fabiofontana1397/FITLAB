@@ -5,7 +5,6 @@ import { Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { HorizontalScrollDefaults } from '@/constants/scroll';
 import { BodySilhouette, type MeasurementZone } from '@/components/body/body-silhouette';
 import { MeasurementInfoModal } from '@/components/body/measurement-info-modal';
-import { MeasurementTrendModal } from '@/components/body/measurement-trend-modal';
 import { PhotoDetailModal } from '@/components/body/photo-detail-modal';
 import { PosePickerSheet } from '@/components/body/pose-picker-sheet';
 import { QuickMeasurementSheet } from '@/components/body/quick-measurement-sheet';
@@ -24,7 +23,7 @@ import { Layout, Radius } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useRecentWeightSeries } from '@/hooks/use-weight-series';
 import { generatePhotoInsight } from '@/lib/assistant/photo-insight';
-import { latestSnapshot, seriesOf } from '@/lib/mock/body';
+import { latestSnapshot } from '@/lib/mock/body';
 import { addDaysISO, daysAgoISO, formatFullDay } from '@/lib/mock/dates';
 import { POSE_LABELS, useBodyStore, type BodyPhoto, type BodyPhotoPose } from '@/store/body-store';
 import { useUserStore } from '@/store/user-store';
@@ -49,7 +48,7 @@ const MEASURE_TIPS: TipSection[] = [
     points: [
       'Metro da sarta morbido, aderente alla pelle ma senza stringere.',
       'Sempre nelle stesse condizioni: al mattino, a digiuno, prima dell’allenamento.',
-      'Ogni 2–4 settimane: bastano 5 minuti. Tocca ⓘ su ogni zona per sapere dove misurare.',
+      'Ogni 2–4 settimane: bastano 5 minuti. Tocca una zona per vedere dove e come misurare.',
     ],
   },
   {
@@ -100,7 +99,6 @@ export default function ProgressScreen() {
   const [weightModalOpen, setWeightModalOpen] = useState(false);
   const [editDate, setEditDate] = useState<string | undefined>(undefined);
   const [infoZone, setInfoZone] = useState<MeasurementZone | null>(null);
-  const [trendMeasurement, setTrendMeasurement] = useState<{ zone: MeasurementZone; label: string } | null>(null);
   const [addMeasurementZone, setAddMeasurementZone] = useState<{ zone: MeasurementZone; label: string } | null>(null);
   const [posePickerOpen, setPosePickerOpen] = useState(false);
   const [detailPhoto, setDetailPhoto] = useState<BodyPhoto | null>(null);
@@ -332,23 +330,19 @@ export default function ProgressScreen() {
           {tileSize > 0
             ? MEASUREMENTS.map((m) => {
                 // Entries logged before this zone existed carry no value for it.
-                const series = seriesOf(entries, m.zone).filter((v) => Number.isFinite(v));
                 const latestValue = latest[m.zone];
                 const hasValue = Number.isFinite(latestValue);
-                // With two or more values the tile opens the "andamento" popup.
-                const hasTrend = series.length >= 2;
                 return (
                   <Pressable
                     key={m.zone}
-                    disabled={!hasTrend}
-                    onPress={() => setTrendMeasurement(m)}
+                    onPress={() => setInfoZone(m.zone)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${m.label}${hasValue ? `, ${latestValue} centimetri` : ''}. Come misurare e andamento`}
                     style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
                   >
-                    <FlatCard radius={22} style={[styles.measureTile, { width: tileSize, height: tileSize }]}>
+                    <FlatCard radius={22} style={[styles.measureTile, { width: tileSize, height: tileSize + 16 }]}>
                       <View style={styles.tileTop}>
-                        <Pressable onPress={() => setInfoZone(m.zone)} hitSlop={6} accessibilityLabel={`Come misurare: ${m.label}`}>
-                          <BodySilhouette zone={m.zone} width={30} radius={9} />
-                        </Pressable>
+                        <BodySilhouette zone={m.zone} height={56} />
                         <Pressable
                           onPress={() => setAddMeasurementZone(m)}
                           hitSlop={10}
@@ -359,12 +353,9 @@ export default function ProgressScreen() {
                         </Pressable>
                       </View>
                       <View style={styles.tileBottom}>
-                        <Pressable onPress={() => setInfoZone(m.zone)} hitSlop={6} style={styles.tileLabelRow}>
-                          <ThemedText style={styles.tileLabel} themeColor="textSecondary" numberOfLines={1}>
-                            {m.label}
-                          </ThemedText>
-                          <Icon name="info" size={12} color={theme.textTertiary} />
-                        </Pressable>
+                        <ThemedText style={styles.tileLabel} themeColor="textSecondary" numberOfLines={1}>
+                          {m.label}
+                        </ThemedText>
                         {hasValue ? (
                           <View style={styles.tileValueRow}>
                             <ThemedText style={styles.tileValue}>{String(latestValue).replace('.', ',')}</ThemedText>
@@ -441,13 +432,16 @@ export default function ProgressScreen() {
         onClose={() => setWeightModalOpen(false)}
         onSave={(weightKg, date) => addWeightEntry(weightKg, date)}
       />
-      <MeasurementInfoModal zone={infoZone} onClose={() => setInfoZone(null)} />
-      <MeasurementTrendModal
-        zone={trendMeasurement?.zone ?? null}
-        label={trendMeasurement?.label ?? ''}
+      <MeasurementInfoModal
+        zone={infoZone}
         entries={entries}
-        color={theme.accent}
-        onClose={() => setTrendMeasurement(null)}
+        onClose={() => setInfoZone(null)}
+        onAdd={(zone) => {
+          // The add sheet opens once the popup has left the screen.
+          setInfoZone(null);
+          const m = MEASUREMENTS.find((x) => x.zone === zone);
+          if (m) setTimeout(() => setAddMeasurementZone(m), 220);
+        }}
       />
       <QuickMeasurementSheet
         visible={addMeasurementZone != null}
@@ -692,11 +686,6 @@ const styles = StyleSheet.create({
   },
   tileBottom: {
     gap: 1,
-  },
-  tileLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
   },
   tileLabel: {
     flexShrink: 1,
