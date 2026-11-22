@@ -4,6 +4,7 @@ import Svg, { Circle, Defs, Line, LinearGradient, Path, Stop } from 'react-nativ
 
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
+import { measurementHistory } from '@/lib/mock/body';
 import { formatDayMonth } from '@/lib/mock/dates';
 import type { BodyMetricSnapshot } from '@/lib/mock/types';
 import type { MeasurementZone } from './body-silhouette';
@@ -57,10 +58,10 @@ export type MeasurementTrendChartProps = {
 /** A measurement plotted over every entry logged so far, with real axes; shown in the measurement popup. */
 export function MeasurementTrendChart({ zone, entries, color }: MeasurementTrendChartProps) {
   const theme = useTheme();
-  // Entries logged before this zone existed (or never recorded for it) carry no value: drop them rather than let a
-  // missing number reach the chart as NaN. `entries` is filtered in lockstep so date labels line up with `values`.
-  const entriesWithValue = entries.filter((e) => Number.isFinite(Number(e[zone])));
-  const values = entriesWithValue.map((e) => Number(e[zone]));
+  // Only the days a value was actually measured: weigh-ins carry the last tape measures forward, and 0 means never
+  // measured. Dates and values stay in lockstep so the labels line up.
+  const entriesWithValue = measurementHistory(entries, zone);
+  const values = entriesWithValue.map((e) => e.value);
   const chart = values.length >= 2 ? buildChart(values) : null;
 
   return (

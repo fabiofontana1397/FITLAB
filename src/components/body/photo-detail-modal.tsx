@@ -9,6 +9,7 @@ import { PrimaryButton } from '@/components/ui/primary-button';
 import { PopupScrollView } from '@/components/ui/swipe-dismiss';
 import { Radius, Spacing } from '@/constants/theme';
 import { useMotionPreference } from '@/hooks/use-motion-preference';
+import { hapticTap } from '@/lib/haptics';
 import { useTheme } from '@/hooks/use-theme';
 import { analyzePhoto } from '@/lib/api/photo-analysis';
 import { AI_COACH_ENABLED } from '@/lib/assistant/ai-config';
@@ -22,17 +23,20 @@ export type PhotoDetailModalProps = {
   allPhotos: BodyPhoto[];
   entries: BodyMetricSnapshot[];
   onClose: () => void;
+  /** Deletes the photo (after the person confirms in the popup). */
+  onDelete: (id: string) => void;
 };
 
 /** Opened by tapping a progress photo: the shot at full size, with the
  * deterministic quick tip shown instantly, plus an on-demand button that
  * calls real Claude vision on the actual pixels — not automatic on every
  * open, since (unlike the quick tip) it's a genuine per-call cost/latency. */
-export function PhotoDetailModal({ photo, allPhotos, entries, onClose }: PhotoDetailModalProps) {
+export function PhotoDetailModal({ photo, allPhotos, entries, onClose, onDelete }: PhotoDetailModalProps) {
   const { modalAnimation } = useMotionPreference();
   const theme = useTheme();
   const [aiObservation, setAiObservation] = useState<string | null>(null);
   const [aiState, setAiState] = useState<'idle' | 'loading' | 'error'>('idle');
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => {
     // Resets the AI panel when a different photo is opened in the same
@@ -40,6 +44,7 @@ export function PhotoDetailModal({ photo, allPhotos, entries, onClose }: PhotoDe
     // eslint-disable-next-line react-hooks/set-state-in-effect -- prop-driven reset, not derived render state
     setAiObservation(null);
     setAiState('idle');
+    setConfirmDelete(false);
   }, [photo?.id]);
 
   if (!photo) return null;
@@ -113,6 +118,42 @@ export function PhotoDetailModal({ photo, allPhotos, entries, onClose }: PhotoDe
                 onPress={handleAnalyze}
               />
             ) : null}
+
+            {confirmDelete ? (
+              <View style={styles.confirmBox}>
+                <ThemedText type="small" themeColor="textSecondary" style={styles.center}>
+                  Eliminare questa foto? Non si può annullare.
+                </ThemedText>
+                <View style={styles.confirmRow}>
+                  <Pressable
+                    onPress={() => setConfirmDelete(false)}
+                    accessibilityRole="button"
+                    style={({ pressed }) => [styles.confirmButton, { backgroundColor: theme.backgroundElement, opacity: pressed ? 0.7 : 1 }]}
+                  >
+                    <ThemedText type="smallBold">Annulla</ThemedText>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => {
+                      hapticTap();
+                      onDelete(photo.id);
+                    }}
+                    accessibilityRole="button"
+                    style={({ pressed }) => [styles.confirmButton, { backgroundColor: theme.danger, opacity: pressed ? 0.8 : 1 }]}
+                  >
+                    <ThemedText type="smallBold" style={{ color: '#FFFFFF' }}>
+                      Elimina
+                    </ThemedText>
+                  </Pressable>
+                </View>
+              </View>
+            ) : (
+              <Pressable onPress={() => setConfirmDelete(true)} hitSlop={8} accessibilityRole="button" style={({ pressed }) => [styles.deleteLink, { opacity: pressed ? 0.6 : 1 }]}>
+                <Icon name="trash" size={16} color={theme.danger} />
+                <ThemedText type="smallBold" style={{ color: theme.danger }}>
+                  Elimina foto
+                </ThemedText>
+              </Pressable>
+            )}
           </GlassSurface>
         </Pressable>
       </Pressable>
@@ -144,6 +185,31 @@ const styles = StyleSheet.create({
   },
   insightScroll: {
     maxHeight: 140,
+  },
+  deleteLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    minHeight: 36,
+  },
+  confirmBox: {
+    gap: Spacing.two,
+  },
+  confirmRow: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+  },
+  confirmButton: {
+    flex: 1,
+    minHeight: 44,
+    borderRadius: 14,
+    borderCurve: 'continuous',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  center: {
+    textAlign: 'center',
   },
   insightRow: {
     flexDirection: 'row',

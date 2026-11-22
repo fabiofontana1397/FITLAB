@@ -1,12 +1,17 @@
+import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { GlassPopup } from '@/components/glass/glass-popup';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
 import { PrimaryButton } from '@/components/ui/primary-button';
+import { PopupScrollView } from '@/components/ui/swipe-dismiss';
+import { ScrollDefaults } from '@/constants/scroll';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { formatDayMonth } from '@/lib/mock/dates';
+import { hapticTap } from '@/lib/haptics';
+import { measurementHistory } from '@/lib/mock/body';
+import { formatDayMonth, formatFullDay } from '@/lib/mock/dates';
 import type { BodyMetricSnapshot } from '@/lib/mock/types';
 import { BodySilhouette, type MeasurementZone } from './body-silhouette';
 import { MeasurementTrendChart } from './measurement-trend-chart';
@@ -51,18 +56,27 @@ export type MeasurementInfoModalProps = {
   onClose: () => void;
   /** Opens the sheet to log a new value for this zone. */
   onAdd: (zone: MeasurementZone) => void;
+  /** Deletes the measurement of one day for this zone. */
+  onDelete: (zone: MeasurementZone, date: string) => void;
 };
 
 /**
  * The one popup of a body measurement, opened by tapping its tile: where and how to measure (figure and
  * instructions), the latest value, the trend over time and the button to log a new value.
  */
-export function MeasurementInfoModal({ zone, entries, onClose, onAdd }: MeasurementInfoModalProps) {
+export function MeasurementInfoModal({ zone, entries, onClose, onAdd, onDelete }: MeasurementInfoModalProps) {
   const theme = useTheme();
+  // The row asking "Eliminare?" (one at a time), reset when the popup changes zone.
+  const [confirming, setConfirming] = useState<string | null>(null);
+  const [shownZone, setShownZone] = useState(zone);
+  if (zone !== shownZone) {
+    setShownZone(zone);
+    setConfirming(null);
+  }
   if (!zone) return null;
   const copy = COPY[zone];
-  const logged = entries.filter((e) => Number.isFinite(Number(e[zone])));
-  const last = logged[logged.length - 1];
+  const history = measurementHistory(entries, zone);
+  const last = history[history.length - 1];
 
   return (
     <GlassPopup visible={zone != null} onClose={onClose} style={styles.card}>
@@ -92,7 +106,7 @@ export function MeasurementInfoModal({ zone, entries, onClose, onAdd }: Measurem
           </ThemedText>
           {last ? (
             <View style={styles.value}>
-              <ThemedText style={styles.valueNumber}>{String(last[zone]).replace('.', ',')}</ThemedText>
+              <ThemedText style={styles.valueNumber}>{String(last.value).replace('.', ',')}</ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
                 cm
               </ThemedText>
@@ -106,6 +120,59 @@ export function MeasurementInfoModal({ zone, entries, onClose, onAdd }: Measurem
       </View>
 
       <MeasurementTrendChart zone={zone} entries={entries} color={theme.accent} />
+
+      {history.length > 0 ? (
+        <View style={styles.history}>
+          <ThemedText type="smallBold">Misure registrate</ThemedText>
+          <PopupScrollView {...ScrollDefaults} style={styles.historyScroll}>
+            {[...history].reverse().map((h, i) => {
+              const asking = confirming === h.date;
+              return (
+                <View key={h.date} style={[styles.historyRow, i > 0 ? { borderTopColor: theme.border, borderTopWidth: StyleSheet.hairlineWidth } : null]}>
+                  <ThemedText type="small" themeColor="textSecondary" style={styles.historyDate}>
+                    {formatFullDay(h.date)}
+                  </ThemedText>
+                  {asking ? (
+                    <View style={styles.confirm}>
+                      <Pressable onPress={() => setConfirming(null)} hitSlop={8} accessibilityRole="button">
+                        <ThemedText type="small" themeColor="textSecondary">
+                          Annulla
+                        </ThemedText>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => {
+                          hapticTap();
+                          setConfirming(null);
+                          onDelete(zone, h.date);
+                        }}
+                        hitSlop={8}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Elimina la misura del ${formatFullDay(h.date)}`}
+                      >
+                        <ThemedText type="smallBold" style={{ color: theme.danger }}>
+                          Elimina
+                        </ThemedText>
+                      </Pressable>
+                    </View>
+                  ) : (
+                    <View style={styles.confirm}>
+                      <ThemedText type="smallBold" style={styles.tabular}>{`${String(h.value).replace('.', ',')} cm`}</ThemedText>
+                      <Pressable
+                        onPress={() => setConfirming(h.date)}
+                        hitSlop={10}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Elimina ${String(h.value).replace('.', ',')} centimetri del ${formatFullDay(h.date)}`}
+                      >
+                        <Icon name="trash" size={17} color={theme.textTertiary} />
+                      </Pressable>
+                    </View>
+                  )}
+                </View>
+              );
+            })}
+          </PopupScrollView>
+        </View>
+      ) : null}
 
       <PrimaryButton label="Aggiungi misura" icon="plus" onPress={() => onAdd(zone)} />
     </GlassPopup>
@@ -143,6 +210,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'baseline',
     gap: 4,
+  },
+  history: {
+    gap: 4,
+  },
+  historyScroll: {
+    maxHeight: 168,
+  },
+  historyRow: {
+    minHeight: 42,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.three,
+  },
+  historyDate: {
+    flexShrink: 1,
+  },
+  confirm: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.four,
+  },
+  tabular: {
+    fontVariant: ['tabular-nums'],
   },
   valueNumber: {
     fontSize: 28,
