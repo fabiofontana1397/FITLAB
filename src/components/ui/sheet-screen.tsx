@@ -69,6 +69,8 @@ export type SheetScreenProps = {
   onClose?: () => void;
   /** False for a sheet whose content fits on one screen: it is laid out in the available height and does not scroll. */
   scroll?: boolean;
+  /** Fixed at the bottom of the sheet, under the scrolling content (the content fades out above it): a main action. */
+  footer?: React.ReactNode | ((close: () => void) => React.ReactNode);
 };
 
 /**
@@ -83,7 +85,7 @@ export type SheetScreenProps = {
  * same way on iOS, Android and web rather than leaving the sheet to each
  * platform's own modal presentation.
  */
-export function SheetScreen({ title, eyebrow, leading, children, fallbackHref = '/', contentContainerStyle, onClose, scroll = true }: SheetScreenProps) {
+export function SheetScreen({ title, eyebrow, leading, children, fallbackHref = '/', contentContainerStyle, onClose, scroll = true, footer }: SheetScreenProps) {
   const theme = useTheme();
   const dark = useColorScheme() === 'dark';
   const insets = useSafeAreaInsets();
@@ -202,6 +204,7 @@ export function SheetScreen({ title, eyebrow, leading, children, fallbackHref = 
   }, [bodyOpacity]);
   const bodyStyle = useAnimatedStyle(() => ({ opacity: bodyOpacity.value }));
   const body = bodyReady ? (typeof children === 'function' ? children(close) : children) : null;
+  const footerNode = footer ? (typeof footer === 'function' ? footer(close) : footer) : null;
   const top = Math.max(insets.top + TOP_GAP_MIN, Math.round(height * TOP_GAP_SHARE));
 
   return (
@@ -249,17 +252,25 @@ export function SheetScreen({ title, eyebrow, leading, children, fallbackHref = 
                   edgeFade.value = Math.min(1, Math.max(0, e.nativeEvent.contentOffset.y / EDGE_FADE_HEIGHT));
                 }}
                 scrollEventThrottle={16}
-                contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + Spacing.five }, contentContainerStyle]}>
+                contentContainerStyle={[styles.scrollContent, { paddingBottom: footerNode ? Spacing.four : insets.bottom + Spacing.five }, contentContainerStyle]}>
                 {body}
               </ScrollView>
               {/* Under the fixed title the content dissolves instead of being cut by a hard edge; the fade grows in as you scroll. */}
               <Animated.View pointerEvents="none" style={[styles.edgeFade, edgeFadeStyle]}>
                 <LinearGradient colors={[theme.surfacePopup, `${theme.surfacePopup}00`]} style={StyleSheet.absoluteFill} />
               </Animated.View>
+              {footerNode ? (
+                <View pointerEvents="none" style={styles.footerFade}>
+                  <LinearGradient colors={[`${theme.surfacePopup}00`, theme.surfacePopup]} style={StyleSheet.absoluteFill} />
+                </View>
+              ) : null}
             </Animated.View>
           ) : (
-            <Animated.View style={[styles.scroll, styles.scrollContent, { paddingBottom: insets.bottom + Spacing.three }, contentContainerStyle, bodyStyle]}>{body}</Animated.View>
+            <Animated.View style={[styles.scroll, styles.scrollContent, { paddingBottom: footerNode ? Spacing.three : insets.bottom + Spacing.three }, contentContainerStyle, bodyStyle]}>{body}</Animated.View>
           )}
+          {footerNode ? (
+            <Animated.View style={[styles.footer, { paddingBottom: insets.bottom + Spacing.three, backgroundColor: theme.surfacePopup }, bodyStyle]}>{footerNode}</Animated.View>
+          ) : null}
         </Animated.View>
       </View>
     </View>
@@ -335,6 +346,17 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
+    height: EDGE_FADE_HEIGHT,
+  },
+  footer: {
+    paddingHorizontal: Layout.screenGutter,
+    paddingTop: Spacing.two,
+  },
+  footerFade: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
     height: EDGE_FADE_HEIGHT,
   },
   scroll: {

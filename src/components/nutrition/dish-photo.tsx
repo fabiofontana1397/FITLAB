@@ -37,7 +37,7 @@ export function DishPlaceholder({ size = 64, radius = 14 }: { size?: number; rad
  * cropped), lazy on the web since the plan lists a whole week of meals. No
  * photo URL, or a file that fails, leaves a plate glyph instead.
  */
-export function DishPhoto({ image, size = 64, radius = 14 }: { image: MealImage; size?: number; radius?: number }) {
+export function DishPhoto({ image, size = 64, radius = 14, eager = false }: { image: MealImage; size?: number; radius?: number; /** Load at once and show without a fade: for a photo that must already be there when it comes on screen (the recipe deck, which prefetches it). */ eager?: boolean }) {
   const theme = useTheme();
   if (!FOOD_IMAGES_ENABLED) return <DishPlaceholder size={size} radius={radius} />;
   const uri = mealImageUri(image);
@@ -63,9 +63,9 @@ export function DishPhoto({ image, size = 64, radius = 14 }: { image: MealImage;
       alt={image.alt}
       fallback={fallback}
       fill
-      lazy
+      lazy={!eager}
       recyclingKey={image.id}
-      transition={150}
+      transition={eager ? 0 : 150}
     />
   );
 }
