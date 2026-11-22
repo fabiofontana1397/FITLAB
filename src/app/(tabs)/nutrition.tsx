@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { interpolate, useDerivedValue, useSharedValue } from 'react-native-reanimated';
 
 import { openPopup } from '@/lib/open-popup';
 import { FoodSearchModal } from '@/components/nutrition/food-search-modal';
 import { MealCard } from '@/components/nutrition/meal-card';
+import { RecipeDeck } from '@/components/nutrition/recipe-deck';
+import { SegmentedControl } from '@/components/ui/segmented-control';
 import { HEADER_LIST_TOP, ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { DayCalendarModal } from '@/components/ui/day-calendar-modal';
@@ -18,6 +20,9 @@ import { Layout, Radius } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { daysAgoISO, isoMondayIndex } from '@/lib/mock/dates';
 import { inMealOrder } from '@/lib/planning/meal-slots';
+import { SLOT_KIND, type SlotKind } from '@/lib/planning/fitlab/catalog';
+import { buildRecipeBook, type RecipeCard } from '@/lib/planning/fitlab/recipe-book';
+import { useOnboardingStore } from '@/store/onboarding-store';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
 import {
   entriesForSlot,
@@ -44,7 +49,79 @@ function formatKcal(n: number): string {
     .replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 }
 
+type NutritionMode = 'tracking' | 'recipes';
+
+/** Nutrizione: two pages behind a switch at the top, the day's calorie tracking and the FitLab recipe book. */
 export default function NutritionScreen() {
+  const [mode, setMode] = useState<NutritionMode>('tracking');
+  const switcher = (
+    <View style={styles.modeSwitch}>
+      <SegmentedControl
+        options={[
+          { value: 'tracking', label: 'Tracking calorie' },
+          { value: 'recipes', label: 'Ricette' },
+        ]}
+        value={mode}
+        onChange={(v) => setMode(v as NutritionMode)}
+      />
+    </View>
+  );
+  return mode === 'tracking' ? <CalorieTracking switcher={switcher} /> : <Recipes switcher={switcher} />;
+}
+
+/** The meal of the person's day a recipe of each kind goes to: the plan's own meals when there is a plan. */
+const DEFAULT_SLOT: Record<SlotKind, MealSlot> = { breakfast: 'colazione', lunch: 'pranzo', dinner: 'cena', snack: 'spuntinoPomeriggio' };
+
+function Recipes({ switcher }: { switcher: ReactNode }) {
+  const currentUser = useUserStore();
+  const dietPlan = usePlanStore((s) => s.dietPlan);
+  const answers = useOnboardingStore((s) => s.answers);
+  const addEntry = useNutritionStore((s) => s.addEntry);
+  const today = daysAgoISO(0);
+
+  useEnsurePlan('diet');
+  const month = dietPlan?.months.find((m) => m.monthIndex === (dietPlan ? currentMonthIndex(dietPlan) : 1));
+  const planDay = month?.weeklySplit[isoMondayIndex(today)];
+  const ownKcal = planDay?.calorieTarget ?? month?.calorieTarget ?? currentUser.dailyCalorieTarget;
+  const ownMacros = planDay?.macroTargetsG ?? month?.macroTargetsG ?? currentUser.macroTargetsG;
+  // No targets yet (questionnaire not done): the recipes are shown in a standard 2000 kcal portion.
+  const personal = ownKcal >= 1000 && ownMacros.protein > 0;
+  const kcal = personal ? ownKcal : 2000;
+  const macros = personal ? ownMacros : { protein: 120, carbs: 240, fats: 62 };
+
+  // Every recipe sized on today's targets (the same solver as the plan), rebuilt only when they change.
+  const cards = useMemo(
+    () => buildRecipeBook(answers, { kcal, protein: macros.protein, carbs: macros.carbs, fats: macros.fats }),
+    [answers, kcal, macros.protein, macros.carbs, macros.fats]
+  );
+
+  const slotFor = (kind: SlotKind): { id: MealSlot; label: string } => {
+    const fromPlan = planDay ? inMealOrder(planDay.meals).find((m) => SLOT_KIND[m.slotId as MealSlot] === kind) : undefined;
+    if (fromPlan) return { id: fromPlan.slotId as MealSlot, label: fromPlan.label };
+    const meta = MEAL_SLOTS.find((m) => m.id === DEFAULT_SLOT[kind])!;
+    return { id: meta.id, label: kind === 'snack' ? 'Merenda' : meta.label };
+  };
+
+  const add = (card: RecipeCard) => {
+    const slot = slotFor(card.kind).id;
+    for (const item of card.items) addEntry(slot, item.foodId, item.grams, today);
+  };
+
+  return (
+    <ScreenScroll
+      header={
+        <>
+          <TabHeader title="Nutrizione" />
+          {switcher}
+        </>
+      }
+      contentContainerStyle={styles.page}>
+      <RecipeDeck cards={cards} portionLabel={personal ? 'Porzione per te' : 'Porzione standard'} slotLabelFor={(kind) => slotFor(kind).label} onAdd={add} />
+    </ScreenScroll>
+  );
+}
+
+function CalorieTracking({ switcher }: { switcher: ReactNode }) {
   const theme = useTheme();
   const currentUser = useUserStore();
   const entries = useNutritionStore((s) => s.entries);
@@ -112,7 +189,12 @@ export default function NutritionScreen() {
   return (
     <ScreenScroll
       reveal
-      header={<TabHeader title="Nutrizione" onCalendarPress={() => openPopup(() => setCalendarOpen(true))} />}
+      header={
+        <>
+          <TabHeader title="Nutrizione" onCalendarPress={() => openPopup(() => setCalendarOpen(true))} />
+          {switcher}
+        </>
+      }
       pinned={<PinnedMacroRings rings={macroRings} totals={totals} calorieTarget={calorieTarget} />}
       pinnedProgress={pinnedProgress}
       scrollOffset={scrollOffset}
@@ -266,6 +348,10 @@ function PinnedMacroRings({
 }
 
 const styles = StyleSheet.create({
+  modeSwitch: {
+    marginTop: -4,
+    marginBottom: 10,
+  },
   page: {
     paddingHorizontal: SCREEN_PADDING,
     gap: 0,

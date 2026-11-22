@@ -58,6 +58,9 @@ export type WorkoutSessionModalProps = {
   exercises: TrainingExerciseEntry[];
   /** Day the sets are logged against. */
   date: string;
+  /** Allenamento spot: a one-off workout outside the plan. It never resumes or ticks the plan's exercises; when it
+   * ends with at least one set done, `onFinish` logs it (minutes, sets) and returns the kcal it recorded. */
+  spot?: { onFinish: (elapsedMs: number) => number };
 };
 
 function topReps(reps: string): number {
@@ -77,12 +80,12 @@ function clock(totalSec: number): string {
  * countdown after every set. Every completed set is logged and an exercise
  * is ticked once all its sets are done, so closing halfway resumes where the
  * user stopped. */
-export function WorkoutSessionModal({ visible, onClose, title, exercises, date }: WorkoutSessionModalProps) {
+export function WorkoutSessionModal({ visible, onClose, title, exercises, date, spot }: WorkoutSessionModalProps) {
   const { modalAnimation } = useMotionPreference();
   return (
     <Modal visible={visible} animationType={modalAnimation('fade')} presentationStyle="fullScreen" onRequestClose={onClose} statusBarTranslucent>
       {/* Mounted only while open, so every opening starts from a fresh session state. */}
-      {visible && exercises.length > 0 ? <SessionView onClose={onClose} title={title} exercises={exercises} date={date} /> : null}
+      {visible && exercises.length > 0 ? <SessionView onClose={onClose} title={title} exercises={exercises} date={date} spot={spot} /> : null}
     </Modal>
   );
 }
@@ -105,7 +108,7 @@ function sessionKcalAt(ms: number, weightKg: number, bmrPerDay: number): { activ
   return { active, total: active + Math.round((bmrPerDay * ms) / 86400000) };
 }
 
-function SessionView({ onClose, title, exercises, date }: Omit<WorkoutSessionModalProps, 'visible'>) {
+function SessionView({ onClose, title, exercises, date, spot }: Omit<WorkoutSessionModalProps, 'visible'>) {
   const insets = useSafeAreaInsets();
   const ctx = useUserContext();
   const bmrPerDay = bmr(ctx);
@@ -120,11 +123,12 @@ function SessionView({ onClose, title, exercises, date }: Omit<WorkoutSessionMod
   // with no countdown; otherwise it starts fresh. Sets done per exercise are seeded from what is already
   // logged/ticked, and the session opens on the first exercise not finished yet.
   const [initial] = useState(() => {
-    const saved = useWorkoutSessionStore.getState().active;
+    const saved = spot ? null : useWorkoutSessionStore.getState().active;
     const resume = saved && saved.date === date && saved.exIndex < exercises.length && exercises.every((ex) => ex.id in saved.doneMap) ? saved : null;
     const done: Record<string, number> = {};
     for (const ex of exercises) {
-      done[ex.id] = isExerciseCompleted(completed, ex.id, date) ? ex.sets : Math.min(setsForExerciseOnDate(progressSets, ex.id, date).length, ex.sets);
+      // a spot workout always starts from zero (its exercises may share ids with the plan's)
+      done[ex.id] = spot ? 0 : isExerciseCompleted(completed, ex.id, date) ? ex.sets : Math.min(setsForExerciseOnDate(progressSets, ex.id, date).length, ex.sets);
     }
     const start = Math.max(0, exercises.findIndex((ex) => done[ex.id] < ex.sets));
     const allDone = exercises.every((ex) => done[ex.id] >= ex.sets);
@@ -175,6 +179,8 @@ function SessionView({ onClose, title, exercises, date }: Omit<WorkoutSessionMod
   const [runSince, setRunSince] = useState<number | null>(initial.resumed ? initial.t : null);
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [finalMs, setFinalMs] = useState(0);
+  /** kcal the spot workout logged when it ended (null: nothing logged). */
+  const [loggedKcal, setLoggedKcal] = useState<number | null>(null);
 
   const exercise = exercises[exIndex];
   const setsDone = doneMap[exercise.id] ?? 0;
@@ -208,7 +214,7 @@ function SessionView({ onClose, title, exercises, date }: Omit<WorkoutSessionMod
 
   // Keep the session saved as it changes, so "Riprendi" always has the latest point.
   useEffect(() => {
-    if (phase === 'countdown' || phase === 'done') return;
+    if (phase === 'countdown' || phase === 'done' || spot) return;
     saveSession({
       date,
       title,
@@ -225,7 +231,7 @@ function SessionView({ onClose, title, exercises, date }: Omit<WorkoutSessionMod
       pausedLeft,
       restAfter,
     });
-  }, [phase, exIndex, doneMap, loads, bankMs, runSince, restEndsAt, pausedLeft, restTotal, restAfter, date, title, initial.startedAt, saveSession]);
+  }, [phase, exIndex, doneMap, loads, bankMs, runSince, restEndsAt, pausedLeft, restTotal, restAfter, date, title, initial.startedAt, saveSession, spot]);
 
   const startRest = (seconds: number) => {
     restBuzzed.current = false;
@@ -243,6 +249,17 @@ function SessionView({ onClose, title, exercises, date }: Omit<WorkoutSessionMod
 
   /** Ends the workout (all sets done, or "Fine"): freezes the clock and clears the saved session. */
   const finishWorkout = () => {
+    if (spot) {
+      // A spot workout is logged as an activity (it never ticks the plan), once at least one set was done.
+      const ms = elapsedAt(Date.now());
+      const worked = exercises.some((ex) => (doneMap[ex.id] ?? 0) > 0);
+      setLoggedKcal(worked && ms > 0 ? spot.onFinish(ms) : null);
+      setFinalMs(ms);
+      setRunSince(null);
+      setConfirmEnd(false);
+      setPhase('done');
+      return;
+    }
     // A session that was run counts as done on the Training page: every exercise of the day is ticked (read fresh,
     // since the last one may have been ticked a moment ago). One that never did a set is just abandoned.
     if (exercises.some((ex) => (doneMap[ex.id] ?? 0) > 0)) {
@@ -268,7 +285,7 @@ function SessionView({ onClose, title, exercises, date }: Omit<WorkoutSessionMod
       startRest(exercise.restSec);
       return;
     }
-    if (!isExerciseCompleted(completed, exercise.id, date)) toggleCompleted(exercise.id, date);
+    if (!spot && !isExerciseCompleted(completed, exercise.id, date)) toggleCompleted(exercise.id, date);
     if (!exercises.some((ex) => (nextMap[ex.id] ?? 0) < ex.sets)) {
       // The whole workout is done: the biggest one.
       hapticHeavy();
@@ -307,7 +324,8 @@ function SessionView({ onClose, title, exercises, date }: Omit<WorkoutSessionMod
 
   /** The X: leaves the session in progress (frozen, ready for "Riprendi") instead of ending it. */
   const leave = () => {
-    if (phase === 'countdown' || phase === 'done') {
+    // a spot workout left halfway is simply dropped (nothing to resume, nothing logged)
+    if (phase === 'countdown' || phase === 'done' || spot) {
       onClose();
       return;
     }
@@ -374,6 +392,7 @@ function SessionView({ onClose, title, exercises, date }: Omit<WorkoutSessionMod
           doneMap={doneMap}
           elapsedMs={finalMs}
           kcal={sessionKcalAt(finalMs, ctx.weightKg, bmrPerDay)}
+          loggedKcal={spot ? loggedKcal : undefined}
           onClose={onClose}
         />
       ) : (
@@ -715,12 +734,15 @@ function DoneView({
   doneMap,
   elapsedMs,
   kcal,
+  loggedKcal,
   onClose,
 }: {
   exercises: TrainingExerciseEntry[];
   doneMap: Record<string, number>;
   elapsedMs: number;
   kcal: { active: number; total: number };
+  /** Spot workout: the kcal logged to today's calories (null = nothing logged); undefined for a plan session. */
+  loggedKcal?: number | null;
   onClose: () => void;
 }) {
   const sets = exercises.reduce((sum, ex) => sum + Math.min(doneMap[ex.id] ?? 0, ex.sets), 0);
@@ -734,9 +756,17 @@ function DoneView({
       <ThemedText style={styles.doneTitle}>{complete ? 'Allenamento completato' : 'Allenamento terminato'}</ThemedText>
       <View style={styles.infoRow}>
         <Info label="Durata" value={elapsedMs > 0 ? watchClock(elapsedMs).replace(/,\d+$/, '') : '—'} />
-        <Info label="Kcal attive" value={elapsedMs > 0 ? String(kcal.active) : '—'} />
+        <Info label="Kcal attive" value={loggedKcal != null ? String(loggedKcal) : elapsedMs > 0 && loggedKcal === undefined ? String(kcal.active) : '—'} />
         <Info label="Serie" value={`${sets}/${total}`} />
       </View>
+      {loggedKcal !== undefined ? (
+        <View style={styles.loggedRow}>
+          <Icon name={loggedKcal != null ? 'checkCircle' : 'info'} size={18} color={loggedKcal != null ? C.green : C.muted} />
+          <ThemedText style={styles.loggedText}>
+            {loggedKcal != null ? `Registrato nelle calorie di oggi: ${loggedKcal} kcal` : 'Nessuna serie completata: non è stato registrato.'}
+          </ThemedText>
+        </View>
+      ) : null}
       <PrimaryAction icon="check" label="Chiudi" onPress={onClose} />
     </View>
   );
@@ -778,6 +808,22 @@ function PrimaryAction({ icon, label, onPress, disabled }: { icon: IconName; lab
 }
 
 const styles = StyleSheet.create({
+  loggedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 16,
+    backgroundColor: C.card,
+  },
+  loggedText: {
+    flexShrink: 1,
+    color: C.text,
+    fontSize: 14,
+    lineHeight: 19,
+    fontWeight: '600',
+  },
   root: {
     flex: 1,
     backgroundColor: C.bg,
