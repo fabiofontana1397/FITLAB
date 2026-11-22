@@ -178,6 +178,10 @@ export function GoalRing({ band, copy, value, goalText, inactive = false, onPres
   const onLayout = (e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width);
   const label = (size: number) => ({ fontSize: size * kt, lineHeight: (size + 4) * kt });
   const lineColor = theme.textTertiary;
+  // The ends' labels ("Surplus" / "Deficit") start here; the chip sits on their line and the balance stacks just above it.
+  const endTop = (compact ? CY + 6 : CY + 10) * k;
+  const chipTop = endTop + 8 * kt - 12 * kt;
+  const centreTop = chipTop - 8 * kt - 48 * kt;
 
   return (
     <View style={styles.root}>
@@ -238,16 +242,16 @@ export function GoalRing({ band, copy, value, goalText, inactive = false, onPres
           {/* The two ends of the scale: under the arc's ends, or (compact) beside them. */}
           {compact ? (
             <>
-              <ThemedText themeColor="textSecondary" style={[styles.end, label(12), { left: (px(R, -SPAN) - 40) * k, top: (CY + 6) * k, width: 80 * k }]}>
+              <ThemedText themeColor="textSecondary" style={[styles.end, label(12), { left: (px(R, -SPAN) - 40) * k, top: endTop, width: 80 * k }]}>
                 ‹ Surplus
               </ThemedText>
-              <ThemedText themeColor="textSecondary" style={[styles.end, label(12), { left: (px(R, SPAN) - 40) * k, top: (CY + 6) * k, width: 80 * k }]}>
+              <ThemedText themeColor="textSecondary" style={[styles.end, label(12), { left: (px(R, SPAN) - 40) * k, top: endTop, width: 80 * k }]}>
                 Deficit ›
               </ThemedText>
             </>
           ) : (
             <>
-            <ThemedText themeColor="textSecondary" style={[styles.end, label(12), { left: (px(R, -SPAN) - 40) * k, top: (CY + 10) * k, width: 80 * k }]}>
+            <ThemedText themeColor="textSecondary" style={[styles.end, label(12), { left: (px(R, -SPAN) - 40) * k, top: endTop, width: 80 * k }]}>
               ‹ Surplus
             </ThemedText>
             <ThemedText themeColor="textTertiary" style={[styles.end, label(11), { left: (px(R, -SPAN) - 40) * k, top: (CY + 27) * k, width: 80 * k }]}>
@@ -256,14 +260,14 @@ export function GoalRing({ band, copy, value, goalText, inactive = false, onPres
             <ThemedText themeColor="textTertiary" style={[styles.end, label(11), { left: (px(R, SPAN) - 40) * k, top: (CY + 27) * k, width: 80 * k }]}>
               {formatSignedKcal(-SCALE_KCAL)}
             </ThemedText>
-            <ThemedText themeColor="textSecondary" style={[styles.end, label(12), { left: (px(R, SPAN) - 40) * k, top: (CY + 10) * k, width: 80 * k }]}>
+            <ThemedText themeColor="textSecondary" style={[styles.end, label(12), { left: (px(R, SPAN) - 40) * k, top: endTop, width: 80 * k }]}>
               Deficit ›
             </ThemedText>
             </>
           )}
 
           {/* The middle: the balance, the goal, the state. */}
-          <View pointerEvents="none" style={[styles.centre, { top: (CY - 82) * k - (kt - k) * 40, paddingHorizontal: 70 * k }]}>
+          <View pointerEvents="none" style={[styles.centre, { top: centreTop, paddingHorizontal: 70 * k }]}>
             <ThemedText style={[styles.value, { fontSize: (value.length >= 7 ? 22 : value.length === 6 ? 25 : 28) * kt, lineHeight: 32 * kt }]} numberOfLines={1}>
               {value}
             </ThemedText>
@@ -271,7 +275,7 @@ export function GoalRing({ band, copy, value, goalText, inactive = false, onPres
               kcal di bilancio
             </ThemedText>
           </View>
-          <View style={[styles.chipRow, { top: (CY - 26) * k - (kt - k) * 10, height: 24 * kt }]}>
+          <View style={[styles.chipRow, { top: chipTop, height: 24 * kt }]}>
             <View pointerEvents="none" style={[styles.chip, { backgroundColor: chipBg, height: 24 * kt, borderRadius: 12 * kt, paddingHorizontal: 11 * kt }]}>
               <View style={[styles.dot, { backgroundColor: toneColor }]} />
               <ThemedText style={[styles.chipText, { color: toneColor }, label(12)]} numberOfLines={1}>
