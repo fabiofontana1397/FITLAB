@@ -5,6 +5,8 @@ import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { GlassPopup } from '@/components/glass/glass-popup';
 import { ThemedText } from '@/components/themed-text';
 import { BrandMark } from '@/components/ui/brand-mark';
+import { Collapsible } from '@/components/ui/collapsible';
+import { FlatCard } from '@/components/ui/flat-card';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { PrimaryButton } from '@/components/ui/primary-button';
 import { Spacing } from '@/constants/theme';
@@ -94,12 +96,14 @@ const CURRENT: Record<Kind, Record<PlanSource, { title: string; sub: string }>> 
   },
 };
 
-/** Exit duration of a popup (TimingExit), with a little slack, before the next one opens. */
+/** Exit duration of a popup (TimingExit), with a little slack: the drop-down closes before a confirmation opens. */
 const POPUP_SWAP_MS = 220;
+/** Time for the dropdown to start closing before the next screen opens over it. */
+const CLOSE_MS = 160;
 
 /**
- * The line under the Allenamento / Nutrizione switch: where the plan in use comes from, and "Cambia", which opens
- * the three ways to have one — the plan FitLab builds from the questionnaire, the person's own card or diet loaded
+ * A long button under the Allenamento / Nutrizione switch with where the plan in use comes from; tapped, it opens
+ * downwards like a drop-down menu with the three ways to have one — the plan FitLab builds from the questionnaire, the person's own card or diet loaded
  * from a photo, file or text, or one they build themselves (exercises one by one; calories and macros per month).
  * Choosing FitLab from another source brings the app's plan back; the others open their screen. Editing the plan in use
  * stays in its own box below ("Modifica programma", the pencil of the targets).
@@ -128,7 +132,7 @@ export function PlanSourceBanner({ kind }: { kind: Kind }) {
       setTimeout(() => (neverRequested ? setCreateOpen(true) : setRestoreOpen(true)), POPUP_SWAP_MS);
       return;
     }
-    setTimeout(() => router.push(PLAN_SOURCE_ROUTE[kind][source]), POPUP_SWAP_MS);
+    setTimeout(() => router.push(PLAN_SOURCE_ROUTE[kind][source]), CLOSE_MS);
   };
   const restore = () => {
     const weightKg = ctx.weightKg > 0 ? ctx.weightKg : undefined;
@@ -137,74 +141,74 @@ export function PlanSourceBanner({ kind }: { kind: Kind }) {
     void (kind === 'training' ? restoreTraining(answers, weightKg) : restoreDiet(answers, weightKg));
   };
 
+  const currentOption = OPTIONS[kind].find((o) => o.source === current);
+  const iconColor = theme.accent;
+
   return (
-    <View style={styles.row}>
-      <Pressable
-        onPress={() => {
-          hapticTap();
-          setMenuOpen(true);
-        }}
-        accessibilityRole="button"
-        accessibilityLabel={`${line.title}. ${line.sub}`}
-        style={({ pressed }) => [styles.texts, { opacity: pressed ? 0.6 : 1 }]}
-      >
-        <ThemedText style={styles.title} numberOfLines={1}>
-          {line.title}
-        </ThemedText>
-        <ThemedText style={styles.sub} themeColor="textSecondary" numberOfLines={1}>
-          {line.sub}
-        </ThemedText>
-      </Pressable>
+    <View>
+      <FlatCard radius={22} style={styles.dropdown}>
+        <Pressable
+          onPress={() => {
+            hapticTap();
+            setMenuOpen((v) => !v);
+          }}
+          disabled={isGenerating}
+          accessibilityRole="button"
+          accessibilityState={{ expanded: menuOpen, busy: isGenerating }}
+          aria-expanded={menuOpen}
+          accessibilityLabel={`${line.title}. ${kind === 'training' ? 'Cambia il tipo di programma' : 'Cambia il tipo di piano'}`}
+          style={({ pressed }) => [styles.head, { opacity: pressed ? 0.6 : 1 }]}
+        >
+          <View style={[styles.badge, { backgroundColor: theme.accentSoft }]}>
+            {isGenerating ? (
+              <ActivityIndicator size="small" color={iconColor} />
+            ) : currentOption?.icon === 'brand' || !currentOption ? (
+              <BrandMark height={14} color={iconColor} />
+            ) : (
+              <Icon name={currentOption.icon} size={18} color={iconColor} />
+            )}
+          </View>
+          <View style={styles.flex}>
+            <ThemedText style={styles.title} numberOfLines={1}>
+              {line.title}
+            </ThemedText>
+            <ThemedText style={styles.sub} themeColor="textSecondary" numberOfLines={1}>
+              {line.sub}
+            </ThemedText>
+          </View>
+          <Icon name={menuOpen ? 'chevronUp' : 'chevronDown'} size={18} color={theme.textSecondary} />
+        </Pressable>
 
-      <Pressable
-        onPress={() => {
-          hapticTap();
-          setMenuOpen(true);
-        }}
-        disabled={isGenerating}
-        hitSlop={4}
-        accessibilityRole="button"
-        accessibilityLabel={kind === 'training' ? 'Cambia il tipo di programma' : 'Cambia il tipo di piano'}
-        accessibilityState={{ disabled: isGenerating, busy: isGenerating }}
-        style={({ pressed }) => [styles.button, { backgroundColor: theme.backgroundElement, opacity: pressed ? 0.6 : 1 }]}
-      >
-        {isGenerating ? <ActivityIndicator size="small" color={theme.textSecondary} /> : null}
-        <ThemedText style={styles.buttonLabel}>Cambia</ThemedText>
-        <Icon name="chevronDown" size={14} color={theme.textSecondary} />
-      </Pressable>
-
-      <GlassPopup visible={menuOpen} onClose={() => setMenuOpen(false)} style={styles.menu}>
-        <ThemedText type="title" style={styles.menuTitle}>
-          {kind === 'training' ? 'Il tuo allenamento' : 'La tua alimentazione'}
-        </ThemedText>
-        <View style={[styles.list, { backgroundColor: theme.backgroundElement }]} accessibilityRole="radiogroup">
-          {OPTIONS[kind].map((o, i) => {
-            const on = current === o.source;
-            return (
-              <Pressable
-                key={o.source}
-                onPress={() => choose(o.source)}
-                accessibilityRole="radio"
-                accessibilityState={{ selected: on }}
-                aria-checked={on}
-                accessibilityLabel={`${o.title}. ${o.sub}`}
-                style={({ pressed }) => [styles.option, i > 0 && [styles.optionDivided, { borderTopColor: theme.border }], { opacity: pressed ? 0.6 : 1 }]}
-              >
-                <View style={styles.optionIcon}>
-                  {o.icon === 'brand' ? <BrandMark height={15} color={on ? theme.accent : theme.textSecondary} /> : <Icon name={o.icon} size={20} color={on ? theme.accent : theme.textSecondary} />}
-                </View>
-                <View style={styles.flex}>
-                  <ThemedText style={styles.optionTitle}>{o.title}</ThemedText>
-                  <ThemedText style={styles.optionSub} themeColor="textSecondary">
-                    {o.sub}
-                  </ThemedText>
-                </View>
-                {on ? <Icon name="check" size={18} color={theme.accent} /> : null}
-              </Pressable>
-            );
-          })}
-        </View>
-      </GlassPopup>
+        <Collapsible open={menuOpen}>
+          <View accessibilityRole="radiogroup">
+            {OPTIONS[kind].map((o) => {
+              const on = current === o.source;
+              return (
+                <Pressable
+                  key={o.source}
+                  onPress={() => choose(o.source)}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: on }}
+                  aria-checked={on}
+                  accessibilityLabel={`${o.title}. ${o.sub}`}
+                  style={({ pressed }) => [styles.option, { borderTopColor: theme.border, opacity: pressed ? 0.6 : 1 }]}
+                >
+                  <View style={styles.optionIcon}>
+                    {o.icon === 'brand' ? <BrandMark height={13} color={on ? theme.accent : theme.textSecondary} /> : <Icon name={o.icon} size={18} color={on ? theme.accent : theme.textSecondary} />}
+                  </View>
+                  <View style={styles.flex}>
+                    <ThemedText style={[styles.optionTitle, on ? { color: theme.accent } : null]}>{o.title}</ThemedText>
+                    <ThemedText style={styles.optionSub} themeColor="textSecondary">
+                      {o.sub}
+                    </ThemedText>
+                  </View>
+                  {on ? <Icon name="check" size={18} color={theme.accent} /> : null}
+                </Pressable>
+              );
+            })}
+          </View>
+        </Collapsible>
+      </FlatCard>
 
       <GlassPopup visible={restoreOpen} onClose={() => setRestoreOpen(false)} style={styles.popup}>
         <ThemedText type="title" style={styles.center}>
@@ -222,20 +226,15 @@ export function PlanSourceBanner({ kind }: { kind: Kind }) {
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44, paddingHorizontal: 4 },
-  texts: { flex: 1, minWidth: 0 },
+  dropdown: { overflow: 'hidden' },
+  head: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 60, paddingHorizontal: 14, paddingVertical: 10 },
+  badge: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   flex: { flex: 1, minWidth: 0 },
-  title: { fontSize: 15, lineHeight: 20, fontWeight: '600', letterSpacing: -0.2 },
+  title: { fontSize: 16, lineHeight: 21, fontWeight: '600', letterSpacing: -0.2 },
   sub: { fontSize: 13, lineHeight: 18 },
-  button: { minHeight: 36, borderRadius: 18, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
-  buttonLabel: { fontSize: 15, lineHeight: 20, fontWeight: '600' },
-  menu: { padding: Spacing.four, gap: Spacing.three, alignItems: 'stretch' },
-  menuTitle: { textAlign: 'center' },
-  list: { borderRadius: 18, borderCurve: 'continuous', overflow: 'hidden' },
-  option: { flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 64, paddingHorizontal: Spacing.three, paddingVertical: 10 },
-  optionDivided: { borderTopWidth: StyleSheet.hairlineWidth },
-  optionIcon: { width: 24, alignItems: 'center' },
-  optionTitle: { fontSize: 16, lineHeight: 21, fontWeight: '600' },
+  option: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 60, paddingHorizontal: 14, paddingVertical: 10, borderTopWidth: StyleSheet.hairlineWidth },
+  optionIcon: { width: 36, alignItems: 'center' },
+  optionTitle: { fontSize: 15, lineHeight: 20, fontWeight: '600' },
   optionSub: { fontSize: 13, lineHeight: 18 },
   popup: { padding: Spacing.four, gap: Spacing.three, alignItems: 'stretch' },
   center: { textAlign: 'center' },

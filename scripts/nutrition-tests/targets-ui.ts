@@ -78,7 +78,7 @@ async function main() {
       await test(`[${appearance}] Cambia offers FitLab (in use), load and build`, async () => {
         assert.ok(await page.getByText('Piano creato da FitLab', { exact: true }).first().isVisible());
         await shot(page, `${appearance}-01-line`);
-        await page.getByRole('button', { name: 'Cambia il tipo di piano' }).click();
+        await page.getByRole('button', { name: /Cambia il tipo di piano$/ }).click();
         await pause(700);
         assert.ok(await page.getByRole('radio', { name: /^Piano creato da FitLab\./, checked: true }).isVisible());
         assert.ok(await page.getByRole('radio', { name: /^Carica il tuo piano\./ }).isVisible());
@@ -132,7 +132,7 @@ async function main() {
 
       await test(`[${appearance}] Piani shows the summary by month, no menu`, async () => {
         assert.ok(await page.getByText('I tuoi obiettivi', { exact: true }).first().isVisible());
-        assert.ok(await page.getByText('Mese per mese').isVisible());
+        assert.ok(await page.getByText('Mese per mese', { exact: true }).isVisible());
         assert.match(await page.evaluate(() => document.body.innerText), /2[.\u202f ]?200/);
         assert.equal(await page.getByText('Pranzo', { exact: true }).count(), 0);
         assert.ok(await page.getByText('Calorie e macro scelti da te').isVisible());
@@ -162,7 +162,7 @@ async function main() {
       await test(`[${appearance}] FitLab brings the app's plan back`, async () => {
         await page.getByRole('tab', { name: /Piani/ }).first().click().catch(async () => page.getByText('Piani', { exact: true }).last().click());
         await pause(1200);
-        await page.getByRole('button', { name: 'Cambia il tipo di piano' }).click();
+        await page.getByRole('button', { name: /Cambia il tipo di piano$/ }).click();
         await pause(700);
         await page.getByRole('radio', { name: /^Piano creato da FitLab\./ }).click();
         await pause(900);
