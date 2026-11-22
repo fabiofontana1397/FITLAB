@@ -7,7 +7,6 @@ import { Reveal } from '@/components/motion/reveal';
 import { ThemedText } from '@/components/themed-text';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon } from '@/components/ui/icon';
-import { ListGroup, ListRow } from '@/components/ui/list-group';
 import { PrimaryButton } from '@/components/ui/primary-button';
 import { SegmentedControl } from '@/components/ui/segmented-control';
 import { OnBrand, Radius, Spacing } from '@/constants/theme';
@@ -146,36 +145,6 @@ export function TargetsPlanView({ plan, checkinPendingMonth, onCheckin }: { plan
         </FlatCard>
       </Reveal>
 
-      <Reveal index={1}>
-        <ListGroup
-          header="Mese per mese"
-          footer={`${split ? `Valori dei giorni di ${shownKind === 'training' ? 'allenamento' : 'riposo'}. ` : ''}Il tuo piano vale in tutta l’app: Home, Nutrizione e il riepilogo della settimana lo usano al posto del piano alimentare.`}
-        >
-          {plan.months.map((m) => {
-            const mt = monthDayTargets(m)[shownKind];
-            return (
-              <ListRow
-                key={m.monthIndex}
-                title={`${monthName(m.monthIndex)}${m.monthIndex === current ? ' · in corso' : m.monthIndex < current ? ' · concluso' : ''}`}
-                subtitle={monthRange(m.monthIndex)}
-                onPress={() => setSelected(m.monthIndex)}
-                trailing={
-                  <View style={styles.rowValues}>
-                    <ThemedText type="smallBold" style={[styles.tabular, m.monthIndex === selected ? { color: theme.accent } : null]}>{`${mt.calories.toLocaleString('it-IT')} kcal`}</ThemedText>
-                    <ThemedText type="caption" style={styles.tabular}>
-                      <ThemedText type="caption" style={{ color: theme.accent }}>{`P ${mt.protein}`}</ThemedText>
-                      <ThemedText type="caption" themeColor="textTertiary">{' · '}</ThemedText>
-                      <ThemedText type="caption" style={{ color: theme.brandGreen }}>{`C ${mt.carbs}`}</ThemedText>
-                      <ThemedText type="caption" themeColor="textTertiary">{' · '}</ThemedText>
-                      <ThemedText type="caption" style={{ color: theme.brandYellow }}>{`G ${mt.fats}`}</ThemedText>
-                    </ThemedText>
-                  </View>
-                }
-              />
-            );
-          })}
-        </ListGroup>
-      </Reveal>
     </View>
   );
 }
@@ -206,6 +175,4 @@ const styles = StyleSheet.create({
   fill: { height: 6, borderRadius: 3 },
   checkin: { minHeight: 44, borderRadius: 14, borderCurve: 'continuous', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 16 },
   checkinText: { fontSize: 15, lineHeight: 20, fontWeight: '600' },
-  rowValues: { alignItems: 'flex-end', gap: 1 },
-  tabular: { fontVariant: ['tabular-nums'] },
 });
