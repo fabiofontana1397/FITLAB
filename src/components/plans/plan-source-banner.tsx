@@ -10,6 +10,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useUserContext } from '@/hooks/use-user-context';
 import { hapticSuccess, hapticTap } from '@/lib/haptics';
 import { useOnboardingStore } from '@/store/onboarding-store';
+import { isTargetsPlan } from '@/lib/planning/targets-plan';
 import { usePlanStore } from '@/store/plan-store';
 
 type Kind = 'training' | 'diet';
@@ -27,7 +28,7 @@ const COPY = {
   },
   diet: {
     ask: 'Hai già una dieta?',
-    askSub: 'Caricala e seguila qui.',
+    askSub: 'Caricala o imposta i macro.',
     active: 'Stai seguendo la tua dieta',
     replace: 'Sostituiscila',
     route: '/custom-diet',
@@ -75,6 +76,8 @@ export function PlanSourceBanner({ kind }: { kind: Kind }) {
   const answers = useOnboardingStore((s) => s.answers);
   const ctx = useUserContext();
   const isCustom = usePlanStore((s) => (kind === 'training' ? s.trainingPlan?.source : s.dietPlan?.source) === 'custom');
+  // the person's own calorie and macro targets (no menu): tapping the line edits them instead of loading a diet
+  const ownTargets = usePlanStore((s) => kind === 'diet' && isTargetsPlan(s.dietPlan));
   const isGenerating = usePlanStore((s) => s.isGenerating);
   const restoreTraining = usePlanStore((s) => s.restoreGeneratedTraining);
   const restoreDiet = usePlanStore((s) => s.restoreGeneratedDiet);
@@ -84,7 +87,11 @@ export function PlanSourceBanner({ kind }: { kind: Kind }) {
 
   const openSheet = () => {
     hapticTap();
-    router.push(copy.route);
+    router.push(ownTargets ? '/custom-targets' : copy.route);
+  };
+  const openTargets = () => {
+    hapticTap();
+    router.push('/custom-targets');
   };
   const restore = () => {
     const weightKg = ctx.weightKg > 0 ? ctx.weightKg : undefined;
@@ -96,12 +103,17 @@ export function PlanSourceBanner({ kind }: { kind: Kind }) {
   return (
     <View style={styles.row}>
       {isCustom ? (
-        <Pressable onPress={openSheet} accessibilityRole="button" accessibilityLabel={`${copy.active}. ${copy.replace}`} style={({ pressed }) => [styles.texts, { opacity: pressed ? 0.6 : 1 }]}>
+        <Pressable
+          onPress={openSheet}
+          accessibilityRole="button"
+          accessibilityLabel={ownTargets ? 'Stai seguendo i tuoi obiettivi. Modificali' : `${copy.active}. ${copy.replace}`}
+          style={({ pressed }) => [styles.texts, { opacity: pressed ? 0.6 : 1 }]}
+        >
           <ThemedText style={styles.title} numberOfLines={1}>
-            {copy.active}
+            {ownTargets ? 'Stai seguendo i tuoi obiettivi' : copy.active}
           </ThemedText>
           <ThemedText style={[styles.sub, { color: theme.accent, fontWeight: '600' }]} numberOfLines={1}>
-            {copy.replace}
+            {ownTargets ? 'Modificali' : copy.replace}
           </ThemedText>
         </Pressable>
       ) : (
@@ -132,9 +144,16 @@ export function PlanSourceBanner({ kind }: { kind: Kind }) {
           <ThemedText style={styles.buttonLabel}>{neverRequested ? 'Crea il tuo piano' : 'Piano originale'}</ThemedText>
         </Pressable>
       ) : (
-        <Pressable onPress={openSheet} hitSlop={4} accessibilityRole="button" accessibilityLabel={`${copy.ask} Carica`} style={({ pressed }) => [styles.button, { backgroundColor: theme.accentSoft, opacity: pressed ? 0.6 : 1 }]}>
-          <ThemedText style={[styles.buttonLabel, { color: theme.accent }]}>Carica</ThemedText>
-        </Pressable>
+        <View style={styles.buttons}>
+          {kind === 'diet' ? (
+            <Pressable onPress={openTargets} hitSlop={4} accessibilityRole="button" accessibilityLabel="Imposta calorie e macro del tuo piano" style={({ pressed }) => [styles.button, { backgroundColor: theme.backgroundElement, opacity: pressed ? 0.6 : 1 }]}>
+              <ThemedText style={styles.buttonLabel}>Imposta</ThemedText>
+            </Pressable>
+          ) : null}
+          <Pressable onPress={openSheet} hitSlop={4} accessibilityRole="button" accessibilityLabel={`${copy.ask} Carica`} style={({ pressed }) => [styles.button, { backgroundColor: theme.accentSoft, opacity: pressed ? 0.6 : 1 }]}>
+            <ThemedText style={[styles.buttonLabel, { color: theme.accent }]}>Carica</ThemedText>
+          </Pressable>
+        </View>
       )}
 
       <GlassPopup visible={restoreOpen} onClose={() => setRestoreOpen(false)} style={styles.popup}>
@@ -142,7 +161,7 @@ export function PlanSourceBanner({ kind }: { kind: Kind }) {
           {copy.restoreTitle}
         </ThemedText>
         <ThemedText themeColor="textSecondary" style={styles.center}>
-          {copy.restoreBody}
+          {ownTargets ? 'I tuoi obiettivi di calorie e macro vengono sostituiti dal piano alimentare creato dalle tue risposte al questionario.' : copy.restoreBody}
         </ThemedText>
         <PrimaryButton label="Torna al piano originale" onPress={restore} />
         <PrimaryButton label="Annulla" variant="outline" onPress={() => setRestoreOpen(false)} />
@@ -157,6 +176,7 @@ const styles = StyleSheet.create({
   texts: { flex: 1, minWidth: 0 },
   title: { fontSize: 15, lineHeight: 20, fontWeight: '600', letterSpacing: -0.2 },
   sub: { fontSize: 13, lineHeight: 18 },
+  buttons: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   button: { minHeight: 36, borderRadius: 18, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   buttonLabel: { fontSize: 15, lineHeight: 20, fontWeight: '600' },
   popup: { padding: Spacing.four, gap: Spacing.three, alignItems: 'stretch' },

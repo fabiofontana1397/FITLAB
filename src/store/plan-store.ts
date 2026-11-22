@@ -12,6 +12,7 @@ import { deleteDietPlan, deleteTrainingPlan, fetchDietPlan, fetchTrainingPlan, i
 import { fetchPlanStrategy } from '@/lib/api/plan-strategy';
 import { DIET_ENGINE_VERSION } from '@/lib/planning/diet-planner';
 import { buildCustomDietPlan } from '@/lib/planning/custom-diet';
+import { buildTargetsPlan, isTargetsPlan, type MacroMode, type MonthTargets } from '@/lib/planning/targets-plan';
 import { buildCustomTrainingPlan } from '@/lib/planning/custom-workout';
 import { TRAINING_ENGINE_VERSION } from '@/lib/planning/training-planner';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
@@ -23,6 +24,7 @@ import { logFreeMeal as logFreeMealOnPlan, type FreeMealLog, type FreeMealLogInp
 import { withAuthRetry } from '@/lib/supabase/retry';
 import { useAuthStore } from '@/store/auth-store';
 import { useOnboardingStore } from '@/store/onboarding-store';
+import { useUserStore } from '@/store/user-store';
 import { appJsonStorage } from '@/store/storage';
 
 // Bump whenever the planning logic changes materially — recorded on every
@@ -82,6 +84,11 @@ type PlanState = {
    * written: its own calories where the catalog knows every food, the app's targets otherwise.
    */
   importCustomDiet: (answers: Record<string, unknown>, week: DietDayPlan[], currentWeightKg?: number) => void;
+  /**
+   * Puts the person's own targets (calories and macros, month by month, no menu) in place of the nutrition plan. A
+   * new plan starts today; editing one already of this kind keeps its start date and the months already lived.
+   */
+  setOwnTargets: (months: MonthTargets[], macroMode: MacroMode) => void;
   /** Drops the custom diet and builds the app's own plan again, keeping the plan's start date. */
   restoreGeneratedDiet: (answers: Record<string, unknown>, currentWeightKg?: number) => Promise<void>;
   /**
@@ -218,10 +225,30 @@ export const usePlanStore = create<PlanState>()(
         set({ dietPlan: diet });
         persistPlans(diet, null, 'regenerate', false);
       },
+      setOwnTargets: (months, macroMode) => {
+        const { dietPlan, trainingPlan } = get();
+        const editing = isTargetsPlan(dietPlan) ? dietPlan : null;
+        const lived = editing ? currentMonthIndex(editing) : 1;
+        const diet = buildTargetsPlan(months, {
+          goal: dietPlan?.goal ?? buildUserContext(useOnboardingStore.getState().answers).goal,
+          macroMode,
+          generatedAt: editing?.generatedAt,
+          calibration: dietPlan?.calibration ?? trainingPlan?.calibration,
+          recalibrations: dietPlan?.recalibrations ?? trainingPlan?.recalibrations,
+          // the months before the current one are history: what was set for them stays
+          keepMonths: editing ? editing.months.filter((m) => m.monthIndex < lived) : undefined,
+        });
+        set({ dietPlan: diet });
+        persistPlans(diet, null, 'regenerate', false);
+        // The profile's live target follows the month being lived, as after a monthly check-in, so the screens that
+        // read it (per-meal targets, summaries) show the same numbers as Home.
+        const now = diet.months.find((m) => m.monthIndex === currentMonthIndex(diet)) ?? diet.months[0];
+        useUserStore.getState().updateProfile({ dailyCalorieTarget: now.calorieTarget, macroTargetsG: { ...now.macroTargetsG } });
+      },
       restoreGeneratedDiet: async (answers, currentWeightKg) => {
         // Marked as the app's own and outdated, so the rebuild replaces every month while the start date and calibration stay.
         const { dietPlan } = get();
-        if (dietPlan) set({ dietPlan: { ...dietPlan, source: 'generated', engine: undefined } });
+        if (dietPlan) set({ dietPlan: { ...dietPlan, source: 'generated', engine: undefined, ownTargets: undefined } });
         await get().generatePlans(answers, { only: 'diet', skipAi: true, keepProgress: dietPlan != null, currentWeightKg });
         // No diet in the person's plan mode: nothing was built, so the custom one must not come back from the server.
         if (!get().dietPlan || get().dietPlan?.source === 'custom') {

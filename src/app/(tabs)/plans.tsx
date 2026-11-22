@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { DietPlanView, TrainingPlanView } from '@/components/plans/plan-kinds';
 import { NutritionSupervisionCard } from '@/components/plans/nutrition-supervision-card';
+import { TargetsPlanView } from '@/components/plans/targets-plan-view';
 import { CreatePlanPopup, PlanSourceBanner, usePlanNeverRequested } from '@/components/plans/plan-source-banner';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { TabHeader } from '@/components/tab-header';
@@ -18,6 +19,7 @@ import { buildUserContext } from '@/domain/user-context';
 import { useOnboardingStore } from '@/store/onboarding-store';
 import { useIsSelectedTab } from '@/hooks/use-is-selected-tab';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
+import { isTargetsPlan } from '@/lib/planning/targets-plan';
 import { usePlanStore } from '@/store/plan-store';
 import { useMonthlyCheckinStore } from '@/store/monthly-checkin-store';
 import { useUserStore } from '@/store/user-store';
@@ -87,6 +89,8 @@ export default function PlansScreen() {
         />
       ) : kind === 'diet' && supervision ? (
         <NutritionSupervisionCard reasons={supervision.reasons} frozen={supervision.frozen} />
+      ) : kind === 'diet' && shownDietPlan && isTargetsPlan(shownDietPlan) ? (
+        <TargetsPlanView key={cardKey} plan={shownDietPlan} checkinPendingMonth={checkinPendingMonth} onCheckin={() => router.push('/monthly-checkin')} />
       ) : kind === 'diet' && shownDietPlan ? (
         <DietPlanView
           key={cardKey}

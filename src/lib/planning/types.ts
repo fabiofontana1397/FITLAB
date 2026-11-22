@@ -106,6 +106,11 @@ export type DietPlan = {
   engine?: string;
   /** 'custom' = the person's own diet, imported as written: never rebuilt by the generator or the monthly recalibration. */
   source?: 'generated' | 'custom';
+  /**
+   * Set on a 'custom' plan the person built by typing calories and macros month by month (lib/planning/targets-plan.ts):
+   * no meals, only the targets, which the whole app then follows. `macroMode` is how they entered the macros.
+   */
+  ownTargets?: { macroMode: 'percent' | 'grams' };
   /** Monthly recalibration state and history (see domain/recalibration.ts). */
   calibration?: PlanCalibration;
   recalibrations?: RecalibrationRecord[];

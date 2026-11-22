@@ -13,7 +13,7 @@ import type { DietMonthPlan, DietPlan, TrainingMonthPlan, TrainingPlan } from '@
  * and the notification function read it that way), so it travels on the first month under `planMeta` and is lifted
  * back out on read. Without it a plan read from the server looked outdated and was rebuilt, losing a custom card.
  */
-type PlanMeta = Pick<TrainingPlan, 'engine' | 'source' | 'calibration' | 'recalibrations'> & { needsManualReview?: boolean; supervision?: DietPlan['supervision'] };
+type PlanMeta = Pick<TrainingPlan, 'engine' | 'source' | 'calibration' | 'recalibrations'> & { needsManualReview?: boolean; supervision?: DietPlan['supervision']; ownTargets?: DietPlan['ownTargets'] };
 
 function packMonths<M extends object>(months: M[], meta: PlanMeta): M[] {
   return months.map((month, i) => (i === 0 ? { ...month, planMeta: meta } : month));
@@ -34,7 +34,7 @@ export async function fetchDietPlan(userId: string): Promise<DietPlan | null> {
   if (error) throw error;
   if (!data) return null;
   const { months, meta } = unpackMonths<DietMonthPlan>(data.plan);
-  return { generatedAt: data.generated_at, durationMonths: data.duration_months, goal: data.goal, months, engine: meta.engine, source: meta.source, calibration: meta.calibration, recalibrations: meta.recalibrations, supervision: meta.supervision };
+  return { generatedAt: data.generated_at, durationMonths: data.duration_months, goal: data.goal, months, engine: meta.engine, source: meta.source, calibration: meta.calibration, recalibrations: meta.recalibrations, supervision: meta.supervision, ownTargets: meta.ownTargets };
 }
 
 export async function upsertDietPlan(userId: string, plan: DietPlan): Promise<void> {
@@ -44,7 +44,7 @@ export async function upsertDietPlan(userId: string, plan: DietPlan): Promise<vo
       generated_at: plan.generatedAt,
       duration_months: plan.durationMonths,
       goal: plan.goal,
-      plan: packMonths(plan.months, { engine: plan.engine, source: plan.source, calibration: plan.calibration, recalibrations: plan.recalibrations, supervision: plan.supervision }),
+      plan: packMonths(plan.months, { engine: plan.engine, source: plan.source, calibration: plan.calibration, recalibrations: plan.recalibrations, supervision: plan.supervision, ownTargets: plan.ownTargets }),
     },
     { onConflict: 'user_id' }
   );
