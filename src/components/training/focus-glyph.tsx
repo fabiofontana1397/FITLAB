@@ -1,4 +1,5 @@
-import Svg, { Circle, Ellipse, G, Path, Rect } from 'react-native-svg';
+import { View } from 'react-native';
+import Svg, { Circle, Ellipse, Path, Rect } from 'react-native-svg';
 
 import type { SpotFocus } from '@/lib/planning/training/spot-workouts';
 
@@ -9,7 +10,27 @@ import type { SpotFocus } from '@/lib/planning/training/spot-workouts';
  * tool drawn with the same thin line and one filled detail.
  */
 
-const STROKE = 1.5;
+/** On-screen line weight in points, the same for every icon whatever its zoom. */
+const LINE_PT = 1.6;
+
+/**
+ * Each goal zooms on its own area (x, y, side of a square window in the
+ * 40×60 drawing), so the trained muscle fills the icon instead of a whole
+ * small figure. Total body is the only one that shows the full figure.
+ */
+const CROP: Record<SpotFocus, [number, number, number]> = {
+  chest: [8, 6, 24],
+  shoulders: [6, 3, 28],
+  back: [8, 8, 24],
+  arms: [4, 9, 32],
+  core: [11, 15, 18],
+  glutes: [11, 28.5, 18],
+  legs: [9, 36.5, 22],
+  total: [-10, 0, 60],
+  functional: [8, 15, 24],
+  cross: [2, 13, 36],
+  hiit: [6, 16, 28],
+};
 
 // viewBox 0 0 40 60. The body outline in one closed path, left half then its mirror.
 const BODY =
@@ -66,48 +87,53 @@ function Zone({ focus, fill }: { focus: SpotFocus; fill: string }) {
 }
 
 export function FocusGlyph({ focus, size = 50, line, accent }: { focus: SpotFocus; size?: number; line: string; accent: string }) {
-  const width = (size * 40) / 60;
-  const common = { stroke: line, strokeWidth: STROKE, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
+  const [cx, cy, side] = CROP[focus];
+  const viewBox = `${cx} ${cy} ${side} ${side}`;
+  const common = {
+    stroke: line,
+    strokeWidth: (LINE_PT * side) / size,
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+  };
 
   if (focus === 'functional' || focus === 'cross' || focus === 'hiit') {
-    // Tools are drawn small and scaled up to the figure's presence, keeping the same line weight.
-    const k = 1.4;
-    const tool = { ...common, strokeWidth: STROKE / k };
     return (
-      <Svg width={width} height={size} viewBox="0 0 40 60">
-        <G transform={`translate(20 31) scale(${k}) translate(-20 -31)`}>
-        {focus === 'functional' ? (
-          <>
-            <Path d="M14.6 28.4C13.6 26.6 13.3 25 13.3 23.8a6.7 4.6 0 0 1 13.4 0c0 1.2-.3 2.8-1.3 4.6" fill="none" {...tool} />
-            <Circle cx={20} cy={33.2} r={7.6} fill="none" {...tool} />
-            <Circle cx={20} cy={33.2} r={2.6} fill={accent} />
-          </>
-        ) : focus === 'cross' ? (
-          <>
-            <Path d="M4 30h32" fill="none" {...tool} />
-            <Rect x={8} y={23} width={3.6} height={14} rx={1.6} fill={accent} />
-            <Rect x={28.4} y={23} width={3.6} height={14} rx={1.6} fill={accent} />
-            <Rect x={12.6} y={25.5} width={2.4} height={9} rx={1.2} fill="none" {...tool} />
-            <Rect x={25} y={25.5} width={2.4} height={9} rx={1.2} fill="none" {...tool} />
-          </>
-        ) : (
-          <>
-            <Path d="M17.5 17.5h5M20 17.5v3" fill="none" {...tool} />
-            <Circle cx={20} cy={32} r={11} fill="none" {...tool} />
-            <Path d="M21.3 24.8 16.6 32.6h3.8l-1.3 6.6 4.7-7.8H20z" fill={accent} />
-          </>
-        )}
-        </G>
-      </Svg>
+      <View style={{ width: size, height: size, overflow: 'hidden' }}>
+        <Svg width={size} height={size} viewBox={viewBox}>
+          {focus === 'functional' ? (
+            <>
+              <Path d="M14.6 28.4C13.6 26.6 13.3 25 13.3 23.8a6.7 4.6 0 0 1 13.4 0c0 1.2-.3 2.8-1.3 4.6" fill="none" {...common} />
+              <Circle cx={20} cy={33.2} r={7.6} fill="none" {...common} />
+              <Circle cx={20} cy={33.2} r={2.6} fill={accent} />
+            </>
+          ) : focus === 'cross' ? (
+            <>
+              <Path d="M4 30h32" fill="none" {...common} />
+              <Rect x={8} y={23} width={3.6} height={14} rx={1.6} fill={accent} />
+              <Rect x={28.4} y={23} width={3.6} height={14} rx={1.6} fill={accent} />
+              <Rect x={12.6} y={25.5} width={2.4} height={9} rx={1.2} fill="none" {...common} />
+              <Rect x={25} y={25.5} width={2.4} height={9} rx={1.2} fill="none" {...common} />
+            </>
+          ) : (
+            <>
+              <Path d="M17.5 17.5h5M20 17.5v3" fill="none" {...common} />
+              <Circle cx={20} cy={32} r={11} fill="none" {...common} />
+              <Path d="M21.3 24.8 16.6 32.6h3.8l-1.3 6.6 4.7-7.8H20z" fill={accent} />
+            </>
+          )}
+        </Svg>
+      </View>
     );
   }
 
   return (
-    <Svg width={width} height={size} viewBox="0 0 40 60">
-      {focus === 'total' ? <Path d={BODY} fill={accent} opacity={0.35} /> : null}
-      <Zone focus={focus} fill={accent} />
-      <Circle cx={20} cy={5.8} r={3.4} fill="none" {...common} />
-      <Path d={BODY} fill="none" {...common} />
-    </Svg>
+    <View style={{ width: size, height: size, overflow: 'hidden' }}>
+      <Svg width={size} height={size} viewBox={viewBox}>
+        {focus === 'total' ? <Path d={BODY} fill={accent} opacity={0.35} /> : null}
+        <Zone focus={focus} fill={accent} />
+        <Circle cx={20} cy={5.8} r={3.4} fill="none" {...common} />
+        <Path d={BODY} fill="none" {...common} />
+      </Svg>
+    </View>
   );
 }
