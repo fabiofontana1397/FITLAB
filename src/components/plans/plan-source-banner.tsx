@@ -180,32 +180,30 @@ export function PlanSourceBanner({ kind }: { kind: Kind }) {
         </Pressable>
 
         <Collapsible open={menuOpen}>
-          <View accessibilityRole="radiogroup">
-            {OPTIONS[kind].map((o) => {
-              const on = current === o.source;
-              return (
+          {/* The plan in use is already on the button: the list holds only the other ways. */}
+          <View>
+            {OPTIONS[kind]
+              .filter((o) => o.source !== current)
+              .map((o) => (
                 <Pressable
                   key={o.source}
                   onPress={() => choose(o.source)}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected: on }}
-                  aria-checked={on}
+                  accessibilityRole="button"
                   accessibilityLabel={`${o.title}. ${o.sub}`}
                   style={({ pressed }) => [styles.option, { borderTopColor: theme.border, opacity: pressed ? 0.6 : 1 }]}
                 >
                   <View style={styles.optionIcon}>
-                    {o.icon === 'brand' ? <BrandMark height={13} color={on ? theme.accent : theme.textSecondary} /> : <Icon name={o.icon} size={18} color={on ? theme.accent : theme.textSecondary} />}
+                    {o.icon === 'brand' ? <BrandMark height={13} color={theme.textSecondary} /> : <Icon name={o.icon} size={18} color={theme.textSecondary} />}
                   </View>
                   <View style={styles.flex}>
-                    <ThemedText style={[styles.optionTitle, on ? { color: theme.accent } : null]}>{o.title}</ThemedText>
+                    <ThemedText style={styles.optionTitle}>{o.title}</ThemedText>
                     <ThemedText style={styles.optionSub} themeColor="textSecondary">
                       {o.sub}
                     </ThemedText>
                   </View>
-                  {on ? <Icon name="check" size={18} color={theme.accent} /> : null}
+                  <Icon name="chevronRight" size={16} color={theme.textTertiary} />
                 </Pressable>
-              );
-            })}
+              ))}
           </View>
         </Collapsible>
       </FlatCard>

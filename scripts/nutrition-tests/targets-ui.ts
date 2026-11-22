@@ -80,13 +80,13 @@ async function main() {
         await shot(page, `${appearance}-01-line`);
         await page.getByRole('button', { name: /Cambia il tipo di piano$/ }).click();
         await pause(700);
-        assert.ok(await page.getByRole('radio', { name: /^Piano creato da FitLab\./, checked: true }).isVisible());
-        assert.ok(await page.getByRole('radio', { name: /^Carica il tuo piano\./ }).isVisible());
-        assert.ok(await page.getByRole('radio', { name: /^Crea il tuo piano\. Calorie e macro/ }).isVisible());
+        assert.equal(await page.getByRole('button', { name: /^Piano creato da FitLab\. Dalle/ }).count(), 0); // the plan in use is on the button, not in the list
+        assert.ok(await page.getByRole('button', { name: /^Carica il tuo piano\./ }).isVisible());
+        assert.ok(await page.getByRole('button', { name: /^Crea il tuo piano\. Calorie e macro/ }).isVisible());
         await shot(page, `${appearance}-01-menu`);
       });
 
-      await page.getByRole('radio', { name: /^Crea il tuo piano\./ }).click();
+      await page.getByRole('button', { name: /^Crea il tuo piano\./ }).click();
       await pause(1500);
       await test(`[${appearance}] the editor opens with three months from today's targets`, async () => {
         assert.ok(await page.getByText('Imposta il tuo piano').first().isVisible());
@@ -164,7 +164,7 @@ async function main() {
         await pause(1200);
         await page.getByRole('button', { name: /Cambia il tipo di piano$/ }).click();
         await pause(700);
-        await page.getByRole('radio', { name: /^Piano creato da FitLab\./ }).click();
+        await page.getByRole('button', { name: /^Piano creato da FitLab\./ }).click();
         await pause(900);
         assert.ok(await page.getByText('Riprendere il piano FitLab?').isVisible());
         await shot(page, `${appearance}-09-restore`);
