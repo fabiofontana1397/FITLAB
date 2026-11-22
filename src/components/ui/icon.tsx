@@ -2,6 +2,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import {
   Apple,
   Bean,
+  BicepsFlexed,
   Carrot,
   Coffee,
   ConciergeBell,
@@ -13,13 +14,15 @@ import {
   GlassWater,
   LayoutGrid,
   Milk,
+  PersonStanding,
   ScanBarcode,
+  Timer,
   Utensils,
   Wheat,
   type LucideIcon,
 } from 'lucide-react-native';
 import type { ComponentProps } from 'react';
-import Svg, { Path } from 'react-native-svg';
+import Svg, { Circle, Path, Rect } from 'react-native-svg';
 
 type MCIName = ComponentProps<typeof MaterialCommunityIcons>['name'];
 type IonName = ComponentProps<typeof Ionicons>['name'];
@@ -60,6 +63,10 @@ const LUCIDE_ICONS = {
   categoryLegumes: Bean,
   // A thin, line-drawn dumbbell: the stand-in picture of an exercise with no animation of its own.
   dumbbellLine: Dumbbell,
+  // The goals of "Allenamento veloce" drawn from Lucide (the others are the line pictograms below).
+  bicepsLine: BicepsFlexed,
+  personLine: PersonStanding,
+  timerLine: Timer,
 } satisfies Record<string, LucideIcon>;
 
 /**
@@ -175,6 +182,7 @@ const ICONS = {
   eye: { set: 'ion', name: 'eye-outline' },
   eyeOff: { set: 'ion', name: 'eye-off-outline' },
   mail: { set: 'ion', name: 'mail-outline' },
+  list: { set: 'ion', name: 'list' },
 } as const satisfies Record<string, { set: 'mci' | 'ion'; name: MCIName | IonName }>;
 
 /** Glyphs no icon set draws well, drawn here as filled silhouettes in a 24-pt box like the MCI ones. */
@@ -183,7 +191,24 @@ const CUSTOM_ICONS = {
   leg: 'M6 1h7.5c.9 3.2 1.6 6.3 1.5 9.5-.1 2.8-1.6 5.4-2.3 8.4 2 .5 4.4.9 6.1 1.5 1.2.5 1.1 2.2-.3 2.2H10.6c-.9 0-1.3-.7-1.1-1.6.3-1.1.5-2.1.3-3.1-.3-1.6-1.3-3-.9-4.8.2-1 .9-1.9 1.6-2.6C9.4 7.6 7.4 4.4 6 1z',
 } as const;
 
-export type IconName = keyof typeof ICONS | keyof typeof LUCIDE_ICONS | keyof typeof CUSTOM_ICONS;
+/**
+ * Line pictograms in Lucide's style (24-pt box, round caps, same stroke): an exercise that says which muscle group a
+ * workout trains — a pull-up for the back, a bench press for the chest, lateral raises for the shoulders, a crunch for
+ * the core, a glute bridge, a leg — plus a kettlebell and a barbell. Each entry is a list of paths and circles.
+ */
+type LineShape = string | { c: [number, number, number] } | { r: [number, number, number, number] };
+const LINE_ICONS = {
+  muscleBack: ['M3 3h18', 'M7 3.5 6 8l3.5 3', 'M17 3.5 18 8l-3.5 3', 'M9.5 11h5', 'M12 11v6', 'M12 17l-2 4.5', 'M12 17l2 4.5', { c: [12, 7.6, 1.9] }],
+  muscleChest: ['M3.5 16.5h12', 'M5.5 16.5V20', 'M13.5 16.5V20', 'M7.5 13.5H14l3.5-3.5 1.5 10', 'M9.5 13.5V8', { c: [9.5, 5.8, 2.2] }, { c: [5, 13.5, 1.7] }],
+  muscleShoulders: ['M3.5 9.5v3', 'M20.5 9.5v3', 'M3.5 11h17', 'M12 11v5.5', 'M12 16.5 9.5 21', 'M12 16.5 14.5 21', { c: [12, 6.5, 2] }],
+  muscleCore: ['M2.5 20h19', 'M11 18.5l4-5.5 3.5 5.5', 'M11 18.5 6.8 13.8', { c: [5.3, 11.8, 1.8] }],
+  muscleGlutes: ['M2.5 20h19', 'M6.5 18.5 12 14.5l4-3 2 8.5', { c: [4.3, 17.8, 1.7] }],
+  muscleLegs: ['M8.5 2c-.6 3.6-.3 7 1.4 9.6.5 2.6.1 5.5.1 8.6v1.3h8.2c0-1.2-1.6-1.8-4.2-2.2-.3-2.8.8-5.5.7-8.3-.1-3 .4-6 .9-9'],
+  kettlebellLine: ['M8.5 10.5V7.5a3.5 3.5 0 0 1 7 0v3', { c: [12, 15, 6] }],
+  barbellLine: ['M2 12h3', 'M19 12h3', 'M10 12h4', { r: [5, 6, 2.5, 12] }, { r: [16.5, 6, 2.5, 12] }, { r: [7.5, 8.5, 2, 7] }, { r: [14.5, 8.5, 2, 7] }],
+} as const satisfies Record<string, readonly LineShape[]>;
+
+export type IconName = keyof typeof ICONS | keyof typeof LUCIDE_ICONS | keyof typeof CUSTOM_ICONS | keyof typeof LINE_ICONS;
 
 export type IconProps = {
   name: IconName;
@@ -194,6 +219,22 @@ export type IconProps = {
 };
 
 export function Icon({ name, size = 22, color, strokeWidth = 1.9 }: IconProps) {
+  if (name in LINE_ICONS) {
+    const shapes: readonly LineShape[] = LINE_ICONS[name as keyof typeof LINE_ICONS];
+    return (
+      <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+        {shapes.map((s, i) =>
+          typeof s === 'string' ? (
+            <Path key={i} d={s} />
+          ) : 'c' in s ? (
+            <Circle key={i} cx={s.c[0]} cy={s.c[1]} r={s.c[2]} />
+          ) : (
+            <Rect key={i} x={s.r[0]} y={s.r[1]} width={s.r[2]} height={s.r[3]} rx={1} />
+          )
+        )}
+      </Svg>
+    );
+  }
   if (name in CUSTOM_ICONS) {
     return (
       <Svg width={size} height={size} viewBox="0 0 24 24">
