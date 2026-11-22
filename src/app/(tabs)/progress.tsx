@@ -18,6 +18,7 @@ import { Icon } from '@/components/ui/icon';
 import { TabHeader } from '@/components/tab-header';
 import { InsightCard } from '@/components/ui/insight-card';
 import { SegmentedControl } from '@/components/ui/segmented-control';
+import { SwipeToDelete } from '@/components/ui/swipe-to-delete';
 import { TrendChart } from '@/components/ui/trend-chart';
 import { Layout, Radius } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -58,6 +59,7 @@ export default function ProgressScreen() {
   const photos = useBodyStore((s) => s.photos);
   const addWeightEntry = useBodyStore((s) => s.addWeightEntry);
   const addMeasurement = useBodyStore((s) => s.addMeasurement);
+  const removeEntry = useBodyStore((s) => s.removeEntry);
   const addPhoto = useBodyStore((s) => s.addPhoto);
 
   const [weightModalOpen, setWeightModalOpen] = useState(false);
@@ -124,18 +126,26 @@ export default function ProgressScreen() {
   };
 
   return (
-    <ScreenScroll reveal header={<TabHeader title="Progressi" />} contentContainerStyle={styles.page}>
-      <View style={styles.tabs}>
-        <SegmentedControl
-          options={[
-            { value: 'peso', label: 'Peso' },
-            { value: 'misure', label: 'Misure' },
-            { value: 'foto', label: 'Foto' },
-          ]}
-          value={tab}
-          onChange={(v) => setTab(v as 'peso' | 'misure' | 'foto')}
-        />
-      </View>
+    <ScreenScroll
+      reveal
+      contentContainerStyle={styles.page}
+      header={
+        <>
+          <TabHeader title="Progressi" />
+          {/* Fixed under the title, as in Allenamento and Nutrizione. */}
+          <View style={styles.tabs}>
+            <SegmentedControl
+              options={[
+                { value: 'peso', label: 'Peso' },
+                { value: 'misure', label: 'Misure' },
+                { value: 'foto', label: 'Foto' },
+              ]}
+              value={tab}
+              onChange={(v) => setTab(v as 'peso' | 'misure' | 'foto')}
+            />
+          </View>
+        </>
+      }>
 
       {tab === 'peso' ? (
         <>
@@ -185,15 +195,11 @@ export default function ProgressScreen() {
         ) : null}
 
         <View style={styles.chartBlock}>
-          <ThemedText style={styles.chartTitle}>Andamento peso</ThemedText>
-          <ThemedText style={styles.chartSubtitle} themeColor="textTertiary">
-            Ultimi 30 giorni tracciati
-          </ThemedText>
           <GoalTrendChart
             points={weightSeries}
             target={hasGoal ? currentUser.targetWeightKg : null}
             dateGranularity="day"
-            height={280}
+            height={188}
             color={theme.accent}
             targetColor={theme.brandGreen}
             axisColor={theme.textTertiary}
@@ -204,7 +210,7 @@ export default function ProgressScreen() {
         <View style={styles.miniRow}>
           <View style={[styles.miniBox, { backgroundColor: theme.backgroundElement }]}>
             <View style={[styles.miniIcon, { backgroundColor: deltaColor(sinceStart) + '22' }]}>
-              <Icon name={sinceStart <= 0 ? 'trendDown' : 'trendUp'} size={20} color={deltaColor(sinceStart)} />
+              <Icon name={sinceStart <= 0 ? 'trendDown' : 'trendUp'} size={17} color={deltaColor(sinceStart)} />
             </View>
             <View style={{ flex: 1 }}>
               <ThemedText style={[styles.miniValue, { color: deltaColor(sinceStart) }]}>{signedKg(sinceStart)} kg</ThemedText>
@@ -215,7 +221,7 @@ export default function ProgressScreen() {
           </View>
           <View style={[styles.miniBox, { backgroundColor: theme.backgroundElement }]}>
             <View style={[styles.miniIcon, { backgroundColor: theme.brandGreen + '22' }]}>
-              <Icon name="target" size={20} color={theme.brandGreen} />
+              <Icon name="target" size={17} color={theme.brandGreen} />
             </View>
             <View style={{ flex: 1 }}>
               <ThemedText style={styles.miniValue}>{hasGoal ? `${currentUser.targetWeightKg} kg` : '—'}</ThemedText>
@@ -243,14 +249,19 @@ export default function ProgressScreen() {
           .sort((x, y) => y.date.localeCompare(x.date))
           .slice(0, 8)
           .map((entry, i) => (
-            <Pressable
+            // Swipe left to delete, as for the foods in the calorie tracking; a tap edits the weigh-in.
+            <SwipeToDelete
               key={entry.date}
+              onDelete={() => removeEntry(entry.date)}
               onPress={() => {
                 setEditDate(entry.date);
                 setWeightModalOpen(true);
               }}
+              accessibilityLabel={`Peso del ${entry.date}: ${entry.weightKg.toFixed(1)} kg`}>
+            <View
               style={[
                 styles.logRow,
+                { backgroundColor: theme.backgroundElevated },
                 i === 0 && { backgroundColor: theme.accentSoft },
                 i > 0 && { borderTopColor: theme.border, borderTopWidth: StyleSheet.hairlineWidth },
               ]}>
@@ -260,7 +271,8 @@ export default function ProgressScreen() {
               </ThemedText>
               <ThemedText style={styles.logWeight}>{entry.weightKg.toFixed(1)} kg</ThemedText>
               <Icon name="chevronRight" size={16} color={theme.textTertiary} />
-            </Pressable>
+            </View>
+            </SwipeToDelete>
           ))}
         {entries.length === 0 ? (
           <ThemedText style={[styles.hint, styles.emptyHint]} themeColor="textTertiary">
@@ -450,9 +462,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: -0.3,
   },
+  // Sized so the whole card (weight, goal bar, chart, the two boxes) is visible as the page opens.
   weightCard: {
-    padding: 18,
-    gap: 16,
+    padding: 16,
+    gap: 12,
   },
   weightTop: {
     flexDirection: 'row',
@@ -465,10 +478,11 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   bigNumber: {
-    fontSize: 46,
-    lineHeight: 54,
+    fontSize: 40,
+    lineHeight: 46,
     fontWeight: '800',
-    letterSpacing: -0.8,
+    letterSpacing: -1,
+    fontVariant: ['tabular-nums'],
   },
   bigUnit: {
     fontSize: 20,
@@ -483,8 +497,8 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   deltaText: {
-    fontSize: 14,
-    lineHeight: 18,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '600',
   },
   addWeight: {
@@ -499,14 +513,9 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     fontWeight: '700',
   },
-  chartSubtitle: {
-    fontSize: 13,
-    lineHeight: 18,
-    fontWeight: '500',
-  },
   tabs: {
-    marginTop: 16,
-    marginBottom: 14,
+    marginTop: -4,
+    marginBottom: 10,
   },
   progressBlock: {
     gap: 6,
@@ -525,28 +534,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     borderRadius: 16,
-    padding: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
   miniIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     alignItems: 'center',
     justifyContent: 'center',
   },
   miniValue: {
-    fontSize: 17,
-    lineHeight: 22,
+    fontSize: 16,
+    lineHeight: 20,
     fontWeight: '800',
   },
   miniLabel: {
-    fontSize: 14,
-    lineHeight: 18,
+    fontSize: 12,
+    lineHeight: 16,
     fontWeight: '500',
   },
   chartBlock: {
-    gap: 4,
-    marginHorizontal: -6,
+    marginHorizontal: -4,
+    marginTop: 2,
   },
   logHeader: {
     marginTop: 22,

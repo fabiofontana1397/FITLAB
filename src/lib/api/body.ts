@@ -87,6 +87,11 @@ export async function upsertBodyMetric(userId: string, snapshot: BodyMetricSnaps
   if (error) throw error;
 }
 
+/** Deletes the person's weigh-in (the whole row) of one day. */
+export async function deleteBodyMetric(userId: string, date: string): Promise<void> {
+  const { error } = await supabase.from('body_metrics').delete().eq('user_id', userId).eq('date', date);
+  if (error) throw error;
+}
 
 type BodyPhotoRow = { id: string; date: string; pose: BodyPhotoPose; storage_path: string };
 

@@ -32,12 +32,19 @@ async function test(name: string, fn: () => Promise<void>) {
 }
 const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+const WEIGH_INS = Array.from({ length: 10 }, (_, i) => ({
+  date: new Date(Date.now() - (9 - i) * 2 * 86400000).toISOString().slice(0, 10),
+  weightKg: 80 - i * 0.2,
+  bodyFatPct: 0, muscleMassKg: 0, shouldersCm: 0, chestCm: 0, bicepsCm: 0, waistCm: 0, hipsCm: 0, thighCm: 0, restingHeartRate: 0, sleepHours: 0,
+}));
+
 const TABS = [
   { name: 'Home', path: '/', scrollId: 'screen-scroll' },
   { name: 'Allenamento', path: '/training', scrollId: 'training-list', storage: { 'fitlab/plans': { state: { dietPlan: null, trainingPlan: TRAINING_PLAN }, version: 0 } } },
   { name: 'Nutrizione', path: '/nutrition', scrollId: 'screen-scroll' },
-  { name: 'Progressi', path: '/progress', scrollId: 'screen-scroll' },
-  { name: 'Piani', path: '/plans', scrollId: 'screen-scroll' },
+  // With a few weigh-ins: on an empty account the compact weight card fits the screen and there is nothing to scroll.
+  { name: 'Progressi', path: '/progress', scrollId: 'screen-scroll', storage: { 'fitlab/body': { state: { entries: WEIGH_INS, photos: [] }, version: 0 } } },
+  { name: 'Piani', path: '/plans', scrollId: 'screen-scroll', storage: { 'fitlab/plans': { state: { dietPlan: null, trainingPlan: TRAINING_PLAN }, version: 0 } } },
 ];
 
 async function main() {
