@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 import { deleteBodyMetric, deleteBodyPhoto, fetchBodyMetrics, fetchBodyPhotos, upsertBodyMetric, uploadBodyPhoto } from '@/lib/api/body';
+import { withoutMeasurement } from '@/lib/mock/body';
 import { daysAgoISO } from '@/lib/mock/dates';
 import type { BodyMetricSnapshot } from '@/lib/mock/types';
 import { withAuthRetry } from '@/lib/supabase/retry';
@@ -11,6 +12,9 @@ import { appJsonStorage } from '@/store/storage';
 // A real new account has no history yet — this is the "no previous entry
 // to carry fields over from" fallback, not fabricated data (every field is
 // zero/neutral, never a plausible-looking invented measurement).
+/** The tape measures of the body, one per zone. */
+export type MeasurementKey = 'shouldersCm' | 'chestCm' | 'bicepsCm' | 'waistCm' | 'hipsCm' | 'thighCm';
+
 const EMPTY_SNAPSHOT: Omit<BodyMetricSnapshot, 'date'> = {
   weightKg: 0,
   bodyFatPct: 0,
@@ -56,6 +60,8 @@ type BodyState = {
   /** Deletes the weigh-in of a day (swipe left on the Progressi list). */
   removeEntry: (date: string) => void;
   addMeasurement: (partial: Partial<Omit<BodyMetricSnapshot, 'date'>>, date?: string) => void;
+  /** Deletes one tape measurement of a zone (and the days that only carried it forward). */
+  removeMeasurement: (zone: MeasurementKey, date: string) => void;
   addPhoto: (uri: string, pose: BodyPhotoPose, date?: string) => void;
   removePhoto: (id: string) => void;
   // Server-authoritative refresh — called on sign-in/app start (see
@@ -142,6 +148,14 @@ export const useBodyStore = create<BodyState>()(
         const userId = currentUserId();
         const saved = get().entries.find((e) => e.date === date);
         if (userId && saved) upsertBodyMetric(userId, saved).catch((err) => console.warn('upsertBodyMetric failed', err));
+      },
+
+      removeMeasurement: (zone, date) => {
+        const { entries, changed } = withoutMeasurement(get().entries, zone, date);
+        if (changed.length === 0) return;
+        set({ entries });
+        const userId = currentUserId();
+        if (userId) for (const e of changed) upsertBodyMetric(userId, e).catch((err) => console.warn('upsertBodyMetric (remove measurement) failed', err));
       },
 
       addPhoto: (uri, pose, date = daysAgoISO(0)) => {

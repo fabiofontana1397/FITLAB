@@ -93,6 +93,8 @@ export default function ProgressScreen() {
   const photos = useBodyStore((s) => s.photos);
   const addWeightEntry = useBodyStore((s) => s.addWeightEntry);
   const addMeasurement = useBodyStore((s) => s.addMeasurement);
+  const removeMeasurement = useBodyStore((s) => s.removeMeasurement);
+  const removePhoto = useBodyStore((s) => s.removePhoto);
   const removeEntry = useBodyStore((s) => s.removeEntry);
   const addPhoto = useBodyStore((s) => s.addPhoto);
 
@@ -331,7 +333,8 @@ export default function ProgressScreen() {
             ? MEASUREMENTS.map((m) => {
                 // Entries logged before this zone existed carry no value for it.
                 const latestValue = latest[m.zone];
-                const hasValue = Number.isFinite(latestValue);
+                // 0 means never measured (or the only measurement was deleted).
+                const hasValue = Number.isFinite(latestValue) && latestValue > 0;
                 return (
                   <Pressable
                     key={m.zone}
@@ -436,6 +439,7 @@ export default function ProgressScreen() {
         zone={infoZone}
         entries={entries}
         onClose={() => setInfoZone(null)}
+        onDelete={(zone, date) => removeMeasurement(zone, date)}
         onAdd={(zone) => {
           // The add sheet opens once the popup has left the screen.
           setInfoZone(null);
@@ -460,7 +464,16 @@ export default function ProgressScreen() {
           pickPhoto(pose);
         }}
       />
-      <PhotoDetailModal photo={detailPhoto} allPhotos={photos} entries={entries} onClose={() => setDetailPhoto(null)} />
+      <PhotoDetailModal
+        photo={detailPhoto}
+        allPhotos={photos}
+        entries={entries}
+        onClose={() => setDetailPhoto(null)}
+        onDelete={(id) => {
+          setDetailPhoto(null);
+          removePhoto(id);
+        }}
+      />
     </ScreenScroll>
   );
 }
