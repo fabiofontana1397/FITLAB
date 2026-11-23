@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
-import { memo, useCallback, useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
-import Animated, { FadeIn } from 'react-native-reanimated';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ScrollView, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
+import Animated, { Easing, interpolate, useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 
 import { PressableScale } from '@/components/motion/pressable-scale';
 import { DishPhoto, DishPlaceholder, mealImageUri } from '@/components/nutrition/dish-photo';
@@ -9,13 +9,14 @@ import { RecipeDetailSheet } from '@/components/nutrition/recipe-detail-sheet';
 import { ThemedText } from '@/components/themed-text';
 import { SwipeDeck, useSwipeDeckJustDragged, type DeckCardSize } from '@/components/ui/swipe-deck';
 import { HorizontalScrollDefaults } from '@/constants/scroll';
-import { SELECTOR_SETTLE_MS, useSettledValue } from '@/hooks/use-settled-value';
 import { useTheme } from '@/hooks/use-theme';
+import { hapticSelection } from '@/lib/haptics';
 import { openPopup } from '@/lib/open-popup';
 import type { SlotKind } from '@/lib/planning/fitlab/catalog';
 import type { RecipeCard } from '@/lib/planning/fitlab/recipe-book';
 
 type Filter = 'all' | SlotKind;
+const CHIP_H = 34;
 const FILTERS: { value: Filter; label: string }[] = [
   { value: 'all', label: 'Tutte' },
   { value: 'breakfast', label: 'Colazione' },
@@ -35,6 +36,19 @@ const CARD_GAPS = 12 * 2;
 const PREFETCH_BEHIND = 2;
 const PREFETCH_AHEAD = 5;
 
+/** The chips' pill gliding to the chosen meal: quick, settling without a wobble. */
+const PILL_SPRING = { damping: 26, stiffness: 320, mass: 0.8 };
+/** How far (pt) a deck drifts sideways as it leaves and the next one arrives, in the direction of the chip tapped. */
+const DRIFT = 26;
+const DECK_OUT = { duration: 170, easing: Easing.out(Easing.quad) };
+const DECK_IN_FADE = { duration: 280, easing: Easing.out(Easing.cubic) };
+const DECK_IN_SPRING = { damping: 24, stiffness: 230, mass: 0.9 };
+/** A deck not built yet is mounted while the one leaving fades out, so its build never stalls the motion. */
+const BUILD_AFTER_MS = 90;
+/** After Ricette first shows, the other meals' decks are built in the background, one at a time. */
+const PREWARM_START_MS = 1600;
+const PREWARM_STEP_MS = 450;
+
 export type RecipeDeckProps = {
   cards: RecipeCard[];
   /** Under the portion's kcal: sized on the person ("Porzione per te") or a standard one. */
@@ -52,11 +66,131 @@ export type RecipeDeckProps = {
  * are prefetched and shown without a fade.
  */
 export function RecipeDeck({ cards, portionLabel, slotLabelFor, onAdd }: RecipeDeckProps) {
-  // Set by the chips once their tap has landed: the deck is rebuilt then, never while the chip is answering.
   const [filter, setFilter] = useState<Filter>('all');
+  // Every meal's deck, once built, stays mounted: going back to it is only a cross-fade, never a rebuild.
+  const [built, setBuilt] = useState<Filter[]>(['all']);
+  // Which way the decks move: +1 when the chip tapped is to the right of the previous one.
+  const [direction, setDirection] = useState(1);
   const [added, setAdded] = useState<Record<string, boolean>>({});
   const [detail, setDetail] = useState<RecipeCard | null>(null);
+
+  const current = useRef(filter);
+  const choose = useCallback((next: Filter) => {
+    const prev = current.current;
+    if (prev === next) return;
+    current.current = next;
+    setDirection(filterIndex(next) >= filterIndex(prev) ? 1 : -1);
+    setFilter(next);
+  }, []);
+
+  // A deck not built yet: built a beat later, while the leaving one is already fading on the UI thread.
+  useEffect(() => {
+    if (built.includes(filter)) return;
+    const t = setTimeout(() => setBuilt((b) => (b.includes(filter) ? b : [...b, filter])), BUILD_AFTER_MS);
+    return () => clearTimeout(t);
+  }, [filter, built]);
+
+  // The other meals are built quietly in the background, so a later tap finds them ready.
+  useEffect(() => {
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    FILTERS.forEach((f, i) => {
+      timers.push(setTimeout(() => setBuilt((b) => (b.includes(f.value) ? b : [...b, f.value])), PREWARM_START_MS + i * PREWARM_STEP_MS));
+    });
+    return () => timers.forEach(clearTimeout);
+  }, []);
+
+  const open = useCallback((card: RecipeCard) => openPopup(() => setDetail(card)), []);
+  const renderCard = useCallback(
+    (card: RecipeCard, size: DeckCardSize) => {
+      const photoSize = Math.max(Math.min(size.width - CARD_PAD * 2, size.height - CARD_PAD * 2 - TITLE_H - OVERVIEW_H - CARD_GAPS), 96);
+      return <RecipeFace card={card} portionLabel={portionLabel} photoSize={photoSize} onOpen={open} />;
+    },
+    [portionLabel, open]
+  );
+
+  return (
+    <View style={styles.root}>
+      <FilterChips value={filter} onChange={choose} />
+
+      <View style={styles.deck}>
+        {FILTERS.filter((f) => built.includes(f.value)).map((f) => (
+          <DeckLayer key={f.value} filter={f.value} cards={cards} active={f.value === filter} direction={direction} renderCard={renderCard} />
+        ))}
+      </View>
+
+      <RecipeDetailSheet
+        card={detail}
+        portionLabel={portionLabel}
+        slotLabel={detail ? slotLabelFor(detail.kind) : ''}
+        added={detail ? !!added[detail.recipe.id] : false}
+        onAdd={(card) => {
+          onAdd(card);
+          setAdded((a) => ({ ...a, [card.recipe.id]: true }));
+        }}
+        onClose={() => setDetail(null)}
+      />
+    </View>
+  );
+}
+
+const filterIndex = (f: Filter) => FILTERS.findIndex((x) => x.value === f);
+
+/**
+ * One meal's deck, kept mounted once built. Leaving, it fades and drifts away from the chip tapped; arriving, it
+ * glides in from that side and settles with a soft spring, growing the last few percent into place. Only opacity and
+ * transform move, on the UI thread: the cards themselves are never redrawn by a change of meal.
+ */
+const DeckLayer = memo(function DeckLayer({
+  filter,
+  cards,
+  active,
+  direction,
+  renderCard,
+}: {
+  filter: Filter;
+  cards: RecipeCard[];
+  active: boolean;
+  direction: number;
+  renderCard: (card: RecipeCard, size: DeckCardSize) => React.ReactNode;
+}) {
+  const reduceMotion = useReducedMotion();
   const shown = useMemo(() => (filter === 'all' ? cards : cards.filter((c) => c.kind === filter)), [cards, filter]);
+  const opacity = useSharedValue(0);
+  const x = useSharedValue(active ? direction * DRIFT : 0);
+  const scale = useSharedValue(active ? 0.97 : 1);
+  const first = useRef(true);
+
+  useEffect(() => {
+    // The deck shown when the page opens is simply there; the page's own entrance takes care of it.
+    if (first.current) {
+      first.current = false;
+      if (active && filter === 'all') {
+        opacity.set(1);
+        x.set(0);
+        scale.set(1);
+        return;
+      }
+    }
+    if (reduceMotion) {
+      opacity.set(withTiming(active ? 1 : 0, { duration: 160 }));
+      x.set(0);
+      scale.set(1);
+      return;
+    }
+    if (active) {
+      x.set(direction * DRIFT);
+      scale.set(0.97);
+      opacity.set(withTiming(1, DECK_IN_FADE));
+      x.set(withSpring(0, DECK_IN_SPRING));
+      scale.set(withSpring(1, DECK_IN_SPRING));
+    } else {
+      opacity.set(withTiming(0, DECK_OUT));
+      x.set(withTiming(-direction * DRIFT * 0.6, DECK_OUT));
+      scale.set(withTiming(0.97, DECK_OUT));
+    }
+    // direction is read at the moment of the change, on purpose
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active]);
 
   // Photos of the recipes around the current one, fetched before they come on screen.
   const prefetch = useCallback(
@@ -74,19 +208,16 @@ export function RecipeDeck({ cards, portionLabel, slotLabelFor, onAdd }: RecipeD
     [shown]
   );
 
-  const open = useCallback((card: RecipeCard) => openPopup(() => setDetail(card)), []);
-  const renderCard = useCallback(
-    (card: RecipeCard, size: DeckCardSize) => {
-      const photoSize = Math.max(Math.min(size.width - CARD_PAD * 2, size.height - CARD_PAD * 2 - TITLE_H - OVERVIEW_H - CARD_GAPS), 96);
-      return <RecipeFace card={card} portionLabel={portionLabel} photoSize={photoSize} onOpen={open} />;
-    },
-    [portionLabel, open]
-  );
+  const style = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ translateX: x.value }, { scale: scale.value }],
+  }));
 
   return (
-    <View style={styles.root}>
-      <FilterChips onSettled={setFilter} />
-
+    <Animated.View
+      aria-hidden={!active}
+      importantForAccessibility={active ? 'auto' : 'no-hide-descendants'}
+      style={[StyleSheet.absoluteFill, { pointerEvents: active ? 'auto' : 'none' }, style]}>
       {shown.length === 0 ? (
         <View style={styles.empty}>
           <ThemedText type="smallBold">Nessuna ricetta</ThemedText>
@@ -95,65 +226,105 @@ export function RecipeDeck({ cards, portionLabel, slotLabelFor, onAdd }: RecipeD
           </ThemedText>
         </View>
       ) : (
-        <Animated.View key={filter} entering={FadeIn.duration(SELECTOR_SETTLE_MS)} style={styles.deck}>
-          <SwipeDeck
-            items={shown}
-            keyOf={recipeKey}
-            resetKey={filter}
-            peek={PEEK}
-            radius={32}
-            hint="Scorri per cambiare ricetta"
-            prevLabel="Ricetta precedente"
-            nextLabel="Ricetta successiva"
-            renderCard={renderCard}
-            onIndexChange={prefetch}
-          />
-        </Animated.View>
+        <SwipeDeck
+          items={shown}
+          keyOf={recipeKey}
+          resetKey={filter}
+          peek={PEEK}
+          radius={32}
+          hint="Scorri per cambiare ricetta"
+          prevLabel="Ricetta precedente"
+          nextLabel="Ricetta successiva"
+          renderCard={renderCard}
+          onIndexChange={prefetch}
+        />
       )}
-
-      <RecipeDetailSheet
-        card={detail}
-        portionLabel={portionLabel}
-        slotLabel={detail ? slotLabelFor(detail.kind) : ''}
-        added={detail ? !!added[detail.recipe.id] : false}
-        onAdd={(card) => {
-          onAdd(card);
-          setAdded((a) => ({ ...a, [card.recipe.id]: true }));
-        }}
-        onClose={() => setDetail(null)}
-      />
-    </View>
+    </Animated.View>
   );
-}
+});
 
 const recipeKey = (c: RecipeCard) => c.recipe.id;
 
+type ChipBox = { x: number; w: number };
+
 /**
- * Tutte / Colazione / Pranzo / Cena / Merenda. The chips keep their own choice and answer the tap at once; the deck
- * hears of it only once the choice has settled, so rebuilding the cards never stalls the chip's motion.
+ * Tutte / Colazione / Pranzo / Cena / Merenda. A dark pill glides under the chosen meal on the UI thread, and the
+ * labels change colour exactly where its edge passes (a light copy of the labels rides inside the pill, clipped to
+ * it), so the choice reads as one continuous movement rather than two chips swapping colours.
  */
-const FilterChips = memo(function FilterChips({ onSettled }: { onSettled: (f: Filter) => void }) {
+const FilterChips = memo(function FilterChips({ value, onChange }: { value: Filter; onChange: (f: Filter) => void }) {
   const theme = useTheme();
-  const [filter, setFilter] = useState<Filter>('all');
-  const settled = useSettledValue(filter);
-  useEffect(() => onSettled(settled), [settled, onSettled]);
+  const reduceMotion = useReducedMotion();
+  const scrollRef = useRef<ScrollView>(null);
+  const [boxes, setBoxes] = useState<(ChipBox | null)[]>(() => FILTERS.map(() => null));
+  const [viewport, setViewport] = useState(0);
+  const index = filterIndex(value);
+  const pos = useSharedValue(index);
+  const ready = boxes.every((b) => b != null);
+
+  useEffect(() => {
+    pos.set(reduceMotion ? index : withSpring(index, PILL_SPRING));
+    // Keep the chosen chip in view when the row is wider than the screen.
+    const box = boxes[index];
+    if (box && viewport > 0) scrollRef.current?.scrollTo({ x: Math.max(0, box.x + box.w / 2 - viewport / 2), animated: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [index]);
+
+  const onChipLayout = (i: number) => (e: LayoutChangeEvent) => {
+    const { x, width } = e.nativeEvent.layout;
+    if (width <= 0) return;
+    setBoxes((prev) => (prev[i]?.x === x && prev[i]?.w === width ? prev : prev.map((b, k) => (k === i ? { x, w: width } : b))));
+  };
+
+  const inputs = FILTERS.map((_, i) => i);
+  const xs = boxes.map((b) => b?.x ?? 0);
+  const ws = boxes.map((b) => b?.w ?? 0);
+  const pillStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: interpolate(pos.value, inputs, xs) }],
+    width: interpolate(pos.value, inputs, ws),
+  }));
+  // The light labels inside the pill stay where the chips are: shifted back by however far the pill has moved.
+  const innerStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: -interpolate(pos.value, inputs, xs) }],
+  }));
+
   return (
-    <ScrollView {...HorizontalScrollDefaults} contentContainerStyle={styles.filters} style={styles.filtersScroll}>
-      {FILTERS.map((f) => {
-        const active = f.value === filter;
+    <ScrollView
+      ref={scrollRef}
+      {...HorizontalScrollDefaults}
+      onLayout={(e) => setViewport(e.nativeEvent.layout.width)}
+      contentContainerStyle={styles.filters}
+      style={styles.filtersScroll}>
+      {FILTERS.map((f, i) => {
+        const active = f.value === value;
         return (
           <PressableScale
             key={f.value}
-            onPress={() => setFilter(f.value)}
-            haptic="tap"
+            onLayout={onChipLayout(i)}
+            onPress={() => {
+              if (!active) hapticSelection();
+              onChange(f.value);
+            }}
+            haptic={false}
             scaleTo={0.94}
             accessibilityRole="button"
             accessibilityState={{ selected: active }}
-            style={[styles.chip, { backgroundColor: active ? theme.text : theme.backgroundElevated, borderColor: active ? theme.text : theme.boxEdge }]}>
-            <ThemedText style={[styles.chipText, { color: active ? theme.background : theme.text }]}>{f.label}</ThemedText>
+            style={[styles.chip, { backgroundColor: theme.backgroundElevated, borderColor: theme.boxEdge }]}>
+            <ThemedText style={styles.chipText}>{f.label}</ThemedText>
           </PressableScale>
         );
       })}
+      {ready ? (
+        <Animated.View style={[styles.pill, { backgroundColor: theme.text, pointerEvents: 'none' }, pillStyle]}>
+          <Animated.View style={[styles.pillInner, innerStyle]}>
+            {FILTERS.map((f, i) => (
+              <View key={f.value} style={[styles.pillLabel, { left: xs[i], width: ws[i] }]}>
+                <ThemedText style={[styles.chipText, { color: theme.background }]}>{f.label}</ThemedText>
+              </View>
+            ))}
+          </Animated.View>
+        </Animated.View>
+      ) : null}
     </ScrollView>
   );
 });
@@ -238,7 +409,10 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   filtersScroll: { marginHorizontal: -16, flexGrow: 0 },
   filters: { paddingHorizontal: 16, gap: 8 },
-  chip: { height: 34, paddingHorizontal: 15, borderRadius: 17, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center' },
+  chip: { height: CHIP_H, paddingHorizontal: 15, borderRadius: CHIP_H / 2, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center' },
+  pill: { position: 'absolute', top: 0, left: 0, height: CHIP_H, borderRadius: CHIP_H / 2, borderCurve: 'continuous', overflow: 'hidden' },
+  pillInner: { position: 'absolute', top: 0, left: 0, height: CHIP_H, width: 2000 },
+  pillLabel: { position: 'absolute', top: 0, height: CHIP_H, alignItems: 'center', justifyContent: 'center' },
   chipText: { fontSize: 14, lineHeight: 18, fontWeight: '600' },
   deck: { flex: 1, marginTop: 6 },
   card: {
