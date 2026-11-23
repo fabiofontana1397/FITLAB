@@ -25,8 +25,8 @@ export default function RegisterScreen() {
   const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
 
-  // Supabase's own minimum_password_length default (see supabase/config.toml).
-  const canSubmit = name.trim().length > 0 && email.includes('@') && password.length >= 6 && !isSubmitting;
+  // Same as Supabase Auth's minimum_password_length (8, see supabase/config.toml).
+  const canSubmit = name.trim().length > 0 && email.includes('@') && password.length >= 8 && !isSubmitting;
 
   const handleRegister = async () => {
     if (!canSubmit) return;
@@ -122,7 +122,7 @@ export default function RegisterScreen() {
         textContentType="newPassword"
         returnKeyType="go"
         onSubmitEditing={handleRegister}
-        hint="Almeno 6 caratteri."
+        hint="Almeno 8 caratteri."
         error={error}
       />
     </AuthShell>

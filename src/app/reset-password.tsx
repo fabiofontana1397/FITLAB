@@ -22,7 +22,7 @@ export default function ResetPasswordScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const confirmRef = useRef<TextInput>(null);
 
-  const canSubmit = password.length >= 6 && password === confirmPassword && !isSubmitting;
+  const canSubmit = password.length >= 8 && password === confirmPassword && !isSubmitting;
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
@@ -36,7 +36,7 @@ export default function ResetPasswordScreen() {
     router.replace(hasOnboarded ? '/' : '/onboarding');
   };
 
-  const tooShort = password.length > 0 && password.length < 6;
+  const tooShort = password.length > 0 && password.length < 8;
   const mismatch = confirmPassword.length > 0 && password !== confirmPassword;
 
   return (
@@ -57,7 +57,7 @@ export default function ResetPasswordScreen() {
         returnKeyType="next"
         onSubmitEditing={() => confirmRef.current?.focus()}
         placeholder="••••••••"
-        error={tooShort ? 'Almeno 6 caratteri.' : null}
+        error={tooShort ? 'Almeno 8 caratteri.' : null}
       />
       <AuthField
         ref={confirmRef}

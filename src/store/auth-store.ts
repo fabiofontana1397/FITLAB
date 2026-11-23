@@ -13,7 +13,8 @@ const ERROR_TRANSLATIONS: Record<string, string> = {
   'Invalid login credentials': 'Email o password non corrette.',
   'Email not confirmed': 'Devi confermare la tua email prima di accedere. Controlla la posta.',
   'User already registered': 'Esiste già un account con questa email.',
-  'Password should be at least 6 characters': 'La password deve avere almeno 6 caratteri.',
+  'Password should be at least 6 characters': 'La password deve avere almeno 8 caratteri.',
+  'Password should be at least 8 characters': 'La password deve avere almeno 8 caratteri.',
   'Unable to validate email address: invalid format': "L'indirizzo email non è valido.",
   'For security purposes, you can only request this after 60 seconds':
     'Per sicurezza puoi richiederlo di nuovo solo dopo 60 secondi.',
