@@ -16,8 +16,12 @@ import { supabase } from '@/lib/supabase/client';
 
 export type SocialResult = { status: 'ok'; name?: string } | { status: 'cancelled' } | { status: 'error'; message: string };
 
-const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
-const GOOGLE_IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
+// OAuth client ids are public identifiers (they ship inside every app binary), not secrets: the FitLab ones from
+// Google Cloud project fitlab-515611 are the defaults, the env variables override them.
+const GOOGLE_WEB_CLIENT_ID =
+  process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '703333923406-tamup29j9sp31r3ksve70b54lp83d1sa.apps.googleusercontent.com';
+const GOOGLE_IOS_CLIENT_ID =
+  process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || '703333923406-thbda8kun5rt1ps35v20j6n047isbt14.apps.googleusercontent.com';
 
 export const googleConfigured = !!GOOGLE_WEB_CLIENT_ID && (Platform.OS !== 'ios' || !!GOOGLE_IOS_CLIENT_ID);
 
