@@ -1,6 +1,7 @@
 import { Image } from 'expo-image';
-import { memo, useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
+import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { PressableScale } from '@/components/motion/pressable-scale';
 import { DishPhoto, DishPlaceholder, mealImageUri } from '@/components/nutrition/dish-photo';
@@ -8,6 +9,7 @@ import { RecipeDetailSheet } from '@/components/nutrition/recipe-detail-sheet';
 import { ThemedText } from '@/components/themed-text';
 import { SwipeDeck, useSwipeDeckJustDragged, type DeckCardSize } from '@/components/ui/swipe-deck';
 import { HorizontalScrollDefaults } from '@/constants/scroll';
+import { SELECTOR_SETTLE_MS, useSettledValue } from '@/hooks/use-settled-value';
 import { useTheme } from '@/hooks/use-theme';
 import { openPopup } from '@/lib/open-popup';
 import type { SlotKind } from '@/lib/planning/fitlab/catalog';
@@ -50,7 +52,7 @@ export type RecipeDeckProps = {
  * are prefetched and shown without a fade.
  */
 export function RecipeDeck({ cards, portionLabel, slotLabelFor, onAdd }: RecipeDeckProps) {
-  const theme = useTheme();
+  // Set by the chips once their tap has landed: the deck is rebuilt then, never while the chip is answering.
   const [filter, setFilter] = useState<Filter>('all');
   const [added, setAdded] = useState<Record<string, boolean>>({});
   const [detail, setDetail] = useState<RecipeCard | null>(null);
@@ -83,23 +85,7 @@ export function RecipeDeck({ cards, portionLabel, slotLabelFor, onAdd }: RecipeD
 
   return (
     <View style={styles.root}>
-      <ScrollView {...HorizontalScrollDefaults} contentContainerStyle={styles.filters} style={styles.filtersScroll}>
-        {FILTERS.map((f) => {
-          const active = f.value === filter;
-          return (
-            <PressableScale
-              key={f.value}
-              onPress={() => setFilter(f.value)}
-              haptic="tap"
-              scaleTo={0.94}
-              accessibilityRole="button"
-              accessibilityState={{ selected: active }}
-              style={[styles.chip, { backgroundColor: active ? theme.text : theme.backgroundElevated, borderColor: active ? theme.text : theme.boxEdge }]}>
-              <ThemedText style={[styles.chipText, { color: active ? theme.background : theme.text }]}>{f.label}</ThemedText>
-            </PressableScale>
-          );
-        })}
-      </ScrollView>
+      <FilterChips onSettled={setFilter} />
 
       {shown.length === 0 ? (
         <View style={styles.empty}>
@@ -109,7 +95,7 @@ export function RecipeDeck({ cards, portionLabel, slotLabelFor, onAdd }: RecipeD
           </ThemedText>
         </View>
       ) : (
-        <View style={styles.deck}>
+        <Animated.View key={filter} entering={FadeIn.duration(SELECTOR_SETTLE_MS)} style={styles.deck}>
           <SwipeDeck
             items={shown}
             keyOf={recipeKey}
@@ -122,7 +108,7 @@ export function RecipeDeck({ cards, portionLabel, slotLabelFor, onAdd }: RecipeD
             renderCard={renderCard}
             onIndexChange={prefetch}
           />
-        </View>
+        </Animated.View>
       )}
 
       <RecipeDetailSheet
@@ -141,6 +127,36 @@ export function RecipeDeck({ cards, portionLabel, slotLabelFor, onAdd }: RecipeD
 }
 
 const recipeKey = (c: RecipeCard) => c.recipe.id;
+
+/**
+ * Tutte / Colazione / Pranzo / Cena / Merenda. The chips keep their own choice and answer the tap at once; the deck
+ * hears of it only once the choice has settled, so rebuilding the cards never stalls the chip's motion.
+ */
+const FilterChips = memo(function FilterChips({ onSettled }: { onSettled: (f: Filter) => void }) {
+  const theme = useTheme();
+  const [filter, setFilter] = useState<Filter>('all');
+  const settled = useSettledValue(filter);
+  useEffect(() => onSettled(settled), [settled, onSettled]);
+  return (
+    <ScrollView {...HorizontalScrollDefaults} contentContainerStyle={styles.filters} style={styles.filtersScroll}>
+      {FILTERS.map((f) => {
+        const active = f.value === filter;
+        return (
+          <PressableScale
+            key={f.value}
+            onPress={() => setFilter(f.value)}
+            haptic="tap"
+            scaleTo={0.94}
+            accessibilityRole="button"
+            accessibilityState={{ selected: active }}
+            style={[styles.chip, { backgroundColor: active ? theme.text : theme.backgroundElevated, borderColor: active ? theme.text : theme.boxEdge }]}>
+            <ThemedText style={[styles.chipText, { color: active ? theme.background : theme.text }]}>{f.label}</ThemedText>
+          </PressableScale>
+        );
+      })}
+    </ScrollView>
+  );
+});
 
 /** The face of a recipe card: title, photo, the portion's calories and macros. Memoised: dragging never rebuilds it. */
 const RecipeFace = memo(function RecipeFace({

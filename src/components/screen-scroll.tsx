@@ -14,6 +14,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useModePageState } from '@/components/mode-pages';
 import { useIsSelectedTab } from '@/hooks/use-is-selected-tab';
 import { Reveal, ScrollRevealContext } from '@/components/motion/reveal';
 import { TimingScreen } from '@/constants/motion';
@@ -52,9 +53,13 @@ export function washColorAt(top: string, middle: string, bottom: string, t: numb
 }
 
 export const ScreenScroll = forwardRef<ScrollView, ScreenScrollProps>(function ScreenScroll(
-  { children, contentContainerStyle, reveal = false, header, pinned, pinnedProgress, scrollOffset, onLayout, enterOnMount = false, active = true, ...rest },
+  { children, contentContainerStyle, reveal = false, header, pinned, pinnedProgress, scrollOffset, onLayout, enterOnMount: enterOnMountProp, active: activeProp, ...rest },
   ref
 ) {
+  // Behind a switch (ModePages) the page's state comes from there, so the page itself is never redrawn by a switch.
+  const pageState = useModePageState();
+  const enterOnMount = enterOnMountProp ?? pageState?.enterOnMount ?? false;
+  const active = activeProp ?? pageState?.active ?? true;
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();

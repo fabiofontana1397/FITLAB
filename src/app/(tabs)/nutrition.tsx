@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { interpolate, useDerivedValue, useSharedValue } from 'react-native-reanimated';
 
@@ -6,8 +6,7 @@ import { openPopup } from '@/lib/open-popup';
 import { FoodSearchModal } from '@/components/nutrition/food-search-modal';
 import { MealCard } from '@/components/nutrition/meal-card';
 import { RecipeDeck } from '@/components/nutrition/recipe-deck';
-import { SegmentedControl } from '@/components/ui/segmented-control';
-import { ModePages } from '@/components/mode-pages';
+import { ModePages, ModeSwitch } from '@/components/mode-pages';
 import { HEADER_LIST_TOP, ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { DayCalendarModal } from '@/components/ui/day-calendar-modal';
@@ -60,28 +59,22 @@ const NUTRITION_MODES = ['tracking', 'recipes'] as const;
  * is visible. */
 export default function NutritionScreen() {
   const [mode, setMode] = useState<NutritionMode>('tracking');
-  const switcher = (
-    <View style={styles.modeSwitch}>
-      <SegmentedControl
-        options={[
-          { value: 'tracking', label: 'Tracking calorie' },
-          { value: 'recipes', label: 'Ricette' },
-        ]}
-        value={mode}
-        onChange={(v) => setMode(v as NutritionMode)}
-      />
-    </View>
-  );
-  return (
-    <ModePages
-      value={mode}
-      modes={NUTRITION_MODES}
-      render={(m, state) => (m === 'tracking' ? <CalorieTracking switcher={switcher} {...state} /> : <Recipes switcher={switcher} {...state} />)}
-    />
-  );
+  return <ModePages value={mode} onChange={setMode} modes={NUTRITION_MODES} render={(m) => (m === 'tracking' ? <CalorieTracking /> : <Recipes />)} />;
 }
 
-type PageProps = { switcher: ReactNode; active: boolean; enterOnMount: boolean };
+const NUTRITION_OPTIONS: { value: NutritionMode; label: string }[] = [
+  { value: 'tracking', label: 'Tracking calorie' },
+  { value: 'recipes', label: 'Ricette' },
+];
+
+/** The switch in each page's header; the pages are built once and never redrawn by it. */
+function Switcher() {
+  return (
+    <View style={styles.modeSwitch}>
+      <ModeSwitch options={NUTRITION_OPTIONS} />
+    </View>
+  );
+}
 
 /** The meal of the person's day a recipe of each kind goes to: the plan's own meals when there is a plan. */
 const DEFAULT_SLOT: Record<SlotKind, MealSlot> = { breakfast: 'colazione', lunch: 'pranzo', dinner: 'cena', snack: 'spuntinoPomeriggio' };
@@ -104,7 +97,7 @@ function useRecipeTargets() {
   return { answers, planDay, personal, daily, today };
 }
 
-function Recipes({ switcher, active, enterOnMount }: PageProps) {
+function Recipes() {
   // The page does not scroll: the selector under the card must end above the floating tab bar.
   const tabClearance = useTabBarClearance();
   const [viewport, setViewport] = useState(0);
@@ -130,12 +123,10 @@ function Recipes({ switcher, active, enterOnMount }: PageProps) {
 
   return (
     <ScreenScroll
-      active={active}
-      enterOnMount={enterOnMount}
       header={
         <>
           <TabHeader title="Nutrizione" />
-          {switcher}
+          <Switcher />
         </>
       }
       scrollEnabled={false}
@@ -152,7 +143,7 @@ function Recipes({ switcher, active, enterOnMount }: PageProps) {
   );
 }
 
-function CalorieTracking({ switcher, active, enterOnMount }: PageProps) {
+function CalorieTracking() {
   const theme = useTheme();
   const currentUser = useUserStore();
   const entries = useNutritionStore((s) => s.entries);
@@ -220,12 +211,10 @@ function CalorieTracking({ switcher, active, enterOnMount }: PageProps) {
   return (
     <ScreenScroll
       reveal
-      active={active}
-      enterOnMount={enterOnMount}
       header={
         <>
           <TabHeader title="Nutrizione" onCalendarPress={() => openPopup(() => setCalendarOpen(true))} />
-          {switcher}
+          <Switcher />
         </>
       }
       pinned={<PinnedMacroRings rings={macroRings} totals={totals} calorieTarget={calorieTarget} />}
