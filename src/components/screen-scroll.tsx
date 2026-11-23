@@ -21,6 +21,7 @@ import { TimingScreen } from '@/constants/motion';
 import { ScrollDefaults } from '@/constants/scroll';
 import { BottomTabInset, Layout, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import type { ScrollViewInstance } from 'react-native';
 
 // Scroll distance over which the top-edge fade comes in.
 const TOP_FADE_SCROLL = 24;
@@ -52,7 +53,7 @@ export function washColorAt(top: string, middle: string, bottom: string, t: numb
   return bottom;
 }
 
-export const ScreenScroll = forwardRef<ScrollView, ScreenScrollProps>(function ScreenScroll(
+export const ScreenScroll = forwardRef<ScrollViewInstance, ScreenScrollProps>(function ScreenScroll(
   { children, contentContainerStyle, reveal = false, header, pinned, pinnedProgress, scrollOffset, onLayout, enterOnMount: enterOnMountProp, active: activeProp, ...rest },
   ref
 ) {

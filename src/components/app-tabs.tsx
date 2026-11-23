@@ -1,3 +1,4 @@
+import type { ComponentProps } from 'react';
 import type { Href } from 'expo-router';
 import { Tabs, TabList, TabTrigger, TabSlot, type TabTriggerSlotProps } from 'expo-router/ui';
 import { useEffect, useRef } from 'react';
@@ -190,7 +191,8 @@ function TabButton({
 
   return (
     <AnimatedPressable
-      {...props}
+      // The slot's ref is typed for a View (React Native Strict API); at runtime it targets this Pressable as before.
+      {...(props as unknown as ComponentProps<typeof AnimatedPressable>)}
       onPressIn={(e) => {
         pressed.value = withSpring(1, SpringPressIn);
         if (!isFocused) hapticSelection();

@@ -6,7 +6,7 @@
 // never has to know the difference. This is the pattern each fast-follow
 // domain (nutrition, training, plans, onboarding) repeats later.
 import { decode } from 'base64-arraybuffer';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 
 import { supabase } from '@/lib/supabase/client';
 import type { BodyMetricSnapshot } from '@/lib/mock/types';

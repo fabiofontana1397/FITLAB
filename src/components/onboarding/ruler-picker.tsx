@@ -12,6 +12,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import { hapticSelection } from '@/lib/haptics';
 import { useTheme } from '@/hooks/use-theme';
+import type { ScrollViewInstance } from 'react-native';
 
 /** Ticks kept mounted on each side of the one under the needle. A full
  * 35–200 kg ruler at 0.1 kg is ~1 650 ticks; only this window exists at any
@@ -74,7 +75,7 @@ export function RulerPicker({
   const theme = useTheme();
   const horizontal = axis === 'horizontal';
   const gap = TICK_GAP[axis];
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ScrollViewInstance>(null);
   const [viewport, setViewport] = useState(0);
   const count = Math.max(1, Math.round((max - min) / step) + 1);
 

@@ -6,6 +6,7 @@ import { AppTextInput } from '@/components/ui/app-text';
 import { Icon } from '@/components/ui/icon';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import type { TextInputInstance } from 'react-native';
 
 export type AuthFieldProps = Omit<TextInputProps, 'style' | 'secureTextEntry'> & {
   label: string;
@@ -21,7 +22,7 @@ export type AuthFieldProps = Omit<TextInputProps, 'style' | 'secureTextEntry'> &
  * error, and a show/hide toggle on passwords. It is a plain controlled
  * TextInput underneath, so the screens keep owning value and validation.
  */
-export const AuthField = forwardRef<TextInput, AuthFieldProps>(function AuthField({ label, secure, error, hint, onFocus, onBlur, ...rest }, ref) {
+export const AuthField = forwardRef<TextInputInstance, AuthFieldProps>(function AuthField({ label, secure, error, hint, onFocus, onBlur, ...rest }, ref) {
   const theme = useTheme();
   const [focused, setFocused] = useState(false);
   const [revealed, setRevealed] = useState(false);

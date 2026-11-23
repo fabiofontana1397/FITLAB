@@ -38,6 +38,7 @@ import { isExerciseCompleted, useTrainingProgressStore } from '@/store/training-
 import { planIndexFor, useTrainingSwapStore } from '@/store/training-swap-store';
 import { useUserStore } from '@/store/user-store';
 import { savedElapsedMs, useWorkoutSessionStore } from '@/store/workout-session-store';
+import type { ScrollViewInstance } from 'react-native';
 
 /** "12:34" for the workout time of a session in progress. */
 function sessionClock(ms: number): string {
@@ -198,7 +199,7 @@ function PlanTraining() {
   const showMissed = !viewingPast && missedWorkouts.length > 0;
 
   // Picking a day starts the list at that day: back to the top, where the week is.
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ScrollViewInstance>(null);
   const selectDate = (date: string) => {
     setSelectedDate(date);
     scrollRef.current?.scrollTo({ y: 0, animated: true });

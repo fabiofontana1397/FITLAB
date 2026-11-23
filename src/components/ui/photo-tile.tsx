@@ -59,7 +59,7 @@ export function PhotoTile({ source, width, height = width, radius, background, a
   return (
     <View style={[styles.tile, tile, { padding: fill ? 0 : cornerSafeInset(radius) }]} aria-hidden={!alt}>
       <Image
-        source={typeof source === 'string' ? { uri: source } : source}
+        source={typeof source === 'string' ? { uri: source } : (source as ImageSource)}
         style={styles.photo}
         contentFit={fill ? 'cover' : 'contain'}
         contentPosition="center"

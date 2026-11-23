@@ -548,7 +548,7 @@ function FoodSearchForm({ slot, date, editEntry, onClose, onSaved }: Omit<FoodSe
               <ThemedText style={styles.sectionTitle} accessibilityRole="header">
                 {`Mangiati di recente ${RECENT_GROUP_LABEL[group]}`}
               </ThemedText>
-            ) : null
+            ) : undefined
           }
           renderItem={({ item }) => (
             <FoodRow food={item} favorite={favoriteIds.includes(item.id)} onOpen={() => openDetail(item)} onToggleFavorite={() => toggleFavorite(item.id)} />
@@ -559,7 +559,7 @@ function FoodSearchForm({ slot, date, editEntry, onClose, onSaved }: Omit<FoodSe
             </ThemedText>
           }
           ListFooterComponent={
-            !searching ? null : onlineLoading === trimmedQuery ? (
+            !searching ? undefined : onlineLoading === trimmedQuery ? (
               <ThemedText style={styles.onlineNote} themeColor="textTertiary">
                 Cerco altri prodotti...
               </ThemedText>
@@ -567,7 +567,7 @@ function FoodSearchForm({ slot, date, editEntry, onClose, onSaved }: Omit<FoodSe
               <ThemedText style={styles.onlineNote} themeColor="textTertiary">
                 Prodotti confezionati: dati Open Food Facts
               </ThemedText>
-            ) : null
+            ) : undefined
           }
         />
         {/* Under the search and the chips the foods dissolve instead of being cut by a hard edge. */}

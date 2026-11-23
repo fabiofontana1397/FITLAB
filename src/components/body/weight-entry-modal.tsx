@@ -9,6 +9,7 @@ import { OnBrand } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { daysAgoISO } from '@/lib/mock/dates';
 import { hapticSelection, hapticSuccess } from '@/lib/haptics';
+import type { ScrollViewInstance } from 'react-native';
 
 const STEP_PX = 9; // width of one 0.1 kg tick
 const RANGE_KG = 15; // how far either side of the starting weight the wheel reaches
@@ -60,7 +61,7 @@ function WeightEntryForm({
 
   const [index, setIndex] = useState(initialIndex);
   const [viewport, setViewport] = useState(0);
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ScrollViewInstance>(null);
   const snapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const placed = useRef(false);
 

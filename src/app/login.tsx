@@ -12,6 +12,7 @@ import { goBackOr } from '@/lib/navigation/go-back';
 import { useAppStore } from '@/store/app-store';
 import { useAuthStore } from '@/store/auth-store';
 import { hapticError, hapticSuccess } from '@/lib/haptics';
+import type { TextInputInstance } from 'react-native';
 
 export default function LoginScreen() {
   const theme = useTheme();
@@ -21,7 +22,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const passwordRef = useRef<TextInput>(null);
+  const passwordRef = useRef<TextInputInstance>(null);
 
   const canSubmit = !!email && !!password && !isSubmitting;
 

@@ -1,7 +1,9 @@
 import { DarkTheme, DefaultTheme, Redirect, Stack, ThemeProvider, usePathname } from 'expo-router';
-import { useEffect, useRef, type ComponentProps } from 'react';
+import { useEffect, useRef, type ComponentProps, type ReactNode } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { Platform } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useReducedMotion } from 'react-native-reanimated';
 
 import { WebChrome } from '@/components/web-chrome';
@@ -160,6 +162,9 @@ export default function RootLayout() {
   return (
     // Needed by the gestures that run on the UI thread (the card decks in Ricette and Allenamento veloce).
     <GestureHandlerRootView style={{ flex: 1 }}>
+    {/* SDK 58: Expo Router no longer provides safe-area insets on web; this provider reads CSS env(safe-area-inset-*)
+        so the web app keeps clearing the Dynamic Island and home indicator. Native keeps the router's own provider. */}
+    <WebSafeArea>
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <AuthGate>
         <Stack screenOptions={stackScreenOptions}>
@@ -198,6 +203,12 @@ export default function RootLayout() {
       </AuthGate>
       <WebChrome />
     </ThemeProvider>
+    </WebSafeArea>
     </GestureHandlerRootView>
   );
+}
+
+function WebSafeArea({ children }: { children: ReactNode }) {
+  if (Platform.OS !== 'web') return <>{children}</>;
+  return <SafeAreaProvider style={{ flex: 1 }}>{children}</SafeAreaProvider>;
 }
