@@ -147,7 +147,7 @@ export const PRIVACY: LegalDoc = {
         'dati del profilo e del questionario: età, sesso, altezza, obiettivi, livello di attività, preferenze alimentari e di allenamento;',
         'dati relativi alla salute (categoria particolare, art. 9 GDPR): peso, misure e foto corporee, alimenti e calorie registrati, allenamenti svolti, allergie e intolleranze, eventuali condizioni come gravidanza, allattamento, patologie o disturbi alimentari, dolori o infortuni, check-in mensili;',
         'dati di Apple Salute o Health Connect, solo se attivi l’integrazione: passi e calorie (attive e a riposo), in sola lettura;',
-        'messaggi scambiati con l’assistente AI;',
+        'messaggi scambiati con il coach dell’app;',
         'dati tecnici necessari al funzionamento (ad esempio log di errore) e, se le attivi, le notifiche.',
       ],
     },
@@ -164,7 +164,7 @@ export const PRIVACY: LegalDoc = {
     {
       heading: '4. Intelligenza artificiale',
       paragraphs: [
-        'Per alcune funzioni (assistente, strategia dei piani, lettura di schede di allenamento e commento alle foto) i dati strettamente necessari alla richiesta sono inviati a fornitori di modelli di intelligenza artificiale che agiscono come responsabili del trattamento. Le decisioni su calorie e limiti di sicurezza restano calcolate dall’app con regole deterministiche. Non effettuiamo decisioni automatizzate che producono effetti giuridici su di te.',
+        'Per alcune funzioni (impostazione della strategia dei piani, lettura di schede di allenamento caricate da te e, quando attivi, assistente conversazionale, suggerimenti e commento alle foto) i dati strettamente necessari alla richiesta sono inviati a fornitori di modelli di intelligenza artificiale che agiscono come responsabili del trattamento. Le decisioni su calorie e limiti di sicurezza restano calcolate dall’app con regole deterministiche. Non effettuiamo decisioni automatizzate che producono effetti giuridici su di te.',
       ],
     },
     {
