@@ -1,4 +1,4 @@
-import { createContext, memo, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, memo, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -7,6 +7,7 @@ import Animated, {
   runOnJS,
   useAnimatedStyle,
   useDerivedValue,
+  useReducedMotion,
   useSharedValue,
   withSpring,
   withTiming,
@@ -34,6 +35,8 @@ function markNow(sv: SharedValue<number>) {
 }
 const THROW_TIMING = { duration: 240, easing: Easing.out(Easing.quad) };
 const SETTLE_SPRING = { damping: 18, stiffness: 190 };
+/** The counter's number settling into place as it rolls: quick, no wobble. */
+const COUNTER_SPRING = { damping: 22, stiffness: 340, mass: 0.7 };
 
 /**
  * A horizontal control inside a card (the "Scorri per iniziare" slider) must keep its drag: wrap it in
@@ -102,6 +105,7 @@ export type SwipeDeckProps<T> = {
  * rebuilt; the swap happens on the UI thread in the same frame the thrown card leaves, React catching up after.
  */
 export function SwipeDeck<T>({ items, keyOf, resetKey, renderCard, hint, prevLabel, nextLabel, peek = 12, radius = 30, onIndexChange }: SwipeDeckProps<T>) {
+  const theme = useTheme();
   const stackTop = peek * 2;
   const [index, setIndex] = useState(0);
   const [lastReset, setLastReset] = useState(resetKey);
@@ -268,36 +272,31 @@ export function SwipeDeck<T>({ items, keyOf, resetKey, renderCard, hint, prevLab
         </View>
       </GestureDetector>
 
-      <View style={styles.counterRow}>
-        <RoundButton
-          icon="arrowBack"
-          label={prevLabel}
-          disabled={n < 2}
-          onPress={() => {
-            hapticTap();
-            previous();
-          }}
-        />
-        <View style={styles.counterText}>
-          <ThemedText style={styles.counter}>
-            {position + 1}
-            <ThemedText style={styles.counterTotal} themeColor="textTertiary">
-              {' '}/ {n}
-            </ThemedText>
-          </ThemedText>
-          <ThemedText style={styles.hint} themeColor="textSecondary">
-            {hint}
-          </ThemedText>
+      {/* The selector: one quiet capsule, centred under the deck, with the position rolling as the cards move. */}
+      <View style={styles.selectorRow}>
+        <View
+          style={[styles.capsule, { backgroundColor: theme.backgroundElevated, borderColor: theme.boxEdge }]}
+          accessibilityHint={hint}>
+          <StepButton
+            icon="arrowBack"
+            label={prevLabel}
+            disabled={n < 2}
+            onPress={() => {
+              hapticTap();
+              previous();
+            }}
+          />
+          <RollingCounter index={index} position={position} total={n} />
+          <StepButton
+            icon="chevronRight"
+            label={nextLabel}
+            disabled={n < 2}
+            onPress={() => {
+              hapticTap();
+              next();
+            }}
+          />
         </View>
-        <RoundButton
-          icon="chevronRight"
-          label={nextLabel}
-          disabled={n < 2}
-          onPress={() => {
-            hapticTap();
-            next();
-          }}
-        />
       </View>
     </View>
   );
@@ -422,20 +421,57 @@ function DeckSlot({
   );
 }
 
-function RoundButton({ icon, label, disabled, onPress }: { icon: 'arrowBack' | 'chevronRight'; label: string; disabled?: boolean; onPress: () => void }) {
+/** A chevron in the capsule: just the glyph, with a full-size target and a soft press. */
+function StepButton({ icon, label, disabled, onPress }: { icon: 'arrowBack' | 'chevronRight'; label: string; disabled?: boolean; onPress: () => void }) {
   const theme = useTheme();
   return (
     <PressableScale
       onPress={onPress}
       disabled={disabled}
       haptic={false}
-      scaleTo={0.9}
-      hitSlop={6}
+      scaleTo={0.82}
+      hitSlop={4}
       accessibilityRole="button"
       accessibilityLabel={label}
-      style={[styles.round, { backgroundColor: theme.backgroundElevated, borderColor: theme.boxEdge, opacity: disabled ? 0.4 : 1 }]}>
-      <Icon name={icon} size={18} color={theme.text} />
+      style={[styles.step, { opacity: disabled ? 0.3 : 1 }]}>
+      <Icon name={icon} size={17} color={theme.textSecondary} />
     </PressableScale>
+  );
+}
+
+/**
+ * "12 di 106". The number rolls in from the side the deck moved (up for the next card, down for the previous one)
+ * and settles with a soft spring; the total stays still. Wrapping from the last card to the first still rolls forward.
+ */
+function RollingCounter({ index, position, total }: { index: number; position: number; total: number }) {
+  const reduceMotion = useReducedMotion();
+  const y = useSharedValue(0);
+  const fade = useSharedValue(1);
+  const last = useRef(index);
+
+  useEffect(() => {
+    const dir = Math.sign(index - last.current);
+    last.current = index;
+    if (dir === 0 || reduceMotion) return;
+    y.set(dir * 9);
+    fade.set(0);
+    y.set(withSpring(0, COUNTER_SPRING));
+    fade.set(withTiming(1, { duration: 180 }));
+  }, [index, reduceMotion, y, fade]);
+
+  const numberStyle = useAnimatedStyle(() => ({ opacity: fade.value, transform: [{ translateY: y.value }] }));
+
+  return (
+    <View style={styles.counter} accessible accessibilityRole="text" accessibilityLabel={`${position + 1} di ${total}`}>
+      <View style={styles.counterClip}>
+        <Animated.View style={numberStyle}>
+          <ThemedText style={styles.counterNumber}>{position + 1}</ThemedText>
+        </Animated.View>
+      </View>
+      <ThemedText style={styles.counterTotal} themeColor="textTertiary">
+        di {total}
+      </ThemedText>
+    </View>
   );
 }
 
@@ -444,10 +480,19 @@ const styles = StyleSheet.create({
   deck: { flex: 1, minHeight: 0 },
   slot: { position: 'absolute', top: 0, left: 0, right: 0, transformOrigin: 'top' },
   veil: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderCurve: 'continuous', pointerEvents: 'none' },
-  counterRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 10 },
-  counterText: { flex: 1, alignItems: 'center' },
-  counter: { fontSize: 15, lineHeight: 19, fontWeight: '700', fontVariant: ['tabular-nums'] },
-  counterTotal: { fontSize: 15, lineHeight: 19, fontWeight: '500' },
-  hint: { fontSize: 12, lineHeight: 15, marginTop: 1 },
-  round: { width: 40, height: 40, borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center' },
+  selectorRow: { alignItems: 'center', marginTop: 12 },
+  capsule: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 40,
+    paddingHorizontal: 2,
+    borderRadius: 20,
+    borderCurve: 'continuous',
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  step: { width: 40, height: 36, alignItems: 'center', justifyContent: 'center' },
+  counter: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'center', gap: 4, minWidth: 92 },
+  counterClip: { height: 20, overflow: 'hidden', justifyContent: 'flex-end' },
+  counterNumber: { fontSize: 15, lineHeight: 20, fontWeight: '600', fontVariant: ['tabular-nums'], letterSpacing: -0.2 },
+  counterTotal: { fontSize: 15, lineHeight: 20, fontWeight: '400', fontVariant: ['tabular-nums'] },
 });
