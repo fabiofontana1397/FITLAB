@@ -4,6 +4,7 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { PressableScale } from '@/components/motion/pressable-scale';
+import { Reveal } from '@/components/motion/reveal';
 import { DishPhoto, DishPlaceholder, mealImageUri } from '@/components/nutrition/dish-photo';
 import { RecipeDetailSheet } from '@/components/nutrition/recipe-detail-sheet';
 import { ThemedText } from '@/components/themed-text';
@@ -85,7 +86,9 @@ export function RecipeDeck({ cards, portionLabel, slotLabelFor, onAdd }: RecipeD
 
   return (
     <View style={styles.root}>
-      <FilterChips onSettled={setFilter} />
+      <Reveal index={0}>
+        <FilterChips onSettled={setFilter} />
+      </Reveal>
 
       {shown.length === 0 ? (
         <View style={styles.empty}>
@@ -95,7 +98,8 @@ export function RecipeDeck({ cards, portionLabel, slotLabelFor, onAdd }: RecipeD
           </ThemedText>
         </View>
       ) : (
-        <Animated.View key={filter} entering={FadeIn.duration(SELECTOR_SETTLE_MS)} style={styles.deck}>
+        <Reveal index={1} style={styles.deck}>
+        <Animated.View key={filter} entering={FadeIn.duration(SELECTOR_SETTLE_MS)} style={styles.fill}>
           <SwipeDeck
             items={shown}
             keyOf={recipeKey}
@@ -109,6 +113,7 @@ export function RecipeDeck({ cards, portionLabel, slotLabelFor, onAdd }: RecipeD
             onIndexChange={prefetch}
           />
         </Animated.View>
+        </Reveal>
       )}
 
       <RecipeDetailSheet
@@ -241,6 +246,7 @@ const styles = StyleSheet.create({
   chip: { height: 34, paddingHorizontal: 15, borderRadius: 17, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center' },
   chipText: { fontSize: 14, lineHeight: 18, fontWeight: '600' },
   deck: { flex: 1, marginTop: 6 },
+  fill: { flex: 1 },
   card: {
     flex: 1,
     borderRadius: 32,
