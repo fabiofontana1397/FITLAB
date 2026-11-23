@@ -8,6 +8,7 @@ import { getBodyContext } from '../_shared/agents/body-data.ts';
 import { describePlan, type ClientContext } from '../_shared/agents/types.ts';
 import { CORS_HEADERS, handlePreflight, jsonResponse } from '../_shared/cors.ts';
 import { createUserScopedClient, getAuthenticatedUser } from '../_shared/supabase-client.ts';
+import { SAFETY_RULES } from '../_shared/safety-rules.ts';
 
 type RequestBody = { clientContext?: ClientContext };
 type Insight = { tone: 'positive' | 'warning' | 'neutral'; headline: string; body: string };
@@ -16,6 +17,8 @@ const SYSTEM_PROMPT = `Sei il coach AI di FITLAB. Genera 3-4 brevi "insight" mot
 dell'utente, basandoti SOLO sui dati reali forniti — non inventare mai metriche non presenti nei dati (es. sonno,
 passi, ritmo di corsa) se non sono esplicitamente inclusi. Se un dominio (corpo, nutrizione, allenamento) non ha
 abbastanza dati per un insight affidabile, ometti quel dominio invece di inventare un trend.
+${SAFETY_RULES}
+(Negli insight non serve ripetere l'avvertenza: l'app la mostra già.)
 
 Rispondi SOLO con un array JSON valido, nessun altro testo, in questo formato esatto:
 [{"tone":"positive"|"warning"|"neutral","headline":"...","body":"..."}]`;

@@ -3,6 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { interpolate, useDerivedValue, useSharedValue } from 'react-native-reanimated';
 
 import { openPopup } from '@/lib/open-popup';
+import { HealthNotice } from '@/components/legal/health-notice';
 import { FoodSearchModal } from '@/components/nutrition/food-search-modal';
 import { MealCard } from '@/components/nutrition/meal-card';
 import { RecipeDeck } from '@/components/nutrition/recipe-deck';
@@ -301,6 +302,8 @@ function CalorieTracking() {
           );
         })}
       </View>
+
+      <HealthNotice style={{ marginTop: 16 }} />
 
       <DayCalendarModal
         visible={calendarOpen}

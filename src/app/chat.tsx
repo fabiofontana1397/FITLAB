@@ -3,6 +3,8 @@ import { FlatList, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleS
 
 import { SpringPanel, TimingExit } from '@/constants/motion';
 import { HorizontalScrollDefaults } from '@/constants/scroll';
+import { HealthNotice } from '@/components/legal/health-notice';
+import { AI_COACH_ENABLED } from '@/lib/assistant/ai-config';
 import { AppTextInput } from '@/components/ui/app-text';
 import Animated, {
   interpolate,
@@ -98,7 +100,7 @@ export default function ChatScreen() {
             <View style={{ flex: 1 }}>
               <ThemedText type="subtitle">Coach FITLAB</ThemedText>
               <ThemedText type="caption" themeColor={error ? undefined : 'textSecondary'} style={error ? { color: theme.danger } : undefined}>
-                {error ?? (isTyping ? 'Sta scrivendo…' : 'Nutrizionista & personal trainer AI')}
+                {error ?? (isTyping ? 'Sta scrivendo…' : AI_COACH_ENABLED ? 'Assistente AI · non sostituisce un professionista' : 'Coach automatico · non sostituisce un professionista')}
               </ThemedText>
             </View>
             <Pressable onPress={handleClose} hitSlop={8}>
@@ -118,6 +120,7 @@ export default function ChatScreen() {
             contentContainerStyle={styles.listContent}
             onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
             renderItem={({ item }) => <Bubble message={item} />}
+            ListHeaderComponent={<HealthNotice variant={AI_COACH_ENABLED ? 'ai' : 'health'} style={styles.notice} />}
           />
 
           {messages.length <= 1 ? (
@@ -227,6 +230,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
     borderRadius: Radius.medium,
+  },
+  notice: {
+    paddingBottom: Spacing.two,
   },
   chipsScroll: {
     flexGrow: 0,

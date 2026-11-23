@@ -8,6 +8,7 @@ import { ThemedText } from '@/components/themed-text';
 import { BrandWordmark } from '@/components/ui/brand-wordmark';
 import { FadeInView } from '@/components/ui/fade-in-view';
 import { Icon, type IconName } from '@/components/ui/icon';
+import { SocialAuthButtons } from '@/components/auth/social-auth-buttons';
 import { PrimaryButton } from '@/components/ui/primary-button';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -49,6 +50,7 @@ export default function WelcomeScreen() {
       </View>
 
       <FadeInView delay={750} style={{ gap: Spacing.three }}>
+        <SocialAuthButtons />
         <PrimaryButton label="Crea un account" onPress={() => router.push('/register')} />
         <Pressable onPress={() => router.push('/login')} hitSlop={8} accessibilityRole="button" style={styles.loginRow}>
           <ThemedText type="small" themeColor="textSecondary">

@@ -160,7 +160,7 @@ export function TargetsPlanSheet() {
   const kindLabel = (k: DayKind) => (k === 'training' ? 'allenamento' : 'riposo');
 
   const issuesOfMonth = (m: MonthDraft): { kind: DayKind; issue: TargetIssue }[] =>
-    usedKinds.flatMap((k) => validateDayTargets(toDayTargets(m[k]), weightKg).map((issue) => ({ kind: k, issue })));
+    usedKinds.flatMap((k) => validateDayTargets(toDayTargets(m[k]), weightKg, ctx.sex).map((issue) => ({ kind: k, issue })));
   const allIssues = drafts.map((m, i) => (i + 1 < firstEditable ? [] : issuesOfMonth(m)));
   const blockedMonths = allIssues.map((list, i) => (list.some((x) => x.issue.level === 'blocker') ? i + 1 : 0)).filter(Boolean);
   const issues = allIssues[sel].filter((x) => x.kind === kind).map((x) => x.issue);

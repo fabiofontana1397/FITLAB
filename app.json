@@ -9,7 +9,8 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "bundleIdentifier": "com.fitlab.app",
-      "icon": "./assets/images/icon.png"
+      "icon": "./assets/images/icon.png",
+      "usesAppleSignIn": true
     },
     "android": {
       "package": "com.fitlab.app",
@@ -33,6 +34,7 @@
     },
     "plugins": [
       "expo-router",
+      "expo-apple-authentication",
       [
         "expo-splash-screen",
         {
