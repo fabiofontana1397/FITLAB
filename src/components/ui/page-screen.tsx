@@ -15,6 +15,8 @@ import { goBackOr } from '@/lib/navigation/go-back';
 const BACK_MS = 340;
 /** How far the page underneath starts shifted to the left and dimmed, as in the iOS back transition. */
 const UNDER_DIM = 0.14;
+/** The shadow the page's left edge casts on the tab while it slides away. */
+const PAGE_SHADOW = 0.18;
 
 export type PageScreenProps = {
   title: string;
@@ -70,13 +72,20 @@ export function PageScreen({ title, subtitle, children, overlays, fallbackHref =
     return () => sub.remove();
   }, [back]);
 
+  // The edge shadow exists only while the page slides away. At rest it stays off: an iOS shadow on a full-screen
+  // view has no fixed outline, so every scrolled frame the system re-traced the whole page offscreen to draw it,
+  // and that is what made scrolling Profilo (and the other pages here) stutter.
   const pageStyle = useAnimatedStyle(() => {
     const p = progress.value;
-    if (reduceMotion) return { opacity: 1 - p };
-    return { transform: [{ translateX: p * width }] };
+    if (reduceMotion) return { opacity: 1 - p, shadowOpacity: 0 };
+    return { transform: [{ translateX: p * width }], shadowOpacity: p > 0 ? PAGE_SHADOW : 0 };
   });
-  // A dark veil over the tab underneath that lifts as the page slides away.
-  const veilStyle = useAnimatedStyle(() => ({ opacity: interpolate(progress.value, [0, 1], [UNDER_DIM, 0]) }));
+  // A dark veil over the tab underneath that lifts as the page slides away. Hidden while the page covers it, so the
+  // compositor is not blending a full-screen layer nobody can see on every scrolled frame.
+  const veilStyle = useAnimatedStyle(() => {
+    const p = progress.value;
+    return { opacity: p > 0 ? interpolate(p, [0, 1], [UNDER_DIM, 0]) : 0 };
+  });
 
   return (
     <View style={styles.root}>
@@ -102,9 +111,9 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   page: {
     flex: 1,
-    // The page's left edge casts a soft shadow on the tab while it slides away.
+    // The page's left edge casts a soft shadow on the tab while it slides away (opacity set by `pageStyle`).
     shadowColor: '#000',
-    shadowOpacity: 0.18,
+    shadowOpacity: 0,
     shadowRadius: 18,
     shadowOffset: { width: -6, height: 0 },
   },
