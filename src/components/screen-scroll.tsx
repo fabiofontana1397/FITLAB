@@ -52,7 +52,7 @@ export function washColorAt(top: string, middle: string, bottom: string, t: numb
 }
 
 export const ScreenScroll = forwardRef<ScrollView, ScreenScrollProps>(function ScreenScroll(
-  { children, contentContainerStyle, reveal = false, header, pinned, pinnedProgress, scrollOffset, onLayout, enterOnMount = false, ...rest },
+  { children, contentContainerStyle, reveal = false, header, pinned, pinnedProgress, scrollOffset, onLayout, enterOnMount = false, active = true, ...rest },
   ref
 ) {
   const theme = useTheme();
@@ -74,6 +74,16 @@ export const ScreenScroll = forwardRef<ScrollView, ScreenScrollProps>(function S
     if (enterOnMount && !reduceMotion) focusProgress.value = withTiming(1, TimingScreen);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // A page kept mounted behind a switch (ModePages) coming back into view: the same settle as a page swapped in.
+  const wasActive = useRef(active);
+  useEffect(() => {
+    if (active && !wasActive.current && !reduceMotion) {
+      focusProgress.value = 0;
+      focusProgress.value = withTiming(1, TimingScreen);
+    }
+    wasActive.current = active;
+  }, [active, reduceMotion, focusProgress]);
 
   // Coming back to an already-open tab: a short settle of the whole page, so
   // switching tabs reads as a transition rather than a hard cut. The very
@@ -242,6 +252,8 @@ type ScreenScrollProps = ScrollViewProps & {
   scrollOffset?: SharedValue<number>;
   /** The page replaces another one behind a selector (Scheda / Allenamento veloce…): its content fades up on mount. */
   enterOnMount?: boolean;
+  /** False while the page is kept mounted but hidden behind a switch (ModePages): it settles in again when shown. */
+  active?: boolean;
 };
 
 const styles = StyleSheet.create({

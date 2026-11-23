@@ -1,6 +1,7 @@
 import { DarkTheme, DefaultTheme, Redirect, Stack, ThemeProvider, usePathname } from 'expo-router';
 import { useEffect, useRef, type ComponentProps } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useReducedMotion } from 'react-native-reanimated';
 
 import { WebChrome } from '@/components/web-chrome';
@@ -141,6 +142,8 @@ export default function RootLayout() {
   }, []);
 
   return (
+    // Needed by the gestures that run on the UI thread (the card decks in Ricette and Allenamento veloce).
+    <GestureHandlerRootView style={{ flex: 1 }}>
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <AuthGate>
         <Stack screenOptions={stackScreenOptions}>
@@ -177,5 +180,6 @@ export default function RootLayout() {
       </AuthGate>
       <WebChrome />
     </ThemeProvider>
+    </GestureHandlerRootView>
   );
 }
