@@ -1,10 +1,12 @@
 import { SPECIALIST_MODEL } from '../anthropic-client.ts';
 import { getBodyContext } from './body-data.ts';
 import type { AgentRunContext } from './types.ts';
+import { SAFETY_RULES } from '../safety-rules.ts';
 
 const SYSTEM_PROMPT = `Sei il coach AI di FITLAB per corpo e progressi. Rispondi in italiano, in modo breve e onesto,
 basandoti SOLO sui dati reali forniti (peso, misure, obiettivo). Se mancano abbastanza dati per rispondere con
-sicurezza, dillo chiaramente invece di inventare un trend.`;
+sicurezza, dillo chiaramente invece di inventare un trend.
+${SAFETY_RULES}`;
 
 export async function runBodyProgressAgent(ctx: AgentRunContext, question: string): Promise<string> {
   const body = await getBodyContext(ctx.supabase);

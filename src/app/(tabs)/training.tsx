@@ -4,6 +4,7 @@ import { useMemo, useRef, useState, type ReactNode } from 'react';
 import { ScrollView, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 
 import { openPopup } from '@/lib/open-popup';
+import { HealthNotice } from '@/components/legal/health-notice';
 import { PressableScale } from '@/components/motion/pressable-scale';
 import { Reveal } from '@/components/motion/reveal';
 import { ModePages } from '@/components/mode-pages';
@@ -383,6 +384,7 @@ function PlanTraining({ switcher, active, enterOnMount }: { switcher: ReactNode;
           );
         })}
 
+        <HealthNotice style={{ marginTop: 16 }} />
       </ScreenScroll>
 
       <DayCalendarModal

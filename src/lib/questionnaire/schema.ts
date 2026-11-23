@@ -284,7 +284,7 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     id: 'physical',
     title: 'Profilo fisico',
     questions: [
-      { id: 'age', type: 'number', label: 'Età', unit: 'anni', min: 16, max: 75 },
+      { id: 'age', type: 'number', label: 'Età', unit: 'anni', min: 18, max: 75, helper: 'FitLab è riservata ai maggiorenni.' },
       {
         id: 'sex',
         type: 'single',

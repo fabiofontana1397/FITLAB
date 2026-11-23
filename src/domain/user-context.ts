@@ -26,9 +26,9 @@ export type Skill = 'beginner' | 'intermediate' | 'expert';
 export type GymFocus = 'strength' | 'hypertrophy' | 'fatLoss' | 'muscularEndurance' | 'technique';
 export type RunFocus = 'endurance' | 'speed' | 'raceTime' | 'fatLoss' | 'raceReady';
 
-/** Allowed ranges of the numeric answers (the app serves adults and teenagers, 16+). */
+/** Allowed ranges of the numeric answers (FitLab is for adults only: 18+, see the Terms of use). */
 export const LIMITS = {
-  age: { min: 16, max: 75 },
+  age: { min: 18, max: 75 },
   heightCm: { min: 130, max: 220 },
   weightKg: { min: 35, max: 200 },
 } as const;

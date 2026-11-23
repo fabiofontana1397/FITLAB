@@ -74,6 +74,17 @@ export default function RegisterScreen() {
               Accedi
             </ThemedText>
           </Pressable>
+          <ThemedText type="caption" themeColor="textSecondary" style={styles.legal}>
+            Dopo la registrazione ti chiederemo di accettare i{' '}
+            <ThemedText type="caption" style={{ color: theme.accent }} onPress={() => router.push({ pathname: '/legal', params: { doc: 'terms' } })}>
+              Termini d’uso
+            </ThemedText>{' '}
+            e il trattamento dei dati come da{' '}
+            <ThemedText type="caption" style={{ color: theme.accent }} onPress={() => router.push({ pathname: '/legal', params: { doc: 'privacy' } })}>
+              Informativa privacy
+            </ThemedText>
+            . FitLab è riservata ai maggiorenni.
+          </ThemedText>
         </>
       }>
       <AuthField
@@ -119,5 +130,6 @@ export default function RegisterScreen() {
 }
 
 const styles = StyleSheet.create({
+  legal: { textAlign: 'center' },
   switchRow: { flexDirection: 'row', alignSelf: 'center', alignItems: 'center', paddingVertical: 8 },
 });

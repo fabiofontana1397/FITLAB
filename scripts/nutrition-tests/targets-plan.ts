@@ -28,10 +28,12 @@ check('carbs never negative', carbsForCalories(1200, 200, 80) === 0);
 check('valid day has no blocker', !validateDayTargets({ calories: 2000, protein: 150, fats: 56 }, 75).some((x) => x.level === 'blocker'));
 check('protein + fats over the calories block', validateDayTargets({ calories: 1500, protein: 250, fats: 80 }).some((x) => x.level === 'blocker'));
 check('calories out of range block', validateDayTargets({ calories: 600, protein: 50, fats: 20 }).some((x) => x.level === 'blocker'));
-check('1100 kcal is a warning, not a blocker', (() => {
-  const issues = validateDayTargets({ calories: 1100, protein: 80, fats: 35 }, 60);
-  return issues.some((x) => x.level === 'warning') && !issues.some((x) => x.level === 'blocker');
+check('1100 kcal is blocked (hard floor 1200)', validateDayTargets({ calories: 1100, protein: 80, fats: 35 }, 60).some((x) => x.level === 'blocker'));
+check('1300 kcal for a man is a warning (under his 1500 floor), not a blocker', (() => {
+  const issues = validateDayTargets({ calories: 1300, protein: 100, fats: 40 }, 75, 'male');
+  return issues.some((x) => x.level === 'warning' && /1\.?500/.test(x.text)) && !issues.some((x) => x.level === 'blocker');
 })());
+check('1300 kcal for a woman has no floor warning', !validateDayTargets({ calories: 1300, protein: 90, fats: 40 }, 60, 'female').some((x) => /soglia/.test(x.text)));
 check('low protein per kg warns', validateDayTargets({ calories: 2000, protein: 50, fats: 66 }, 90).some((x) => x.level === 'warning' && /Proteine basse/.test(x.text)));
 
 // 3. The plan

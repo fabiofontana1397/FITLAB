@@ -13,6 +13,7 @@ import { useActivityLogStore } from '@/store/activity-log-store';
 import { useAppStore } from '@/store/app-store';
 import { initAuthListener, useAuthStore } from '@/store/auth-store';
 import { useBodyStore } from '@/store/body-store';
+import { useConsentStore } from '@/store/consent-store';
 import { useHealthStore } from '@/store/health-store';
 import { useMonthlyCheckinStore } from '@/store/monthly-checkin-store';
 import { useNutritionStore } from '@/store/nutrition-store';
@@ -29,7 +30,9 @@ SplashScreen.preventAutoHideAsync();
 // Routes reachable without an account — every other route (including deep
 // links like /onboarding or /profile opened directly, bypassing "/") must
 // still go through the welcome/onboarding gate below.
-const PUBLIC_ROUTES = new Set(['/welcome', '/login', '/register', '/forgot-password', '/reset-password']);
+const PUBLIC_ROUTES = new Set(['/welcome', '/login', '/register', '/forgot-password', '/reset-password', '/legal']);
+// Reachable while the consent is still missing: the consent screen itself and the legal texts it links to.
+const CONSENT_ROUTES = new Set(['/consent', '/legal']);
 
 function AuthGate({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -37,6 +40,8 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   const authLoading = useAuthStore((s) => s.isLoading);
   const hasOnboarded = useAppStore((s) => s.hasOnboarded);
   const appHydrated = useStoreHydrated(useAppStore);
+  const consentHydrated = useStoreHydrated(useConsentStore);
+  const consentStatus = useConsentStore((s) => s.status);
   const wasAuthenticated = useRef(isAuthenticated);
 
   // Server-authoritative refresh for every migrated domain, fired once per
@@ -49,6 +54,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   // has zero rows, which is exactly wrong for "a new account on this device".
   useEffect(() => {
     if (isAuthenticated) {
+      useConsentStore.getState().syncFromServer();
       useUserStore.getState().syncFromServer();
       useBodyStore.getState().syncFromServer();
       useNutritionStore.getState().syncFromServer();
@@ -71,19 +77,29 @@ function AuthGate({ children }: { children: React.ReactNode }) {
       useMonthlyCheckinStore.getState().clearLocal();
       useActivityLogStore.getState().clearLocal();
       useHealthStore.getState().clearLocal();
+      useConsentStore.getState().clearLocal();
       useAppStore.setState({ hasOnboarded: false, redoingQuestionnaire: false });
     }
     wasAuthenticated.current = isAuthenticated;
   }, [isAuthenticated]);
 
-  if (authLoading || !appHydrated) return null;
+  if (authLoading || !appHydrated || !consentHydrated) return null;
 
   if (!isAuthenticated && !PUBLIC_ROUTES.has(pathname)) {
     return <Redirect href="/welcome" />;
   }
+  // Consent gate: age 18+, Terms + health disclaimer and explicit consent to health data come BEFORE the
+  // questionnaire (it already collects health data) and again whenever the legal texts change version.
+  if (isAuthenticated && !CONSENT_ROUTES.has(pathname)) {
+    if (consentStatus === 'unknown') return null;
+    if (consentStatus === 'required') return <Redirect href="/consent" />;
+  }
+  if (isAuthenticated && consentStatus === 'accepted' && pathname === '/consent') {
+    return <Redirect href={hasOnboarded ? '/' : '/onboarding'} />;
+  }
   // The post-questionnaire summary/celebration/roadmap screens are still
   // part of onboarding (hasOnboarded flips true only at the very end).
-  if (isAuthenticated && !hasOnboarded && !pathname.startsWith('/onboarding')) {
+  if (isAuthenticated && !hasOnboarded && !pathname.startsWith('/onboarding') && !CONSENT_ROUTES.has(pathname)) {
     return <Redirect href="/onboarding" />;
   }
   // Multi-device case: a second device lands here on the stale local
@@ -153,6 +169,7 @@ export default function RootLayout() {
           <Stack.Screen name="register" />
           <Stack.Screen name="forgot-password" />
           <Stack.Screen name="reset-password" />
+          <Stack.Screen name="consent" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
           <Stack.Screen name="onboarding" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
           <Stack.Screen name="onboarding-created" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
           <Stack.Screen name="onboarding-roadmap" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
@@ -164,6 +181,7 @@ export default function RootLayout() {
               so that going back can slide the page away over the tab underneath (see PageScreen). */}
           <Stack.Screen name="profile" options={{ presentation: 'transparentModal', animation: 'none' }} />
           <Stack.Screen name="notification-settings" options={{ presentation: 'transparentModal', animation: 'none' }} />
+          <Stack.Screen name="legal" options={{ presentation: 'transparentModal', animation: 'none' }} />
           <Stack.Screen name="settings" options={{ presentation: 'transparentModal', animation: 'none' }} />
           <Stack.Screen name="workout-detail" options={{ presentation: 'transparentModal', animation: 'none' }} />
           <Stack.Screen name="logged-activity" options={{ presentation: 'transparentModal', animation: 'none' }} />

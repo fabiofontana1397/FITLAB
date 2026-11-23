@@ -1,3 +1,4 @@
+import { SEX_FLOOR } from '@/domain/nutrition/safety';
 import { NEUTRAL_CALIBRATION } from '@/domain/recalibration';
 import type { Goal } from '@/lib/mock/types';
 
@@ -20,10 +21,9 @@ export const KCAL_PER_G = { protein: 4, carbs: 4, fats: 9 } as const;
 export const TARGET_LIMITS = {
   minMonths: 1,
   maxMonths: 12,
-  minCalories: 1000,
+  /** Hard floor for a plan the person types: never below this, whoever sets it (safety, see nutrition/safety.ts). */
+  minCalories: 1200,
   maxCalories: 6000,
-  /** Below this the plan is accepted but flagged: better followed with a professional. */
-  lowCalories: 1200,
 } as const;
 
 /** Share of the calories of each macro (whole percent, summing to about 100). */
@@ -69,7 +69,7 @@ export function dayTargets(calories: number, protein: number, fats: number): Mon
  * Checks one day as the person typed it (calories, protein, fats; carbs follow). Blockers stop the plan from being
  * saved (a target that makes no sense would then be shown everywhere); warnings are shown and the person decides.
  */
-export function validateDayTargets(t: Pick<MonthTargets, 'calories' | 'protein' | 'fats'>, weightKg?: number): TargetIssue[] {
+export function validateDayTargets(t: Pick<MonthTargets, 'calories' | 'protein' | 'fats'>, weightKg?: number, sex?: keyof typeof SEX_FLOOR): TargetIssue[] {
   const issues: TargetIssue[] = [];
   if (!Number.isFinite(t.calories) || t.calories < TARGET_LIMITS.minCalories || t.calories > TARGET_LIMITS.maxCalories) {
     issues.push({ level: 'blocker', text: `Le calorie devono stare tra ${TARGET_LIMITS.minCalories.toLocaleString('it-IT')} e ${TARGET_LIMITS.maxCalories.toLocaleString('it-IT')} kcal al giorno.` });
@@ -79,7 +79,10 @@ export function validateDayTargets(t: Pick<MonthTargets, 'calories' | 'protein' 
   if (fixed > t.calories) {
     issues.push({ level: 'blocker', text: `Proteine e grassi valgono ${Math.round(fixed).toLocaleString('it-IT')} kcal, più delle calorie impostate: non resta spazio per i carboidrati.` });
   }
-  if (t.calories < TARGET_LIMITS.lowCalories) issues.push({ level: 'warning', text: 'Sotto le 1.200 kcal al giorno è meglio farsi seguire da un professionista.' });
+  const floor = SEX_FLOOR[sex ?? 'unspecified'];
+  if (t.calories < floor) {
+    issues.push({ level: 'warning', text: `Sotto le ${floor.toLocaleString('it-IT')} kcal al giorno (la soglia di sicurezza che FitLab usa per i suoi piani) segui queste calorie solo con un medico o un nutrizionista.` });
+  }
   const fatShare = (t.fats * KCAL_PER_G.fats) / t.calories;
   if (t.fats > 0 && fatShare < 0.15) issues.push({ level: 'warning', text: 'Grassi sotto il 15% delle calorie: difficile coprire quelli essenziali.' });
   if (weightKg && weightKg > 0) {

@@ -5,8 +5,9 @@ import { runBodyProgressAgent } from './body-progress-agent.ts';
 import { runNutritionAgent } from './nutrition-agent.ts';
 import { runTrainingAgent } from './training-agent.ts';
 import type { AgentRunContext } from './types.ts';
+import { SAFETY_RULES } from '../safety-rules.ts';
 
-const ORCHESTRATOR_SYSTEM = `Sei il coach AI di FITLAB — nutrizionista e personal trainer. Rispondi sempre in italiano,
+const ORCHESTRATOR_SYSTEM = `Sei il coach AI di FITLAB: un assistente di benessere per alimentazione e allenamento, non un professionista sanitario. Rispondi sempre in italiano,
 in modo amichevole, conciso e concreto.
 
 Hai a disposizione tre specialisti da consultare tramite tool: allenamento, nutrizione, corpo/progressi. Regole:
@@ -16,7 +17,8 @@ Hai a disposizione tre specialisti da consultare tramite tool: allenamento, nutr
 - Dopo aver ricevuto le risposte degli specialisti, sintetizza UNA risposta unica e coerente in italiano — non
   concatenare semplicemente le risposte grezze, integrale in un discorso naturale.
 - Ogni tool accetta solo una domanda testuale: non hai e non devi mai chiedere un identificativo utente, viene
-  gestito automaticamente dal sistema.`;
+  gestito automaticamente dal sistema.
+${SAFETY_RULES}`;
 
 // Tool schemas expose ONLY a free-text `question` — deliberately no
 // user_id or any identity field. The user's identity is bound server-side
@@ -28,7 +30,7 @@ const SPECIALIST_TOOLS: Anthropic.Tool[] = [
   {
     name: 'consult_training_specialist',
     description:
-      "Consulta il personal trainer AI per domande su allenamento, scheda di oggi, esercizi, recupero o progressione dei carichi.",
+      "Consulta l'assistente AI per l'allenamento per domande su allenamento, scheda di oggi, esercizi, recupero o progressione dei carichi.",
     input_schema: {
       type: 'object',
       properties: { question: { type: 'string', description: "La domanda specifica sull'allenamento, in italiano." } },
@@ -37,7 +39,7 @@ const SPECIALIST_TOOLS: Anthropic.Tool[] = [
   },
   {
     name: 'consult_nutrition_specialist',
-    description: 'Consulta il nutrizionista AI per domande su dieta, calorie, macro, pasti o alimentazione.',
+    description: 'Consulta l\'assistente AI per l\'alimentazione per domande su dieta, calorie, macro, pasti o alimentazione.',
     input_schema: {
       type: 'object',
       properties: { question: { type: 'string', description: 'La domanda specifica sulla nutrizione, in italiano.' } },
