@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Animated, { FadeIn, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { Image, Modal, ScrollView, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 
@@ -78,6 +78,24 @@ export function SpotWorkoutView() {
     [deckFocus, deckPlace, today, ctx.weightKg, ctx.sex, ctx.age, level]
   );
 
+  // Stable, so a card is only redrawn when its own data change (not when it moves up the stack). Only the top card
+  // takes touches, so the actions need no check of their own.
+  const placeLabel = PLACE_LABEL[deckPlace];
+  const openDetail = useCallback((w: SpotWorkout) => openPopup(() => setDetail(w)), []);
+  const renderCard = useCallback(
+    (w: SpotWorkout) => (
+      <WorkoutCard
+        workout={w}
+        placeLabel={placeLabel}
+        done={doneToday[w.id]}
+        onStart={setRunning}
+        onOpen={openDetail}
+        onExercise={setInfo}
+      />
+    ),
+    [placeLabel, doneToday, openDetail]
+  );
+
   return (
     <View style={styles.root}>
       {/* Every goal on one row that scrolls sideways: a tile with the muscles it trains lit on a small figure. */}
@@ -118,29 +136,14 @@ export function SpotWorkoutView() {
 
       <Animated.View key={deckKey} entering={FadeIn.duration(SELECTOR_SETTLE_MS)} style={styles.deckArea}>
         <SwipeDeck
-          fill
           items={proposals}
-          keyOf={(w) => w.id}
+          keyOf={workoutKey}
           resetKey={deckKey}
+          radius={30}
           hint="Scorri per cambiare proposta"
           prevLabel="Proposta precedente"
           nextLabel="Proposta successiva"
-          renderCard={(w, top) => (
-            <WorkoutCard
-              workout={w}
-              placeLabel={PLACE_LABEL[deckPlace]}
-              done={doneToday[w.id]}
-              onStart={() => {
-                if (top) setRunning(w);
-              }}
-              onOpen={() => {
-                if (top) openPopup(() => setDetail(w));
-              }}
-              onExercise={(ex) => {
-                if (top) setInfo(ex);
-              }}
-            />
-          )}
+          renderCard={renderCard}
         />
       </Animated.View>
 
@@ -241,8 +244,10 @@ function ExerciseInfo({ exercise, onClose }: { exercise: TrainingExerciseEntry; 
   );
 }
 
-/** One proposal: the card of the deck, as tall as the space left on the page. */
-function WorkoutCard({
+const workoutKey = (w: SpotWorkout) => w.id;
+
+/** One proposal: the card of the deck, as tall as the space left on the page. Memoised: a swipe never redraws it. */
+const WorkoutCard = memo(function WorkoutCard({
   workout,
   placeLabel,
   done,
@@ -253,8 +258,8 @@ function WorkoutCard({
   workout: SpotWorkout;
   placeLabel: string;
   done?: { minutes: number; kcal: number };
-  onStart: () => void;
-  onOpen: () => void;
+  onStart: (w: SpotWorkout) => void;
+  onOpen: (w: SpotWorkout) => void;
   onExercise: (ex: TrainingExerciseEntry) => void;
 }) {
   const theme = useTheme();
@@ -319,7 +324,7 @@ function WorkoutCard({
               ))}
               {more > 0 ? (
                 <PressableScale
-                  onPress={onOpen}
+                  onPress={() => onOpen(workout)}
                   haptic="tap"
                   scaleTo={0.94}
                   accessibilityRole="button"
@@ -346,7 +351,7 @@ function WorkoutCard({
 
       <View style={styles.actions}>
         <PressableScale
-          onPress={onOpen}
+          onPress={() => onOpen(workout)}
           haptic="tap"
           scaleTo={0.97}
           accessibilityRole="button"
@@ -359,7 +364,7 @@ function WorkoutCard({
         <SwipeDeckKeepDrag>
           <SwipeToStart
             key={done ? 'again' : 'new'}
-            onStart={onStart}
+            onStart={() => onStart(workout)}
             accessibilityLabel={`Avvia ${workout.title}`}
             label={done ? 'Scorri per rifarlo' : 'Scorri per iniziare'}
           />
@@ -367,7 +372,7 @@ function WorkoutCard({
       </View>
     </View>
   );
-}
+});
 
 /** One exercise in the card's strip: its GIF, a tap for the details. */
 function ExerciseThumb({ exercise, onPress }: { exercise: TrainingExerciseEntry; onPress: () => void }) {

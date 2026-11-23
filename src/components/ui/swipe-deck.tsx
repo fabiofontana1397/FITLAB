@@ -1,5 +1,6 @@
-import { createContext, useContext, useLayoutEffect, useMemo, useState, type ReactNode } from 'react';
-import { PanResponder, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
+import { createContext, memo, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Easing,
   interpolate,
@@ -9,6 +10,7 @@ import Animated, {
   useSharedValue,
   withSpring,
   withTiming,
+  type SharedValue,
 } from 'react-native-reanimated';
 
 import { PressableScale } from '@/components/motion/pressable-scale';
@@ -19,17 +21,35 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { hapticSelection, hapticTap } from '@/lib/haptics';
 
-/** How far the card behind the top one sits (pt): the edge of the stack peeks out above the top card. */
-const PEEK = 12;
-const STACK_TOP = PEEK * 2;
-/** A drag past this share of the card's width (or a quick flick) sends the card away. */
+/** A drag past this share of the card's width (or a quick flick) changes card. */
 const THROW = 0.28;
+/** A flick faster than this (pt/s) changes card whatever the distance. */
+const FLICK = 700;
+/** Cards kept mounted around the top one: the previous one (waiting off to the left), the top one, two behind it. */
+const WINDOW = [-1, 0, 1, 2] as const;
+/** Stamps the time (ms) into a shared value, from the gesture's own thread. */
+function markNow(sv: SharedValue<number>) {
+  'worklet';
+  sv.value = Date.now();
+}
+const THROW_TIMING = { duration: 240, easing: Easing.out(Easing.quad) };
+const SETTLE_SPRING = { damping: 18, stiffness: 190 };
 
 /**
  * A horizontal control inside a card (the "Scorri per iniziare" slider) must keep its drag: wrap it in
  * `SwipeDeckKeepDrag` and the deck does not move while a finger (or the mouse) is down on it.
  */
-const KeepDragContext = createContext<{ hold: () => void; release: () => void } | null>(null);
+const KeepDragContext = createContext<{ hold: () => void; release: () => void; justDragged: () => boolean } | null>(null);
+
+/**
+ * For a button inside a card: true right after a drag of the deck ended (the web fires a click on mouse up), so the
+ * press is not taken as a tap. Stable: safe in a memoised card.
+ */
+export function useSwipeDeckJustDragged(): () => boolean {
+  const ctx = useContext(KeepDragContext);
+  return ctx?.justDragged ?? notDragged;
+}
+const notDragged = () => false;
 
 export function SwipeDeckKeepDrag({ children }: { children: ReactNode }) {
   const ctx = useContext(KeepDragContext);
@@ -46,217 +66,359 @@ export function SwipeDeckKeepDrag({ children }: { children: ReactNode }) {
   );
 }
 
+export type DeckCardSize = { width: number; height: number };
+
 export type SwipeDeckProps<T> = {
   items: T[];
   keyOf: (item: T) => string;
   /** Changing it (a new filter, a new list) starts the deck again from its first card. */
   resetKey: string;
-  /** `top` is false for the two cards behind, drawn only for their edge: no actions there. */
-  renderCard: (item: T, top: boolean) => ReactNode;
+  /**
+   * The face of a card, at the size the deck gives it. Pass a stable function (useCallback): a card is only redrawn
+   * when it, the item or the size change, never because it moved up the stack. Only the top card takes touches.
+   */
+  renderCard: (item: T, size: DeckCardSize) => ReactNode;
   /** Under the counter ("Scorri per cambiare ricetta"). */
   hint: string;
   prevLabel: string;
   nextLabel: string;
-  /**
-   * Fill the height the parent gives it (a page that does not scroll): every card is as tall as the space left and
-   * the selector sits under the deck, as in Ricette. Without it the cards take their own height, selector on top.
-   */
-  fill?: boolean;
+  /** How far the card behind the top one sits (pt): the edge of the stack peeks out above the top card. */
+  peek?: number;
+  /** The cards' corner radius, for the shade over the cards behind. */
+  radius?: number;
+  /** The position of the top card (0…n-1), e.g. to fetch the photos ahead. */
+  onIndexChange?: (position: number) => void;
 };
 
 /**
- * A Tinder-like stack of cards: drag the top card left for the next one, right for the previous one (or use the
- * arrows); it tilts with the finger, flies off past a threshold (with a tick of haptics when crossed) and the card
- * behind grows into its place. The stack wraps around. A mostly vertical drag is left to the page's scroll, and a
- * control inside a card that takes the touch first (a slider) keeps it.
+ * A Tinder-like stack of cards that fills the height its parent gives it, with the selector (arrows and counter)
+ * under it. Drag the top card left for the next one; drag right to bring the previous one back over it (or use the
+ * arrows). The top card tilts with the finger and flies off past a threshold (a tick of haptics when it is crossed),
+ * the card behind grows into its place. The stack wraps around. A mostly vertical drag is left alone, and a control
+ * inside a card wrapped in `SwipeDeckKeepDrag` keeps its own drag.
+ *
+ * Smoothness: the drag runs on the UI thread (gesture handler), never waiting on JavaScript; the cards around the top
+ * one stay mounted and keyed by their place in the deck, so the card behind becomes the top one without being
+ * rebuilt; the swap happens on the UI thread in the same frame the thrown card leaves, React catching up after.
  */
-export function SwipeDeck<T>({ items, keyOf, resetKey, renderCard, hint, prevLabel, nextLabel, fill = false }: SwipeDeckProps<T>) {
+export function SwipeDeck<T>({ items, keyOf, resetKey, renderCard, hint, prevLabel, nextLabel, peek = 12, radius = 30, onIndexChange }: SwipeDeckProps<T>) {
+  const stackTop = peek * 2;
   const [index, setIndex] = useState(0);
   const [lastReset, setLastReset] = useState(resetKey);
-  // With `fill`: the deck's measured height, the cards are drawn once it is known.
-  const [deckH, setDeckH] = useState(0);
+  const [size, setSize] = useState<{ w: number; h: number } | null>(null);
+  const n = items.length;
+
+  // UI-thread state: the deck's position (moved in the same frame a card is thrown, before React re-renders), the
+  // horizontal drag of the top card, and `back`, 0→1 as the previous card slides back in from the left.
+  const pos = useSharedValue(0);
+  const tx = useSharedValue(0);
+  const back = useSharedValue(0);
+  const width = useSharedValue(360);
+  const busy = useSharedValue(false);
+  const crossed = useSharedValue(false);
+  const held = useSharedValue(false);
+  const startX = useSharedValue(0);
+  const startY = useSharedValue(0);
+  const progress = useDerivedValue(() => Math.min(Math.abs(Math.min(tx.value, 0)) / (width.value * 0.45), 1));
+  // When the last drag started or ended (ms), for telling a click that ends a drag from a tap.
+  const draggedAt = useSharedValue(0);
+  const keepDrag = useMemo(
+    () => ({ hold: () => held.set(true), release: () => held.set(false), justDragged: () => Date.now() - draggedAt.value < 350 }),
+    [held, draggedAt]
+  );
+
   if (lastReset !== resetKey) {
     setLastReset(resetKey);
     setIndex(0);
-  }
-  const n = items.length;
-  const at = (i: number) => items[((i % n) + n) % n];
-
-  // The drag of the top card, its width, and `lock`: held at 1 from the moment a thrown card has left until the
-  // next one is on screen, so the card behind (already grown to full size) never shrinks back for a frame.
-  const tx = useSharedValue(0);
-  const width = useSharedValue(360);
-  const lock = useSharedValue(0);
-  const topOpacity = useSharedValue(1);
-  const progress = useDerivedValue(() => Math.max(Math.min(Math.abs(tx.value) / (width.value * 0.45), 1), lock.value));
-  // Shared values rather than refs: the handlers below read and write them while the finger is down.
-  const crossed = useSharedValue(false);
-  const held = useSharedValue(false);
-  const keepDrag = useMemo(() => ({ hold: () => held.set(true), release: () => held.set(false) }), [held]);
-
-  const step = (dir: 1 | -1) => {
-    setIndex((i) => i + dir);
-  };
-
-  // A new top card: it is already where the one behind had grown to, so it simply takes its place.
-  useLayoutEffect(() => {
+    pos.set(0);
     tx.set(0);
-    topOpacity.set(1);
-    lock.set(0);
-  }, [index, resetKey, tx, topOpacity, lock]);
+    back.set(0);
+    busy.set(false);
+  }
 
-  const throwCard = (dir: 1 | -1) => {
-    // left (−) = next card, right (+) = previous one
-    const to = (dir === 1 ? -1 : 1) * width.value * 1.4;
-    tx.set(
-      withTiming(to, { duration: 230, easing: Easing.out(Easing.quad) }, (done) => {
-        if (!done) return;
-        lock.set(1);
-        topOpacity.set(0);
-        runOnJS(step)(dir);
-      })
-    );
+  const position = n > 0 ? ((index % n) + n) % n : 0;
+  useEffect(() => {
+    onIndexChange?.(position);
+  }, [position, onIndexChange]);
+
+  const next = () => {
+    'worklet';
+    if (busy.value || n < 2) return;
+    busy.value = true;
+    tx.value = withTiming(-width.value * 1.4, THROW_TIMING, (done) => {
+      if (!done) return;
+      // Same frame: the deck moves on and the drag resets, so the card behind is the top one at rest.
+      pos.value = pos.value + 1;
+      tx.value = 0;
+      busy.value = false;
+      runOnJS(setIndex)(pos.value);
+    });
+  };
+  const previous = () => {
+    'worklet';
+    if (busy.value || n < 2) return;
+    busy.value = true;
+    tx.value = withSpring(0, SETTLE_SPRING);
+    back.value = withTiming(1, THROW_TIMING, (done) => {
+      if (!done) return;
+      pos.value = pos.value - 1;
+      back.value = 0;
+      busy.value = false;
+      runOnJS(setIndex)(pos.value);
+    });
   };
 
-  const responder = useMemo(
-    () =>
-      PanResponder.create({
-        // Only a mostly horizontal drag: a vertical one scrolls the page.
-        onMoveShouldSetPanResponder: (_, g) => !held.value && Math.abs(g.dx) > 10 && Math.abs(g.dx) > Math.abs(g.dy) * 1.4,
-        onPanResponderTerminationRequest: () => false,
-        onPanResponderGrant: () => {
-          crossed.set(false);
-        },
-        onPanResponderMove: (_, g) => {
-          tx.set(g.dx);
-          const past = Math.abs(g.dx) > width.value * THROW;
-          if (past !== crossed.value) {
-            crossed.set(past);
-            hapticSelection();
-          }
-        },
-        onPanResponderRelease: (_, g) => {
-          if (Math.abs(g.dx) > width.value * THROW || Math.abs(g.vx) > 0.7) throwCard(g.dx < 0 ? 1 : -1);
-          else tx.set(withSpring(0, { damping: 16, stiffness: 180 }));
-        },
-        onPanResponderTerminate: () => {
-          tx.set(withSpring(0, { damping: 16, stiffness: 180 }));
-        },
-      }),
-    // throwCard only touches shared values and a state setter
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
-  );
-
-  const topStyle = useAnimatedStyle(() => ({
-    opacity: topOpacity.value,
-    transform: [
-      { translateX: tx.value },
-      { translateY: Math.abs(tx.value) * 0.04 },
-      { rotate: `${interpolate(tx.value, [-width.value, width.value], [-9, 9])}deg` },
-    ],
-  }));
-  // Depth: a veil over each card behind, darker the further back, lifted as the card comes forward.
-  const shade = DECK_SHADE[useColorScheme() === 'dark' ? 'dark' : 'light'];
-  const veil1 = useAnimatedStyle(() => ({ opacity: interpolate(progress.value, [0, 1], [shade.first, 0]) }));
-  const veil2 = useAnimatedStyle(() => ({ opacity: interpolate(progress.value, [0, 1], [shade.second, shade.first]) }));
-  const behind1 = useAnimatedStyle(() => ({
-    transform: [{ translateY: interpolate(progress.value, [0, 1], [PEEK, STACK_TOP]) }, { scale: interpolate(progress.value, [0, 1], [0.95, 1]) }],
-  }));
-  const behind2 = useAnimatedStyle(() => ({
-    opacity: interpolate(progress.value, [0, 1], [0.55, 1]),
-    transform: [{ translateY: interpolate(progress.value, [0, 1], [0, PEEK]) }, { scale: interpolate(progress.value, [0, 1], [0.9, 0.95]) }],
-  }));
+  const pan = Gesture.Pan()
+    .enabled(n > 1)
+    // Taken only once the drag is clearly horizontal: a tap still opens the card, a vertical drag is left alone.
+    .manualActivation(true)
+    .onTouchesDown((e) => {
+      const t = e.allTouches[0];
+      if (!t) return;
+      startX.value = t.absoluteX;
+      startY.value = t.absoluteY;
+    })
+    .onTouchesMove((e, manager) => {
+      const t = e.allTouches[0];
+      if (!t) return;
+      if (held.value || busy.value) {
+        manager.fail();
+        return;
+      }
+      const dx = t.absoluteX - startX.value;
+      const dy = t.absoluteY - startY.value;
+      if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.4) manager.activate();
+      else if (Math.abs(dy) > 12) manager.fail();
+    })
+    .onStart(() => {
+      crossed.value = false;
+      markNow(draggedAt);
+    })
+    .onUpdate((e) => {
+      const dx = e.translationX;
+      // Left drags the top card away; right pulls the previous one back over it.
+      if (dx <= 0) {
+        tx.value = dx;
+        back.value = 0;
+      } else {
+        tx.value = 0;
+        back.value = Math.min(dx / width.value, 1);
+      }
+      const past = Math.abs(dx) > width.value * THROW;
+      if (past !== crossed.value) {
+        crossed.value = past;
+        runOnJS(hapticSelection)();
+      }
+    })
+    .onEnd((e) => {
+      markNow(draggedAt);
+      const go = Math.abs(e.translationX) > width.value * THROW || Math.abs(e.velocityX) > FLICK;
+      if (go && e.translationX < 0) next();
+      else if (go && e.translationX > 0) previous();
+      else {
+        tx.value = withSpring(0, SETTLE_SPRING);
+        back.value = withSpring(0, SETTLE_SPRING);
+      }
+    })
+    .onFinalize((_, success) => {
+      if (success || busy.value) return;
+      tx.value = withSpring(0, SETTLE_SPRING);
+      back.value = withSpring(0, SETTLE_SPRING);
+    });
 
   if (n === 0) return null;
-  const current = at(index);
-  const position = ((index % n) + n) % n;
-
-  const cardH = fill ? Math.max(deckH - STACK_TOP, 0) : undefined;
-  const sized = fill ? { height: cardH } : null;
-  const ready = !fill || deckH > 0;
-
-  const selector = (
-    <View style={[styles.counterRow, fill && styles.counterRowBelow]}>
-      <RoundButton
-        icon="arrowBack"
-        label={prevLabel}
-        disabled={n < 2}
-        onPress={() => {
-          hapticTap();
-          throwCard(-1);
-        }}
-      />
-      <View style={styles.counterText}>
-        <ThemedText style={styles.counter}>
-          {position + 1}
-          <ThemedText style={styles.counterTotal} themeColor="textTertiary">
-            {' '}/ {n}
-          </ThemedText>
-        </ThemedText>
-        <ThemedText style={styles.hint} themeColor="textSecondary">
-          {hint}
-        </ThemedText>
-      </View>
-      <RoundButton
-        icon="chevronRight"
-        label={nextLabel}
-        disabled={n < 2}
-        onPress={() => {
-          hapticTap();
-          throwCard(1);
-        }}
-      />
-    </View>
-  );
+  const at = (i: number) => items[((i % n) + n) % n];
+  const cardSize = size ? { width: size.w, height: Math.max(size.h - stackTop, 0) } : null;
 
   return (
-    <View style={fill ? styles.fillRoot : undefined}>
-      {fill ? null : selector}
+    <View style={styles.root}>
+      <GestureDetector gesture={pan}>
+        <View
+          style={styles.deck}
+          onLayout={(e: LayoutChangeEvent) => {
+            const { width: w, height: h } = e.nativeEvent.layout;
+            // A page kept mounted but hidden measures 0: keep the last real size.
+            if (w <= 0 || h <= 0) return;
+            width.set(w);
+            setSize((s) => (s && s.w === w && s.h === h ? s : { w, h }));
+          }}>
+          <KeepDragContext.Provider value={keepDrag}>
+            {cardSize
+              ? WINDOW.filter((k) => (n === 1 ? k === 0 : n === 2 ? k <= 1 : true)).map((k) => {
+                  const i = index + k;
+                  return (
+                    <DeckSlot
+                      key={`${resetKey}:${i}`}
+                      slot={i}
+                      pos={pos}
+                      tx={tx}
+                      back={back}
+                      progress={progress}
+                      width={width}
+                      height={cardSize.height}
+                      peek={peek}
+                      radius={radius}
+                      interactive={k === 0}>
+                      <CardFace item={at(i)} itemKey={keyOf(at(i))} size={cardSize} render={renderCard} />
+                    </DeckSlot>
+                  );
+                })
+              : null}
+          </KeepDragContext.Provider>
+        </View>
+      </GestureDetector>
 
-      <View
-        style={[styles.deck, fill && styles.deckFill]}
-        onLayout={(e: LayoutChangeEvent) => {
-          width.set(e.nativeEvent.layout.width);
-          if (fill) {
-            const h = Math.round(e.nativeEvent.layout.height);
-            setDeckH((prev) => (prev === h ? prev : h));
-          }
-        }}>
-        {ready ? (
-          <>
-            {/* The two cards behind, cut to the deck's height: only their top edge shows until the top card moves. */}
-            <View aria-hidden importantForAccessibility="no-hide-descendants" style={[styles.behindClip, fill && styles.behindClipFill, { pointerEvents: 'none' }]}>
-              {n > 2 ? (
-                <Animated.View style={[styles.behind, sized, behind2]}>
-                  {renderCard(at(index + 2), false)}
-                  <Animated.View style={[styles.veil, { backgroundColor: shade.color }, veil2]} />
-                </Animated.View>
-              ) : null}
-              {n > 1 ? (
-                <Animated.View style={[styles.behind, sized, behind1]}>
-                  {renderCard(at(index + 1), false)}
-                  <Animated.View style={[styles.veil, { backgroundColor: shade.color }, veil1]} />
-                </Animated.View>
-              ) : null}
-            </View>
-
-            <KeepDragContext.Provider value={keepDrag}>
-              {/* every new press starts unheld (a mouse release outside the slider never reaches it); the slider then holds again. On touch screens the end of a touch always reaches the view it started on. */}
-              <Animated.View
-                key={`${resetKey}-${keyOf(current)}`}
-                style={[styles.top, sized, topStyle]}
-                onPointerDownCapture={keepDrag.release}
-                {...(n > 1 ? responder.panHandlers : {})}>
-                {renderCard(current, true)}
-              </Animated.View>
-            </KeepDragContext.Provider>
-          </>
-        ) : null}
+      <View style={styles.counterRow}>
+        <RoundButton
+          icon="arrowBack"
+          label={prevLabel}
+          disabled={n < 2}
+          onPress={() => {
+            hapticTap();
+            previous();
+          }}
+        />
+        <View style={styles.counterText}>
+          <ThemedText style={styles.counter}>
+            {position + 1}
+            <ThemedText style={styles.counterTotal} themeColor="textTertiary">
+              {' '}/ {n}
+            </ThemedText>
+          </ThemedText>
+          <ThemedText style={styles.hint} themeColor="textSecondary">
+            {hint}
+          </ThemedText>
+        </View>
+        <RoundButton
+          icon="chevronRight"
+          label={nextLabel}
+          disabled={n < 2}
+          onPress={() => {
+            hapticTap();
+            next();
+          }}
+        />
       </View>
-
-      {fill ? selector : null}
     </View>
+  );
+}
+
+/** The face of one card: redrawn only when its item, its size or the render function change. */
+const CardFace = memo(
+  function CardFace<T>({ item, size, render }: { item: T; itemKey: string; size: DeckCardSize; render: (item: T, size: DeckCardSize) => ReactNode }) {
+    return <>{render(item, size)}</>;
+  },
+  (a, b) => a.itemKey === b.itemKey && a.item === b.item && a.render === b.render && a.size.width === b.size.width && a.size.height === b.size.height
+) as <T>(props: { item: T; itemKey: string; size: DeckCardSize; render: (item: T, size: DeckCardSize) => ReactNode }) => ReactNode;
+
+/**
+ * One place in the deck. Its role (top card, first or second behind, the previous one waiting off to the left) is
+ * worked out on the UI thread from the deck's position, so a card changes role without React re-rendering it.
+ */
+function DeckSlot({
+  slot,
+  pos,
+  tx,
+  back,
+  progress,
+  width,
+  height,
+  peek,
+  radius,
+  interactive,
+  children,
+}: {
+  slot: number;
+  pos: SharedValue<number>;
+  tx: SharedValue<number>;
+  back: SharedValue<number>;
+  progress: SharedValue<number>;
+  width: SharedValue<number>;
+  height: number;
+  peek: number;
+  radius: number;
+  interactive: boolean;
+  children: ReactNode;
+}) {
+  const shade = DECK_SHADE[useColorScheme() === 'dark' ? 'dark' : 'light'];
+  const stackTop = peek * 2;
+  // The veil over the card: none on top, darker one and two places back; it follows the same drag as the stack.
+  const veil = useAnimatedStyle(() => {
+    const r = slot - pos.value;
+    const p = progress.value;
+    const b = back.value;
+    let o = 0;
+    if (r === 0) o = b * shade.first;
+    else if (r === 1) o = interpolate(p, [0, 1], [shade.first, 0]) + b * (shade.second - shade.first);
+    else if (r === 2) o = interpolate(p, [0, 1], [shade.second, shade.first]);
+    return { opacity: o };
+  });
+  const style = useAnimatedStyle(() => {
+    const r = slot - pos.value;
+    const w = width.value;
+    const b = back.value;
+    if (r === 0) {
+      // The top card: follows a left drag; pushed down into the stack while the previous one comes back over it.
+      return {
+        opacity: 1,
+        zIndex: 3,
+        transform: [
+          { translateX: tx.value },
+          { translateY: stackTop + Math.abs(tx.value) * 0.04 - b * (stackTop - peek) },
+          { rotate: `${interpolate(tx.value, [-w, w], [-9, 9])}deg` },
+          { scale: 1 - b * 0.05 },
+        ],
+      };
+    }
+    if (r === -1) {
+      // The previous card, off to the left until a right drag brings it back.
+      return {
+        opacity: b > 0 ? 1 : 0,
+        zIndex: 4,
+        transform: [
+          { translateX: (b - 1) * w * 1.4 },
+          { translateY: stackTop + (1 - b) * w * 0.05 },
+          { rotate: `${(b - 1) * 9}deg` },
+          { scale: 1 },
+        ],
+      };
+    }
+    const p = progress.value;
+    if (r === 1) {
+      return {
+        opacity: 1,
+        zIndex: 2,
+        transform: [
+          { translateX: 0 },
+          { translateY: interpolate(p, [0, 1], [peek, stackTop]) - b * peek },
+          { rotate: '0deg' },
+          { scale: interpolate(p, [0, 1], [0.95, 1]) - b * 0.05 },
+        ],
+      };
+    }
+    if (r === 2) {
+      return {
+        opacity: interpolate(p, [0, 1], [0.55, 1]) * (1 - b),
+        zIndex: 1,
+        transform: [
+          { translateX: 0 },
+          { translateY: interpolate(p, [0, 1], [0, peek]) },
+          { rotate: '0deg' },
+          { scale: interpolate(p, [0, 1], [0.9, 0.95]) },
+        ],
+      };
+    }
+    return { opacity: 0, zIndex: 0, transform: [{ translateX: 0 }, { translateY: 0 }, { rotate: '0deg' }, { scale: 0.9 }] };
+  });
+
+  return (
+    <Animated.View
+      aria-hidden={!interactive}
+      importantForAccessibility={interactive ? 'auto' : 'no-hide-descendants'}
+      style={[styles.slot, { height, pointerEvents: interactive ? 'auto' : 'none' }, style]}>
+      {children}
+      <Animated.View style={[styles.veil, { backgroundColor: shade.color, borderRadius: radius }, veil]} />
+    </Animated.View>
   );
 }
 
@@ -278,20 +440,14 @@ function RoundButton({ icon, label, disabled, onPress }: { icon: 'arrowBack' | '
 }
 
 const styles = StyleSheet.create({
-  counterRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  counterRowBelow: { marginTop: 10 },
-  fillRoot: { flex: 1 },
-  deckFill: { flex: 1, minHeight: 0 },
+  root: { flex: 1 },
+  deck: { flex: 1, minHeight: 0 },
+  slot: { position: 'absolute', top: 0, left: 0, right: 0, transformOrigin: 'top' },
+  veil: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderCurve: 'continuous', pointerEvents: 'none' },
+  counterRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 10 },
   counterText: { flex: 1, alignItems: 'center' },
   counter: { fontSize: 15, lineHeight: 19, fontWeight: '700', fontVariant: ['tabular-nums'] },
   counterTotal: { fontSize: 15, lineHeight: 19, fontWeight: '500' },
   hint: { fontSize: 12, lineHeight: 15, marginTop: 1 },
   round: { width: 40, height: 40, borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center' },
-  deck: { marginTop: 4, paddingTop: STACK_TOP },
-  // stops short of the deck's bottom so a longer card behind never shows under the top card's rounded corners
-  behindClip: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 48, overflow: 'hidden' },
-  behindClipFill: { bottom: 0 },
-  behind: { position: 'absolute', top: 0, left: 0, right: 0, transformOrigin: 'top' },
-  veil: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 30, borderCurve: 'continuous' },
-  top: { transformOrigin: 'bottom' },
 });

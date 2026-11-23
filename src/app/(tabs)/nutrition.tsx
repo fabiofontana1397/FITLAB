@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { interpolate, useDerivedValue, useSharedValue } from 'react-native-reanimated';
 
@@ -7,6 +7,7 @@ import { FoodSearchModal } from '@/components/nutrition/food-search-modal';
 import { MealCard } from '@/components/nutrition/meal-card';
 import { RecipeDeck } from '@/components/nutrition/recipe-deck';
 import { SegmentedControl } from '@/components/ui/segmented-control';
+import { ModePages } from '@/components/mode-pages';
 import { HEADER_LIST_TOP, ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { DayCalendarModal } from '@/components/ui/day-calendar-modal';
@@ -17,7 +18,6 @@ import { ProgressRing } from '@/components/ui/progress-ring';
 import { TickProgressBar } from '@/components/ui/tick-progress-bar';
 import { useEnsurePlan } from '@/hooks/use-ensure-plan';
 import { Layout, Radius } from '@/constants/theme';
-import { useSettledValue } from '@/hooks/use-settled-value';
 import { useTabBarClearance } from '@/hooks/use-tab-bar-clearance';
 import { useTheme } from '@/hooks/use-theme';
 import { daysAgoISO, isoMondayIndex } from '@/lib/mock/dates';
@@ -53,19 +53,13 @@ function formatKcal(n: number): string {
 
 type NutritionMode = 'tracking' | 'recipes';
 
-/** Nutrizione: two pages behind a switch at the top, the day's calorie tracking and the FitLab recipe book. */
+const NUTRITION_MODES = ['tracking', 'recipes'] as const;
+
+/** Nutrizione: two pages behind a switch at the top, the day's calorie tracking and the FitLab recipe book. Both stay
+ * mounted (ModePages, Ricette built in the background shortly after the tab opens): switching only changes which one
+ * is visible. */
 export default function NutritionScreen() {
   const [mode, setMode] = useState<NutritionMode>('tracking');
-  // The switch moves at once; the page behind it swaps once the thumb has landed, then fades up.
-  const shown = useSettledValue(mode);
-  const [switched, setSwitched] = useState(false);
-  // Build the recipe book ahead, once the tracking page has settled: switching to Ricette then mounts at once.
-  const { answers, daily } = useRecipeTargets();
-  useEffect(() => {
-    if (shown !== 'tracking') return;
-    const timer = setTimeout(() => cachedRecipeBook(answers, daily), 1200);
-    return () => clearTimeout(timer);
-  }, [shown, answers, daily]);
   const switcher = (
     <View style={styles.modeSwitch}>
       <SegmentedControl
@@ -74,15 +68,20 @@ export default function NutritionScreen() {
           { value: 'recipes', label: 'Ricette' },
         ]}
         value={mode}
-        onChange={(v) => {
-          setMode(v as NutritionMode);
-          setSwitched(true);
-        }}
+        onChange={(v) => setMode(v as NutritionMode)}
       />
     </View>
   );
-  return shown === 'tracking' ? <CalorieTracking switcher={switcher} enterOnMount={switched} /> : <Recipes switcher={switcher} enterOnMount={switched} />;
+  return (
+    <ModePages
+      value={mode}
+      modes={NUTRITION_MODES}
+      render={(m, state) => (m === 'tracking' ? <CalorieTracking switcher={switcher} {...state} /> : <Recipes switcher={switcher} {...state} />)}
+    />
+  );
 }
+
+type PageProps = { switcher: ReactNode; active: boolean; enterOnMount: boolean };
 
 /** The meal of the person's day a recipe of each kind goes to: the plan's own meals when there is a plan. */
 const DEFAULT_SLOT: Record<SlotKind, MealSlot> = { breakfast: 'colazione', lunch: 'pranzo', dinner: 'cena', snack: 'spuntinoPomeriggio' };
@@ -105,7 +104,7 @@ function useRecipeTargets() {
   return { answers, planDay, personal, daily, today };
 }
 
-function Recipes({ switcher, enterOnMount }: { switcher: ReactNode; enterOnMount: boolean }) {
+function Recipes({ switcher, active, enterOnMount }: PageProps) {
   // The page does not scroll: the selector under the card must end above the floating tab bar.
   const tabClearance = useTabBarClearance();
   const [viewport, setViewport] = useState(0);
@@ -131,6 +130,7 @@ function Recipes({ switcher, enterOnMount }: { switcher: ReactNode; enterOnMount
 
   return (
     <ScreenScroll
+      active={active}
       enterOnMount={enterOnMount}
       header={
         <>
@@ -141,7 +141,8 @@ function Recipes({ switcher, enterOnMount }: { switcher: ReactNode; enterOnMount
       scrollEnabled={false}
       onLayout={(e) => {
         const h = Math.round(e.nativeEvent.layout.height);
-        setViewport((v) => (v === h ? v : h));
+        // Hidden behind the switch the page measures 0: keep the last real height.
+        if (h > 0) setViewport((v) => (v === h ? v : h));
       }}
       // An explicit height (the visible area under the header), not `flex: 1`: inside a scroll view Safari does
       // not always resolve a flex height, and the deck then grew past the screen, its selector under the tab bar.
@@ -151,7 +152,7 @@ function Recipes({ switcher, enterOnMount }: { switcher: ReactNode; enterOnMount
   );
 }
 
-function CalorieTracking({ switcher, enterOnMount }: { switcher: ReactNode; enterOnMount: boolean }) {
+function CalorieTracking({ switcher, active, enterOnMount }: PageProps) {
   const theme = useTheme();
   const currentUser = useUserStore();
   const entries = useNutritionStore((s) => s.entries);
@@ -219,6 +220,7 @@ function CalorieTracking({ switcher, enterOnMount }: { switcher: ReactNode; ente
   return (
     <ScreenScroll
       reveal
+      active={active}
       enterOnMount={enterOnMount}
       header={
         <>

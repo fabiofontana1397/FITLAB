@@ -58,6 +58,8 @@ export function SegmentedControl<T extends string>({
 
   const onItemLayout = (key: string) => (event: LayoutChangeEvent) => {
     const { x, width } = event.nativeEvent.layout;
+    // A control on a page kept mounted but hidden measures 0: keep the last real place.
+    if (width <= 0) return;
     setWidths((prev) => ({ ...prev, [key]: width }));
     setPositions((prev) => ({ ...prev, [key]: x }));
   };

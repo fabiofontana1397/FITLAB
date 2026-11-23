@@ -6,6 +6,7 @@ import { ScrollView, StyleSheet, View, type LayoutChangeEvent } from 'react-nati
 import { openPopup } from '@/lib/open-popup';
 import { PressableScale } from '@/components/motion/pressable-scale';
 import { Reveal } from '@/components/motion/reveal';
+import { ModePages } from '@/components/mode-pages';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { DayCalendarModal } from '@/components/ui/day-calendar-modal';
@@ -23,7 +24,6 @@ import { levelLabel, WorkoutSummaryCard } from '@/components/training/workout-su
 import { WorkoutSessionModal } from '@/components/training/workout-session-modal';
 import { useEnsurePlan } from '@/hooks/use-ensure-plan';
 import { useUserContext } from '@/hooks/use-user-context';
-import { useSettledValue } from '@/hooks/use-settled-value';
 import { useTabBarClearance } from '@/hooks/use-tab-bar-clearance';
 import { useTheme } from '@/hooks/use-theme';
 import { addDaysISO, currentWeekDates, daysAgoISO, isoMondayIndex } from '@/lib/mock/dates';
@@ -59,12 +59,12 @@ const GOAL_SHORT_LABEL: Record<Goal, string> = {
 
 type TrainingMode = 'plan' | 'spot';
 
-/** Allenamento: two pages behind a switch at the top, the weekly card (Scheda) and the one-off quick workouts (Allenamento veloce). */
+const TRAINING_MODES = ['plan', 'spot'] as const;
+
+/** Allenamento: two pages behind a switch at the top, the weekly card (Scheda) and the one-off quick workouts
+ * (Allenamento veloce). Both stay mounted (ModePages): switching only changes which one is visible. */
 export default function TrainingScreen() {
   const [mode, setMode] = useState<TrainingMode>('plan');
-  // The switch moves at once; the page behind it swaps once the thumb has landed, then fades up.
-  const shown = useSettledValue(mode);
-  const [switched, setSwitched] = useState(false);
   const tabClearance = useTabBarClearance();
   const switcher = (
     <View style={styles.modeSwitch}>
@@ -74,34 +74,39 @@ export default function TrainingScreen() {
           { value: 'spot', label: 'Allenamento veloce' },
         ]}
         value={mode}
-        onChange={(v) => {
-          setMode(v as TrainingMode);
-          setSwitched(true);
-        }}
+        onChange={(v) => setMode(v as TrainingMode)}
       />
     </View>
   );
-  if (shown === 'spot') {
-    return (
-      <ScreenScroll
-        testID="training-spot"
-        enterOnMount={switched}
-        scrollEnabled={false}
-        contentContainerStyle={[styles.spotPage, { paddingBottom: tabClearance }]}
-        header={
-          <>
-            <TabHeader title="Allenamento" />
-            {switcher}
-          </>
-        }>
-        <SpotWorkoutView />
-      </ScreenScroll>
-    );
-  }
-  return <PlanTraining switcher={switcher} enterOnMount={switched} />;
+  return (
+    <ModePages
+      value={mode}
+      modes={TRAINING_MODES}
+      render={(m, { active, enterOnMount }) =>
+        m === 'spot' ? (
+          <ScreenScroll
+            testID="training-spot"
+            active={active}
+            enterOnMount={enterOnMount}
+            scrollEnabled={false}
+            contentContainerStyle={[styles.spotPage, { paddingBottom: tabClearance }]}
+            header={
+              <>
+                <TabHeader title="Allenamento" />
+                {switcher}
+              </>
+            }>
+            <SpotWorkoutView />
+          </ScreenScroll>
+        ) : (
+          <PlanTraining switcher={switcher} active={active} enterOnMount={enterOnMount} />
+        )
+      }
+    />
+  );
 }
 
-function PlanTraining({ switcher, enterOnMount }: { switcher: ReactNode; enterOnMount: boolean }) {
+function PlanTraining({ switcher, active, enterOnMount }: { switcher: ReactNode; active: boolean; enterOnMount: boolean }) {
   const theme = useTheme();
   const trainingPlan = usePlanStore((s) => s.trainingPlan);
   const currentUser = useUserStore();
@@ -235,6 +240,7 @@ function PlanTraining({ switcher, enterOnMount }: { switcher: ReactNode; enterOn
       <ScreenScroll
         ref={scrollRef}
         testID="training-list"
+        active={active}
         enterOnMount={enterOnMount}
         contentContainerStyle={styles.list}
         header={
