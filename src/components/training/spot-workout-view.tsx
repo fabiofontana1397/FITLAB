@@ -3,6 +3,7 @@ import Animated, { FadeIn, useAnimatedStyle, useSharedValue, withTiming } from '
 import { Image, Modal, ScrollView, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 
 import { PressableScale } from '@/components/motion/pressable-scale';
+import { Reveal } from '@/components/motion/reveal';
 import { ThemedText } from '@/components/themed-text';
 import { ExerciseInfoModal } from '@/components/training/exercise-info-modal';
 import { FocusGlyph } from '@/components/training/focus-glyph';
@@ -91,6 +92,7 @@ export function SpotWorkoutView() {
     <PlaceContext.Provider value={placeValue}>
     <View style={styles.root}>
       {/* Every goal on one row that scrolls sideways: a tile with the muscles it trains lit on a small figure. */}
+      <Reveal index={0}>
       <ScrollView {...HorizontalScrollDefaults} style={styles.goalsScroll} contentContainerStyle={styles.goals}>
         {SPOT_FOCUS.map((f) => {
           const active = f.value === focus;
@@ -117,6 +119,7 @@ export function SpotWorkoutView() {
           );
         })}
       </ScrollView>
+      </Reveal>
 
       <SpotDeck deckKey={deckKey} proposals={proposals} doneToday={doneToday} onStart={setRunning} onOpen={openDetail} onExercise={setInfo} />
 
@@ -180,7 +183,8 @@ const SpotDeck = memo(function SpotDeck({
     [doneToday, onStart, onOpen, onExercise]
   );
   return (
-    <Animated.View key={deckKey} entering={FadeIn.duration(SELECTOR_SETTLE_MS)} style={styles.deckArea}>
+    <Reveal index={1} style={styles.deckArea}>
+    <Animated.View key={deckKey} entering={FadeIn.duration(SELECTOR_SETTLE_MS)} style={styles.fill}>
       <SwipeDeck
         items={proposals}
         keyOf={workoutKey}
@@ -192,6 +196,7 @@ const SpotDeck = memo(function SpotDeck({
         renderCard={renderCard}
       />
     </Animated.View>
+    </Reveal>
   );
 });
 
@@ -631,6 +636,7 @@ const styles = StyleSheet.create({
   placeOption: { height: 28, paddingHorizontal: 13, borderRadius: 999, alignItems: 'center', justifyContent: 'center', zIndex: 1 },
   placeLabel: { fontSize: 13, lineHeight: 17, fontWeight: '600' },
   deckArea: { flex: 1, minHeight: 0, marginTop: -6 },
+  fill: { flex: 1, minHeight: 0 },
   card: { flex: 1, borderRadius: 30, borderCurve: 'continuous', borderWidth: StyleSheet.hairlineWidth, padding: 16, gap: 12, overflow: 'hidden' },
   cardHead: { gap: 3 },
   cardTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },

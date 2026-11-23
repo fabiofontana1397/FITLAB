@@ -13,6 +13,7 @@ import Animated, {
   type SharedValue,
 } from 'react-native-reanimated';
 
+import { useModePageState } from '@/components/mode-pages';
 import { useIsSelectedTab } from '@/hooks/use-is-selected-tab';
 import { SpringReveal, STAGGER_MAX_STEPS, STAGGER_STEP, TimingFill } from '@/constants/motion';
 
@@ -81,7 +82,11 @@ export type RevealProps = {
 export function Reveal({ index = 0, style, onLayout, children }: RevealProps) {
   const ctx = useContext(ScrollRevealContext);
   const reduceMotion = useReducedMotion();
-  const focused = useIsSelectedTab();
+  const tabFocused = useIsSelectedTab();
+  // Behind a switch at the top of a tab (ModePages) a page counts as shown only while it is the one picked, so
+  // switching pages replays the same top-to-bottom entrance as switching tabs.
+  const page = useModePageState();
+  const focused = tabFocused && (page?.active ?? true);
   const ref = useRef<unknown>(null);
 
   const fallbackScrollY = useSharedValue(0);
