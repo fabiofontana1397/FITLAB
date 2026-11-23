@@ -9,7 +9,7 @@
  *   EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID (the iOS client). Without them the Google button is not shown.
  */
 import * as AppleAuthentication from 'expo-apple-authentication';
-import { GoogleSignin, isCancelledResponse, isErrorWithCode, statusCodes } from '@react-native-google-signin/google-signin';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { Platform } from 'react-native';
 
 import { supabase } from '@/lib/supabase/client';
@@ -23,13 +23,35 @@ const GOOGLE_WEB_CLIENT_ID =
 const GOOGLE_IOS_CLIENT_ID =
   process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || '703333923406-thbda8kun5rt1ps35v20j6n047isbt14.apps.googleusercontent.com';
 
-export const googleConfigured = !!GOOGLE_WEB_CLIENT_ID && (Platform.OS !== 'ios' || !!GOOGLE_IOS_CLIENT_ID);
+type GoogleModule = typeof import('@react-native-google-signin/google-signin');
+
+// Expo Go has no Google Sign-In native module: requiring it there crashes the app at startup. It is loaded lazily,
+// only in a real build, and the Google button is hidden in Expo Go (like Apple Health, see lib/health).
+const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+let googleModule: GoogleModule | null | undefined;
+export function loadGoogleModule(): GoogleModule | null {
+  if (googleModule !== undefined) return googleModule;
+  if (isExpoGo) return (googleModule = null);
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    googleModule = require('@react-native-google-signin/google-signin') as GoogleModule;
+  } catch {
+    googleModule = null;
+  }
+  return googleModule;
+}
+
+export const googleConfigured = !isExpoGo && !!GOOGLE_WEB_CLIENT_ID && (Platform.OS !== 'ios' || !!GOOGLE_IOS_CLIENT_ID);
 
 let googleReady = false;
-function ensureGoogle() {
-  if (googleReady) return;
-  GoogleSignin.configure({ webClientId: GOOGLE_WEB_CLIENT_ID, iosClientId: GOOGLE_IOS_CLIENT_ID });
-  googleReady = true;
+function ensureGoogle(): GoogleModule | null {
+  const mod = loadGoogleModule();
+  if (!mod) return null;
+  if (!googleReady) {
+    mod.GoogleSignin.configure({ webClientId: GOOGLE_WEB_CLIENT_ID, iosClientId: GOOGLE_IOS_CLIENT_ID });
+    googleReady = true;
+  }
+  return mod;
 }
 
 /** Apple's native sheet exists on iOS 13+ only. */
@@ -57,9 +79,10 @@ export async function signInWithApple(): Promise<SocialResult> {
 }
 
 export async function signInWithGoogle(): Promise<SocialResult> {
-  if (!googleConfigured) return { status: 'error', message: 'Accesso con Google non ancora configurato.' };
+  const mod = googleConfigured ? ensureGoogle() : null;
+  if (!mod) return { status: 'error', message: 'Accesso con Google non disponibile in questa versione dell’app.' };
+  const { GoogleSignin, isCancelledResponse, isErrorWithCode, statusCodes } = mod;
   try {
-    ensureGoogle();
     if (Platform.OS === 'android') await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
     const response = await GoogleSignin.signIn();
     if (isCancelledResponse(response)) return { status: 'cancelled' };
@@ -78,7 +101,7 @@ export async function signInWithGoogle(): Promise<SocialResult> {
 /** Signs out of the Google SDK too, so the next sign-in shows the account picker again. */
 export async function signOutSocial(): Promise<void> {
   if (!googleReady) return;
-  await GoogleSignin.signOut().catch(() => undefined);
+  await loadGoogleModule()?.GoogleSignin.signOut().catch(() => undefined);
 }
 
 /**
