@@ -4,6 +4,11 @@
 //   1. every file in the caller's folder of the private `progress-photos` bucket (progress photos, avatar) is removed;
 //   2. the auth user is deleted — every table in `public` references auth.users ON DELETE CASCADE, so all rows
 //      (profile, questionnaire, plans, meals, workouts, chat, check-ins, consents…) go with it.
+//   0. for Sign in with Apple accounts, the Apple tokens are revoked first (required by Apple), from a fresh
+//      authorization code the app obtains just before. Secrets: APPLE_TEAM_ID, APPLE_KEY_ID, APPLE_PRIVATE_KEY
+//      (contents of the .p8 key with "Sign in with Apple"), APPLE_CLIENT_ID (the bundle id, com.fitlab.app).
+import { importPKCS8, SignJWT } from 'npm:jose@5';
+
 import { handlePreflight, jsonResponse } from '../_shared/cors.ts';
 import { createServiceRoleClient, createUserScopedClient, getAuthenticatedUser } from '../_shared/supabase-client.ts';
 
@@ -26,6 +31,56 @@ async function removeFolder(admin: ReturnType<typeof createServiceRoleClient>, b
   }
 }
 
+/** Client secret for Apple's REST API: an ES256 JWT signed with the Sign in with Apple key, valid 5 minutes. */
+async function appleClientSecret(): Promise<{ clientId: string; secret: string } | null> {
+  const teamId = Deno.env.get('APPLE_TEAM_ID');
+  const keyId = Deno.env.get('APPLE_KEY_ID');
+  const privateKey = Deno.env.get('APPLE_PRIVATE_KEY');
+  const clientId = Deno.env.get('APPLE_CLIENT_ID');
+  if (!teamId || !keyId || !privateKey || !clientId) return null;
+  const key = await importPKCS8(privateKey.replace(/\\n/g, '\n'), 'ES256');
+  const secret = await new SignJWT({})
+    .setProtectedHeader({ alg: 'ES256', kid: keyId })
+    .setIssuer(teamId)
+    .setIssuedAt()
+    .setExpirationTime('5m')
+    .setAudience('https://appleid.apple.com')
+    .setSubject(clientId)
+    .sign(key);
+  return { clientId, secret };
+}
+
+/** Exchanges the authorization code for a refresh token and revokes it. Best effort: never blocks the deletion. */
+async function revokeApple(code: string): Promise<void> {
+  const creds = await appleClientSecret();
+  if (!creds) {
+    console.warn('delete-account: Apple secrets missing, token revocation skipped');
+    return;
+  }
+  const tokenRes = await fetch('https://appleid.apple.com/auth/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ client_id: creds.clientId, client_secret: creds.secret, code, grant_type: 'authorization_code' }),
+  });
+  const tokens = await tokenRes.json().catch(() => ({}));
+  const token = tokens.refresh_token ?? tokens.access_token;
+  if (!token) {
+    console.warn('delete-account: Apple token exchange failed', tokenRes.status, tokens.error);
+    return;
+  }
+  const revokeRes = await fetch('https://appleid.apple.com/auth/revoke', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: creds.clientId,
+      client_secret: creds.secret,
+      token,
+      token_type_hint: tokens.refresh_token ? 'refresh_token' : 'access_token',
+    }),
+  });
+  if (!revokeRes.ok) console.warn('delete-account: Apple revoke failed', revokeRes.status);
+}
+
 Deno.serve(async (req: Request) => {
   const preflight = handlePreflight(req);
   if (preflight) return preflight;
@@ -43,6 +98,9 @@ Deno.serve(async (req: Request) => {
   if (!body || body.confirm !== true) return jsonResponse({ error: 'Conferma mancante.' }, { status: 400 });
 
   const admin = createServiceRoleClient();
+  if (typeof body.appleAuthorizationCode === 'string' && body.appleAuthorizationCode) {
+    await revokeApple(body.appleAuthorizationCode).catch((err) => console.warn('delete-account: Apple revoke error', err));
+  }
   try {
     for (const bucket of BUCKETS) await removeFolder(admin, bucket, userId);
     const { error } = await admin.auth.admin.deleteUser(userId);

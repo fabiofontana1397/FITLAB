@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 
+import { appleAuthorizationCodeForDeletion } from '@/lib/auth/social';
 import type { ConsentItemId } from '@/lib/legal/content';
 import { supabase } from '@/lib/supabase/client';
 
@@ -28,7 +29,9 @@ export async function recordConsents(userId: string, kinds: readonly ConsentItem
  * `delete-account` Edge Function. Returns an error message or null.
  */
 export async function deleteAccount(): Promise<string | null> {
-  const { data, error } = await supabase.functions.invoke('delete-account', { body: { confirm: true } });
+  // Sign in with Apple accounts: Apple requires revoking its tokens, which needs a fresh authorization code.
+  const appleAuthorizationCode = await appleAuthorizationCodeForDeletion();
+  const { data, error } = await supabase.functions.invoke('delete-account', { body: { confirm: true, appleAuthorizationCode } });
   if (error) return 'Non è stato possibile eliminare l’account. Controlla la connessione e riprova.';
   if (data && typeof data === 'object' && 'error' in data && data.error) return String(data.error);
   return null;

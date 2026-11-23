@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, type TextInput } from 'react-native';
 import { AuthField } from '@/components/auth/auth-field';
 import { AuthShell } from '@/components/auth/auth-shell';
 import { ThemedText } from '@/components/themed-text';
+import { SocialAuthButtons } from '@/components/auth/social-auth-buttons';
 import { PrimaryButton } from '@/components/ui/primary-button';
 import { useTheme } from '@/hooks/use-theme';
 import { goBackOr } from '@/lib/navigation/go-back';
@@ -45,6 +46,7 @@ export default function LoginScreen() {
       onBack={() => goBackOr('/welcome')}
       footer={
         <>
+          <SocialAuthButtons mode="signIn" />
           <PrimaryButton label={isSubmitting ? 'Accesso in corso…' : 'Accedi'} onPress={handleLogin} disabled={!canSubmit} />
           <Pressable onPress={() => router.replace('/register')} hitSlop={8} accessibilityRole="button" style={styles.switchRow}>
             <ThemedText type="small" themeColor="textSecondary">

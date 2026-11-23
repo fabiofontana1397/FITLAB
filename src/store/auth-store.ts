@@ -1,6 +1,7 @@
 import type { Session, User } from '@supabase/supabase-js';
 import { create } from 'zustand';
 
+import { signOutSocial } from '@/lib/auth/social';
 import { authRedirectUrl } from '@/lib/supabase/auth-redirect';
 import { supabase } from '@/lib/supabase/client';
 
@@ -67,6 +68,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     return { error: translateAuthError(error?.message) };
   },
   logout: async () => {
+    await signOutSocial();
     await supabase.auth.signOut();
   },
   requestPasswordReset: async (email) => {
