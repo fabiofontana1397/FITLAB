@@ -1,5 +1,4 @@
 import * as AppleAuthentication from 'expo-apple-authentication';
-import { GoogleSigninButton } from '@react-native-google-signin/google-signin';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
@@ -7,7 +6,7 @@ import { Platform, StyleSheet, View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
-import { appleAvailable, googleConfigured, signInWithApple, signInWithGoogle, type SocialResult } from '@/lib/auth/social';
+import { appleAvailable, googleConfigured, loadGoogleModule, signInWithApple, signInWithGoogle, type SocialResult } from '@/lib/auth/social';
 import { hapticError, hapticSuccess } from '@/lib/haptics';
 import { useUserStore } from '@/store/user-store';
 
@@ -30,7 +29,8 @@ export function SocialAuthButtons({ mode = 'continue' }: { mode?: 'continue' | '
     appleAvailable().then(setApple);
   }, []);
 
-  if (!apple && !googleConfigured) return null;
+  const GoogleSigninButton = googleConfigured ? loadGoogleModule()?.GoogleSigninButton : undefined;
+  if (!apple && !GoogleSigninButton) return null;
 
   const run = async (fn: () => Promise<SocialResult>) => {
     if (busy) return;
@@ -60,7 +60,7 @@ export function SocialAuthButtons({ mode = 'continue' }: { mode?: 'continue' | '
           onPress={() => run(signInWithApple)}
         />
       ) : null}
-      {googleConfigured ? (
+      {GoogleSigninButton ? (
         <GoogleSigninButton
           size={GoogleSigninButton.Size.Wide}
           color={scheme === 'dark' ? GoogleSigninButton.Color.Dark : GoogleSigninButton.Color.Light}
