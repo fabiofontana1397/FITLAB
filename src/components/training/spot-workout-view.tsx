@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createContext, memo, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import Animated, { FadeIn, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { Image, Modal, ScrollView, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 
@@ -29,6 +29,12 @@ import { useActivityLogStore } from '@/store/activity-log-store';
 const TILE_LABEL: Partial<Record<SpotFocus, string>> = { cross: 'Cross' };
 
 const PLACE_LABEL: Record<SpotPlace, string> = { gym: 'Palestra', home: 'Casa' };
+
+/**
+ * The place chosen in the switch on the cards. Read through a context, not passed as a prop: a tap on the switch
+ * redraws only the switches, never the cards (with their GIFs) while the thumb is sliding.
+ */
+const PlaceContext = createContext<{ place: SpotPlace; setPlace: (p: SpotPlace) => void }>({ place: 'gym', setPlace: () => {} });
 
 const LEVEL_OF: Record<string, Level> = { beginner: 'beginner', intermediate: 'intermediate', expert: 'advanced' };
 
@@ -78,25 +84,11 @@ export function SpotWorkoutView() {
     [deckFocus, deckPlace, today, ctx.weightKg, ctx.sex, ctx.age, level]
   );
 
-  // Stable, so a card is only redrawn when its own data change (not when it moves up the stack). Only the top card
-  // takes touches, so the actions need no check of their own.
   const openDetail = useCallback((w: SpotWorkout) => openPopup(() => setDetail(w)), []);
-  const renderCard = useCallback(
-    (w: SpotWorkout) => (
-      <WorkoutCard
-        workout={w}
-        place={place}
-        onPlace={setPlace}
-        done={doneToday[w.id]}
-        onStart={setRunning}
-        onOpen={openDetail}
-        onExercise={setInfo}
-      />
-    ),
-    [place, doneToday, openDetail]
-  );
+  const placeValue = useMemo(() => ({ place, setPlace }), [place]);
 
   return (
+    <PlaceContext.Provider value={placeValue}>
     <View style={styles.root}>
       {/* Every goal on one row that scrolls sideways: a tile with the muscles it trains lit on a small figure. */}
       <ScrollView {...HorizontalScrollDefaults} style={styles.goalsScroll} contentContainerStyle={styles.goals}>
@@ -126,18 +118,7 @@ export function SpotWorkoutView() {
         })}
       </ScrollView>
 
-      <Animated.View key={deckKey} entering={FadeIn.duration(SELECTOR_SETTLE_MS)} style={styles.deckArea}>
-        <SwipeDeck
-          items={proposals}
-          keyOf={workoutKey}
-          resetKey={deckKey}
-          radius={30}
-          hint="Scorri per cambiare proposta"
-          prevLabel="Proposta precedente"
-          nextLabel="Proposta successiva"
-          renderCard={renderCard}
-        />
-      </Animated.View>
+      <SpotDeck deckKey={deckKey} proposals={proposals} doneToday={doneToday} onStart={setRunning} onOpen={openDetail} onExercise={setInfo} />
 
       <WorkoutDetailSheet
         workout={detail}
@@ -169,7 +150,55 @@ export function SpotWorkoutView() {
 
       {info ? <ExerciseInfo exercise={info} onClose={() => setInfo(null)} /> : null}
     </View>
+    </PlaceContext.Provider>
   );
+}
+
+/**
+ * The stack of proposals. Memoised on the settled choice: a tap on a goal or on Palestra / Casa redraws only the
+ * selector while its motion runs; the deck is rebuilt once it has landed, and fades in.
+ */
+const SpotDeck = memo(function SpotDeck({
+  deckKey,
+  proposals,
+  doneToday,
+  onStart,
+  onOpen,
+  onExercise,
+}: {
+  deckKey: string;
+  proposals: SpotWorkout[];
+  doneToday: Record<string, { minutes: number; kcal: number }>;
+  onStart: (w: SpotWorkout) => void;
+  onOpen: (w: SpotWorkout) => void;
+  onExercise: (ex: TrainingExerciseEntry) => void;
+}) {
+  // Stable, so a card is only redrawn when its own data change (not when it moves up the stack). Only the top card
+  // takes touches, so the actions need no check of their own.
+  const renderCard = useCallback(
+    (w: SpotWorkout) => <WorkoutCard workout={w} done={doneToday[w.id]} onStart={onStart} onOpen={onOpen} onExercise={onExercise} />,
+    [doneToday, onStart, onOpen, onExercise]
+  );
+  return (
+    <Animated.View key={deckKey} entering={FadeIn.duration(SELECTOR_SETTLE_MS)} style={styles.deckArea}>
+      <SwipeDeck
+        items={proposals}
+        keyOf={workoutKey}
+        resetKey={deckKey}
+        radius={30}
+        hint="Scorri per cambiare proposta"
+        prevLabel="Proposta precedente"
+        nextLabel="Proposta successiva"
+        renderCard={renderCard}
+      />
+    </Animated.View>
+  );
+});
+
+/** The switch on a card, wired to the place chosen. */
+function CardPlaceSwitch() {
+  const { place, setPlace } = useContext(PlaceContext);
+  return <PlaceSwitch value={place} onChange={setPlace} />;
 }
 
 /** Palestra / Casa: a small pill whose thumb slides to the choice. */
@@ -241,16 +270,12 @@ const workoutKey = (w: SpotWorkout) => w.id;
 /** One proposal: the card of the deck, as tall as the space left on the page. Memoised: a swipe never redraws it. */
 const WorkoutCard = memo(function WorkoutCard({
   workout,
-  place,
-  onPlace,
   done,
   onStart,
   onOpen,
   onExercise,
 }: {
   workout: SpotWorkout;
-  place: SpotPlace;
-  onPlace: (p: SpotPlace) => void;
   done?: { minutes: number; kcal: number };
   onStart: (w: SpotWorkout) => void;
   onOpen: (w: SpotWorkout) => void;
@@ -288,7 +313,7 @@ const WorkoutCard = memo(function WorkoutCard({
               {workout.title}
             </ThemedText>
           </View>
-          <PlaceSwitch value={place} onChange={onPlace} />
+          <CardPlaceSwitch />
         </View>
         {withStats ? null : (
           <ThemedText style={styles.note} themeColor="textSecondary" numberOfLines={1}>

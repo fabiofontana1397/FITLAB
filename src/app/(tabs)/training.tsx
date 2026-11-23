@@ -1,12 +1,12 @@
 import { dayForWeek, weekOfMonth } from '@/lib/planning/training/week';
 import { router } from 'expo-router';
-import { useMemo, useRef, useState, type ReactNode } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 
 import { openPopup } from '@/lib/open-popup';
 import { PressableScale } from '@/components/motion/pressable-scale';
 import { Reveal } from '@/components/motion/reveal';
-import { ModePages } from '@/components/mode-pages';
+import { ModePages, ModeSwitch } from '@/components/mode-pages';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { DayCalendarModal } from '@/components/ui/day-calendar-modal';
@@ -18,7 +18,6 @@ import { LoggedActivitiesCard } from '@/components/training/logged-activities-ca
 import { MissedWorkoutsCard, type MissedWorkout } from '@/components/training/missed-workouts-card';
 import { SpotWorkoutView } from '@/components/training/spot-workout-view';
 import { SwapSlide } from '@/components/training/swap-slide';
-import { SegmentedControl } from '@/components/ui/segmented-control';
 import { TrainingWeekCard } from '@/components/training/training-week-card';
 import { levelLabel, WorkoutSummaryCard } from '@/components/training/workout-summary-card';
 import { WorkoutSessionModal } from '@/components/training/workout-session-modal';
@@ -60,53 +59,46 @@ const GOAL_SHORT_LABEL: Record<Goal, string> = {
 type TrainingMode = 'plan' | 'spot';
 
 const TRAINING_MODES = ['plan', 'spot'] as const;
+const TRAINING_OPTIONS: { value: TrainingMode; label: string }[] = [
+  { value: 'plan', label: 'Scheda' },
+  { value: 'spot', label: 'Allenamento veloce' },
+];
 
 /** Allenamento: two pages behind a switch at the top, the weekly card (Scheda) and the one-off quick workouts
  * (Allenamento veloce). Both stay mounted (ModePages): switching only changes which one is visible. */
 export default function TrainingScreen() {
   const [mode, setMode] = useState<TrainingMode>('plan');
-  const tabClearance = useTabBarClearance();
-  const switcher = (
-    <View style={styles.modeSwitch}>
-      <SegmentedControl
-        options={[
-          { value: 'plan', label: 'Scheda' },
-          { value: 'spot', label: 'Allenamento veloce' },
-        ]}
-        value={mode}
-        onChange={(v) => setMode(v as TrainingMode)}
-      />
-    </View>
-  );
+  return <ModePages value={mode} onChange={setMode} modes={TRAINING_MODES} render={(m) => (m === 'spot' ? <SpotPage /> : <PlanTraining />)} />;
+}
+
+/** The switch in each page's header; the pages are built once and never redrawn by it. */
+function Switcher() {
   return (
-    <ModePages
-      value={mode}
-      modes={TRAINING_MODES}
-      render={(m, { active, enterOnMount }) =>
-        m === 'spot' ? (
-          <ScreenScroll
-            testID="training-spot"
-            active={active}
-            enterOnMount={enterOnMount}
-            scrollEnabled={false}
-            contentContainerStyle={[styles.spotPage, { paddingBottom: tabClearance }]}
-            header={
-              <>
-                <TabHeader title="Allenamento" />
-                {switcher}
-              </>
-            }>
-            <SpotWorkoutView />
-          </ScreenScroll>
-        ) : (
-          <PlanTraining switcher={switcher} active={active} enterOnMount={enterOnMount} />
-        )
-      }
-    />
+    <View style={styles.modeSwitch}>
+      <ModeSwitch options={TRAINING_OPTIONS} />
+    </View>
   );
 }
 
-function PlanTraining({ switcher, active, enterOnMount }: { switcher: ReactNode; active: boolean; enterOnMount: boolean }) {
+function SpotPage() {
+  const tabClearance = useTabBarClearance();
+  return (
+    <ScreenScroll
+      testID="training-spot"
+      scrollEnabled={false}
+      contentContainerStyle={[styles.spotPage, { paddingBottom: tabClearance }]}
+      header={
+        <>
+          <TabHeader title="Allenamento" />
+          <Switcher />
+        </>
+      }>
+      <SpotWorkoutView />
+    </ScreenScroll>
+  );
+}
+
+function PlanTraining() {
   const theme = useTheme();
   const trainingPlan = usePlanStore((s) => s.trainingPlan);
   const currentUser = useUserStore();
@@ -240,13 +232,11 @@ function PlanTraining({ switcher, active, enterOnMount }: { switcher: ReactNode;
       <ScreenScroll
         ref={scrollRef}
         testID="training-list"
-        active={active}
-        enterOnMount={enterOnMount}
         contentContainerStyle={styles.list}
         header={
           <>
             <TabHeader title="Allenamento" onCalendarPress={() => openPopup(() => setCalendarOpen(true))} />
-            {switcher}
+            <Switcher />
           </>
         }>
         <Reveal index={0}>
