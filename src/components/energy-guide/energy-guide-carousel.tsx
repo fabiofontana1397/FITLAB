@@ -11,6 +11,7 @@ import { PrimaryButton } from '@/components/ui/primary-button';
 import { useTheme } from '@/hooks/use-theme';
 import { buildDemoDay, DEMO_CONFIG, type DemoDay, type DemoValues } from '@/lib/energy-guide/demo-example';
 import { hapticSelection, hapticSuccess } from '@/lib/haptics';
+import type { ScrollViewInstance } from 'react-native';
 
 export type GuidePage = {
   id: string;
@@ -79,7 +80,7 @@ export function EnergyGuideCarousel({
   const [pagerHeight, setPagerHeight] = useState(0);
   const [pageHeights, setPageHeights] = useState<number[]>(() => pages.map(() => 0));
   const compact = pagerHeight > 0 && pagerHeight < COMPACT_BELOW;
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ScrollViewInstance>(null);
   const [width, setWidth] = useState(0);
   const [index, setIndex] = useState(0);
   const [visited, setVisited] = useState<boolean[]>(() => pages.map((_, i) => i === 0));

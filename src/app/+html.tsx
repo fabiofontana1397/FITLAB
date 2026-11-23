@@ -1,4 +1,4 @@
-import { ScrollViewStyleReset } from 'expo-router/html';
+import { ScrollViewStyleReset, useServerDocumentContext } from 'expo-router/html';
 import type { PropsWithChildren } from 'react';
 
 import { PageBackground } from '@/constants/page-background';
@@ -16,8 +16,11 @@ html,body{background-color:${PageBackground.light}}
 `;
 
 export default function Root({ children }: PropsWithChildren) {
+  // SDK 58: the router hands the document its attributes and nodes (head tags, hydration data); bodyNodes must follow
+  // the children or hydration breaks.
+  const { htmlAttributes, bodyAttributes, headNodes, bodyNodes } = useServerDocumentContext();
   return (
-    <html lang="it">
+    <html lang="it" {...htmlAttributes}>
       <head>
         <meta charSet="utf-8" />
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
@@ -40,8 +43,12 @@ export default function Root({ children }: PropsWithChildren) {
         <meta name="theme-color" content={PageBackground.dark} media="(prefers-color-scheme: dark)" />
         <ScrollViewStyleReset />
         <style id="page-background" dangerouslySetInnerHTML={{ __html: PAGE_BACKGROUND_CSS }} />
+        {headNodes}
       </head>
-      <body>{children}</body>
+      <body {...bodyAttributes}>
+        {children}
+        {bodyNodes}
+      </body>
     </html>
   );
 }

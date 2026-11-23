@@ -7,6 +7,7 @@ import { AuthShell } from '@/components/auth/auth-shell';
 import { PrimaryButton } from '@/components/ui/primary-button';
 import { useAppStore } from '@/store/app-store';
 import { useAuthStore } from '@/store/auth-store';
+import type { TextInputInstance } from 'react-native';
 
 /** Reached only via the password-reset email link (see
  * use-handle-auth-redirect.ts) — by the time this renders, a temporary
@@ -20,7 +21,7 @@ export default function ResetPasswordScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const confirmRef = useRef<TextInput>(null);
+  const confirmRef = useRef<TextInputInstance>(null);
 
   const canSubmit = password.length >= 8 && password === confirmPassword && !isSubmitting;
 

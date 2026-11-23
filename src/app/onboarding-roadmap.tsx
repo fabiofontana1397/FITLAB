@@ -32,6 +32,7 @@ import { useAppStore } from '@/store/app-store';
 import { useOnboardingStore } from '@/store/onboarding-store';
 import { usePlanStore } from '@/store/plan-store';
 import { hapticSuccess } from '@/lib/haptics';
+import type { ScrollViewInstance } from 'react-native';
 
 type RoadmapPage = { id: string; kicker: string; title: string; subtitle: string; steps: RoadmapStep[] };
 
@@ -72,7 +73,7 @@ export default function OnboardingRoadmapScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ScrollViewInstance>(null);
   const [pageIndex, setPageIndex] = useState(0);
   const [isFinishing, setIsFinishing] = useState(false);
   const answers = useOnboardingStore((s) => s.answers);

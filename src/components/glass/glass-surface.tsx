@@ -133,7 +133,8 @@ export function GlassSurface({
           default: null,
         }),
         outerStyle,
-        swipeToDismiss ? swipe.animatedStyle : null,
+        // Reanimated 4.7 types animated styles as a handle; at runtime it is a regular style entry.
+        swipeToDismiss ? (swipe.animatedStyle as unknown as ViewStyle) : null,
       ]}>
       {blur ? (
         <BlurView

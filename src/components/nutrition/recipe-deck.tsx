@@ -15,6 +15,7 @@ import { hapticSelection } from '@/lib/haptics';
 import { openPopup } from '@/lib/open-popup';
 import type { SlotKind } from '@/lib/planning/fitlab/catalog';
 import type { RecipeCard } from '@/lib/planning/fitlab/recipe-book';
+import type { ScrollViewInstance } from 'react-native';
 
 type Filter = 'all' | SlotKind;
 const CHIP_H = 34;
@@ -215,7 +216,7 @@ type ChipBox = { x: number; w: number };
 const FilterChips = memo(function FilterChips({ value, onChange }: { value: Filter; onChange: (f: Filter) => void }) {
   const theme = useTheme();
   const reduceMotion = useReducedMotion();
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ScrollViewInstance>(null);
   const [boxes, setBoxes] = useState<(ChipBox | null)[]>(() => FILTERS.map(() => null));
   const [viewport, setViewport] = useState(0);
   const index = filterIndex(value);

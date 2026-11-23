@@ -11,6 +11,7 @@ import { goBackOr } from '@/lib/navigation/go-back';
 import { useAuthStore } from '@/store/auth-store';
 import { useUserStore } from '@/store/user-store';
 import { hapticError, hapticSuccess } from '@/lib/haptics';
+import type { TextInputInstance } from 'react-native';
 
 export default function RegisterScreen() {
   const theme = useTheme();
@@ -22,8 +23,8 @@ export default function RegisterScreen() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [needsEmailConfirmation, setNeedsEmailConfirmation] = useState(false);
-  const emailRef = useRef<TextInput>(null);
-  const passwordRef = useRef<TextInput>(null);
+  const emailRef = useRef<TextInputInstance>(null);
+  const passwordRef = useRef<TextInputInstance>(null);
 
   // Same as Supabase Auth's minimum_password_length (8, see supabase/config.toml).
   const canSubmit = name.trim().length > 0 && email.includes('@') && password.length >= 8 && !isSubmitting;

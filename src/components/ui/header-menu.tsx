@@ -13,6 +13,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { hapticSoft, hapticTap } from '@/lib/haptics';
 import { useUserStore } from '@/store/user-store';
+import type { ViewInstance } from 'react-native';
 
 const PANEL_WIDTH = 252;
 const GAP_BELOW_BUTTON = 8;
@@ -41,7 +42,7 @@ const ITEMS: Item[] = [
  */
 export function HeaderMenu({ size = 40 }: { size?: number }) {
   const theme = useTheme();
-  const anchorRef = useRef<View>(null);
+  const anchorRef = useRef<ViewInstance>(null);
   const { width: windowWidth } = useWindowDimensions();
   const [anchor, setAnchor] = useState<Anchor | null>(null);
   const [open, setOpen] = useState(false);
