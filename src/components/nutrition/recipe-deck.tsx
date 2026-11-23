@@ -1,9 +1,10 @@
 import { Image } from 'expo-image';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
-import Animated, { Easing, interpolate, useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { interpolate, useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from 'react-native-reanimated';
 
 import { PressableScale } from '@/components/motion/pressable-scale';
+import { SWAP_BUILD_AFTER_MS, SwapLayer } from '@/components/motion/swap-layer';
 import { DishPhoto, DishPlaceholder, mealImageUri } from '@/components/nutrition/dish-photo';
 import { RecipeDetailSheet } from '@/components/nutrition/recipe-detail-sheet';
 import { ThemedText } from '@/components/themed-text';
@@ -38,13 +39,6 @@ const PREFETCH_AHEAD = 5;
 
 /** The chips' pill gliding to the chosen meal: quick, settling without a wobble. */
 const PILL_SPRING = { damping: 26, stiffness: 320, mass: 0.8 };
-/** How far (pt) a deck drifts sideways as it leaves and the next one arrives, in the direction of the chip tapped. */
-const DRIFT = 26;
-const DECK_OUT = { duration: 170, easing: Easing.out(Easing.quad) };
-const DECK_IN_FADE = { duration: 280, easing: Easing.out(Easing.cubic) };
-const DECK_IN_SPRING = { damping: 24, stiffness: 230, mass: 0.9 };
-/** A deck not built yet is mounted while the one leaving fades out, so its build never stalls the motion. */
-const BUILD_AFTER_MS = 90;
 /** After Ricette first shows, the other meals' decks are built in the background, one at a time. */
 const PREWARM_START_MS = 1600;
 const PREWARM_STEP_MS = 450;
@@ -86,7 +80,7 @@ export function RecipeDeck({ cards, portionLabel, slotLabelFor, onAdd }: RecipeD
   // A deck not built yet: built a beat later, while the leaving one is already fading on the UI thread.
   useEffect(() => {
     if (built.includes(filter)) return;
-    const t = setTimeout(() => setBuilt((b) => (b.includes(filter) ? b : [...b, filter])), BUILD_AFTER_MS);
+    const t = setTimeout(() => setBuilt((b) => (b.includes(filter) ? b : [...b, filter])), SWAP_BUILD_AFTER_MS);
     return () => clearTimeout(t);
   }, [filter, built]);
 
@@ -133,13 +127,10 @@ export function RecipeDeck({ cards, portionLabel, slotLabelFor, onAdd }: RecipeD
   );
 }
 
+const recipeKey = (c: RecipeCard) => c.recipe.id;
 const filterIndex = (f: Filter) => FILTERS.findIndex((x) => x.value === f);
 
-/**
- * One meal's deck, kept mounted once built. Leaving, it fades and drifts away from the chip tapped; arriving, it
- * glides in from that side and settles with a soft spring, growing the last few percent into place. Only opacity and
- * transform move, on the UI thread: the cards themselves are never redrawn by a change of meal.
- */
+/** One meal's deck, kept mounted once built: the change of meal only moves it (see SwapLayer). */
 const DeckLayer = memo(function DeckLayer({
   filter,
   cards,
@@ -153,44 +144,24 @@ const DeckLayer = memo(function DeckLayer({
   direction: number;
   renderCard: (card: RecipeCard, size: DeckCardSize) => React.ReactNode;
 }) {
-  const reduceMotion = useReducedMotion();
-  const shown = useMemo(() => (filter === 'all' ? cards : cards.filter((c) => c.kind === filter)), [cards, filter]);
-  const opacity = useSharedValue(0);
-  const x = useSharedValue(active ? direction * DRIFT : 0);
-  const scale = useSharedValue(active ? 0.97 : 1);
-  const first = useRef(true);
+  return (
+    <SwapLayer active={active} direction={direction} instant={filter === 'all'}>
+      <MealDeck filter={filter} cards={cards} renderCard={renderCard} />
+    </SwapLayer>
+  );
+});
 
-  useEffect(() => {
-    // The deck shown when the page opens is simply there; the page's own entrance takes care of it.
-    if (first.current) {
-      first.current = false;
-      if (active && filter === 'all') {
-        opacity.set(1);
-        x.set(0);
-        scale.set(1);
-        return;
-      }
-    }
-    if (reduceMotion) {
-      opacity.set(withTiming(active ? 1 : 0, { duration: 160 }));
-      x.set(0);
-      scale.set(1);
-      return;
-    }
-    if (active) {
-      x.set(direction * DRIFT);
-      scale.set(0.97);
-      opacity.set(withTiming(1, DECK_IN_FADE));
-      x.set(withSpring(0, DECK_IN_SPRING));
-      scale.set(withSpring(1, DECK_IN_SPRING));
-    } else {
-      opacity.set(withTiming(0, DECK_OUT));
-      x.set(withTiming(-direction * DRIFT * 0.6, DECK_OUT));
-      scale.set(withTiming(0.97, DECK_OUT));
-    }
-    // direction is read at the moment of the change, on purpose
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active]);
+/** The recipes of one meal as a deck. Memoised: a change of meal never redraws it. */
+const MealDeck = memo(function MealDeck({
+  filter,
+  cards,
+  renderCard,
+}: {
+  filter: Filter;
+  cards: RecipeCard[];
+  renderCard: (card: RecipeCard, size: DeckCardSize) => React.ReactNode;
+}) {
+  const shown = useMemo(() => (filter === 'all' ? cards : cards.filter((c) => c.kind === filter)), [cards, filter]);
 
   // Photos of the recipes around the current one, fetched before they come on screen.
   const prefetch = useCallback(
@@ -208,42 +179,31 @@ const DeckLayer = memo(function DeckLayer({
     [shown]
   );
 
-  const style = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-    transform: [{ translateX: x.value }, { scale: scale.value }],
-  }));
-
+  if (shown.length === 0) {
+    return (
+      <View style={styles.empty}>
+        <ThemedText type="smallBold">Nessuna ricetta</ThemedText>
+        <ThemedText type="small" themeColor="textSecondary">
+          Con le tue preferenze non ci sono ricette per questo pasto.
+        </ThemedText>
+      </View>
+    );
+  }
   return (
-    <Animated.View
-      aria-hidden={!active}
-      importantForAccessibility={active ? 'auto' : 'no-hide-descendants'}
-      style={[StyleSheet.absoluteFill, { pointerEvents: active ? 'auto' : 'none' }, style]}>
-      {shown.length === 0 ? (
-        <View style={styles.empty}>
-          <ThemedText type="smallBold">Nessuna ricetta</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            Con le tue preferenze non ci sono ricette per questo pasto.
-          </ThemedText>
-        </View>
-      ) : (
-        <SwipeDeck
-          items={shown}
-          keyOf={recipeKey}
-          resetKey={filter}
-          peek={PEEK}
-          radius={32}
-          hint="Scorri per cambiare ricetta"
-          prevLabel="Ricetta precedente"
-          nextLabel="Ricetta successiva"
-          renderCard={renderCard}
-          onIndexChange={prefetch}
-        />
-      )}
-    </Animated.View>
+    <SwipeDeck
+      items={shown}
+      keyOf={recipeKey}
+      resetKey={filter}
+      peek={PEEK}
+      radius={32}
+      hint="Scorri per cambiare ricetta"
+      prevLabel="Ricetta precedente"
+      nextLabel="Ricetta successiva"
+      renderCard={renderCard}
+      onIndexChange={prefetch}
+    />
   );
 });
-
-const recipeKey = (c: RecipeCard) => c.recipe.id;
 
 type ChipBox = { x: number; w: number };
 
