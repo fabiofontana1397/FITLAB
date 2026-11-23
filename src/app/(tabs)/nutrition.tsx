@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { interpolate, useDerivedValue, useSharedValue } from 'react-native-reanimated';
 
@@ -17,12 +17,13 @@ import { ProgressRing } from '@/components/ui/progress-ring';
 import { TickProgressBar } from '@/components/ui/tick-progress-bar';
 import { useEnsurePlan } from '@/hooks/use-ensure-plan';
 import { Layout, Radius } from '@/constants/theme';
+import { useSettledValue } from '@/hooks/use-settled-value';
 import { useTabBarClearance } from '@/hooks/use-tab-bar-clearance';
 import { useTheme } from '@/hooks/use-theme';
 import { daysAgoISO, isoMondayIndex } from '@/lib/mock/dates';
 import { inMealOrder } from '@/lib/planning/meal-slots';
 import { SLOT_KIND, type SlotKind } from '@/lib/planning/fitlab/catalog';
-import { buildRecipeBook, type RecipeCard } from '@/lib/planning/fitlab/recipe-book';
+import { cachedRecipeBook, type RecipeCard } from '@/lib/planning/fitlab/recipe-book';
 import { useOnboardingStore } from '@/store/onboarding-store';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
 import {
@@ -55,6 +56,16 @@ type NutritionMode = 'tracking' | 'recipes';
 /** Nutrizione: two pages behind a switch at the top, the day's calorie tracking and the FitLab recipe book. */
 export default function NutritionScreen() {
   const [mode, setMode] = useState<NutritionMode>('tracking');
+  // The switch moves at once; the page behind it swaps once the thumb has landed, then fades up.
+  const shown = useSettledValue(mode);
+  const [switched, setSwitched] = useState(false);
+  // Build the recipe book ahead, once the tracking page has settled: switching to Ricette then mounts at once.
+  const { answers, daily } = useRecipeTargets();
+  useEffect(() => {
+    if (shown !== 'tracking') return;
+    const timer = setTimeout(() => cachedRecipeBook(answers, daily), 1200);
+    return () => clearTimeout(timer);
+  }, [shown, answers, daily]);
   const switcher = (
     <View style={styles.modeSwitch}>
       <SegmentedControl
@@ -63,27 +74,25 @@ export default function NutritionScreen() {
           { value: 'recipes', label: 'Ricette' },
         ]}
         value={mode}
-        onChange={(v) => setMode(v as NutritionMode)}
+        onChange={(v) => {
+          setMode(v as NutritionMode);
+          setSwitched(true);
+        }}
       />
     </View>
   );
-  return mode === 'tracking' ? <CalorieTracking switcher={switcher} /> : <Recipes switcher={switcher} />;
+  return shown === 'tracking' ? <CalorieTracking switcher={switcher} enterOnMount={switched} /> : <Recipes switcher={switcher} enterOnMount={switched} />;
 }
 
 /** The meal of the person's day a recipe of each kind goes to: the plan's own meals when there is a plan. */
 const DEFAULT_SLOT: Record<SlotKind, MealSlot> = { breakfast: 'colazione', lunch: 'pranzo', dinner: 'cena', snack: 'spuntinoPomeriggio' };
 
-function Recipes({ switcher }: { switcher: ReactNode }) {
-  // The page does not scroll: the selector under the card must end above the floating tab bar.
-  const tabClearance = useTabBarClearance();
-  const [viewport, setViewport] = useState(0);
+/** Today's targets the recipes are sized on, and what Ricette needs around them. */
+function useRecipeTargets() {
   const currentUser = useUserStore();
   const dietPlan = usePlanStore((s) => s.dietPlan);
   const answers = useOnboardingStore((s) => s.answers);
-  const addEntry = useNutritionStore((s) => s.addEntry);
   const today = daysAgoISO(0);
-
-  useEnsurePlan('diet');
   const month = dietPlan?.months.find((m) => m.monthIndex === (dietPlan ? currentMonthIndex(dietPlan) : 1));
   const planDay = month?.weeklySplit[isoMondayIndex(today)];
   const ownKcal = planDay?.calorieTarget ?? month?.calorieTarget ?? currentUser.dailyCalorieTarget;
@@ -92,12 +101,21 @@ function Recipes({ switcher }: { switcher: ReactNode }) {
   const personal = ownKcal >= 1000 && ownMacros.protein > 0;
   const kcal = personal ? ownKcal : 2000;
   const macros = personal ? ownMacros : { protein: 120, carbs: 240, fats: 62 };
+  const daily = useMemo(() => ({ kcal, protein: macros.protein, carbs: macros.carbs, fats: macros.fats }), [kcal, macros.protein, macros.carbs, macros.fats]);
+  return { answers, planDay, personal, daily, today };
+}
+
+function Recipes({ switcher, enterOnMount }: { switcher: ReactNode; enterOnMount: boolean }) {
+  // The page does not scroll: the selector under the card must end above the floating tab bar.
+  const tabClearance = useTabBarClearance();
+  const [viewport, setViewport] = useState(0);
+  const addEntry = useNutritionStore((s) => s.addEntry);
+  const { answers, planDay, personal, daily, today } = useRecipeTargets();
+
+  useEnsurePlan('diet');
 
   // Every recipe sized on today's targets (the same solver as the plan), rebuilt only when they change.
-  const cards = useMemo(
-    () => buildRecipeBook(answers, { kcal, protein: macros.protein, carbs: macros.carbs, fats: macros.fats }),
-    [answers, kcal, macros.protein, macros.carbs, macros.fats]
-  );
+  const cards = useMemo(() => cachedRecipeBook(answers, daily), [answers, daily]);
 
   const slotFor = (kind: SlotKind): { id: MealSlot; label: string } => {
     const fromPlan = planDay ? inMealOrder(planDay.meals).find((m) => SLOT_KIND[m.slotId as MealSlot] === kind) : undefined;
@@ -113,6 +131,7 @@ function Recipes({ switcher }: { switcher: ReactNode }) {
 
   return (
     <ScreenScroll
+      enterOnMount={enterOnMount}
       header={
         <>
           <TabHeader title="Nutrizione" />
@@ -132,7 +151,7 @@ function Recipes({ switcher }: { switcher: ReactNode }) {
   );
 }
 
-function CalorieTracking({ switcher }: { switcher: ReactNode }) {
+function CalorieTracking({ switcher, enterOnMount }: { switcher: ReactNode; enterOnMount: boolean }) {
   const theme = useTheme();
   const currentUser = useUserStore();
   const entries = useNutritionStore((s) => s.entries);
@@ -200,6 +219,7 @@ function CalorieTracking({ switcher }: { switcher: ReactNode }) {
   return (
     <ScreenScroll
       reveal
+      enterOnMount={enterOnMount}
       header={
         <>
           <TabHeader title="Nutrizione" onCalendarPress={() => openPopup(() => setCalendarOpen(true))} />

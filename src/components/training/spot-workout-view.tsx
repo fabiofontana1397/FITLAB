@@ -1,4 +1,5 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import Animated, { FadeIn, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { Image, Modal, ScrollView, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 
 import { PressableScale } from '@/components/motion/pressable-scale';
@@ -12,7 +13,9 @@ import { ListGroup } from '@/components/ui/list-group';
 import { SheetScreen } from '@/components/ui/sheet-screen';
 import { SwipeDeck, SwipeDeckKeepDrag } from '@/components/ui/swipe-deck';
 import { HorizontalScrollDefaults } from '@/constants/scroll';
+import { useSettledValue, SELECTOR_SETTLE_MS } from '@/hooks/use-settled-value';
 import { useTheme } from '@/hooks/use-theme';
+import { TimingQuick } from '@/constants/motion';
 import { useUserContext } from '@/hooks/use-user-context';
 import { getExerciseMedia } from '@/lib/exercise-media/exercise-media';
 import { daysAgoISO } from '@/lib/mock/dates';
@@ -67,9 +70,12 @@ export function SpotWorkoutView() {
   const [doneToday, setDoneToday] = useState<Record<string, { minutes: number; kcal: number }>>({});
 
   const level = LEVEL_OF[ctx.training?.gym?.skill ?? ''] ?? 'intermediate';
+  // The selectors answer at once; the deck behind them follows once their motion has landed, then fades in.
+  const deckKey = useSettledValue(`${focus}|${place}`);
+  const [deckFocus, deckPlace] = deckKey.split('|') as [SpotFocus, SpotPlace];
   const proposals = useMemo(
-    () => spotProposals(focus, place, today, { weightKg: ctx.weightKg, sex: ctx.sex, age: ctx.age, level }),
-    [focus, place, today, ctx.weightKg, ctx.sex, ctx.age, level]
+    () => spotProposals(deckFocus, deckPlace, today, { weightKg: ctx.weightKg, sex: ctx.sex, age: ctx.age, level }),
+    [deckFocus, deckPlace, today, ctx.weightKg, ctx.sex, ctx.age, level]
   );
 
   return (
@@ -107,38 +113,22 @@ export function SpotWorkoutView() {
         <ThemedText style={styles.placeBlurb} themeColor="textSecondary" numberOfLines={1}>
           {SPOT_FOCUS.find((f) => f.value === focus)?.blurb}
         </ThemedText>
-        <View style={[styles.placeSwitch, { backgroundColor: theme.backgroundElement }]} accessibilityRole="tablist">
-          {(['gym', 'home'] as SpotPlace[]).map((p) => {
-            const active = p === place;
-            return (
-              <PressableScale
-                key={p}
-                onPress={() => setPlace(p)}
-                haptic="tap"
-                scaleTo={0.96}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: active }}
-                style={[styles.placeOption, active && { backgroundColor: theme.text }]}>
-                <ThemedText style={[styles.placeLabel, { color: active ? theme.background : theme.textSecondary }]}>{PLACE_LABEL[p]}</ThemedText>
-              </PressableScale>
-            );
-          })}
-        </View>
+        <PlaceSwitch value={place} onChange={setPlace} />
       </View>
 
-      <View style={styles.deckArea}>
+      <Animated.View key={deckKey} entering={FadeIn.duration(SELECTOR_SETTLE_MS)} style={styles.deckArea}>
         <SwipeDeck
           fill
           items={proposals}
           keyOf={(w) => w.id}
-          resetKey={`${focus}-${place}`}
+          resetKey={deckKey}
           hint="Scorri per cambiare proposta"
           prevLabel="Proposta precedente"
           nextLabel="Proposta successiva"
           renderCard={(w, top) => (
             <WorkoutCard
               workout={w}
-              placeLabel={PLACE_LABEL[place]}
+              placeLabel={PLACE_LABEL[deckPlace]}
               done={doneToday[w.id]}
               onStart={() => {
                 if (top) setRunning(w);
@@ -152,11 +142,11 @@ export function SpotWorkoutView() {
             />
           )}
         />
-      </View>
+      </Animated.View>
 
       <WorkoutDetailSheet
         workout={detail}
-        placeLabel={PLACE_LABEL[place]}
+        placeLabel={PLACE_LABEL[deckPlace]}
         done={detail ? doneToday[detail.id] : undefined}
         onClose={() => setDetail(null)}
         onStart={(w) => setRunning(w)}
@@ -183,6 +173,55 @@ export function SpotWorkoutView() {
       ) : null}
 
       {info ? <ExerciseInfo exercise={info} onClose={() => setInfo(null)} /> : null}
+    </View>
+  );
+}
+
+/** Palestra / Casa: a small pill whose thumb slides to the choice. */
+function PlaceSwitch({ value, onChange }: { value: SpotPlace; onChange: (p: SpotPlace) => void }) {
+  const theme = useTheme();
+  const [boxes, setBoxes] = useState<Partial<Record<SpotPlace, { x: number; width: number }>>>({});
+  const x = useSharedValue(0);
+  const width = useSharedValue(0);
+  const placed = useRef(false);
+  const box = boxes[value];
+
+  useEffect(() => {
+    if (!box) return;
+    if (!placed.current) {
+      x.value = box.x;
+      width.value = box.width;
+      placed.current = true;
+      return;
+    }
+    x.value = withTiming(box.x, TimingQuick);
+    width.value = withTiming(box.width, TimingQuick);
+  }, [box, x, width]);
+
+  const thumbStyle = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }], width: width.value }));
+
+  return (
+    <View style={[styles.placeSwitch, { backgroundColor: theme.backgroundElement }]} accessibilityRole="tablist">
+      {box ? <Animated.View style={[styles.placeThumb, { backgroundColor: theme.text }, thumbStyle]} /> : null}
+      {(['gym', 'home'] as SpotPlace[]).map((p) => {
+        const active = p === value;
+        return (
+          <PressableScale
+            key={p}
+            onPress={() => onChange(p)}
+            onLayout={(e: LayoutChangeEvent) => {
+              const { x: px, width: w } = e.nativeEvent.layout;
+              setBoxes((b) => (b[p]?.x === px && b[p]?.width === w ? b : { ...b, [p]: { x: px, width: w } }));
+            }}
+            haptic="tap"
+            scaleTo={0.96}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: active }}
+            style={styles.placeOption}>
+            <ThemedText style={[styles.placeLabel, { color: active ? theme.background : theme.textSecondary }]}>{PLACE_LABEL[p]}</ThemedText>
+          </PressableScale>
+        );
+      })}
     </View>
   );
 }
@@ -559,8 +598,9 @@ const styles = StyleSheet.create({
   goalLabel: { fontSize: 12, lineHeight: 15, fontWeight: '600', letterSpacing: -0.1 },
   placeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   placeBlurb: { flex: 1, fontSize: 13, lineHeight: 17, fontWeight: '500' },
-  placeSwitch: { flexDirection: 'row', padding: 3, borderRadius: 999, gap: 2 },
-  placeOption: { height: 28, paddingHorizontal: 13, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
+  placeSwitch: { flexDirection: 'row', padding: 3, borderRadius: 999, gap: 2, position: 'relative' },
+  placeThumb: { position: 'absolute', top: 3, bottom: 3, left: 0, borderRadius: 999 },
+  placeOption: { height: 28, paddingHorizontal: 13, borderRadius: 999, alignItems: 'center', justifyContent: 'center', zIndex: 1 },
   placeLabel: { fontSize: 13, lineHeight: 17, fontWeight: '600' },
   deckArea: { flex: 1, minHeight: 0, marginTop: -6 },
   card: { flex: 1, borderRadius: 30, borderCurve: 'continuous', borderWidth: StyleSheet.hairlineWidth, padding: 16, gap: 12, overflow: 'hidden' },

@@ -80,3 +80,17 @@ export function buildRecipeBook(answers: Record<string, unknown>, daily: DailyTa
   const open = buildFitLabPools({});
   return RECIPES.map((r) => build(r, open, daily)).filter((c): c is RecipeCard => c != null);
 }
+
+let lastBook: { answers: Record<string, unknown>; key: string; cards: RecipeCard[] } | null = null;
+
+/**
+ * buildRecipeBook, remembered for the last questionnaire and targets: sizing every recipe takes a noticeable moment
+ * on a phone, so Ricette reuses the book when nothing changed (and Nutrizione can build it ahead, while idle).
+ */
+export function cachedRecipeBook(answers: Record<string, unknown>, daily: DailyTargets): RecipeCard[] {
+  const key = `${daily.kcal}|${daily.protein}|${daily.carbs}|${daily.fats}`;
+  if (lastBook && lastBook.answers === answers && lastBook.key === key) return lastBook.cards;
+  const cards = buildRecipeBook(answers, daily);
+  lastBook = { answers, key, cards };
+  return cards;
+}

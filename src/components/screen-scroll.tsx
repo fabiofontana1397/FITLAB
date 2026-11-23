@@ -52,7 +52,7 @@ export function washColorAt(top: string, middle: string, bottom: string, t: numb
 }
 
 export const ScreenScroll = forwardRef<ScrollView, ScreenScrollProps>(function ScreenScroll(
-  { children, contentContainerStyle, reveal = false, header, pinned, pinnedProgress, scrollOffset, onLayout, ...rest },
+  { children, contentContainerStyle, reveal = false, header, pinned, pinnedProgress, scrollOffset, onLayout, enterOnMount = false, ...rest },
   ref
 ) {
   const theme = useTheme();
@@ -65,11 +65,14 @@ export const ScreenScroll = forwardRef<ScrollView, ScreenScrollProps>(function S
   const scrollY = useSharedValue(0);
   const viewportHeight = useSharedValue(windowHeight);
   const mountedAt = useRef(0);
-  const focusProgress = useSharedValue(1);
+  const focusProgress = useSharedValue(enterOnMount && !reduceMotion ? 0 : 1);
   const hasBeenFocused = useRef(false);
 
   useEffect(() => {
     mountedAt.current = Date.now();
+    // A page swapped in by a selector settles in like a tab coming back: the header stays still, the content fades up.
+    if (enterOnMount && !reduceMotion) focusProgress.value = withTiming(1, TimingScreen);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Coming back to an already-open tab: a short settle of the whole page, so
@@ -237,6 +240,8 @@ type ScreenScrollProps = ScrollViewProps & {
   pinnedProgress?: SharedValue<number>;
   /** Mirrors the list's vertical scroll offset, for screens that react to it. */
   scrollOffset?: SharedValue<number>;
+  /** The page replaces another one behind a selector (Scheda / Allenamento veloce…): its content fades up on mount. */
+  enterOnMount?: boolean;
 };
 
 const styles = StyleSheet.create({
