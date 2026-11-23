@@ -4,19 +4,20 @@
  * Every text is versioned: when one changes in substance, bump `LEGAL_VERSION` and every user is asked to accept
  * again at the next start (see the consent gate in app/_layout.tsx and app/consent.tsx).
  *
- * BEFORE PUBLISHING: fill in `LEGAL_ENTITY` with the real data of the data controller (Titolare) and have the
- * texts reviewed by a lawyer. They are a careful starting point, not legal advice.
+ * BEFORE PUBLISHING: have the texts reviewed by a lawyer. They are a careful starting point, not legal advice.
  */
 
 /** Bump when a text changes in substance: users accept again. ISO date of the version. */
 export const LEGAL_VERSION = '2026-11-23';
 
-/** Data controller and contacts. TODO: replace every placeholder before the App Store submission. */
+/**
+ * Data controller and contacts. FitLab is published by a private individual (free app, no VAT number): the
+ * controller is the person, reachable at a dedicated email. If FitLab later becomes a business (VAT number or a
+ * company), update these data and bump LEGAL_VERSION.
+ */
 export const LEGAL_ENTITY = {
-  name: '[NOME E COGNOME O RAGIONE SOCIALE DEL TITOLARE]',
-  address: '[INDIRIZZO / SEDE LEGALE]',
-  vat: '[CODICE FISCALE O PARTITA IVA]',
-  email: '[EMAIL DI CONTATTO PRIVACY]',
+  name: 'Fabio Fontana',
+  email: 'fitlab.build.your.best@gmail.com',
 } as const;
 
 export type LegalDocId = 'disclaimer' | 'terms' | 'privacy';
@@ -77,7 +78,7 @@ export const TERMS: LegalDoc = {
     {
       heading: '1. Il servizio',
       paragraphs: [
-        `FitLab è un’applicazione di benessere fornita da ${LEGAL_ENTITY.name} (“FitLab”, “noi”). Offre contenuti generali su alimentazione e attività fisica, strumenti di monitoraggio e un assistente basato sull’intelligenza artificiale.`,
+        `FitLab è un’applicazione di benessere gratuita, sviluppata e pubblicata da ${LEGAL_ENTITY.name} come persona fisica (“FitLab”, “noi”). Offre contenuti generali su alimentazione e attività fisica, strumenti di monitoraggio e un assistente basato sull’intelligenza artificiale.`,
         'Il servizio non costituisce prestazione sanitaria, consulenza medica o nutrizionale, né attività riservata a professioni regolamentate. I contenuti sono generati automaticamente a partire dalle informazioni che fornisci e non derivano da una valutazione clinica.',
       ],
     },
@@ -134,7 +135,9 @@ export const PRIVACY: LegalDoc = {
   sections: [
     {
       heading: '1. Titolare del trattamento',
-      paragraphs: [`${LEGAL_ENTITY.name}, ${LEGAL_ENTITY.address}, ${LEGAL_ENTITY.vat}. Contatto per la privacy: ${LEGAL_ENTITY.email}.`],
+      paragraphs: [
+        `Il titolare del trattamento è ${LEGAL_ENTITY.name}, persona fisica che sviluppa e pubblica FitLab a titolo non commerciale. Per qualsiasi richiesta sulla privacy e per esercitare i tuoi diritti scrivi a ${LEGAL_ENTITY.email}.`,
+      ],
     },
     {
       heading: '2. Dati trattati',
