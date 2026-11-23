@@ -80,20 +80,20 @@ export function SpotWorkoutView() {
 
   // Stable, so a card is only redrawn when its own data change (not when it moves up the stack). Only the top card
   // takes touches, so the actions need no check of their own.
-  const placeLabel = PLACE_LABEL[deckPlace];
   const openDetail = useCallback((w: SpotWorkout) => openPopup(() => setDetail(w)), []);
   const renderCard = useCallback(
     (w: SpotWorkout) => (
       <WorkoutCard
         workout={w}
-        placeLabel={placeLabel}
+        place={place}
+        onPlace={setPlace}
         done={doneToday[w.id]}
         onStart={setRunning}
         onOpen={openDetail}
         onExercise={setInfo}
       />
     ),
-    [placeLabel, doneToday, openDetail]
+    [place, doneToday, openDetail]
   );
 
   return (
@@ -125,14 +125,6 @@ export function SpotWorkoutView() {
           );
         })}
       </ScrollView>
-
-      {/* What the goal works, and where: a compact switch instead of a full-width bar. */}
-      <View style={styles.placeRow}>
-        <ThemedText style={styles.placeBlurb} themeColor="textSecondary" numberOfLines={1}>
-          {SPOT_FOCUS.find((f) => f.value === focus)?.blurb}
-        </ThemedText>
-        <PlaceSwitch value={place} onChange={setPlace} />
-      </View>
 
       <Animated.View key={deckKey} entering={FadeIn.duration(SELECTOR_SETTLE_MS)} style={styles.deckArea}>
         <SwipeDeck
@@ -249,14 +241,16 @@ const workoutKey = (w: SpotWorkout) => w.id;
 /** One proposal: the card of the deck, as tall as the space left on the page. Memoised: a swipe never redraws it. */
 const WorkoutCard = memo(function WorkoutCard({
   workout,
-  placeLabel,
+  place,
+  onPlace,
   done,
   onStart,
   onOpen,
   onExercise,
 }: {
   workout: SpotWorkout;
-  placeLabel: string;
+  place: SpotPlace;
+  onPlace: (p: SpotPlace) => void;
   done?: { minutes: number; kcal: number };
   onStart: (w: SpotWorkout) => void;
   onOpen: (w: SpotWorkout) => void;
@@ -284,12 +278,18 @@ const WorkoutCard = memo(function WorkoutCard({
         setCardH((prev) => (prev === h ? prev : h));
       }}>
       <View style={styles.cardHead}>
-        <ThemedText style={[styles.eyebrow, { color: theme.accent }]}>
-          {workout.focusLabel} · {placeLabel}
-        </ThemedText>
-        <ThemedText style={styles.title} numberOfLines={1}>
-          {workout.title}
-        </ThemedText>
+        {/* Palestra / Casa sits in the card's top-right corner, beside the goal and the title. */}
+        <View style={styles.cardTop}>
+          <View style={styles.cardTitles}>
+            <ThemedText style={[styles.eyebrow, { color: theme.accent }]} numberOfLines={1}>
+              {workout.focusLabel}
+            </ThemedText>
+            <ThemedText style={styles.title} numberOfLines={1}>
+              {workout.title}
+            </ThemedText>
+          </View>
+          <PlaceSwitch value={place} onChange={onPlace} />
+        </View>
         {withStats ? null : (
           <ThemedText style={styles.note} themeColor="textSecondary" numberOfLines={1}>
             {workout.minutes} min · {workout.kcal} kcal · {total} esercizi · {workout.totalSets} serie
@@ -601,8 +601,6 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
   },
   goalLabel: { fontSize: 12, lineHeight: 15, fontWeight: '600', letterSpacing: -0.1 },
-  placeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  placeBlurb: { flex: 1, fontSize: 13, lineHeight: 17, fontWeight: '500' },
   placeSwitch: { flexDirection: 'row', padding: 3, borderRadius: 999, gap: 2, position: 'relative' },
   placeThumb: { position: 'absolute', top: 3, bottom: 3, left: 0, borderRadius: 999 },
   placeOption: { height: 28, paddingHorizontal: 13, borderRadius: 999, alignItems: 'center', justifyContent: 'center', zIndex: 1 },
@@ -610,6 +608,8 @@ const styles = StyleSheet.create({
   deckArea: { flex: 1, minHeight: 0, marginTop: -6 },
   card: { flex: 1, borderRadius: 30, borderCurve: 'continuous', borderWidth: StyleSheet.hairlineWidth, padding: 16, gap: 12, overflow: 'hidden' },
   cardHead: { gap: 3 },
+  cardTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  cardTitles: { flex: 1, minWidth: 0, gap: 3 },
   eyebrow: { fontSize: 12, lineHeight: 16, fontWeight: '700', letterSpacing: 0.4, textTransform: 'uppercase' },
   title: { fontSize: 21, lineHeight: 26, fontWeight: '700', letterSpacing: -0.4 },
   note: { fontSize: 14, lineHeight: 19 },
