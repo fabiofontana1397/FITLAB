@@ -309,7 +309,8 @@ function PlanTraining({ switcher, active, enterOnMount }: { switcher: ReactNode;
                 <ThemedText style={emphasized ? styles.sectionTitle : [styles.sectionTitleQuiet, { color: theme.text }]} accessibilityRole="header">
                   {headingOf(date)}
                 </ThemedText>
-                {day?.type === 'workout' ? (
+                {/* Days still to come carry no label: only done, in progress or missed days are marked. */}
+                {day?.type === 'workout' && statusLabel !== 'In programma' ? (
                   <View style={[styles.statusPill, { backgroundColor: statusColor + '1F' }]}>
                     <ThemedText style={[styles.statusText, { color: statusColor }]}>{statusLabel}</ThemedText>
                   </View>
