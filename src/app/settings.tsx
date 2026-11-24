@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { GlassPreview } from '@/components/profile/glass-preview';
 import { IntegrationsSection } from '@/components/profile/integrations-section';
 import { ThemedText } from '@/components/themed-text';
 import { FlatCard } from '@/components/ui/flat-card';
@@ -67,6 +68,8 @@ export default function SettingsScreen() {
         <SectionHeader title="Tema" />
         <SegmentedControl options={APPEARANCE_OPTIONS} value={appearance} onChange={setAppearance} />
       </View>
+
+      <GlassPreview />
 
       <IntegrationsSection />
 
