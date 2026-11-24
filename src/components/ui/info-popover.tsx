@@ -1,5 +1,6 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
+import { GlassCloseButton } from '@/components/glass/liquid-glass';
 import { GlassPopup } from '@/components/glass/glass-popup';
 import { ThemedText } from '@/components/themed-text';
 import { Icon, type IconName } from '@/components/ui/icon';
@@ -28,9 +29,7 @@ export function InfoPopover({ visible, icon, title, body, onClose }: InfoPopover
         <ThemedText type="subtitle" style={{ flex: 1 }}>
           {title}
         </ThemedText>
-        <Pressable onPress={onClose} hitSlop={11} accessibilityRole="button" accessibilityLabel="Chiudi">
-          <Icon name="close" size={22} color={theme.text} />
-        </Pressable>
+        <GlassCloseButton onPress={onClose} />
       </View>
       <ThemedText type="default" themeColor="textSecondary" style={styles.body}>
         {body}

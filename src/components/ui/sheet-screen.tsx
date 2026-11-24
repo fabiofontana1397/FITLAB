@@ -1,12 +1,10 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { type Href } from 'expo-router';
-import { startTransition, useCallback, useEffect, useMemo, useState } from 'react';
+import { startTransition, useCallback, useEffect, useState } from 'react';
 import {
   BackHandler,
-  PanResponder,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   View,
   useWindowDimensions,
@@ -23,16 +21,20 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+
+import { GlassCloseButton } from '@/components/glass/liquid-glass';
+import { FadeLayer } from '@/components/motion/fade-chain';
 import { RevealBoundary } from '@/components/motion/reveal';
+import { PopupScrollView, ScrollRegistryContext, useDismissDrag } from '@/components/ui/swipe-dismiss';
 import { ScrollDefaults } from '@/constants/scroll';
 import { ThemedText } from '@/components/themed-text';
-import { Icon } from '@/components/ui/icon';
 import { SheetGrabber } from '@/components/ui/sheet-grabber';
 import { SpringSheet, TimingExit } from '@/constants/motion';
 import { Layout, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
-import { hapticSelection, hapticSoft } from '@/lib/haptics';
+import { hapticSoft } from '@/lib/haptics';
 import { goBackOr } from '@/lib/navigation/go-back';
 
 /** Strip of the screen underneath left visible above the sheet, like an iOS
@@ -49,7 +51,6 @@ const SHEET_RADIUS = 40;
 const EDGE_FADE_HEIGHT = 28;
 /** Drag past this (or flick faster than this) and the sheet goes away. */
 const DRAG_CLOSE_DISTANCE = 120;
-const DRAG_CLOSE_VELOCITY = 0.8;
 /** How long after opening the sheet's content is built (the sheet takes about this long to rise). */
 const BODY_DELAY_MS = 220;
 
@@ -96,15 +97,6 @@ export function SheetScreen({ title, eyebrow, leading, children, fallbackHref = 
   // dims and undims the page behind along with the sheet.
   const translateY = useSharedValue(height);
   const [closing, setClosing] = useState(false);
-  const pastThreshold = useSharedValue(false);
-  const setPast = useCallback(
-    (value: boolean) => {
-      // eslint-disable-next-line react-hooks/immutability
-      pastThreshold.value = value;
-    },
-    [pastThreshold]
-  );
-
   // Shared values are stable handles meant to be reassigned via `.value`
   // from effects, gestures and callbacks alike — that's the reanimated
   // idiom, not the dependency mutation this lint rule guards against.
@@ -149,35 +141,8 @@ export function SheetScreen({ title, eyebrow, leading, children, fallbackHref = 
   }, [close]);
 
   // The whole sheet drags down, but only from the top of its content: while the
-  // list is scrolled, a downward swipe belongs to the list.
-  const scrolledY = useSharedValue(0);
-  const dragHandlers = useMemo(
-    () =>
-      PanResponder.create({
-        onMoveShouldSetPanResponderCapture: (_, gesture) =>
-          scrolledY.get() <= 0 && gesture.dy > 8 && gesture.dy > Math.abs(gesture.dx) * 1.5,
-        onPanResponderMove: (_, gesture) => {
-          // Downwards only: dragging up would lift the sheet off the bottom edge.
-          moveTo(Math.max(0, gesture.dy));
-          // A tick the moment the drag has gone far enough to dismiss — and another if it comes back.
-          const past = gesture.dy > DRAG_CLOSE_DISTANCE;
-          if (past !== pastThreshold.get()) {
-            setPast(past);
-            hapticSelection();
-          }
-        },
-        onPanResponderRelease: (_, gesture) => {
-          setPast(false);
-          if (gesture.dy > DRAG_CLOSE_DISTANCE || gesture.vy > DRAG_CLOSE_VELOCITY) close();
-          else moveTo(withSpring(0, SpringSheet));
-        },
-        onPanResponderTerminate: () => {
-          setPast(false);
-          moveTo(withSpring(0, SpringSheet));
-        },
-      }),
-    [close, moveTo, pastThreshold, scrolledY, setPast]
-  );
+  // list is scrolled, a downward swipe belongs to the list (see useDismissDrag).
+  const { gesture: dragGesture, registry: scrollRegistry } = useDismissDrag(translateY, close, DRAG_CLOSE_DISTANCE);
 
   const backdropStyle = useAnimatedStyle(() => ({
     opacity: interpolate(translateY.value, [0, height], [1, 0], 'clamp'),
@@ -209,13 +174,16 @@ export function SheetScreen({ title, eyebrow, leading, children, fallbackHref = 
 
   return (
     <RevealBoundary>
-    <View style={styles.overlay}>
+    {/* Its own gesture root: the sheet is often shown inside a Modal, where gestures need one (Android). */}
+    <GestureHandlerRootView style={styles.overlay}>
+    <ScrollRegistryContext.Provider value={scrollRegistry}>
       <Animated.View style={[StyleSheet.absoluteFill, styles.backdrop, { backgroundColor: dark ? 'rgba(0,0,0,0.55)' : 'rgba(0,0,0,0.22)' }, backdropStyle]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={close} accessibilityLabel="Chiudi" />
       </Animated.View>
 
       <View style={[styles.sheetArea, { top }]}>
-        <Animated.View style={[styles.sheet, { backgroundColor: theme.surfacePopup }, sheetStyle]} {...dragHandlers.panHandlers}>
+        <GestureDetector gesture={dragGesture}>
+        <Animated.View style={[styles.sheet, { backgroundColor: theme.surfacePopup }, sheetStyle]}>
           <View style={styles.header}>
             {leading}
             <View style={styles.headingText}>
@@ -232,29 +200,21 @@ export function SheetScreen({ title, eyebrow, leading, children, fallbackHref = 
 
           <SheetGrabber top={8} />
 
-          <Pressable
-            onPress={close}
-            hitSlop={6}
-            accessibilityRole="button"
-            accessibilityLabel="Chiudi"
-            style={[styles.closeButton, { backgroundColor: theme.backgroundElevated }]}>
-            <Icon name="close" size={20} color={theme.text} />
-          </Pressable>
+          <GlassCloseButton onPress={close} size={CLOSE_SIZE} style={styles.closeButton} />
 
           {scroll ? (
             <Animated.View style={[styles.scroll, bodyStyle]}>
-              <ScrollView
+              <PopupScrollView
                 {...ScrollDefaults}
                 style={styles.scroll}
                 onScroll={(e) => {
-                  scrolledY.set(e.nativeEvent.contentOffset.y);
                   // eslint-disable-next-line react-hooks/immutability
                   edgeFade.value = Math.min(1, Math.max(0, e.nativeEvent.contentOffset.y / EDGE_FADE_HEIGHT));
                 }}
                 scrollEventThrottle={16}
                 contentContainerStyle={[styles.scrollContent, { paddingBottom: footerNode ? Spacing.four : insets.bottom + Spacing.five }, contentContainerStyle]}>
-                {body}
-              </ScrollView>
+                <FadeLayer opacity={bodyOpacity}>{body}</FadeLayer>
+              </PopupScrollView>
               {/* Under the fixed title the content dissolves instead of being cut by a hard edge; the fade grows in as you scroll. */}
               <Animated.View pointerEvents="none" style={[styles.edgeFade, edgeFadeStyle]}>
                 <LinearGradient colors={[theme.surfacePopup, `${theme.surfacePopup}00`]} style={StyleSheet.absoluteFill} />
@@ -266,14 +226,20 @@ export function SheetScreen({ title, eyebrow, leading, children, fallbackHref = 
               ) : null}
             </Animated.View>
           ) : (
-            <Animated.View style={[styles.scroll, styles.scrollContent, { paddingBottom: footerNode ? Spacing.three : insets.bottom + Spacing.three }, contentContainerStyle, bodyStyle]}>{body}</Animated.View>
+            <Animated.View style={[styles.scroll, styles.scrollContent, { paddingBottom: footerNode ? Spacing.three : insets.bottom + Spacing.three }, contentContainerStyle, bodyStyle]}>
+              <FadeLayer opacity={bodyOpacity}>{body}</FadeLayer>
+            </Animated.View>
           )}
           {footerNode ? (
-            <Animated.View style={[styles.footer, { paddingBottom: insets.bottom + Spacing.three, backgroundColor: theme.surfacePopup }, bodyStyle]}>{footerNode}</Animated.View>
+            <Animated.View style={[styles.footer, { paddingBottom: insets.bottom + Spacing.three, backgroundColor: theme.surfacePopup }, bodyStyle]}>
+              <FadeLayer opacity={bodyOpacity}>{footerNode}</FadeLayer>
+            </Animated.View>
           ) : null}
         </Animated.View>
+        </GestureDetector>
       </View>
-    </View>
+    </ScrollRegistryContext.Provider>
+    </GestureHandlerRootView>
     </RevealBoundary>
   );
 }
@@ -334,12 +300,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: CLOSE_INSET,
     right: CLOSE_INSET,
-    width: CLOSE_SIZE,
-    height: CLOSE_SIZE,
-    borderRadius: CLOSE_SIZE / 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    boxShadow: '0px 2px 10px rgba(0,0,0,0.08)',
   },
   edgeFade: {
     position: 'absolute',

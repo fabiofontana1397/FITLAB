@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
+import { GlassCloseButton } from '@/components/glass/liquid-glass';
 import type { RecalibrationResult, Verdict } from '@/domain/recalibration';
 import { GlassSurface } from '@/components/glass/glass-surface';
 import { QuestionBlock } from '@/components/onboarding/question-block';
@@ -133,13 +134,7 @@ export default function MonthlyCheckinScreen() {
                 : 'Il check-in si apre alla fine di ogni mese del piano'}
           </ThemedText>
         </View>
-        <Pressable onPress={() => goBackOr('/')} hitSlop={8}>
-          <GlassSurface level="card" radius={Radius.pill} style={styles.closeButton}>
-            <View style={styles.closeInner}>
-              <Icon name="close" size={18} color={theme.text} />
-            </View>
-          </GlassSurface>
-        </Pressable>
+        <GlassCloseButton onPress={() => goBackOr('/')} />
       </View>
 
       {result ? (

@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
-import { Image, Pressable, StyleSheet, View } from 'react-native';
+import { Image, StyleSheet, View } from 'react-native';
 
+import { GlassCloseButton } from '@/components/glass/liquid-glass';
 import { GlassSurface } from '@/components/glass/glass-surface';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
@@ -20,7 +21,6 @@ import {
 } from '@/store/training-progress-store';
 
 export default function TrainingProgressScreen() {
-  const theme = useTheme();
   const plan = usePlanStore((s) => s.trainingPlan);
   const progressSets = useTrainingProgressStore((s) => s.sets);
 
@@ -47,13 +47,7 @@ export default function TrainingProgressScreen() {
             La progressione di ogni esercizio, dal primo all&apos;ultimo carico registrato.
           </ThemedText>
         </View>
-        <Pressable onPress={() => goBackOr('/')} hitSlop={8}>
-          <GlassSurface level="card" radius={Radius.pill} style={styles.closeButton}>
-            <View style={styles.closeInner}>
-              <Icon name="close" size={18} color={theme.text} />
-            </View>
-          </GlassSurface>
-        </Pressable>
+        <GlassCloseButton onPress={() => goBackOr('/')} />
       </View>
 
       {exercises.length === 0 ? (

@@ -1,35 +1,115 @@
-import { createContext, useCallback, useContext, useId, useMemo } from 'react';
-import { PanResponder, ScrollView, useWindowDimensions, type ScrollViewProps, type StyleProp, type ViewStyle } from 'react-native';
-import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import { createContext, useCallback, useContext, useEffect, useId, useMemo, useState } from 'react';
+import { ScrollView, useWindowDimensions, type ScrollViewProps, type StyleProp, type ViewStyle } from 'react-native';
+import { Gesture, GestureDetector, type NativeGesture } from 'react-native-gesture-handler';
+import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming, type SharedValue } from 'react-native-reanimated';
 
 import { SheetGrabber } from '@/components/ui/sheet-grabber';
 import { SpringSheet, TimingExit } from '@/constants/motion';
 import { hapticSelection, hapticSoft } from '@/lib/haptics';
 
-/** Drag past this (or flick faster than this) and the popup goes away. */
-const DISMISS_DISTANCE = 100;
-const DISMISS_VELOCITY = 0.8;
-/** How far a drag must go down, and how vertical it must be, before it counts as a swipe. */
+/** Drag past this (or flick faster than this, in pt/s) and the popup goes away. */
+export const DISMISS_DISTANCE = 100;
+const DISMISS_VELOCITY = 800;
+/** How far a drag must go down before it counts as a swipe; going up or sideways first leaves it to the content. */
 const START_DISTANCE = 8;
-const VERTICAL_BIAS = 1.5;
+const FAIL_UP = -12;
+const FAIL_SIDEWAYS = 24;
 
-type ScrollRegistry = { report: (id: string, offset: number) => void };
+/** What a scrolling list inside a dismissable popup tells it: how far it is scrolled, and its own native gesture. */
+type ScrollRegistry = {
+  report: (id: string, offset: number) => void;
+  register: (id: string, gesture: NativeGesture | null) => void;
+};
 const ScrollRegistryContext = createContext<ScrollRegistry | null>(null);
 
 /**
- * The drag behind "swipe a popup down to dismiss": the finger-following
- * transform, the pan responder, and the scroll registry for lists inside.
- * Spread `panHandlers` on an Animated.View styled with `animatedStyle` and wrap
- * its content in `<ScrollRegistryContext.Provider value={registry}>`; or use
- * `SwipeDismiss`, which does all of that around its children.
+ * The drag behind "swipe a popup down to dismiss", on the UI thread with react-native-gesture-handler.
+ *
+ * It used to be a PanResponder. On an iPhone that never worked: a native ScrollView (and the buttons inside the
+ * popup) take the touch in UIKit before a JS responder is even asked, so the popup just stayed put. A gesture-
+ * handler pan runs alongside the lists' own native scrolling (each `PopupScrollView` registers its gesture here) and
+ * only moves the popup while every list is at its top, so scrolling a list and dismissing never fight.
+ *
+ * `translateY` is the popup's offset below its resting place; `close` is called once the drag decides to dismiss
+ * (it animates the popup away itself). Leave `close` out to turn the drag off.
+ */
+export function useDismissDrag(translateY: SharedValue<number>, close: (() => void) | undefined, closeDistance = DISMISS_DISTANCE) {
+  // False while any list inside is scrolled away from its top.
+  const listsAtTop = useSharedValue(true);
+  const dragging = useSharedValue(false);
+  const pastThreshold = useSharedValue(false);
+  const [natives, setNatives] = useState<Record<string, NativeGesture>>({});
+
+  const registry = useMemo<ScrollRegistry>(() => {
+    const scrolledAway = new Set<string>();
+    return {
+      report: (id, offset) => {
+        if (offset > 0.5) scrolledAway.add(id);
+        else scrolledAway.delete(id);
+        listsAtTop.set(scrolledAway.size === 0);
+      },
+      register: (id, gesture) => {
+        if (!gesture) scrolledAway.delete(id);
+        setNatives((current) => {
+          if (gesture ? current[id] === gesture : !(id in current)) return current;
+          const next = { ...current };
+          if (gesture) next[id] = gesture;
+          else delete next[id];
+          return next;
+        });
+      },
+    };
+  }, [listsAtTop]);
+
+  const enabled = close != null;
+  const finish = useCallback(() => close?.(), [close]);
+
+  const gesture = useMemo(() => {
+    const pan = Gesture.Pan()
+      .enabled(enabled)
+      .activeOffsetY([-1000, START_DISTANCE])
+      .failOffsetY(FAIL_UP)
+      .failOffsetX([-FAIL_SIDEWAYS, FAIL_SIDEWAYS])
+      .onStart(() => {
+        // A list scrolled away from its top keeps the drag: the popup only follows from the top.
+        dragging.set(listsAtTop.get());
+      })
+      .onUpdate((e) => {
+        if (!dragging.get()) return;
+        translateY.set(Math.max(0, e.translationY));
+        // A tick the moment the drag has gone far enough to dismiss, and another if it comes back.
+        const past = e.translationY > closeDistance;
+        if (past !== pastThreshold.get()) {
+          pastThreshold.set(past);
+          runOnJS(hapticSelection)();
+        }
+      })
+      .onEnd((e) => {
+        if (!dragging.get()) return;
+        if (e.translationY > closeDistance || e.velocityY > DISMISS_VELOCITY) runOnJS(finish)();
+        else translateY.set(withSpring(0, SpringSheet));
+      })
+      .onFinalize((_, success) => {
+        if (dragging.get() && !success) translateY.set(withSpring(0, SpringSheet));
+        dragging.set(false);
+        pastThreshold.set(false);
+      });
+    const lists = Object.values(natives);
+    return lists.length > 0 ? pan.simultaneousWithExternalGesture(...lists) : pan;
+  }, [closeDistance, dragging, enabled, finish, listsAtTop, natives, pastThreshold, translateY]);
+
+  return { gesture, registry };
+}
+
+/**
+ * The same drag for a popup that only has to slide away and then report it: the finger-following transform comes
+ * with it. Put `gesture` on a GestureDetector around an Animated.View styled with `animatedStyle`, and its content
+ * in `<ScrollRegistryContext.Provider value={registry}>`; or use `SwipeDismiss`, which does all of that.
  */
 export function useSwipeDismiss(onDismiss: (() => void) | undefined) {
   const { height } = useWindowDimensions();
   const translateY = useSharedValue(0);
   const dismissing = useSharedValue(false);
-  const pastThreshold = useSharedValue(false);
-  // False while any list inside is scrolled away from its top.
-  const listsAtTop = useSharedValue(true);
 
   const dismiss = useCallback(() => {
     if (!onDismiss || dismissing.get()) return;
@@ -42,48 +122,10 @@ export function useSwipeDismiss(onDismiss: (() => void) | undefined) {
     );
   }, [dismissing, height, onDismiss, translateY]);
 
-  const pan = useMemo(
-    () =>
-      PanResponder.create({
-        // Capture, so the drag is ours before a child sees it, but only for a downward, mostly vertical drag with nothing scrolled.
-        onMoveShouldSetPanResponderCapture: (_, g) =>
-          !!onDismiss && !dismissing.get() && listsAtTop.get() && g.dy > START_DISTANCE && g.dy > Math.abs(g.dx) * VERTICAL_BIAS,
-        onPanResponderMove: (_, g) => {
-          translateY.set(Math.max(0, g.dy));
-          // A tick the moment the drag has gone far enough to dismiss, and another if it comes back.
-          const past = g.dy > DISMISS_DISTANCE;
-          if (past !== pastThreshold.get()) {
-            pastThreshold.set(past);
-            hapticSelection();
-          }
-        },
-        onPanResponderRelease: (_, g) => {
-          pastThreshold.set(false);
-          if (g.dy > DISMISS_DISTANCE || g.vy > DISMISS_VELOCITY) dismiss();
-          else translateY.set(withSpring(0, SpringSheet));
-        },
-        onPanResponderTerminate: () => {
-          pastThreshold.set(false);
-          translateY.set(withSpring(0, SpringSheet));
-        },
-      }),
-    [dismiss, dismissing, listsAtTop, onDismiss, pastThreshold, translateY]
-  );
-
-  const registry = useMemo<ScrollRegistry>(() => {
-    const scrolledAway = new Set<string>();
-    return {
-      report: (id, offset) => {
-        if (offset > 0) scrolledAway.add(id);
-        else scrolledAway.delete(id);
-        listsAtTop.set(scrolledAway.size === 0);
-      },
-    };
-  }, [listsAtTop]);
-
+  const { gesture, registry } = useDismissDrag(translateY, onDismiss ? dismiss : undefined);
   const animatedStyle = useAnimatedStyle(() => ({ transform: [{ translateY: translateY.get() }] }));
 
-  return { panHandlers: pan.panHandlers, animatedStyle, registry };
+  return { gesture, animatedStyle, registry };
 }
 
 export { ScrollRegistryContext };
@@ -110,34 +152,50 @@ export type SwipeDismissProps = {
  * content. `GlassSurface` has the same behaviour built in (`swipeToDismiss`).
  */
 export function SwipeDismiss({ onDismiss, style, grabber = true, grabberTop, children }: SwipeDismissProps) {
-  const { panHandlers, animatedStyle, registry } = useSwipeDismiss(onDismiss);
+  const { gesture, animatedStyle, registry } = useSwipeDismiss(onDismiss);
   return (
     <ScrollRegistryContext.Provider value={registry}>
-      <Animated.View style={[style, animatedStyle]} {...panHandlers}>
-        {children}
-        {grabber ? <SheetGrabber top={grabberTop} /> : null}
-      </Animated.View>
+      <GestureDetector gesture={gesture}>
+        <Animated.View style={[style, animatedStyle]}>
+          {children}
+          {grabber ? <SheetGrabber top={grabberTop} /> : null}
+        </Animated.View>
+      </GestureDetector>
     </ScrollRegistryContext.Provider>
   );
 }
 
 /**
- * A vertical ScrollView that tells the enclosing `SwipeDismiss` how far it is
- * scrolled, so a downward drag closes the popup only from the top of the list.
- * Horizontal strips are left alone. Outside a `SwipeDismiss` it is a plain ScrollView.
+ * A vertical ScrollView that tells the enclosing dismissable popup how far it is
+ * scrolled and lets the popup's drag run alongside its own scrolling, so a
+ * downward drag closes the popup only from the top of the list.
+ * Horizontal strips are left alone. Outside such a popup it is a plain ScrollView.
  */
 export function PopupScrollView({ onScroll, scrollEventThrottle, ...props }: ScrollViewProps) {
   const registry = useContext(ScrollRegistryContext);
   const id = useId();
-  if (props.horizontal || !registry) return <ScrollView onScroll={onScroll} scrollEventThrottle={scrollEventThrottle} {...props} />;
+  const native = useMemo(() => Gesture.Native(), []);
+  const inPopup = !props.horizontal && registry != null;
+
+  useEffect(() => {
+    if (!inPopup || !registry) return;
+    registry.register(id, native);
+    return () => registry.register(id, null);
+  }, [id, inPopup, native, registry]);
+
+  if (!inPopup || !registry) return <ScrollView onScroll={onScroll} scrollEventThrottle={scrollEventThrottle} {...props} />;
   return (
-    <ScrollView
-      {...props}
-      scrollEventThrottle={scrollEventThrottle ?? 16}
-      onScroll={(e) => {
-        registry.report(id, e.nativeEvent.contentOffset.y);
-        onScroll?.(e);
-      }}
-    />
+    <GestureDetector gesture={native}>
+      <ScrollView
+        // While the popup follows the finger the list must not stretch along with it.
+        bounces={false}
+        {...props}
+        scrollEventThrottle={scrollEventThrottle ?? 16}
+        onScroll={(e) => {
+          registry.report(id, e.nativeEvent.contentOffset.y);
+          onScroll?.(e);
+        }}
+      />
+    </GestureDetector>
   );
 }

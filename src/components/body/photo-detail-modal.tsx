@@ -1,6 +1,8 @@
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useEffect, useState } from 'react';
 import { Image, Modal, Pressable, StyleSheet, View } from 'react-native';
 
+import { GlassCloseButton } from '@/components/glass/liquid-glass';
 import { ScrollDefaults } from '@/constants/scroll';
 import { GlassSurface } from '@/components/glass/glass-surface';
 import { ThemedText } from '@/components/themed-text';
@@ -68,6 +70,7 @@ export function PhotoDetailModal({ photo, allPhotos, entries, onClose, onDelete 
 
   return (
     <Modal visible={photo != null} transparent animationType={modalAnimation('fade')} onRequestClose={onClose}>
+      <GestureHandlerRootView style={{ flex: 1 }}>
       <Pressable style={[styles.backdrop, { backgroundColor: theme.scrim }]} onPress={onClose}>
         <Pressable onPress={(e) => e.stopPropagation()}>
           <GlassSurface swipeToDismiss={onClose} level="overlay" radius={Radius.xlarge} style={styles.card}>
@@ -78,9 +81,7 @@ export function PhotoDetailModal({ photo, allPhotos, entries, onClose, onDelete 
                   {formatFullDay(photo.date)}
                 </ThemedText>
               </View>
-              <Pressable onPress={onClose} hitSlop={11} accessibilityRole="button" accessibilityLabel="Chiudi">
-                <Icon name="close" size={22} color={theme.text} />
-              </Pressable>
+              <GlassCloseButton onPress={onClose} />
             </View>
 
             <Image source={{ uri: photo.uri }} style={styles.image} resizeMode="cover" />
@@ -157,6 +158,7 @@ export function PhotoDetailModal({ photo, allPhotos, entries, onClose, onDelete 
           </GlassSurface>
         </Pressable>
       </Pressable>
+    </GestureHandlerRootView>
     </Modal>
   );
 }

@@ -1,36 +1,21 @@
-import { BlurView } from 'expo-blur';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Platform, StyleSheet, View, type LayoutChangeEvent, type StyleProp, type ViewStyle } from 'react-native';
+import { StyleSheet, View, type LayoutChangeEvent, type StyleProp, type ViewStyle } from 'react-native';
+import { GestureDetector } from 'react-native-gesture-handler';
 import Animated from 'react-native-reanimated';
 
 import { SheetGrabber } from '@/components/ui/sheet-grabber';
 import { ScrollRegistryContext, useSwipeDismiss } from '@/components/ui/swipe-dismiss';
 
-import { GlassMaterial, Radius } from '@/constants/theme';
+import { FlatCardShadow, Radius } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useTheme } from '@/hooks/use-theme';
 
 export type GlassLevel = 'subtle' | 'card' | 'raised' | 'overlay';
 
-const LEVEL_INTENSITY: Record<GlassLevel, number> = {
-  subtle: 26,
-  card: 42,
-  raised: 60,
-  overlay: 82,
-};
-
-const LEVEL_SHADOW: Record<GlassLevel, { opacity: number; radius: number; offsetY: number }> = {
-  subtle: { opacity: 0.08, radius: 10, offsetY: 3 },
-  card: { opacity: 0.16, radius: 18, offsetY: 7 },
-  raised: { opacity: 0.22, radius: 26, offsetY: 11 },
-  overlay: { opacity: 0.32, radius: 36, offsetY: 16 },
-};
-
 export type GlassSurfaceProps = {
+  /** 'overlay' is a popup or sheet (the popups' dark grey); every other level is a box on the page (the cards' grey). */
   level?: GlassLevel;
-  /** Overrides the level's default blur intensity — lower reads as more
-   * transparent. Use sparingly; `level` alone keeps every glass surface in
-   * the app reading as one coherent material. */
+  /** Kept for existing callers; surfaces are solid now, so it no longer changes anything. */
   intensity?: number;
   radius?: number;
   style?: StyleProp<ViewStyle>;
@@ -38,19 +23,13 @@ export type GlassSurfaceProps = {
   bordered?: boolean;
   onLayout?: (event: LayoutChangeEvent) => void;
   /** Opt-in: render with the OS's actual Liquid Glass material
-   * (`expo-glass-effect`'s GlassView) instead of the BlurView-based
-   * approximation, on devices where it's genuinely available (iOS 26+).
-   * Everywhere else — Android, web, older iOS, and whenever this is left
-   * off — falls back to the normal blur rendering unchanged. Opt-in
-   * rather than automatic because real glass has its own look (no
-   * gradient sheen, no hairline border) that hasn't been checked against
-   * every surface this component is used for yet. */
+   * (`expo-glass-effect`'s GlassView) instead, on devices where it's genuinely available (iOS 26+). */
   nativeGlass?: boolean;
   /** Makes the surface a swipe-to-dismiss popup: it gets the iPhone grabber at
    * the top and slides away when dragged down, then calls this. Give it the
    * popup's close handler. Ignored when `nativeGlass` renders the OS material. */
   swipeToDismiss?: () => void;
-  /** False leaves out the surface's own BlurView: for a surface that sits over something already blurred (a popup over its blurred backdrop), where a second backdrop filter only costs frames. */
+  /** Kept for existing callers; surfaces are solid now, so it no longer changes anything. */
   blur?: boolean;
 };
 
@@ -62,14 +41,13 @@ export type GlassSurfaceProps = {
 const CHILD_LAYOUT_KEYS = ['gap', 'rowGap', 'columnGap', 'flexDirection', 'alignItems', 'justifyContent', 'flexWrap'] as const;
 
 /**
- * The app's Liquid-Glass building block: a blurred, gradient-lit, hairline
- * -bordered surface used for cards, sheets, tab bars and modals. Depth is
- * expressed through `level`, not through ad-hoc opacity tweaks, so every
- * glass surface in the app reads as one coherent material.
+ * The app's surface for boxes and popups. It used to be a blurred, gradient-lit pane meant to imitate glass; on the
+ * phone that read as a muddy, uneven grey that matched neither the cards nor the popups. Now it is solid, in the
+ * same colours as the rest of the app: a box on the page is the cards' grey (like FlatCard), a popup or sheet
+ * (`level="overlay"`) the popups' dark grey. A caller's own `backgroundColor` / `borderColor` still wins.
  */
 export function GlassSurface({
   level = 'card',
-  intensity,
   radius = Radius.large,
   style,
   children,
@@ -77,22 +55,12 @@ export function GlassSurface({
   onLayout,
   nativeGlass = false,
   swipeToDismiss,
-  blur = true,
 }: GlassSurfaceProps) {
-  const scheme = useColorScheme();
-  const isDark = scheme === 'dark';
+  const theme = useTheme();
+  const isDark = useColorScheme() === 'dark';
   const useRealGlass = nativeGlass && isLiquidGlassAvailable();
   const swipe = useSwipeDismiss(swipeToDismiss);
-  const Outer = swipeToDismiss ? Animated.View : View;
-
-  // A brighter specular band along the top edge fading into a soft wash,
-  // the way light catches the top of a curved glass surface.
-  const gradientColors = isDark
-    ? GlassMaterial.surfaceSheen.dark
-    : GlassMaterial.surfaceSheen.light;
-  const gradientLocations = [0, 0.18, 1] as const;
-
-  const shadow = LEVEL_SHADOW[level];
+  const popup = level === 'overlay';
 
   const flatStyle = (StyleSheet.flatten(style) ?? {}) as Record<string, unknown>;
   const outerStyle: Record<string, unknown> = {};
@@ -105,10 +73,6 @@ export function GlassSurface({
     }
   }
 
-  // Real glass draws its own light/edge treatment natively — the
-  // gradient sheen and hairline border below are this component's own
-  // stand-in for that, so they'd not just be redundant but visually
-  // fight the system's real effect.
   if (useRealGlass) {
     return (
       <GlassView
@@ -120,74 +84,48 @@ export function GlassSurface({
     );
   }
 
-  const surface = (
-    <Outer
-      onLayout={onLayout}
-      {...(swipeToDismiss ? swipe.panHandlers : null)}
-      style={[
-        { borderRadius: radius, overflow: 'hidden' },
-        Platform.select({
-          // On web box-shadow isn't clipped by this same element's overflow,
-          // so the shadow, blur-clip and border-radius can all live on one node.
-          web: { boxShadow: `0px ${shadow.offsetY}px ${shadow.radius}px rgba(0,0,0,${shadow.opacity})` },
-          default: null,
-        }),
-        outerStyle,
-        swipeToDismiss ? swipe.animatedStyle : null,
-      ]}>
-      {blur ? (
-        <BlurView
-          intensity={intensity ?? LEVEL_INTENSITY[level]}
-          tint={isDark ? 'dark' : 'light'}
-          blurMethod="dimezisBlurViewSdk31Plus"
-          style={StyleSheet.absoluteFill}
-        />
-      ) : null}
-      <LinearGradient
-        colors={gradientColors}
-        locations={gradientLocations}
-        start={{ x: 0.1, y: 0 }}
-        end={{ x: 0.4, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
-      {bordered ? (
-        // An absolute overlay (not a padded child) so the hairline always
-        // traces the surface's true outer edge, even when `style` adds
-        // padding — a padded sibling would otherwise shrink the border
-        // inward, leaving a floating rectangle inside the card.
-        <View
-          pointerEvents="none"
-          style={[
-            StyleSheet.absoluteFill,
-            {
-              borderRadius: radius,
-              // Corners the caller squared off (a sheet flush with the screen edge) stay square on the hairline too.
-              ...cornerOverrides(outerStyle),
-              borderWidth: StyleSheet.hairlineWidth * 1.5,
-              borderColor: GlassMaterial.surfaceBorder[isDark ? 'dark' : 'light'],
-              borderTopColor: GlassMaterial.surfaceBorderTop[isDark ? 'dark' : 'light'],
-            },
-          ]}
-        />
-      ) : null}
+  const fill = {
+    backgroundColor: popup ? theme.surfacePopup : theme.backgroundElevated,
+    borderRadius: radius,
+    borderCurve: 'continuous' as const,
+    // The hairline only shows in light mode (boxEdge is transparent in dark), as on the cards.
+    borderWidth: bordered && !popup ? StyleSheet.hairlineWidth : 0,
+    borderColor: theme.boxEdge,
+    // Boxes sit on the page with the cards' soft shadow; a popup is set off by the dimmed page behind it.
+    boxShadow: popup ? undefined : FlatCardShadow[isDark ? 'dark' : 'light'],
+  };
+
+  const body = (
+    <>
       <View style={[styles.content, contentStyle]}>{children}</View>
       {swipeToDismiss ? <SheetGrabber top={8} /> : null}
-    </Outer>
+    </>
   );
 
-  return swipeToDismiss ? <ScrollRegistryContext.Provider value={swipe.registry}>{surface}</ScrollRegistryContext.Provider> : surface;
-}
+  if (!swipeToDismiss) {
+    return (
+      <View onLayout={onLayout} style={[fill, styles.clip, outerStyle]}>
+        {body}
+      </View>
+    );
+  }
 
-const CORNER_KEYS = ['borderTopLeftRadius', 'borderTopRightRadius', 'borderBottomLeftRadius', 'borderBottomRightRadius'] as const;
-
-function cornerOverrides(style: Record<string, unknown>): Record<string, unknown> {
-  const out: Record<string, unknown> = {};
-  for (const key of CORNER_KEYS) if (style[key] != null) out[key] = style[key];
-  return out;
+  return (
+    <ScrollRegistryContext.Provider value={swipe.registry}>
+      <GestureDetector gesture={swipe.gesture}>
+        <Animated.View onLayout={onLayout} style={[fill, styles.clip, outerStyle, swipe.animatedStyle]}>
+          {body}
+        </Animated.View>
+      </GestureDetector>
+    </ScrollRegistryContext.Provider>
+  );
 }
 
 const styles = StyleSheet.create({
   content: {
     flex: 1,
+  },
+  clip: {
+    overflow: 'hidden',
   },
 });

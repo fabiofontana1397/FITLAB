@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Modal, Pressable, StyleSheet, View, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
+import { Modal, Pressable, StyleSheet, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { interpolate, runOnJS, useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, withTiming, type SharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -61,7 +62,8 @@ export function GlassPopup({ visible, onClose, children, style, maxWidth = POPUP
   return (
     <Modal visible={mounted} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
       <RevealBoundary>
-        <View style={styles.root}>
+        {/* Gestures in a Modal need their own root (Android); on iOS it is harmless. */}
+        <GestureHandlerRootView style={styles.root}>
           <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Chiudi">
             <Animated.View style={[StyleSheet.absoluteFill, scrimStyle, { backgroundColor: theme.scrimSoft }]} />
           </Pressable>
@@ -70,13 +72,12 @@ export function GlassPopup({ visible, onClose, children, style, maxWidth = POPUP
             <GlassSurface
               level="overlay"
               radius={Radius.xlarge}
-              blur={false}
               style={[styles.card, { backgroundColor: theme.surfacePopup }, style, styles.sheetEdge, { minHeight: height * MIN_HEIGHT_SHARE, paddingBottom: insets.bottom + Spacing.four }]}
               swipeToDismiss={onClose}>
               {children}
             </GlassSurface>
           </PopupCard>
-        </View>
+        </GestureHandlerRootView>
       </RevealBoundary>
     </Modal>
   );
