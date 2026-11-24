@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, View, type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 
+import { GlassCloseButton } from '@/components/glass/liquid-glass';
 import { GlassPopup } from '@/components/glass/glass-popup';
 import { ThemedText } from '@/components/themed-text';
 import { DayCalendarModal } from '@/components/ui/day-calendar-modal';
@@ -161,9 +162,7 @@ function WeightEntryForm({
         <View style={[styles.rulerBadge, { backgroundColor: theme.backgroundElement }]}>
           <Icon name="scale" size={24} color={theme.text} />
         </View>
-        <Pressable onPress={onClose} hitSlop={11} accessibilityRole="button" accessibilityLabel="Chiudi" style={styles.close}>
-          <Icon name="close" size={22} color={theme.text} />
-        </Pressable>
+        <GlassCloseButton onPress={onClose} style={styles.close} />
       </View>
 
       <View style={styles.valueRow}>

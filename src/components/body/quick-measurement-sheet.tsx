@@ -1,12 +1,13 @@
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useState } from 'react';
-import { Modal, Pressable, StyleSheet, View } from 'react-native';
+import { Modal, StyleSheet, View } from 'react-native';
 
+import { GlassCloseButton } from '@/components/glass/liquid-glass';
 import { AppTextInput } from '@/components/ui/app-text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { GlassSurface } from '@/components/glass/glass-surface';
 import { ThemedText } from '@/components/themed-text';
-import { Icon } from '@/components/ui/icon';
 import { PrimaryButton } from '@/components/ui/primary-button';
 import { Radius, Spacing } from '@/constants/theme';
 import { useMotionPreference } from '@/hooks/use-motion-preference';
@@ -44,13 +45,12 @@ export function QuickMeasurementSheet({ visible, label, currentValueCm, onClose,
       animationType={modalAnimation('slide')}
       onRequestClose={onClose}
       onShow={() => setValue(String(currentValueCm))}>
+      <GestureHandlerRootView style={{ flex: 1 }}>
       <View style={[styles.backdrop, { backgroundColor: theme.scrim }]}>
         <GlassSurface swipeToDismiss={onClose} level="overlay" radius={Radius.xlarge} style={[styles.sheet, { paddingBottom: insets.bottom + Spacing.four }]}>
           <View style={styles.header}>
             <ThemedText type="subtitle">Nuova misura: {label}</ThemedText>
-            <Pressable onPress={onClose} hitSlop={11} accessibilityRole="button" accessibilityLabel="Chiudi">
-              <Icon name="close" size={22} color={theme.text} />
-            </Pressable>
+            <GlassCloseButton onPress={onClose} />
           </View>
           <View style={styles.inputRow}>
             <AppTextInput
@@ -67,6 +67,7 @@ export function QuickMeasurementSheet({ visible, label, currentValueCm, onClose,
           <PrimaryButton label="Salva" onPress={handleSave} />
         </GlassSurface>
       </View>
+    </GestureHandlerRootView>
     </Modal>
   );
 }
@@ -77,6 +78,9 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   sheet: {
+    // Flush with the bottom edge, like every other popup.
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
     paddingHorizontal: Spacing.four,
     paddingTop: Spacing.four,
     gap: Spacing.four,

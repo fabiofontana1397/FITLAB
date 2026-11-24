@@ -1,8 +1,11 @@
 import { BlurView } from 'expo-blur';
-import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
+import { GlassView, isGlassEffectAPIAvailable, isLiquidGlassAvailable, type GlassEffectStyleConfig } from 'expo-glass-effect';
+import { useCallback, useEffect, useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StyleSheet, View, type LayoutChangeEvent, type StyleProp, type ViewStyle } from 'react-native';
 
+import { useAncestorsOpaque } from '@/components/motion/fade-chain';
+import { Icon } from '@/components/ui/icon';
 import { PressableScale, type PressableScaleProps } from '@/components/motion/pressable-scale';
 import { GlassMaterial, Radius, type GlassTone } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -82,17 +85,18 @@ export function LiquidGlass({
     }
   }
 
-  if (isLiquidGlassAvailable()) {
+  if (NATIVE_GLASS) {
     return (
-      <GlassView
-        onLayout={onLayout}
-        glassEffectStyle="regular"
+      <NativeGlass
+        radius={radius}
         tintColor={tintColor}
-        isInteractive={interactive}
-        colorScheme={scheme}
-        style={[{ borderRadius: radius, overflow: 'hidden' }, outerStyle]}>
-        <View style={[styles.content, contentStyle]}>{children}</View>
-      </GlassView>
+        interactive={interactive}
+        scheme={scheme}
+        outerStyle={outerStyle}
+        contentStyle={contentStyle}
+        onLayout={onLayout}>
+        {children}
+      </NativeGlass>
     );
   }
 
@@ -122,6 +126,75 @@ export function LiquidGlass({
       </View>
       <View style={[styles.content, contentStyle]}>{children}</View>
     </View>
+  );
+}
+
+/** The OS's own Liquid Glass (iOS 26+): checked once, at load. Both checks, as expo-glass-effect asks — some iOS 26
+ * builds report the design as available without the API behind it. */
+const NATIVE_GLASS = isLiquidGlassAvailable() && isGlassEffectAPIAvailable();
+
+/** Native glass always uses the system's regular style (the tab bar's too, as before): 'clear' over this app's
+ * near-black pages reads as no glass at all. Faded in natively rather than through opacity. */
+const GLASS_ON: GlassEffectStyleConfig = { style: 'regular', animate: true, animationDuration: 0.2 };
+
+/**
+ * The native glass, switched on only when iOS can actually draw it. UIKit draws no glass under a parent whose
+ * opacity is below 1 (a section fading in, a page settling, a sheet's body appearing) or while the view has no size
+ * (a page kept mounted but hidden behind a selector), and the glass does not come back by itself afterwards. So it
+ * starts as 'none' and is set to its style once every fade above it has finished and it has a real size — the
+ * workaround expo-glass-effect documents — then again each time it is hidden and shown.
+ */
+function NativeGlass({
+  radius,
+  tintColor,
+  interactive,
+  scheme,
+  outerStyle,
+  contentStyle,
+  onLayout,
+  children,
+}: {
+  radius: number;
+  tintColor?: string;
+  interactive: boolean;
+  scheme: 'light' | 'dark';
+  outerStyle: Record<string, unknown>;
+  contentStyle: Record<string, unknown>;
+  onLayout?: (event: LayoutChangeEvent) => void;
+  children?: React.ReactNode;
+}) {
+  const [opaque, setOpaque] = useState(false);
+  const [sized, setSized] = useState(false);
+  const [armed, setArmed] = useState(false);
+  const onOpaque = useCallback((value: boolean) => setOpaque(value), []);
+  useAncestorsOpaque(onOpaque);
+
+  // Turned on a frame after the conditions hold, so the view is already on screen and composited when UIKit builds
+  // the glass; off at once when one stops holding.
+  const ready = opaque && sized;
+  useEffect(() => {
+    if (!ready) return;
+    const frame = requestAnimationFrame(() => setArmed(true));
+    return () => {
+      cancelAnimationFrame(frame);
+      setArmed(false);
+    };
+  }, [ready]);
+  const on = ready && armed;
+
+  return (
+    <GlassView
+      onLayout={(e) => {
+        setSized(e.nativeEvent.layout.width > 0 && e.nativeEvent.layout.height > 0);
+        onLayout?.(e);
+      }}
+      glassEffectStyle={on ? GLASS_ON : 'none'}
+      tintColor={tintColor}
+      isInteractive={interactive}
+      colorScheme={scheme}
+      style={[{ borderRadius: radius }, outerStyle]}>
+      <View style={[styles.content, contentStyle]}>{children}</View>
+    </GlassView>
   );
 }
 
@@ -185,3 +258,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 });
+
+/** The round "X" that closes a popup or sheet: Liquid Glass like the header buttons (the OS's own on iOS 26+). */
+export function GlassCloseButton({ onPress, size = 36, style }: { onPress: () => void; size?: number; style?: StyleProp<ViewStyle> }) {
+  const isDark = useColorScheme() === 'dark';
+  return (
+    <LiquidGlassButton onPress={onPress} size={size} hitSlop={8} scaleTo={0.9} accessibilityLabel="Chiudi" style={style}>
+      <Icon name="close" size={Math.round(size * 0.47)} color={isDark ? '#FFFFFF' : '#0B0B0D'} />
+    </LiquidGlassButton>
+  );
+}

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { FlatList, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 
+import { GlassCloseButton } from '@/components/glass/liquid-glass';
 import { SpringPanel, TimingExit } from '@/constants/motion';
 import { HorizontalScrollDefaults } from '@/constants/scroll';
 import { HealthNotice } from '@/components/legal/health-notice';
@@ -16,7 +17,6 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { GlassSurface } from '@/components/glass/glass-surface';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
 import { BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
@@ -103,13 +103,7 @@ export default function ChatScreen() {
                 {error ?? (isTyping ? 'Sta scrivendo…' : AI_COACH_ENABLED ? 'Assistente AI · non sostituisce un professionista' : 'Coach automatico · non sostituisce un professionista')}
               </ThemedText>
             </View>
-            <Pressable onPress={handleClose} hitSlop={8}>
-              <GlassSurface level="card" radius={Radius.pill} style={styles.closeButton}>
-                <View style={styles.closeInner}>
-                  <Icon name="close" size={18} color={theme.text} />
-                </View>
-              </GlassSurface>
-            </Pressable>
+            <GlassCloseButton onPress={handleClose} />
           </View>
 
           <FlatList

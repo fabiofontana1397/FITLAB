@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { GlassCloseButton } from '@/components/glass/liquid-glass';
 import { ScrollDefaults } from '@/constants/scroll';
 import { GlassSurface } from '@/components/glass/glass-surface';
 import { QuestionBlock } from '@/components/onboarding/question-block';
@@ -47,13 +48,7 @@ export function EditAnswersSheet({ group, answers, onClose, onSave }: EditAnswer
       {/* iOS's own page sheet already swipes down; elsewhere this does it. */}
       <SwipeDismiss onDismiss={Platform.OS === 'ios' ? undefined : onClose} style={[styles.root, { backgroundColor: theme.surfacePopup, paddingTop: Platform.OS === 'android' ? insets.top : 0 }]}>
         <View style={[styles.header, { borderBottomColor: theme.border }]}>
-          <Pressable onPress={onClose} hitSlop={8} accessibilityLabel="Chiudi">
-            <GlassSurface level="card" radius={Radius.pill} style={styles.closeButton}>
-              <View style={styles.closeInner}>
-                <Icon name="close" size={18} color={theme.text} />
-              </View>
-            </GlassSurface>
-          </Pressable>
+          <GlassCloseButton onPress={onClose} />
           <View style={{ flex: 1, alignItems: 'center' }}>
             <ThemedText type="caption" themeColor="textSecondary">
               Modifica

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { GlassCloseButton } from '@/components/glass/liquid-glass';
 import { GlassPopup } from '@/components/glass/glass-popup';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
@@ -82,9 +83,7 @@ export function MeasurementInfoModal({ zone, entries, onClose, onAdd, onDelete }
     <GlassPopup visible={zone != null} onClose={onClose} style={styles.card}>
       <View style={styles.header}>
         <ThemedText type="subtitle">{copy.title}</ThemedText>
-        <Pressable onPress={onClose} hitSlop={11} accessibilityRole="button" accessibilityLabel="Chiudi">
-          <Icon name="close" size={22} color={theme.text} />
-        </Pressable>
+        <GlassCloseButton onPress={onClose} />
       </View>
 
       <View style={styles.howTo}>

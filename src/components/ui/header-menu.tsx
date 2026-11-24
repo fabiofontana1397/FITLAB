@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { router, usePathname, type Href } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Modal, Platform, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Modal, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, { Easing, interpolate, runOnJS, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { LiquidGlassButton } from '@/components/glass/liquid-glass';
@@ -18,7 +18,6 @@ const PANEL_WIDTH = 252;
 const GAP_BELOW_BUTTON = 8;
 const OPEN_MS = 420;
 const CLOSE_MS = 260;
-const WEB = Platform.OS === 'web';
 
 type Anchor = { top: number; right: number; buttonWidth: number };
 
@@ -152,8 +151,7 @@ function MenuPanel({ anchor, visible, onClose }: { anchor: Anchor | null; visibl
         <GlassSurface
           level="overlay"
           radius={Radius.large}
-          blur={!WEB}
-          style={[styles.panel, WEB && !isDark && styles.panelFillLight, isDark && { backgroundColor: theme.surfacePopup }]}>
+          style={[styles.panel, !isDark && styles.panelFillLight, isDark && { backgroundColor: theme.surfacePopup }]}>
           <Animated.View style={contentStyle}>
             <Pressable
               onPress={() => go('/profile')}

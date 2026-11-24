@@ -1,5 +1,6 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
+import { GlassCloseButton } from '@/components/glass/liquid-glass';
 import { ScrollDefaults } from '@/constants/scroll';
 import { GlassPopup } from '@/components/glass/glass-popup';
 import { ThemedText } from '@/components/themed-text';
@@ -168,9 +169,7 @@ export function EnergyDetailsPopup({
         <ThemedText type="subtitle" style={{ flex: 1 }}>
           {focus === 'week' ? 'Il tuo obiettivo settimanale' : 'Il tuo bilancio energetico'}
         </ThemedText>
-        <Pressable onPress={onClose} hitSlop={11} accessibilityRole="button" accessibilityLabel="Chiudi">
-          <Icon name="close" size={22} color={theme.text} />
-        </Pressable>
+        <GlassCloseButton onPress={onClose} />
       </View>
 
       <PopupScrollView {...ScrollDefaults} style={styles.scroll} contentContainerStyle={styles.content}>

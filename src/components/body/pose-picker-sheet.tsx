@@ -1,6 +1,8 @@
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { GlassCloseButton } from '@/components/glass/liquid-glass';
 import { GlassSurface } from '@/components/glass/glass-surface';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui/icon';
@@ -25,13 +27,12 @@ export function PosePickerSheet({ visible, onClose, onSelect }: PosePickerSheetP
 
   return (
     <Modal visible={visible} transparent animationType={modalAnimation('slide')} onRequestClose={onClose}>
+      <GestureHandlerRootView style={{ flex: 1 }}>
       <View style={[styles.backdrop, { backgroundColor: theme.scrim }]}>
         <GlassSurface swipeToDismiss={onClose} level="overlay" radius={Radius.xlarge} style={[styles.sheet, { paddingBottom: insets.bottom + Spacing.four }]}>
           <View style={styles.header}>
             <ThemedText type="subtitle">Che posa è?</ThemedText>
-            <Pressable onPress={onClose} hitSlop={11} accessibilityRole="button" accessibilityLabel="Chiudi">
-              <Icon name="close" size={22} color={theme.text} />
-            </Pressable>
+            <GlassCloseButton onPress={onClose} />
           </View>
           <View style={{ gap: Spacing.two }}>
             {POSE_ORDER.map((pose) => (
@@ -43,6 +44,7 @@ export function PosePickerSheet({ visible, onClose, onSelect }: PosePickerSheetP
           </View>
         </GlassSurface>
       </View>
+    </GestureHandlerRootView>
     </Modal>
   );
 }
@@ -53,6 +55,9 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   sheet: {
+    // Flush with the bottom edge, like every other popup.
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
     paddingHorizontal: Spacing.four,
     paddingTop: Spacing.four,
     gap: Spacing.four,

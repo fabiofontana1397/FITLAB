@@ -7,6 +7,7 @@ import Animated, {
   useAnimatedReaction,
   useAnimatedScrollHandler,
   useAnimatedStyle,
+  useDerivedValue,
   useReducedMotion,
   useSharedValue,
   withTiming,
@@ -16,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useModePageState } from '@/components/mode-pages';
 import { useIsSelectedTab } from '@/hooks/use-is-selected-tab';
+import { FadeLayer } from '@/components/motion/fade-chain';
 import { Reveal, ScrollRevealContext } from '@/components/motion/reveal';
 import { TimingScreen } from '@/constants/motion';
 import { ScrollDefaults } from '@/constants/scroll';
@@ -144,8 +146,9 @@ export const ScreenScroll = forwardRef<ScrollView, ScreenScrollProps>(function S
 
   const revealContext = useMemo(() => ({ scrollY, viewportHeight, mountedAt, settle }), [scrollY, viewportHeight, settle]);
 
+  const focusOpacity = useDerivedValue(() => interpolate(focusProgress.value, [0, 1], [0.35, 1]));
   const focusStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(focusProgress.value, [0, 1], [0.35, 1]),
+    opacity: focusOpacity.value,
     transform: [{ translateY: (1 - focusProgress.value) * 8 }],
   }));
 
@@ -213,7 +216,7 @@ export const ScreenScroll = forwardRef<ScrollView, ScreenScrollProps>(function S
               contentContainerStyle,
               focusStyle,
             ]}>
-            {content}
+            <FadeLayer opacity={focusOpacity}>{content}</FadeLayer>
           </Animated.View>
         </Animated.ScrollView>
       </ScrollRevealContext.Provider>
@@ -228,7 +231,9 @@ export const ScreenScroll = forwardRef<ScrollView, ScreenScrollProps>(function S
       {header && pinned ? (
         <Animated.View testID="screen-pinned" style={[styles.pinned, { pointerEvents: pinnedActive ? 'box-none' : 'none' }, pinnedStyle]}>
           <View style={{ backgroundColor: headerFadeColor }}>
-            <View style={styles.pinnedInner}>{pinned}</View>
+            <View style={styles.pinnedInner}>
+              <FadeLayer opacity={pinnedP}>{pinned}</FadeLayer>
+            </View>
           </View>
           <LinearGradient colors={[headerFadeColor, `${headerFadeColor}00`]} style={{ height: HEADER_FADE_HEIGHT, pointerEvents: 'none' }} />
         </Animated.View>

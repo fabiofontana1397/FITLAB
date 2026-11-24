@@ -5,6 +5,7 @@ import Animated, {
   makeMutable,
   useAnimatedReaction,
   useAnimatedStyle,
+  useDerivedValue,
   useReducedMotion,
   useSharedValue,
   withDelay,
@@ -13,6 +14,7 @@ import Animated, {
   type SharedValue,
 } from 'react-native-reanimated';
 
+import { FadeLayer } from '@/components/motion/fade-chain';
 import { useIsSelectedTab } from '@/hooks/use-is-selected-tab';
 import { SpringReveal, STAGGER_MAX_STEPS, STAGGER_STEP, TimingFill } from '@/constants/motion';
 
@@ -176,8 +178,9 @@ export function Reveal({ index = 0, style, onLayout, children }: RevealProps) {
   );
 
   // Fade, rise and grow only: all cheap, compositor-friendly properties. (A blur here repainted a whole card every frame.)
+  const opacity = useDerivedValue(() => interpolate(progress.value, [0, 0.55], [0, 1], 'clamp'));
   const animatedStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(progress.value, [0, 0.55], [0, 1], 'clamp'),
+    opacity: opacity.value,
     transform: [{ translateY: (1 - progress.value) * RISE }, { scale: interpolate(progress.value, [0, 1], [0.96, 1]) }],
   }));
 
@@ -191,7 +194,7 @@ export function Reveal({ index = 0, style, onLayout, children }: RevealProps) {
           height.set(e.nativeEvent.layout.height);
           onLayout?.(e);
         }}>
-        {children}
+        <FadeLayer opacity={opacity}>{children}</FadeLayer>
       </Animated.View>
     </RevealProgressContext.Provider>
   );

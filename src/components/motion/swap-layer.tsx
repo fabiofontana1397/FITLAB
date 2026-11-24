@@ -1,6 +1,7 @@
 import { memo, useEffect, useRef, type ReactNode } from 'react';
 import { StyleSheet } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import { FadeLayer } from '@/components/motion/fade-chain';
 
 /** How far (pt) a layer drifts sideways as it leaves and the next one arrives, in the direction of the choice. */
 const DRIFT = 26;
@@ -68,7 +69,7 @@ export const SwapLayer = memo(function SwapLayer({ active, direction, instant, c
       aria-hidden={!active}
       importantForAccessibility={active ? 'auto' : 'no-hide-descendants'}
       style={[StyleSheet.absoluteFill, { pointerEvents: active ? 'auto' : 'none' }, style]}>
-      {children}
+      <FadeLayer opacity={opacity}>{children}</FadeLayer>
     </Animated.View>
   );
 });

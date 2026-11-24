@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { GlassCloseButton } from '@/components/glass/liquid-glass';
 import { ScrollDefaults } from '@/constants/scroll';
 import { GlassSurface } from '@/components/glass/glass-surface';
 import { ThemedText } from '@/components/themed-text';
@@ -53,13 +54,7 @@ export function QuestionnaireSheet({ visible, onClose, groups, answers, mode, on
               Le risposte da cui nascono i tuoi piani
             </ThemedText>
           </View>
-          <Pressable onPress={onClose} hitSlop={8} accessibilityLabel="Chiudi">
-            <GlassSurface level="card" radius={Radius.pill} style={styles.closeButton}>
-              <View style={styles.closeInner}>
-                <Icon name="close" size={18} color={theme.text} />
-              </View>
-            </GlassSurface>
-          </Pressable>
+          <GlassCloseButton onPress={onClose} />
         </View>
 
         <PopupScrollView {...ScrollDefaults} contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + Spacing.five }]}>
