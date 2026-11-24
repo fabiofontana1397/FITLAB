@@ -8,7 +8,17 @@ import { PageBackground } from '@/constants/page-background';
 // import constants/theme.ts, so the page colour comes from the dependency-free
 // module that theme.ts builds `background` from.
 /** Bump when the logo files in public/ change. */
-const ICON_VERSION = '5';
+const ICON_VERSION = '6';
+
+// iOS has no light/dark variant for the Home Screen icon and freezes it when
+// the user taps "Add to Home Screen". So pick it at that moment from the
+// system appearance: black logo on white in light mode, white on black in dark.
+const TOUCH_ICON_SCRIPT = `
+if(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches){
+  var l=document.getElementById('apple-touch-icon');
+  if(l)l.href='/apple-touch-icon-dark.png?v=${ICON_VERSION}';
+}
+`;
 
 const PAGE_BACKGROUND_CSS = `
 html,body{background-color:${PageBackground.light}}
@@ -35,7 +45,8 @@ export default function Root({ children }: PropsWithChildren) {
         <link rel="icon" type="image/svg+xml" href={`/favicon.svg?v=${ICON_VERSION}`} />
         <link rel="icon" type="image/png" sizes="32x32" href={`/favicon-32.png?v=${ICON_VERSION}`} />
         <link rel="icon" type="image/png" sizes="48x48" href={`/favicon-48.png?v=${ICON_VERSION}`} />
-        <link rel="apple-touch-icon" sizes="180x180" href={`/apple-touch-icon.png?v=${ICON_VERSION}`} />
+        <link id="apple-touch-icon" rel="apple-touch-icon" sizes="180x180" href={`/apple-touch-icon.png?v=${ICON_VERSION}`} />
+        <script dangerouslySetInnerHTML={{ __html: TOUCH_ICON_SCRIPT }} />
         <meta name="theme-color" content={PageBackground.light} media="(prefers-color-scheme: light)" />
         <meta name="theme-color" content={PageBackground.dark} media="(prefers-color-scheme: dark)" />
         <ScrollViewStyleReset />
