@@ -162,8 +162,8 @@ export function EnergyDetailsPopup({
   return (
     <GlassPopup visible={visible} onClose={onClose}>
       <View style={styles.header}>
-        <View style={[styles.badge, { backgroundColor: theme.accentSoft }]}>
-          <Icon name="target" size={18} color={theme.accent} />
+        <View style={styles.badge}>
+          <Icon name="crosshair" size={22} color={theme.text} />
         </View>
         <ThemedText type="subtitle" style={{ flex: 1 }}>
           {focus === 'week' ? 'Il tuo obiettivo settimanale' : 'Il tuo bilancio energetico'}

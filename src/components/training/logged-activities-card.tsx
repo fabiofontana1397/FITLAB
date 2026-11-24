@@ -48,8 +48,8 @@ export function LoggedActivitiesCard({ date, title = 'Allenamenti registrati', i
                 accessibilityRole="button"
                 accessibilityLabel={`Dettagli: ${label}`}
                 style={({ pressed }) => [styles.open, pressed && styles.pressed]}>
-                <View style={[styles.icon, { backgroundColor: theme.brandGreen + '1F' }]}>
-                  <Icon name={ACTIVITY_ICON[entry.activityType] ?? 'otherSport'} size={22} color={theme.brandGreen} />
+                <View style={styles.icon}>
+                  <Icon name={ACTIVITY_ICON[entry.activityType] ?? 'otherSport'} size={24} color={theme.text} />
                 </View>
                 <View style={{ flex: 1, gap: 2 }}>
                   <ThemedText style={styles.name} numberOfLines={1}>

@@ -181,8 +181,8 @@ export default function OnboardingRoadmapScreen() {
                 </View>
               ) : (
                 <FadeInView delay={120} style={{ alignItems: 'center', paddingTop: Spacing.six }}>
-                  <View style={[styles.readyBadge, { backgroundColor: theme.accentSoft }]}>
-                    <Icon name="sparkle" size={32} color={theme.accent} />
+                  <View style={styles.readyBadge}>
+                    <Icon name="sparkleLine" size={40} color={theme.text} />
                   </View>
                 </FadeInView>
               )}
@@ -209,8 +209,8 @@ function TimelineRow({ step, isLast }: { step: RoadmapStep; isLast: boolean }) {
   return (
     <View style={styles.timelineRow}>
       <View style={styles.timelineRail}>
-        <View style={[styles.timelineIcon, { backgroundColor: theme.accentSoft }]}>
-          <Icon name={step.icon} size={18} color={theme.accent} />
+        <View style={styles.timelineIcon}>
+          <Icon name={step.icon} size={22} color={theme.text} />
         </View>
         {!isLast ? <View style={[styles.timelineLine, { backgroundColor: theme.border }]} /> : null}
       </View>

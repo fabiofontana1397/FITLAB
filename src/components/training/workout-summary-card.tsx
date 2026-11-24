@@ -1,4 +1,3 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { PressableScale } from '@/components/motion/pressable-scale';
@@ -6,7 +5,7 @@ import { ThemedText } from '@/components/themed-text';
 import { SwipeToStart } from '@/components/training/swipe-to-start';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon } from '@/components/ui/icon';
-import { Brand, OnBrand } from '@/constants/theme';
+import { OnBrand } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { PlanPhaseKind } from '@/lib/planning/types';
 
@@ -23,16 +22,13 @@ export function levelLabel(phase: PlanPhaseKind | undefined): string {
   return d === 'Alta' ? 'Livello avanzato' : d === 'Media' ? 'Livello intermedio' : 'Livello base';
 }
 
-/** The rounded orange square with a dumbbell, used on the detail page header. */
+/** A thin line barbell with no tile behind it, used on the detail page header: black on light, white on dark. */
 export function WorkoutBadge({ size = 60 }: { size?: number }) {
+  const theme = useTheme();
   return (
-    <LinearGradient
-      colors={Brand.badgeGradient}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={[styles.badge, { width: size, height: size, borderRadius: size * 0.22 }]}>
-      <Icon name="barbell" size={size / 2} color={OnBrand.text} />
-    </LinearGradient>
+    <View style={[styles.badge, { width: size, height: size }]}>
+      <Icon name="barbellLine" size={size * 0.7} strokeWidth={1.5} color={theme.text} />
+    </View>
   );
 }
 
@@ -80,8 +76,8 @@ export function WorkoutSummaryCard({ title, subtitle, minutes, kcal, onOpen, onS
       <View style={styles.row} pointerEvents="box-none">
         {onSwap ? (
           <PressableScale onPress={onSwap} haptic="press" accessibilityRole="button" accessibilityLabel={`Anticipa a oggi: ${title}`}>
-            <View style={[styles.play, styles.swap, { width: PLAY_SIZE, height: PLAY_SIZE, borderRadius: PLAY_SIZE / 2, backgroundColor: theme.accentSoft }]}>
-              <Icon name="swap" size={26} color={theme.accent} />
+            <View style={[styles.play, styles.swap, { width: PLAY_SIZE, height: PLAY_SIZE, borderRadius: PLAY_SIZE / 2, backgroundColor: theme.backgroundElement }]}>
+              <Icon name="swap" size={24} color={theme.text} />
             </View>
           </PressableScale>
         ) : status ? (

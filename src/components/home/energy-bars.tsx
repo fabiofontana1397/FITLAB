@@ -51,11 +51,12 @@ function Row({ label, value, dot }: { label: string; value: string; dot?: string
   );
 }
 
-function TileHeader({ icon, color, title }: { icon: IconName; color: string; title: string }) {
+function TileHeader({ icon, title }: { icon: IconName; color?: string; title: string }) {
+  const theme = useTheme();
   return (
     <View style={styles.header}>
-      <View style={[styles.headerIcon, { backgroundColor: alpha(color, 0.16) }]}>
-        <Icon name={icon} size={14} color={color} />
+      <View style={styles.headerIcon}>
+        <Icon name={icon} size={16} color={theme.text} />
       </View>
       <ThemedText style={styles.headerTitle} numberOfLines={1}>
         {title}

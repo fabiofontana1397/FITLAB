@@ -174,8 +174,8 @@ export default function ProfileScreen() {
           </Pressable>
         </View>
 
-        <View style={[styles.goalBanner, { backgroundColor: theme.accentSoft }]}>
-          <Icon name="target" size={18} color={theme.accent} />
+        <View style={[styles.goalBanner, { backgroundColor: theme.backgroundElement }]}>
+          <Icon name="crosshair" size={20} color={theme.text} />
           <View style={{ flex: 1 }}>
             <ThemedText type="caption" themeColor="textSecondary">
               Obiettivo
@@ -216,7 +216,7 @@ export default function ProfileScreen() {
               return (
                 <Pressable key={sport} onPress={() => setEditing(findGroup('training'))}>
                   <View style={[styles.sportChip, { backgroundColor: theme.backgroundElement }]}>
-                    <Icon name={sportIcon[sport]} size={16} color={theme.accent} />
+                    <Icon name={sportIcon[sport]} size={16} color={theme.text} />
                     <ThemedText type="caption" style={{ fontWeight: '700' }}>
                       {sportMeta[sport].label}
                     </ThemedText>
@@ -238,8 +238,8 @@ export default function ProfileScreen() {
         <OutcomeBanner saving={saving && !questionnaireOpen} isGenerating={isGenerating && !questionnaireOpen} outcome={questionnaireOpen ? null : outcome} />
         <FlatCard radius={26} style={styles.questionnaireCard}>
           <View style={styles.questionnaireTop}>
-            <View style={[styles.questionnaireIcon, { backgroundColor: theme.accentSoft }]}>
-              <Icon name="checkCircle" size={20} color={theme.accent} />
+            <View style={styles.questionnaireIcon}>
+              <Icon name="checkCircleLine" size={24} color={theme.text} />
             </View>
             <View style={{ flex: 1, gap: 2 }}>
               <ThemedText type="smallBold">Il tuo questionario</ThemedText>
@@ -268,7 +268,7 @@ function StatBox({ icon, label, value, unit }: { icon: IconName; label: string; 
   const theme = useTheme();
   return (
     <View style={[styles.statBox, { backgroundColor: theme.backgroundElement }]}>
-      <Icon name={icon} size={16} color={theme.textSecondary} />
+      <Icon name={icon} size={18} color={theme.text} />
       <View style={styles.statValueRow}>
         <ThemedText type="subtitle">{value}</ThemedText>
         {unit ? (

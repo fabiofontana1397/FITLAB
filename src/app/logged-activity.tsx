@@ -46,8 +46,8 @@ export default function LoggedActivityScreen() {
       fallbackHref="/training"
       leading={
         entry ? (
-          <View style={[styles.tile, { backgroundColor: theme.brandGreen + '1F' }]}>
-            <Icon name={ACTIVITY_ICON[entry.activityType] ?? 'otherSport'} size={34} color={theme.brandGreen} />
+          <View style={styles.tile}>
+            <Icon name={ACTIVITY_ICON[entry.activityType] ?? 'otherSport'} size={44} color={theme.text} />
           </View>
         ) : undefined
       }>
@@ -55,8 +55,8 @@ export default function LoggedActivityScreen() {
         entry ? (
           <>
             <FlatCard radius={24} style={styles.hero}>
-              <View style={[styles.flame, { backgroundColor: theme.accentSoft }]}>
-                <Icon name="flame" size={26} color={theme.accent} />
+              <View style={styles.flame}>
+                <Icon name="flameLine" size={28} color={theme.text} />
               </View>
               <ThemedText style={styles.kcal} accessibilityLabel={`${Math.round(entry.estimatedKcal)} kcal stimate`}>
                 {Math.round(entry.estimatedKcal)}

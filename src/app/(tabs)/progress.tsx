@@ -246,8 +246,8 @@ export default function ProgressScreen() {
 
         <View style={styles.miniRow}>
           <View style={[styles.miniBox, { backgroundColor: theme.backgroundElement }]}>
-            <View style={[styles.miniIcon, { backgroundColor: deltaColor(sinceStart) + '22' }]}>
-              <Icon name={sinceStart <= 0 ? 'trendDown' : 'trendUp'} size={17} color={deltaColor(sinceStart)} />
+            <View style={styles.miniIcon}>
+              <Icon name={sinceStart <= 0 ? 'trendDown' : 'trendUp'} size={20} color={theme.text} />
             </View>
             <View style={{ flex: 1 }}>
               <ThemedText style={[styles.miniValue, { color: deltaColor(sinceStart) }]}>{signedKg(sinceStart)} kg</ThemedText>
@@ -257,8 +257,8 @@ export default function ProgressScreen() {
             </View>
           </View>
           <View style={[styles.miniBox, { backgroundColor: theme.backgroundElement }]}>
-            <View style={[styles.miniIcon, { backgroundColor: theme.brandGreen + '22' }]}>
-              <Icon name="target" size={17} color={theme.brandGreen} />
+            <View style={styles.miniIcon}>
+              <Icon name="crosshair" size={20} color={theme.text} />
             </View>
             <View style={{ flex: 1 }}>
               <ThemedText style={styles.miniValue}>{hasGoal ? `${currentUser.targetWeightKg} kg` : '—'}</ThemedText>

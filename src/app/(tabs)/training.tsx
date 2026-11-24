@@ -259,7 +259,7 @@ function PlanTraining() {
           scaleTo={0.97}
           style={[styles.registerButton, { backgroundColor: theme.accent }]}>
           <View style={styles.registerPlus}>
-            <Icon name="plus" size={18} color={theme.accent} />
+            <Icon name="plus" size={24} color={OnBrand.text} />
           </View>
           <ThemedText style={styles.registerLabel}>Registra allenamento</ThemedText>
           <Icon name="chevronRight" size={16} color={OnBrand.text} />
@@ -346,8 +346,8 @@ function PlanTraining() {
                   accessibilityLabel={`Dettagli: ${day.title}`}
                   scaleTo={0.98}>
                   <FlatCard radius={20} style={styles.messageCard}>
-                    <View style={[styles.dayIcon, { backgroundColor: theme.accentSoft }]}>
-                      <Icon name="running" size={26} color={theme.accent} />
+                    <View style={styles.dayIcon}>
+                      <Icon name="running" size={30} color={theme.text} />
                     </View>
                     <ThemedText style={styles.cardTitle}>{day.title}</ThemedText>
                     <ThemedText style={styles.cardBody} themeColor="textSecondary">
@@ -357,8 +357,8 @@ function PlanTraining() {
                 </PressableScale>
               ) : (
                 <FlatCard radius={20} style={styles.messageCard}>
-                  <View style={[styles.dayIcon, { backgroundColor: theme.backgroundElement }]}>
-                    <Icon name="moon" size={26} color={theme.textSecondary} />
+                  <View style={styles.dayIcon}>
+                    <Icon name="sleep" size={30} color={theme.text} />
                   </View>
                   <ThemedText style={styles.cardTitle}>Giorno di riposo</ThemedText>
                   <ThemedText style={[styles.cardBody, { textAlign: 'center' }]} themeColor="textSecondary">
@@ -482,7 +482,6 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: OnBrand.text,
     alignItems: 'center',
     justifyContent: 'center',
   },

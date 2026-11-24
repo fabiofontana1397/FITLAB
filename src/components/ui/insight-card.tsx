@@ -23,8 +23,8 @@ export function InsightCard({ icon = 'sparkle', tone = 'neutral', headline, body
     <GlassSurface level="card" radius={Radius.large} style={styles.wrapper}>
       <View style={[styles.accentBar, { backgroundColor: toneColor }]} />
       <View style={styles.body}>
-        <View style={[styles.iconBubble, { backgroundColor: theme.accentSoft }]}>
-          <Icon name={icon} size={16} color={toneColor} />
+        <View style={styles.iconBubble}>
+          <Icon name={icon} size={20} color={theme.text} />
         </View>
         <View style={styles.textCol}>
           <ThemedText type="smallBold">{headline}</ThemedText>

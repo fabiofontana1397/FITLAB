@@ -3,6 +3,7 @@ import {
   Apple,
   Bean,
   BicepsFlexed,
+  CircleCheck,
   Carrot,
   Coffee,
   ConciergeBell,
@@ -16,6 +17,7 @@ import {
   Milk,
   PersonStanding,
   ScanBarcode,
+  Sparkles,
   Timer,
   Utensils,
   Wheat,
@@ -67,6 +69,9 @@ const LUCIDE_ICONS = {
   bicepsLine: BicepsFlexed,
   personLine: PersonStanding,
   timerLine: Timer,
+  // Line counterparts of filled glyphs, for icons shown on the page with no tile behind them.
+  sparkleLine: Sparkles,
+  checkCircleLine: CircleCheck,
 } satisfies Record<string, LucideIcon>;
 
 /**

@@ -75,11 +75,12 @@ export function TodayTiles({ isToday, inactive, macros, onMacrosPress, workout, 
   );
 }
 
-function TileHeader({ icon, color, title }: { icon: IconName; color: string; title: string }) {
+function TileHeader({ icon, title }: { icon: IconName; color?: string; title: string }) {
+  const theme = useTheme();
   return (
     <View style={styles.header}>
-      <View style={[styles.headerIcon, { backgroundColor: withAlpha(color, 0.16) }]}>
-        <Icon name={icon} size={14} color={color} />
+      <View style={styles.headerIcon}>
+        <Icon name={icon} size={16} color={theme.text} />
       </View>
       <ThemedText style={styles.headerTitle} numberOfLines={1}>
         {title}
@@ -210,8 +211,8 @@ function WorkoutTile({ side, isToday, workout, onPress }: { side: number; isToda
             <Icon name="chevronRight" size={13} color={theme.textSecondary} />
           </View>
         ) : (
-          <View style={[styles.restBadge, { backgroundColor: theme.backgroundElement }]}>
-            <Icon name={quiet.icon} size={18} color={quiet.color} />
+          <View style={styles.restBadge}>
+            <Icon name={quiet.icon} size={22} color={theme.text} />
           </View>
         )}
       </>

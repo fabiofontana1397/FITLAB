@@ -179,8 +179,8 @@ function OrbitBadge({ failed }: { failed: boolean }) {
           })}
         </Animated.View>
       ) : null}
-      <View style={[styles.badgeDisc, { backgroundColor: failed ? theme.backgroundElement : theme.accentSoft }]}>
-        <Icon name={failed ? 'alert' : 'sparkle'} size={30} color={failed ? theme.danger : theme.accent} />
+      <View style={styles.badgeDisc}>
+        <Icon name={failed ? 'alert' : 'sparkleLine'} size={40} color={failed ? theme.danger : theme.text} />
       </View>
     </View>
   );

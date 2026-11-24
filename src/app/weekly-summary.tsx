@@ -18,7 +18,6 @@ import { useTrainingProgressStore } from '@/store/training-progress-store';
 import { useUserStore } from '@/store/user-store';
 
 export default function WeeklySummaryScreen() {
-  const theme = useTheme();
   const dietPlan = usePlanStore((state) => state.dietPlan);
   const trainingPlan = usePlanStore((state) => state.trainingPlan);
   const summary = buildWeeklySummary({
@@ -49,9 +48,9 @@ export default function WeeklySummaryScreen() {
         <MetricCard icon="scale" label="Peso" value={summary.weightChangeKg == null ? '—' : `${summary.weightChangeKg > 0 ? '+' : ''}${summary.weightChangeKg.toFixed(1)} kg`} />
       </View>
 
-      <ReportSection icon="trophy" title="Cosa è andato bene" items={summary.wins} tint={theme.successSoft} iconColor={theme.success} />
-      <ReportSection icon="sparkle" title="Cosa migliorare" items={summary.improve} tint={theme.accentSoft} iconColor={theme.accent} />
-      <ReportSection icon="info" title="Da tenere d'occhio" items={summary.missed} tint={theme.backgroundElement} iconColor={theme.textSecondary} />
+      <ReportSection icon="trophy" title="Cosa è andato bene" items={summary.wins} />
+      <ReportSection icon="sparkle" title="Cosa migliorare" items={summary.improve} />
+      <ReportSection icon="info" title="Da tenere d'occhio" items={summary.missed} />
 
       <ThemedText type="small" themeColor="textTertiary" style={styles.note}>
         I giorni senza registrazioni sono indicati come dati mancanti, non come pasti o allenamenti saltati. Il peso può oscillare: conta l&apos;andamento di più settimane.
@@ -71,16 +70,17 @@ function MetricCard({ icon, label, value }: { icon: IconName; label: string; val
   );
 }
 
-function ReportSection({ icon, title, items, tint, iconColor }: { icon: IconName; title: string; items: string[]; tint: string; iconColor: string }) {
+function ReportSection({ icon, title, items }: { icon: IconName; title: string; items: string[] }) {
+  const theme = useTheme();
   return (
     <FlatCard style={styles.section}>
       <View style={styles.sectionTitle}>
-        <View style={[styles.sectionIcon, { backgroundColor: tint }]}><Icon name={icon} size={18} color={iconColor} /></View>
+        <View style={styles.sectionIcon}><Icon name={icon} size={22} color={theme.text} /></View>
         <ThemedText type="subtitle">{title}</ThemedText>
       </View>
       {items.map((item, index) => (
         <View key={`${title}-${index}`} style={styles.item}>
-          <View style={[styles.bullet, { backgroundColor: iconColor }]} />
+          <View style={[styles.bullet, { backgroundColor: theme.text }]} />
           <ThemedText type="small" style={{ flex: 1 }}>{item}</ThemedText>
         </View>
       ))}

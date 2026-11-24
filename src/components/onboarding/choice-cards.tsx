@@ -168,8 +168,8 @@ function ChoiceCard({ index, label, description, icon, selected, multi, dense, o
             },
           ]}>
           {icon ? (
-            <View style={[styles.iconWrap, dense && styles.iconWrapDense, { backgroundColor: selected ? theme.accent : theme.backgroundSelected }]}>
-              <Icon name={icon} size={dense ? 17 : 20} color={selected ? theme.onAccent : theme.textSecondary} />
+            <View style={[styles.iconWrap, dense && styles.iconWrapDense]}>
+              <Icon name={icon} size={dense ? 20 : 24} color={theme.text} />
             </View>
           ) : null}
           <View style={styles.body}>

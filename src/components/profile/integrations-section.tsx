@@ -77,8 +77,8 @@ export function IntegrationsSection() {
           return (
             <View key={p.id} style={[styles.providerBlock, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.border }]}>
               <View style={[styles.row, !onThisDevice && { opacity: 0.5 }]}>
-                <View style={[styles.rowIcon, { backgroundColor: isConnected ? theme.accentSoft : theme.backgroundElement }]}>
-                  <Icon name={p.icon} size={18} color={isConnected ? theme.accent : theme.textSecondary} />
+                <View style={styles.rowIcon}>
+                  <Icon name={p.icon} size={22} color={theme.text} />
                 </View>
                 <View style={{ flex: 1, gap: 2 }}>
                   <ThemedText type="smallBold">{p.name}</ThemedText>
@@ -189,7 +189,7 @@ function DataTile({ icon, label, value }: { icon: IconName; label: string; value
   const theme = useTheme();
   return (
     <View style={[styles.tile, { backgroundColor: theme.backgroundElement }]}>
-      <Icon name={icon} size={15} color={theme.accent} />
+      <Icon name={icon} size={16} color={theme.text} />
       <ThemedText type="smallBold">{value}</ThemedText>
       <ThemedText type="caption" themeColor="textTertiary" numberOfLines={2}>
         {label}
