@@ -282,15 +282,15 @@ export default function HomeScreen() {
 
       <View style={styles.actionsRow}>
         <ActionTile
-          colors={Brand.accentGradientSoft}
-          glowColor={Brand.accentGlow}
+          colors={Brand.successGradient}
+          glowColor={Brand.successGlow}
           icon="utensils"
           label={'Registra\npasto'}
           onPress={() => openPopup(() => setRegisterMealOpen(true))}
         />
         <ActionTile
-          colors={Brand.successGradient}
-          glowColor={Brand.successGlow}
+          colors={Brand.accentGradientSoft}
+          glowColor={Brand.accentGlow}
           icon="barbell"
           label={'Registra\nallenamento'}
           onPress={() => openPopup(() => setLogActivityOpen(true))}

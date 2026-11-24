@@ -71,7 +71,7 @@ function TileHeader({ icon, title }: { icon: IconName; color?: string; title: st
  * lines, all from the top so the two bars sit level.
  *
  * Assunte (left): intake against the day's calorie target, and what is left.
- * Bruciate (right): one green bar over the whole expected day, built from the
+ * Bruciate (right): one orange bar over the whole expected day, built from the
  * lighter metabolism (resting + everyday movement) and the deeper training,
  * each with its own line.
  */
@@ -88,7 +88,9 @@ export function EnergyBars({ eatenKcal, eatenTargetKcal, basalKcal, basalDayKcal
   const eatenShare = inactive ? 0 : eatenTargetKcal > 0 ? eatenKcal / eatenTargetKcal : 0;
   const basalShare = inactive ? 0 : basalKcal / burnedDay;
   const exerciseShare = inactive ? 0 : exerciseKcal / burnedDay;
+  // Assunte in green, Bruciate in orange.
   const green = theme.brandGreen;
+  const orange = theme.accent;
   const dash = '—';
   const hasTarget = eatenTargetKcal > 0;
   const left = eatenTargetKcal - eatenKcal;
@@ -98,7 +100,7 @@ export function EnergyBars({ eatenKcal, eatenTargetKcal, basalKcal, basalDayKcal
       {/* Intake */}
       <PressableScale onPress={onEatenPress} scaleTo={0.97} style={styles.cell} accessibilityRole="button" accessibilityLabel={`Assunte ${formatKcal(eatenKcal)} su ${formatKcal(eatenTargetKcal)} kcal`}>
         <FlatCard radius={Radius.large} style={[styles.tile, { minHeight: side }]}>
-          <TileHeader icon="utensils" color={theme.accent} title="Assunte" />
+          <TileHeader icon="utensils" color={green} title="Assunte" />
           <View style={styles.body}>
             <View>
               <ThemedText style={styles.value} numberOfLines={1} adjustsFontSizeToFit>
@@ -108,8 +110,8 @@ export function EnergyBars({ eatenKcal, eatenTargetKcal, basalKcal, basalDayKcal
                 {hasTarget && !inactive ? `/ ${formatKcal(eatenTargetKcal)} kcal` : 'kcal'}
               </ThemedText>
             </View>
-            <View style={[styles.track, { backgroundColor: alpha(theme.accent, 0.18) }]}>
-              <AnimatedFill progress={eatenShare} delay={120} style={[styles.segment, { backgroundColor: theme.accent }]} />
+            <View style={[styles.track, { backgroundColor: alpha(green, 0.18) }]}>
+              <AnimatedFill progress={eatenShare} delay={120} style={[styles.segment, { backgroundColor: green }]} />
             </View>
             <View style={styles.rows}>
               <Row label={!inactive && hasTarget && left < 0 ? 'Oltre' : 'Restano'} value={inactive || !hasTarget ? dash : `${formatKcal(Math.abs(left))} kcal`} />
@@ -121,7 +123,7 @@ export function EnergyBars({ eatenKcal, eatenTargetKcal, basalKcal, basalDayKcal
       {/* Burned: metabolism (hour by hour) + activity */}
       <PressableScale onPress={onBurnedPress} scaleTo={0.97} style={styles.cell} accessibilityRole="button" accessibilityLabel={`Bruciate ${formatKcal(burnedKcal)} kcal: metabolismo ${formatKcal(basalKcal)}, attività ${formatKcal(exerciseKcal)}`}>
         <FlatCard radius={Radius.large} style={[styles.tile, { minHeight: side }]}>
-          <TileHeader icon="flameLine" color={green} title="Bruciate" />
+          <TileHeader icon="flameLine" color={orange} title="Bruciate" />
           <View style={styles.body}>
             <View>
               <ThemedText style={styles.value} numberOfLines={1} adjustsFontSizeToFit>
@@ -131,13 +133,13 @@ export function EnergyBars({ eatenKcal, eatenTargetKcal, basalKcal, basalDayKcal
                 kcal
               </ThemedText>
             </View>
-            <View style={[styles.track, styles.stack, { backgroundColor: alpha(green, 0.14) }]}>
-              <AnimatedFill progress={basalShare} delay={200} style={[styles.segment, { backgroundColor: alpha(green, 0.42) }]} />
-              <AnimatedFill progress={exerciseShare} delay={320} style={[styles.segment, { backgroundColor: green }]} />
+            <View style={[styles.track, styles.stack, { backgroundColor: alpha(orange, 0.14) }]}>
+              <AnimatedFill progress={basalShare} delay={200} style={[styles.segment, { backgroundColor: alpha(orange, 0.42) }]} />
+              <AnimatedFill progress={exerciseShare} delay={320} style={[styles.segment, { backgroundColor: orange }]} />
             </View>
             <View style={styles.rows}>
-              <Row dot={alpha(green, 0.42)} label="Metabolismo" value={inactive ? dash : formatKcal(basalKcal)} />
-              <Row dot={green} label="Allenamento" value={inactive ? dash : formatKcal(exerciseKcal)} />
+              <Row dot={alpha(orange, 0.42)} label="Metabolismo" value={inactive ? dash : formatKcal(basalKcal)} />
+              <Row dot={orange} label="Allenamento" value={inactive ? dash : formatKcal(exerciseKcal)} />
             </View>
           </View>
         </FlatCard>

@@ -39,7 +39,7 @@ function countLabel(n: number): string {
 /**
  * One meal of the day on Nutrizione, laid out as in the reference:
  * - a plain icon, the meal's name and "09:30 · 5 alimenti" on the left; its
- *   kcal in orange on the right;
+ *   kcal in green on the right;
  * - protein / carbs / fat of the meal on one line;
  * - the foods, each with its picture, grams, kcal and P · C · G, separated by
  *   hairlines, then a full-width "+ Aggiungi alimento" outline button.
@@ -80,7 +80,7 @@ export function MealCard({ label, time, icon, entries, totals, expanded, onToggl
           </ThemedText>
         </View>
         <View style={styles.kcalCol}>
-          <ThemedText style={[styles.kcal, { color: theme.accent }]}>{Math.round(totals.kcal)} kcal</ThemedText>
+          <ThemedText style={[styles.kcal, { color: theme.brandGreen }]}>{Math.round(totals.kcal)} kcal</ThemedText>
         </View>
       </Pressable>
 

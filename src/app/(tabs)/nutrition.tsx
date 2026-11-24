@@ -225,7 +225,7 @@ function CalorieTracking() {
       <FlatCard radius={CARD_RADIUS} style={styles.calorieCard}>
         <View style={styles.calorieHeadRow}>
           <View style={styles.cardTitleRow}>
-            <Icon name="flame" size={18} color={theme.accent} />
+            <Icon name="flame" size={18} color={theme.brandGreen} />
             <ThemedText style={styles.calorieTitle}>{selectedDate === today ? 'Calorie di oggi' : 'Calorie del giorno'}</ThemedText>
           </View>
           <View style={styles.bigNumberRow}>
@@ -237,7 +237,7 @@ function CalorieTracking() {
         </View>
 
         <View style={styles.calorieBar}>
-          <TickProgressBar progress={calorieRatio} height={9} ticks={false} />
+          <TickProgressBar progress={calorieRatio} height={9} ticks={false} color={theme.brandGreen} />
         </View>
 
         <View
@@ -350,7 +350,7 @@ function PinnedMacroRings({
           </ThemedText>
         </ThemedText>
         <View style={styles.pinnedKcalBar}>
-          <TickProgressBar progress={calorieTarget > 0 ? totals.kcal / calorieTarget : 0} height={7} ticks={false} />
+          <TickProgressBar progress={calorieTarget > 0 ? totals.kcal / calorieTarget : 0} height={7} ticks={false} color={theme.brandGreen} />
         </View>
       </View>
       <View style={styles.pinnedRingsRow}>
