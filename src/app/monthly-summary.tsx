@@ -83,7 +83,7 @@ export default function MonthlySummaryScreen() {
         <>
           <FlatCard style={styles.card}>
             <View style={styles.verdictRow}>
-              <View style={[styles.verdictIcon, { backgroundColor: theme.accentSoft }]}><Icon name="progress" size={20} color={theme.accent} /></View>
+              <View style={styles.verdictIcon}><Icon name="progress" size={24} color={theme.text} /></View>
               <View style={{ flex: 1, gap: 3 }}>
                 <ThemedText type="subtitle">{VERDICT[latest.verdict]}</ThemedText>
                 <ThemedText type="caption" themeColor="textSecondary">Mese {latest.monthIndex} · aggiornato il {latest.date}</ThemedText>

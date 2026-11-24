@@ -158,8 +158,8 @@ function WeightEntryForm({
   return (
     <View>
       <View style={styles.header}>
-        <View style={[styles.rulerBadge, { backgroundColor: theme.backgroundElement }]}>
-          <Icon name="scale" size={24} color={theme.text} />
+        <View style={styles.rulerBadge}>
+          <Icon name="scale" size={28} color={theme.text} />
         </View>
         <Pressable onPress={onClose} hitSlop={11} accessibilityRole="button" accessibilityLabel="Chiudi" style={styles.close}>
           <Icon name="close" size={22} color={theme.text} />

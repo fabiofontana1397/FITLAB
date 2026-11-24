@@ -63,8 +63,8 @@ export function AuthShell({ title, subtitle, onBack, icon, footer, children }: A
           <View style={[styles.column, { gap: Spacing.five }]}>
             <FadeInView style={{ gap: Spacing.two, alignItems: 'center' }}>
               {icon ? (
-                <View style={[styles.iconDisc, { backgroundColor: theme.accentSoft }]}>
-                  <Icon name={icon} size={30} color={theme.accent} />
+                <View style={styles.iconDisc}>
+                  <Icon name={icon} size={40} color={theme.text} />
                 </View>
               ) : null}
               <ThemedText type="display" style={styles.centered} accessibilityRole="header">

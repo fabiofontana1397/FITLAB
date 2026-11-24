@@ -142,8 +142,8 @@ export function TrainingPlanView({ plan, goal, checkinPendingMonth, onCheckin }:
         if (day?.type === 'rest') {
           return (
             <FlatCard radius={24} style={styles.restCard}>
-              <View style={[styles.restIcon, { backgroundColor: theme.backgroundElement }]}>
-                <Icon name="moon" size={22} color={theme.textSecondary} />
+              <View style={styles.restIcon}>
+                <Icon name="sleep" size={26} color={theme.text} />
               </View>
               <ThemedText style={styles.dayTitle}>Giorno di riposo</ThemedText>
               <ThemedText type="caption" themeColor="textSecondary" style={styles.center}>

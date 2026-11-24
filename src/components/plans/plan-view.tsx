@@ -337,8 +337,8 @@ export function PlanView({ kind, plan, title, description, objective, phaseDetai
           </View>
         ) : (
           <Animated.View key={`locked-${selectedMonth}`} entering={FadeInDown.duration(340)} style={styles.locked}>
-            <View style={[styles.lockedIcon, { backgroundColor: theme.backgroundElement }]}>
-              <Icon name="lock" size={20} color={theme.textTertiary} />
+            <View style={styles.lockedIcon}>
+              <Icon name="lock" size={24} color={theme.text} />
             </View>
             <ThemedText style={styles.lockedTitle}>{needsCheckin ? 'Fai il check-in per sbloccare' : 'Ancora da sbloccare'}</ThemedText>
             <ThemedText style={[styles.infoText, styles.center]} themeColor="textSecondary">
@@ -352,8 +352,8 @@ export function PlanView({ kind, plan, title, description, objective, phaseDetai
       <CheckinInfoPopup visible={checkinInfoOpen} onClose={() => setCheckinInfoOpen(false)} monthIndex={selectedMonth} daysLeft={daysLeft} endDate={monthEndLabel} />
 
       <GlassPopup visible={downloadOpen} onClose={() => (exporting ? undefined : setDownloadOpen(false))} style={styles.popup}>
-        <View style={[styles.lockedIcon, { backgroundColor: theme.backgroundElement, alignSelf: 'center' }]}>
-          <Icon name="download" size={22} color={theme.accent} />
+        <View style={[styles.lockedIcon, { alignSelf: 'center' }]}>
+          <Icon name="download" size={26} color={theme.text} />
         </View>
         <ThemedText type="title" style={styles.center}>
           Scarica il piano

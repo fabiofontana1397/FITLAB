@@ -84,8 +84,8 @@ function LogActivityForm({ weightKg, onClose, onSave }: Omit<LogActivityModalPro
           {/* The estimate leads: kcal on the left, what it is based on on the right. */}
           {compact ? null : (
             <FlatCard radius={22} style={styles.hero}>
-              <View style={[styles.flame, { backgroundColor: theme.accentSoft }]}>
-                <Icon name="flame" size={24} color={theme.accent} />
+              <View style={styles.flame}>
+                <Icon name="flameLine" size={26} color={theme.text} />
               </View>
               <View style={styles.heroKcal}>
                 <ThemedText style={styles.kcal} accessibilityLabel={`${estimatedKcal} kcal stimate`}>

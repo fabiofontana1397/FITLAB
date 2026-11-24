@@ -386,8 +386,8 @@ function SummaryScreen({
                   );
                   const activityLabel = labelFor(findQuestion('activitiesPracticed'), activity) ?? activity;
                   return (
-                    <View key={activity} style={[styles.sportChip, { backgroundColor: theme.accentSoft }]}>
-                      <Icon name={sportIcon[ACTIVITY_TO_SPORT[activity]] ?? 'otherSport'} size={16} color={theme.accent} />
+                    <View key={activity} style={[styles.sportChip, { backgroundColor: theme.backgroundElement }]}>
+                      <Icon name={sportIcon[ACTIVITY_TO_SPORT[activity]] ?? 'otherSport'} size={16} color={theme.text} />
                       <ThemedText type="caption">
                         {activityLabel}
                         {freqLabel ? ` · ${freqLabel}` : ''}
@@ -411,8 +411,8 @@ function FactTile({ icon, label, value }: { icon: IconName; label: string; value
   const theme = useTheme();
   return (
     <View style={styles.factTile}>
-      <View style={[styles.factIcon, { backgroundColor: theme.accentSoft }]}>
-        <Icon name={icon} size={16} color={theme.accent} />
+      <View style={styles.factIcon}>
+        <Icon name={icon} size={20} color={theme.text} />
       </View>
       <View style={{ flex: 1 }}>
         <ThemedText type="caption" themeColor="textSecondary">
@@ -429,8 +429,8 @@ function SummarySection({ icon, title, children }: { icon: IconName; title: stri
   return (
     <View style={{ gap: Spacing.two }}>
       <View style={styles.sectionHeaderRow}>
-        <View style={[styles.sectionIcon, { backgroundColor: theme.accentSoft }]}>
-          <Icon name={icon} size={16} color={theme.accent} />
+        <View style={styles.sectionIcon}>
+          <Icon name={icon} size={20} color={theme.text} />
         </View>
         <ThemedText type="smallBold">{title}</ThemedText>
       </View>

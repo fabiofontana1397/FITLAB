@@ -16,8 +16,8 @@ export function CheckinInfoPopup({ visible, onClose, monthIndex, daysLeft, endDa
   const when = daysLeft <= 1 ? 'Manca meno di un giorno' : `Mancano ${daysLeft} giorni`;
   return (
     <GlassPopup visible={visible} onClose={onClose} style={styles.popup}>
-      <View style={[styles.iconTile, { backgroundColor: theme.backgroundElement }]}>
-        <Icon name="lock" size={22} color={theme.textSecondary} />
+      <View style={styles.iconTile}>
+        <Icon name="lock" size={28} color={theme.text} />
       </View>
       <ThemedText type="title" style={styles.center}>
         Check-in del Mese {monthIndex}

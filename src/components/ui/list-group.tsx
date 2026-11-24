@@ -87,7 +87,7 @@ export function ListRow({ title, subtitle, icon, iconTint, iconColor, trailing, 
     <>
       {icon ? (
         <View style={styles.iconTile}>
-          <Icon name={icon} size={22} color={iconColor ?? (destructive ? theme.danger : theme.textTertiary)} />
+          <Icon name={icon} size={22} color={destructive ? theme.danger : theme.text} />
         </View>
       ) : null}
       <View style={styles.texts}>

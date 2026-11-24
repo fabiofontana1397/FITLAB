@@ -125,8 +125,8 @@ function GroupCard({ group, answers, onEdit }: { group: ProfileGroup; answers: R
   return (
     <GlassSurface level="card" radius={Radius.large} style={styles.groupCard}>
       <View style={styles.groupHeader}>
-        <View style={[styles.groupIcon, { backgroundColor: theme.accentSoft }]}>
-          <Icon name={group.icon} size={17} color={theme.accent} />
+        <View style={styles.groupIcon}>
+          <Icon name={group.icon} size={20} color={theme.text} />
         </View>
         <ThemedText type="smallBold" style={{ flex: 1 }}>
           {group.title}

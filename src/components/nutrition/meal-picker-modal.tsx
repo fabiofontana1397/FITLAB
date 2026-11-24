@@ -78,8 +78,8 @@ function MealPickerForm({ date, onClose, onPick }: Omit<MealPickerModalProps, 'v
           {/* The day so far: intake against the target, then the three macros. */}
           <FlatCard radius={22} style={styles.hero}>
             <View style={styles.heroTop}>
-              <View style={[styles.heroIcon, { backgroundColor: theme.accentSoft }]}>
-                <Icon name="flame" size={22} color={theme.accent} />
+              <View style={styles.heroIcon}>
+                <Icon name="flameLine" size={26} color={theme.text} />
               </View>
               <View style={{ flex: 1, minWidth: 0 }}>
                 <View style={styles.heroValueRow}>
@@ -137,8 +137,8 @@ function MealPickerForm({ date, onClose, onPick }: Omit<MealPickerModalProps, 'v
                     styles.box,
                     { backgroundColor: theme.backgroundElevated, opacity: pressed ? 0.8 : 1 },
                   ]}>
-                  <View style={[styles.boxIcon, { backgroundColor: withAlpha(color, 0.14) }]}>
-                    <Icon name={slot.icon} size={22} color={color} />
+                  <View style={styles.boxIcon}>
+                    <Icon name={slot.icon} size={24} color={theme.text} />
                   </View>
                   <View style={styles.boxBody}>
                     <View style={styles.boxTitleRow}>

@@ -74,8 +74,8 @@ export function QuestionMedia({ asset, icon, accessibilityLabel }: QuestionMedia
           <Animated.View style={[styles.ring, { borderColor: theme.accent }, ringLateStyle]} />
         </>
       ) : null}
-      <View style={[styles.disc, { backgroundColor: theme.accentSoft }]}>
-        <Icon name={icon} size={30} color={theme.accent} />
+      <View style={styles.disc}>
+        <Icon name={icon} size={40} color={theme.text} />
       </View>
     </View>
   );

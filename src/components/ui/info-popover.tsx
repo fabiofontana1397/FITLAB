@@ -22,8 +22,8 @@ export function InfoPopover({ visible, icon, title, body, onClose }: InfoPopover
   return (
     <GlassPopup visible={visible} onClose={onClose}>
       <View style={styles.header}>
-        <View style={[styles.iconBadge, { backgroundColor: theme.accentSoft }]}>
-          <Icon name={icon} size={18} color={theme.accent} />
+        <View style={styles.iconBadge}>
+          <Icon name={icon} size={22} color={theme.text} />
         </View>
         <ThemedText type="subtitle" style={{ flex: 1 }}>
           {title}

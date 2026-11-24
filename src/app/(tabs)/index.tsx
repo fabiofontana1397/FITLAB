@@ -285,7 +285,6 @@ export default function HomeScreen() {
           colors={Brand.accentGradientSoft}
           glowColor={Brand.accentGlow}
           icon="utensils"
-          iconColor={Brand.accentGlow}
           label={'Registra\npasto'}
           onPress={() => openPopup(() => setRegisterMealOpen(true))}
         />
@@ -293,7 +292,6 @@ export default function HomeScreen() {
           colors={Brand.successGradient}
           glowColor={Brand.successGlow}
           icon="barbell"
-          iconColor={Brand.successGradient[1]}
           label={'Registra\nallenamento'}
           onPress={() => openPopup(() => setLogActivityOpen(true))}
         />
@@ -336,8 +334,8 @@ export default function HomeScreen() {
       <FlatCard radius={CARD_RADIUS} style={styles.weekCard}>
         <View style={styles.weekTitleRow}>
           <View style={styles.weekTitleLeft}>
-            <View style={[styles.weekIcon, { backgroundColor: withAlpha(theme.accent, 0.16) }]}>
-              <Icon name="target" size={14} color={theme.accent} />
+            <View style={styles.weekIcon}>
+              <Icon name="crosshair" size={17} color={theme.text} />
             </View>
             <ThemedText style={styles.weekTitle}>Obiettivo {weeklyGoalKcal >= 0 ? 'surplus' : 'deficit'} settimanale</ThemedText>
           </View>
@@ -469,14 +467,12 @@ function ActionTile({
   colors,
   glowColor,
   icon,
-  iconColor,
   label,
   onPress,
 }: {
   colors: readonly [string, string];
   glowColor: string;
   icon: IconName;
-  iconColor: string;
   label: string;
   onPress: () => void;
 }) {
@@ -486,7 +482,7 @@ function ActionTile({
     <PressableScale onPress={onPress} haptic="press" accessibilityRole="button" style={[styles.actionWrap, glow(glowColor, 0.28)]}>
       <LinearGradient colors={colors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.actionTile}>
         <View style={styles.actionIcon}>
-          <Icon name={icon} size={20} color={iconColor} />
+          <Icon name={icon} size={24} color={OnBrand.text} />
         </View>
         <ThemedText style={[styles.actionLabel, narrow && { fontSize: 12 }]}>{label}</ThemedText>
         {narrow ? null : <Icon name="chevronRight" size={15} color={OnBrand.text} />}
@@ -598,7 +594,6 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: OnBrand.text,
     alignItems: 'center',
     justifyContent: 'center',
   },
