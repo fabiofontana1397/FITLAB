@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Modal, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 
-import { ACTIVITY_CATEGORY, ACTIVITY_ICON } from '@/components/training/activity-presentation';
+import { ACTIVITY_ICON } from '@/components/training/activity-presentation';
 import { ThemedText } from '@/components/themed-text';
 import { AppTextInput } from '@/components/ui/app-text';
 import { FlatCard } from '@/components/ui/flat-card';
@@ -10,6 +10,7 @@ import { PrimaryButton } from '@/components/ui/primary-button';
 import { SegmentedControl } from '@/components/ui/segmented-control';
 import { SheetScreen } from '@/components/ui/sheet-screen';
 import { Layout, Radius } from '@/constants/theme';
+import { HorizontalScrollDefaults } from '@/constants/scroll';
 import { useTheme } from '@/hooks/use-theme';
 import { hapticSelection, hapticSuccess } from '@/lib/haptics';
 import {
@@ -25,7 +26,15 @@ const DURATION_STEP = 5;
 const DURATION_MIN = 5;
 const DURATION_MAX = 360;
 /** Shorter names for the tiles, where the full ones would wrap mid-word. */
-const TILE_LABEL: Partial<Record<ActivityType, string>> = { functional: 'CrossFit', boxing: 'Boxe', gym: 'Palestra' };
+const TILE_LABEL: Partial<Record<ActivityType, string>> = {
+  functional: 'CrossFit',
+  boxing: 'Boxe',
+  gym: 'Palestra',
+  tennis: 'Padel',
+  yoga: 'Yoga',
+  skiing: 'Sci',
+  hiking: 'Trekking',
+};
 const DURATION_PRESETS = [15, 30, 45, 60, 90];
 
 export type LogActivityModalProps = {
@@ -51,10 +60,8 @@ export function LogActivityModal({ visible, weightKg, onClose, onSave }: LogActi
 
 function LogActivityForm({ weightKg, onClose, onSave }: Omit<LogActivityModalProps, 'visible'>) {
   const theme = useTheme();
-  // Shorter screens get shorter tiles, so the page still fits without scrolling.
-  const screenHeight = useWindowDimensions().height;
-  const compact = screenHeight < 800;
-  const tileHeight = compact ? 46 : 56;
+  // Shorter screens get a smaller hero number, so the page still fits without scrolling.
+  const compact = useWindowDimensions().height < 800;
   const [activityType, setActivityType] = useState<ActivityType>('gym');
   const [intensity, setIntensity] = useState<ActivityIntensity>('moderate');
   const [duration, setDuration] = useState('45');
@@ -74,43 +81,33 @@ function LogActivityForm({ weightKg, onClose, onSave }: Omit<LogActivityModalPro
   return (
     <SheetScreen
       title="Registra allenamento"
-      eyebrow={compact ? undefined : 'Stima le calorie bruciate'}
       onClose={onClose}
-      // Always one page: the blocks are sized to the screen's height, nothing scrolls.
+      // Always one page: the blocks are sized to the screen's height, nothing scrolls vertically.
       scroll={false}
     >
       {(close) => (
         <View style={styles.page}>
-          {/* The estimate leads: kcal on the left, what it is based on on the right. */}
-          {compact ? null : (
-            <FlatCard radius={22} style={styles.hero}>
-              <View style={styles.flame}>
-                <Icon name="flameLine" size={26} color={theme.text} />
-              </View>
-              <View style={styles.heroKcal}>
-                <ThemedText style={styles.kcal} accessibilityLabel={`${estimatedKcal} kcal stimate`}>
-                  {isValid ? estimatedKcal : '—'}
-                </ThemedText>
-                <ThemedText style={styles.kcalUnit} themeColor="textSecondary">
-                  kcal stimate
-                </ThemedText>
-              </View>
-              <View style={styles.heroFacts}>
-                <ThemedText style={styles.fact} numberOfLines={1}>
-                  {ACTIVITY_CATEGORY[activityType]}
-                </ThemedText>
-                <ThemedText style={styles.factSub} themeColor="textSecondary" numberOfLines={1}>
-                  {isValid ? `${durationMinutes} min` : '—'} · {intensityLabel}
-                </ThemedText>
-              </View>
-            </FlatCard>
-          )}
-
-          <View style={styles.block}>
-            <ThemedText style={styles.sectionTitle} accessibilityRole="header">
-              Tipo di allenamento
+          {/* The calories burned lead the page: one big number, what it is based on in a quiet line under it. */}
+          <View style={styles.hero} accessible accessibilityLabel={`${isValid ? estimatedKcal : 0} kcal bruciate`}>
+            <View style={styles.heroNumberRow}>
+              <ThemedText style={[styles.kcal, compact && styles.kcalCompact]} numberOfLines={1}>
+                {isValid ? estimatedKcal.toLocaleString('it-IT') : '—'}
+              </ThemedText>
+              <ThemedText style={styles.kcalUnit} themeColor="textTertiary">
+                kcal
+              </ThemedText>
+            </View>
+            <ThemedText style={styles.heroSub} themeColor="textSecondary" numberOfLines={1}>
+              bruciate · {isValid ? `${durationMinutes} min` : '—'} · {intensityLabel.toLowerCase()}
             </ThemedText>
-            <View style={styles.grid}>
+          </View>
+
+          {/* Every sport on one row that scrolls sideways: big round tiles, the picked one inverted. */}
+          <View style={styles.block}>
+            <ThemedText style={styles.sectionTitle} themeColor="textTertiary" accessibilityRole="header">
+              SPORT
+            </ThemedText>
+            <ScrollView {...HorizontalScrollDefaults} style={styles.sportScroll} contentContainerStyle={styles.sportRow}>
               {ACTIVITY_TYPE_OPTIONS.map((option) => {
                 const selected = activityType === option.value;
                 return (
@@ -123,46 +120,44 @@ function LogActivityForm({ weightKg, onClose, onSave }: Omit<LogActivityModalPro
                     accessibilityRole="button"
                     accessibilityState={{ selected }}
                     accessibilityLabel={option.label}
-                    style={[
-                      styles.typeTile,
-                      {
-                        height: tileHeight,
-                        backgroundColor: selected ? theme.brandGreen + '1F' : theme.backgroundElevated,
-                        borderColor: selected ? theme.brandGreen : 'transparent',
-                      },
-                    ]}
+                    style={({ pressed }) => [styles.sport, { transform: [{ scale: pressed ? 0.94 : 1 }] }]}
                   >
-                    <Icon name={iconOf(option.value)} size={22} color={selected ? theme.brandGreen : theme.textSecondary} />
-                    <ThemedText style={[styles.typeLabel, { color: selected ? theme.text : theme.textSecondary }]} numberOfLines={2}>
+                    <View style={[styles.sportDisc, { backgroundColor: selected ? theme.text : theme.backgroundElement }]}>
+                      <Icon name={iconOf(option.value)} size={30} strokeWidth={1.6} color={selected ? theme.background : theme.text} />
+                    </View>
+                    <ThemedText
+                      style={[styles.sportLabel, { color: selected ? theme.text : theme.textSecondary }, selected && styles.sportLabelOn]}
+                      numberOfLines={1}
+                    >
                       {TILE_LABEL[option.value] ?? option.label}
                     </ThemedText>
                   </Pressable>
                 );
               })}
-            </View>
+            </ScrollView>
           </View>
 
           <View style={styles.block}>
-            <ThemedText style={styles.sectionTitle} accessibilityRole="header">
-              Intensità
+            <ThemedText style={styles.sectionTitle} themeColor="textTertiary" accessibilityRole="header">
+              INTENSITÀ
             </ThemedText>
             <SegmentedControl options={ACTIVITY_INTENSITY_OPTIONS} value={intensity} onChange={setIntensity} />
           </View>
 
           <View style={styles.block}>
-            <ThemedText style={styles.sectionTitle} accessibilityRole="header">
-              Durata
+            <ThemedText style={styles.sectionTitle} themeColor="textTertiary" accessibilityRole="header">
+              DURATA
             </ThemedText>
-            <FlatCard radius={22} style={styles.durationCard}>
+            <FlatCard radius={24} style={styles.durationCard}>
               <View style={styles.stepper}>
                 <Pressable
                   onPress={() => bump(-DURATION_STEP)}
                   hitSlop={6}
                   accessibilityRole="button"
                   accessibilityLabel="Riduci la durata"
-                  style={[styles.stepButton, { backgroundColor: theme.backgroundElement }]}
+                  style={({ pressed }) => [styles.stepButton, { backgroundColor: theme.backgroundElement, transform: [{ scale: pressed ? 0.92 : 1 }] }]}
                 >
-                  <Icon name="minus" size={22} color={theme.text} />
+                  <Icon name="minus" size={20} color={theme.text} />
                 </Pressable>
                 <View style={styles.durationField}>
                   <AppTextInput
@@ -175,8 +170,8 @@ function LogActivityForm({ weightKg, onClose, onSave }: Omit<LogActivityModalPro
                     style={[styles.durationInput, { color: theme.text }]}
                     placeholderTextColor={theme.textTertiary}
                   />
-                  <ThemedText style={styles.durationUnit} themeColor="textSecondary">
-                    minuti
+                  <ThemedText style={styles.durationUnit} themeColor="textTertiary">
+                    min
                   </ThemedText>
                 </View>
                 <Pressable
@@ -184,9 +179,9 @@ function LogActivityForm({ weightKg, onClose, onSave }: Omit<LogActivityModalPro
                   hitSlop={6}
                   accessibilityRole="button"
                   accessibilityLabel="Aumenta la durata"
-                  style={[styles.stepButton, { backgroundColor: theme.backgroundElement }]}
+                  style={({ pressed }) => [styles.stepButton, { backgroundColor: theme.backgroundElement, transform: [{ scale: pressed ? 0.92 : 1 }] }]}
                 >
-                  <Icon name="plus" size={22} color={theme.text} />
+                  <Icon name="plus" size={20} color={theme.text} />
                 </Pressable>
               </View>
               <View style={styles.presets}>
@@ -201,14 +196,10 @@ function LogActivityForm({ weightKg, onClose, onSave }: Omit<LogActivityModalPro
                       }}
                       accessibilityRole="button"
                       accessibilityState={{ selected }}
-                      style={[
-                        styles.preset,
-                        {
-                          backgroundColor: selected ? theme.accent : theme.backgroundElement,
-                        },
-                      ]}
+                      accessibilityLabel={`${minutes} minuti`}
+                      style={[styles.preset, { backgroundColor: selected ? theme.text : 'transparent' }]}
                     >
-                      <ThemedText style={[styles.presetLabel, { color: selected ? theme.onAccent : theme.text }]}>{minutes}</ThemedText>
+                      <ThemedText style={[styles.presetLabel, { color: selected ? theme.background : theme.textSecondary }]}>{minutes}</ThemedText>
                     </Pressable>
                   );
                 })}
@@ -216,22 +207,17 @@ function LogActivityForm({ weightKg, onClose, onSave }: Omit<LogActivityModalPro
             </FlatCard>
           </View>
 
-          <View style={styles.footer}>
-            <PrimaryButton
-              label={compact && isValid ? `Salva allenamento · ${estimatedKcal} kcal` : 'Salva allenamento'}
-              icon="check"
-              disabled={!isValid}
-              onPress={() => {
-                if (!isValid) return;
-                onSave(activityType, intensity, durationMinutes);
-                hapticSuccess();
-                close();
-              }}
-            />
-            <ThemedText style={styles.noteText} themeColor="textTertiary">
-              Stima indicativa: varia con peso, ritmo e percorso.
-            </ThemedText>
-          </View>
+          <PrimaryButton
+            label={isValid ? `Salva · ${estimatedKcal.toLocaleString('it-IT')} kcal` : 'Salva allenamento'}
+            icon="check"
+            disabled={!isValid}
+            onPress={() => {
+              if (!isValid) return;
+              onSave(activityType, intensity, durationMinutes);
+              hapticSuccess();
+              close();
+            }}
+          />
         </View>
       )}
     </SheetScreen>
@@ -240,38 +226,38 @@ function LogActivityForm({ weightKg, onClose, onSave }: Omit<LogActivityModalPro
 
 const styles = StyleSheet.create({
   // Everything shares the sheet's height: the blocks keep their size and the gaps give way.
-  page: { flex: 1, gap: 8, justifyContent: 'space-between' },
-  block: { gap: 6 },
-  hero: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8, paddingHorizontal: Layout.cardPadding },
-  flame: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  heroKcal: { flexShrink: 0 },
-  kcal: { fontSize: 32, lineHeight: 42, fontWeight: '800', letterSpacing: -1, fontVariant: ['tabular-nums'] },
-  kcalUnit: { fontSize: 13, lineHeight: 17, fontWeight: '500' },
-  heroFacts: { flex: 1, minWidth: 0, alignItems: 'flex-end', gap: 2 },
-  fact: { fontSize: 15, lineHeight: 20, fontWeight: '700', textAlign: 'right' },
-  factSub: { fontSize: 13, lineHeight: 17, fontWeight: '500', textAlign: 'right' },
-  sectionTitle: { fontSize: 17, lineHeight: 22, fontWeight: '800', letterSpacing: -0.2 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  typeTile: { width: '23.5%', borderRadius: 14, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', gap: 2, paddingHorizontal: 3 },
-  typeLabel: { fontSize: 12, lineHeight: 16, fontWeight: '600', textAlign: 'center' },
-  durationCard: { padding: 10, gap: 8 },
+  page: { flex: 1, gap: 14, justifyContent: 'space-between' },
+  block: { gap: 10 },
+  hero: { alignItems: 'center', paddingTop: 4 },
+  heroNumberRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
+  kcal: { fontSize: 64, lineHeight: 72, fontWeight: '300', letterSpacing: -2.5, fontVariant: ['tabular-nums'] },
+  kcalCompact: { fontSize: 52, lineHeight: 60, letterSpacing: -2 },
+  kcalUnit: { fontSize: 20, lineHeight: 24, fontWeight: '500' },
+  heroSub: { marginTop: 2, fontSize: 14, lineHeight: 19, fontWeight: '500' },
+  sectionTitle: { fontSize: 11, lineHeight: 14, fontWeight: '600', letterSpacing: 1 },
+  // The row runs to the sheet's edges, so the tiles slide out of view instead of being clipped by the padding.
+  sportScroll: { marginHorizontal: -Layout.screenGutter, flexGrow: 0 },
+  sportRow: { paddingHorizontal: Layout.screenGutter, gap: 6 },
+  sport: { width: 76, alignItems: 'center', gap: 6 },
+  sportDisc: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center' },
+  sportLabel: { fontSize: 12, lineHeight: 16, fontWeight: '500', textAlign: 'center' },
+  sportLabelOn: { fontWeight: '600' },
+  durationCard: { padding: 12, gap: 10 },
   stepper: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   stepButton: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
-  durationField: { flex: 1, alignItems: 'center' },
+  durationField: { flex: 1, flexDirection: 'row', alignItems: 'baseline', justifyContent: 'center', gap: 4 },
   durationInput: {
-    width: 100,
+    minWidth: 64,
     padding: 0,
     textAlign: 'center',
-    fontSize: 30,
-    lineHeight: 39,
-    fontWeight: '800',
+    fontSize: 34,
+    lineHeight: 40,
+    fontWeight: '300',
     letterSpacing: -1,
     fontVariant: ['tabular-nums'],
   },
-  durationUnit: { fontSize: 13, lineHeight: 17, fontWeight: '500' },
-  presets: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
-  preset: { flex: 1, alignItems: 'center', borderRadius: Radius.pill, paddingVertical: 6 },
-  presetLabel: { fontSize: 14, lineHeight: 19, fontWeight: '600' },
-  footer: { gap: 4 },
-  noteText: { fontSize: 13, lineHeight: 17, textAlign: 'center' },
+  durationUnit: { fontSize: 15, lineHeight: 20, fontWeight: '500' },
+  presets: { flexDirection: 'row', justifyContent: 'space-between', gap: 6 },
+  preset: { flex: 1, alignItems: 'center', borderRadius: Radius.pill, paddingVertical: 7 },
+  presetLabel: { fontSize: 14, lineHeight: 19, fontWeight: '600', fontVariant: ['tabular-nums'] },
 });

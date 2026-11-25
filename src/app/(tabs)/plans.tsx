@@ -2,7 +2,6 @@ import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { HealthNotice } from '@/components/legal/health-notice';
 import { DietPlanView, TrainingPlanView } from '@/components/plans/plan-kinds';
 import { NutritionSupervisionCard } from '@/components/plans/nutrition-supervision-card';
 import { TargetsPlanView } from '@/components/plans/targets-plan-view';
@@ -116,7 +115,6 @@ export default function PlansScreen() {
           {neverRequested ? <PrimaryButton label="Piano creato da FitLab" variant="ghost" dense onPress={() => setCreateOpen(true)} style={styles.emptyAction} /> : null}
         </FlatCard>
       )}
-      <HealthNotice style={{ marginTop: 16 }} />
       <CreatePlanPopup kind={kind} visible={createOpen} onClose={() => setCreateOpen(false)} />
     </ScreenScroll>
   );

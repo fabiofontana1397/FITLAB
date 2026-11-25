@@ -23,8 +23,7 @@ export function HealthNotice({ variant = 'health', style }: { variant?: 'health'
         <Icon name="info" size={14} color={theme.textTertiary} />
       </View>
       <ThemedText type="caption" themeColor="textSecondary" style={styles.text}>
-        {variant === 'ai' ? `${AI_NOTICE_SHORT} ` : ''}
-        {HEALTH_NOTICE_SHORT}{' '}
+        {variant === 'ai' ? AI_NOTICE_SHORT : HEALTH_NOTICE_SHORT}{' '}
         <ThemedText type="caption" style={{ color: theme.accent }}>
           Avvertenza completa
         </ThemedText>
