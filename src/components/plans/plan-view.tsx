@@ -1,10 +1,8 @@
 import { useState, type ReactNode } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from 'react-native';
-import Animated, { FadeIn, FadeInDown, useAnimatedProps } from 'react-native-reanimated';
-import Svg, { Circle } from 'react-native-svg';
+import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 
 import { CountUpText } from '@/components/energy-guide/count-up-text';
-import { usePlayValue } from '@/components/energy-guide/use-play-value';
 import { GlassPopup } from '@/components/glass/glass-popup';
 import { MonthTimeline } from '@/components/plans/month-timeline';
 import { Reveal } from '@/components/motion/reveal';
@@ -20,13 +18,12 @@ import { useTheme } from '@/hooks/use-theme';
 import { hapticSelection, hapticSuccess } from '@/lib/haptics';
 import { mondayIndex } from '@/lib/mock/dates';
 import { WEEKDAY_LABELS } from '@/lib/planning/exercise-library';
-import { currentMonthIndex, monthEndInfo, monthProgress } from '@/lib/planning/plan-progress';
+import { currentMonthIndex, monthEndInfo } from '@/lib/planning/plan-progress';
+import { planMonthName } from '@/lib/planning/targets-plan';
 import type { PlanPhaseKind } from '@/lib/planning/types';
 import { checkinUnlockedThroughMonth, useMonthlyCheckinStore } from '@/store/monthly-checkin-store';
 
 const DAY_MS = 86_400_000;
-const RING_SIZE = 40;
-const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 const WEEKDAY_OPTIONS = WEEKDAY_LABELS.map((weekday) => ({ value: weekday, label: weekday }));
 
 const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
@@ -99,18 +96,9 @@ export function PlanView({ kind, plan, title, description, objective, phaseDetai
   const isCurrent = selectedMonth === currentMonth;
   const isDone = selectedMonth < currentMonth;
 
-  const progress = monthProgress(plan, selectedMonth);
   const { daysLeft, end: monthEnd } = monthEndInfo(plan, selectedMonth);
   const monthEndLabel = monthEnd.toLocaleDateString('it-IT', { day: 'numeric', month: 'long' });
-  const monthSub = isDone ? 'Concluso' : isCurrent ? `Giorno ${progress.dayInMonth} di 30 · ${daysLeft <= 1 ? 'ultimo giorno' : `${daysLeft} giorni alla fine`}` : 'Non ancora sbloccato';
-
-  // The small ring sweeps to the chosen month's fraction and glides when another month is picked.
-  const ringSize = RING_SIZE;
-  const stroke = 4;
-  const r = (ringSize - stroke) / 2;
-  const c = 2 * Math.PI * r;
-  const ring = usePlayValue(progress.fraction, true, 200);
-  const ringProps = useAnimatedProps(() => ({ strokeDasharray: `${Math.max(ring.value, 0.03) * c} ${c}` }));
+  const monthSub = isDone ? 'Concluso' : isCurrent ? null : 'Non ancora sbloccato';
 
   const handleExport = async () => {
     setExporting(true);
@@ -126,7 +114,6 @@ export function PlanView({ kind, plan, title, description, objective, phaseDetai
   };
 
   const stats = unlocked ? monthStats(selectedMonth) : [];
-  const ringColor = isDone ? theme.brandGreen : theme.accent;
 
   // The check-in of the chosen month: done, due now, or still to come.
   const checkinDone = completedMonths.includes(selectedMonth);
@@ -137,7 +124,7 @@ export function PlanView({ kind, plan, title, description, objective, phaseDetai
       {/* The macro plan, in one small box: where the plan stands, the month selector, the chosen month. */}
       {custom ? (
         <Reveal index={0}>
-          <CustomPlanSummary kind={kind} own={custom.own} stats={monthStats(selectedMonth)} onUpdate={custom.onUpdate} />
+          <CustomPlanSummary kind={kind} own={custom.own} startedAt={plan.generatedAt} now={now} onUpdate={custom.onUpdate} />
         </Reveal>
       ) : (
       <Reveal index={0}>
@@ -169,32 +156,6 @@ export function PlanView({ kind, plan, title, description, objective, phaseDetai
             </Pressable>
           </View>
 
-          {/* The plan at a glance: how long it lasts, where it stands. */}
-          <View style={styles.facts}>
-            <View style={styles.fact}>
-              <ThemedText style={styles.factValue} numberOfLines={1}>
-                {total} {total === 1 ? 'mese' : 'mesi'}
-              </ThemedText>
-              <ThemedText style={styles.factLabel} themeColor="textSecondary">
-                Durata
-              </ThemedText>
-            </View>
-            <View style={[styles.fact, styles.factDivided, { borderLeftColor: theme.border }]}>
-              <ThemedText style={styles.factValue} numberOfLines={1}>
-                {Math.min(currentMonth, total)} di {total}
-              </ThemedText>
-              <ThemedText style={styles.factLabel} themeColor="textSecondary">
-                Mese in corso
-              </ThemedText>
-            </View>
-            <View style={[styles.fact, styles.factDivided, { borderLeftColor: theme.border }]}>
-              <CountUpText value={Math.round(planFraction * 100)} play delay={300} format={(n) => `${Math.round(n)}%`} style={[styles.factValue, { color: theme.accent }]} />
-              <ThemedText style={styles.factLabel} themeColor="textSecondary">
-                Completato
-              </ThemedText>
-            </View>
-          </View>
-
             <Collapsible open={planInfoOpen} contentStyle={styles.info}>
               <ThemedText style={styles.infoText} themeColor="textSecondary">
                 {description}
@@ -206,7 +167,14 @@ export function PlanView({ kind, plan, title, description, objective, phaseDetai
             </Collapsible>
           </View>
 
-          <MonthTimeline months={plan.months.map((m) => m.monthIndex)} current={currentMonth} selected={selectedMonth} elapsedMonths={planFraction * total} onSelect={(m) => setSelectedMonth(m)} />
+          <MonthTimeline
+            months={plan.months.map((m) => m.monthIndex)}
+            current={currentMonth}
+            selected={selectedMonth}
+            elapsedMonths={planFraction * total}
+            onSelect={(m) => setSelectedMonth(m)}
+            labels={plan.months.map((m) => planMonthName(plan.generatedAt, m.monthIndex))}
+          />
 
           <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
@@ -223,34 +191,15 @@ export function PlanView({ kind, plan, title, description, objective, phaseDetai
               accessibilityLabel={`Mese ${selectedMonth}: dettagli`}
               style={({ pressed }) => [styles.monthMain, { opacity: pressed ? 0.6 : 1 }]}
             >
-              <View style={styles.ring}>
-                <Svg width={ringSize} height={ringSize} style={StyleSheet.absoluteFill}>
-                  <Circle cx={ringSize / 2} cy={ringSize / 2} r={r} stroke={theme.backgroundElement} strokeWidth={stroke} fill="none" />
-                  <AnimatedCircle
-                    cx={ringSize / 2}
-                    cy={ringSize / 2}
-                    r={r}
-                    stroke={ringColor}
-                    strokeWidth={stroke}
-                    strokeLinecap="round"
-                    fill="none"
-                    animatedProps={ringProps}
-                    transform={`rotate(-90 ${ringSize / 2} ${ringSize / 2})`}
-                  />
-                </Svg>
-                {timeElapsed ? (
-                  <CountUpText value={progress.dayInMonth} play delay={150} format={(n) => String(Math.round(n))} style={styles.ringValue} />
-                ) : (
-                  <Icon name="lock" size={15} color={theme.textTertiary} />
-                )}
-              </View>
               <View style={styles.flex}>
                 <ThemedText style={styles.monthTitle} numberOfLines={2}>
                   {month.title}
                 </ThemedText>
-                <ThemedText style={styles.caption} themeColor="textSecondary" numberOfLines={1}>
-                  {monthSub}
-                </ThemedText>
+                {monthSub ? (
+                  <ThemedText style={styles.caption} themeColor="textSecondary" numberOfLines={1}>
+                    {monthSub}
+                  </ThemedText>
+                ) : null}
               </View>
               <Icon name={monthInfoOpen ? 'chevronUp' : 'chevronDown'} size={16} color={theme.textTertiary} />
             </Pressable>
@@ -368,74 +317,62 @@ export function PlanView({ kind, plan, title, description, objective, phaseDetai
   );
 }
 
+/** "3 settimane" from the start date, or "Prima settimana" while the first one is still running. */
+function weeksSince(startMs: number, now: number): string {
+  const weeks = Math.floor(Math.max(0, now - startMs) / (7 * DAY_MS));
+  return weeks === 0 ? 'Prima settimana' : `${weeks} ${weeks === 1 ? 'settimana' : 'settimane'}`;
+}
+
 /**
- * The summary of a card or diet the person loaded: what it is, its key numbers in one row, and a single button to
- * update it. No duration, no months, no progress: the app follows it as written.
+ * The summary of a card or diet the person loaded (or built): only its name, when it started and how many weeks have
+ * passed, with a single pill to update it. No numbers, no duration, no months: the app follows it as written.
  */
-function CustomPlanSummary({ kind, own, stats, onUpdate }: { kind: 'training' | 'diet'; own?: boolean; stats: PlanStat[]; onUpdate: () => void }) {
+function CustomPlanSummary({ kind, own, startedAt, now, onUpdate }: { kind: 'training' | 'diet'; own?: boolean; startedAt: string; now: number; onUpdate: () => void }) {
   const theme = useTheme();
   const isDiet = kind === 'diet';
   const updateLabel = isDiet ? 'Aggiorna dieta' : own ? 'Modifica programma' : 'Aggiorna scheda';
-
-  const dense = stats.length > 3;
+  const startMs = new Date(startedAt).getTime();
+  const startLabel = new Date(startMs).toLocaleDateString('it-IT', { day: 'numeric', month: 'long' });
 
   return (
     <FlatCard radius={Radius.large} style={styles.summary}>
-      <View style={styles.summaryHead}>
-        <View style={styles.flex}>
-          <ThemedText style={styles.summaryOverline} themeColor="textTertiary" numberOfLines={1}>
-            {isDiet ? 'DIETA PERSONALE' : own ? 'CREATO DA TE' : 'SCHEDA PERSONALE'}
-          </ThemedText>
-          <ThemedText style={styles.summaryTitle} numberOfLines={1} accessibilityRole="header">
-            {isDiet ? 'La tua dieta' : own ? 'Il tuo programma' : 'La tua scheda'}
+      <View style={styles.flex}>
+        <ThemedText style={styles.summaryTitle} numberOfLines={1} accessibilityRole="header">
+          {isDiet ? 'La tua dieta' : own ? 'Il tuo programma' : 'La tua scheda'}
+        </ThemedText>
+        <View style={styles.summaryMeta}>
+          <Icon name="calendar" size={13} color={theme.textSecondary} />
+          <ThemedText style={styles.summaryMetaText} themeColor="textSecondary" numberOfLines={1}>
+            {`Dal ${startLabel}`}
+            <ThemedText style={styles.summaryMetaText} themeColor="textTertiary">{'  ·  '}</ThemedText>
+            {weeksSince(startMs, now)}
           </ThemedText>
         </View>
-        {/* Solid inverted pill: reads at a glance as a button, in light and dark alike. */}
-        <Pressable
-          onPress={() => {
-            hapticSelection();
-            onUpdate();
-          }}
-          hitSlop={8}
-          accessibilityRole="button"
-          accessibilityLabel={updateLabel}
-          style={({ pressed }) => [styles.summaryButton, { backgroundColor: theme.text, transform: [{ scale: pressed ? 0.94 : 1 }], opacity: pressed ? 0.9 : 1 }]}
-        >
-          <Icon name={own && !isDiet ? 'edit' : 'refresh'} size={14} strokeWidth={2.2} color={theme.background} />
-          <ThemedText style={[styles.summaryButtonLabel, { color: theme.background }]}>{own && !isDiet ? 'Modifica' : 'Aggiorna'}</ThemedText>
-        </Pressable>
       </View>
-
-      {stats.length > 0 ? (
-        <View style={styles.summaryStats}>
-          {stats.map((st) => (
-            <View key={st.label} style={styles.fact}>
-              <ThemedText style={[styles.summaryValue, dense && styles.summaryValueDense]} numberOfLines={1} adjustsFontSizeToFit>
-                {Math.round(st.value).toLocaleString('it-IT')}
-                {st.unit ? <ThemedText style={styles.summaryUnit} themeColor="textTertiary">{` ${st.unit}`}</ThemedText> : null}
-              </ThemedText>
-              <ThemedText style={styles.summaryLabel} themeColor="textTertiary" numberOfLines={1}>
-                {st.label}
-              </ThemedText>
-            </View>
-          ))}
-        </View>
-      ) : null}
+      {/* Solid inverted pill: reads at a glance as a button, in light and dark alike. */}
+      <Pressable
+        onPress={() => {
+          hapticSelection();
+          onUpdate();
+        }}
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel={updateLabel}
+        style={({ pressed }) => [styles.summaryButton, { backgroundColor: theme.text, transform: [{ scale: pressed ? 0.94 : 1 }], opacity: pressed ? 0.9 : 1 }]}
+      >
+        <Icon name={own && !isDiet ? 'edit' : 'refresh'} size={14} strokeWidth={2.2} color={theme.background} />
+        <ThemedText style={[styles.summaryButtonLabel, { color: theme.background }]}>{own && !isDiet ? 'Modifica' : 'Aggiorna'}</ThemedText>
+      </Pressable>
     </FlatCard>
   );
 }
 
 const styles = StyleSheet.create({
   flex: { flex: 1, minWidth: 0 },
-  summary: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 18, gap: 20 },
-  summaryHead: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  summaryOverline: { fontSize: 11, lineHeight: 14, fontWeight: '500', letterSpacing: 1 },
-  summaryTitle: { fontSize: 21, lineHeight: 26, fontWeight: '600', letterSpacing: -0.5, marginTop: 3 },
-  summaryStats: { flexDirection: 'row', gap: 16 },
-  summaryValue: { fontSize: 28, lineHeight: 32, fontWeight: '300', letterSpacing: -0.8, fontVariant: ['tabular-nums'] },
-  summaryValueDense: { fontSize: 22, lineHeight: 28, letterSpacing: -0.5 },
-  summaryLabel: { fontSize: 12, lineHeight: 16, marginTop: 4 },
-  summaryUnit: { fontSize: 12, fontWeight: '400', letterSpacing: 0 },
+  summary: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 20, paddingVertical: 16 },
+  summaryTitle: { fontSize: 21, lineHeight: 26, fontWeight: '600', letterSpacing: -0.5 },
+  summaryMeta: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
+  summaryMetaText: { fontSize: 13, lineHeight: 18, fontVariant: ['tabular-nums'] },
   summaryButton: { height: 34, borderRadius: 17, borderCurve: 'continuous', flexDirection: 'row', alignItems: 'center', gap: 6, paddingLeft: 12, paddingRight: 14 },
   summaryButtonLabel: { fontSize: 14, lineHeight: 18, fontWeight: '600', letterSpacing: -0.2 },
   stack: { gap: 12 },
@@ -445,11 +382,6 @@ const styles = StyleSheet.create({
   headRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   strategy: { alignSelf: 'flex-start', marginTop: 6, paddingHorizontal: 10, paddingVertical: 3, borderRadius: 12, borderCurve: 'continuous', maxWidth: '100%' },
   strategyText: { fontSize: 13, lineHeight: 18, fontWeight: '600' },
-  facts: { flexDirection: 'row', marginTop: 14 },
-  fact: { flex: 1, minWidth: 0, gap: 1 },
-  factDivided: { borderLeftWidth: StyleSheet.hairlineWidth, paddingLeft: 12 },
-  factValue: { fontSize: 16, lineHeight: 21, fontWeight: '700', fontVariant: ['tabular-nums'] },
-  factLabel: { fontSize: 12, lineHeight: 16 },
   title: { fontSize: 17, lineHeight: 22, fontWeight: '700', letterSpacing: -0.3 },
   caption: { fontSize: 13, lineHeight: 18 },
   captionStrong: { fontWeight: '700' },
@@ -459,8 +391,6 @@ const styles = StyleSheet.create({
   infoText: { fontSize: 14, lineHeight: 20 },
   monthRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   monthMain: { flex: 1, minWidth: 0, minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  ring: { width: RING_SIZE, height: RING_SIZE, alignItems: 'center', justifyContent: 'center' },
-  ringValue: { fontSize: 14, lineHeight: 18, fontWeight: '800' },
   monthTitle: { fontSize: 15, lineHeight: 20, fontWeight: '600', letterSpacing: -0.2 },
   stats: { flexDirection: 'row', justifyContent: 'space-around', paddingVertical: 10, paddingHorizontal: 8, borderRadius: 14 },
   stat: { alignItems: 'center', gap: 1 },

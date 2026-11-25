@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Image, Pressable, StyleSheet, View } from 'react-native';
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { DishPhoto, DishPlaceholder } from '@/components/nutrition/dish-photo';
 import { MealRecipeSheet } from '@/components/nutrition/meal-recipe-sheet';
@@ -8,7 +9,7 @@ import { ExerciseInfoModal, type ExerciseProgramming } from '@/components/traini
 import { Collapsible } from '@/components/ui/collapsible';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon } from '@/components/ui/icon';
-import { Radius, Spacing } from '@/constants/theme';
+import { Radius } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { hapticTap } from '@/lib/haptics';
 import { getExerciseMedia } from '@/lib/exercise-media/exercise-media';
@@ -28,154 +29,215 @@ export type ExerciseCardItem = {
   programming?: ExerciseProgramming;
 };
 
+/**
+ * One exercise of the day as a quiet card: the moving demo (or a thin dumbbell), the name, and the prescription on
+ * one line — sets × reps in full weight, the rest softer. The whole card is the button: tapped, it opens how the
+ * exercise is done and why it is there.
+ */
 export function ExerciseSummaryCard({ item }: { item: ExerciseCardItem }) {
   const theme = useTheme();
   const [infoOpen, setInfoOpen] = useState(false);
   const media = item.exerciseId ? getExerciseMedia(item.exerciseId, item.name) : undefined;
+  const opensInfo = item.exerciseId != null || item.sets != null;
 
-  return (
-    // The same flat surface as the macro-plan box and the meal cards, so the page reads as one set of cards.
-    <FlatCard radius={Radius.medium} style={styles.exerciseCard}>
+  // "4 × 8-10" leads; RIR, rest and technique follow in the secondary tone.
+  const dose = item.sets != null && item.reps ? `${item.sets} × ${item.reps}` : null;
+  const rest = dose ? item.subtitle.split(' · ').slice(1).join(' · ') : item.subtitle;
+
+  const body = (
+    <>
       {media ? (
-        <Image source={{ uri: media.gifUrl }} style={[styles.thumb, { backgroundColor: theme.backgroundElement }]} />
+        <View style={[styles.thumb, { backgroundColor: theme.backgroundElement }]}>
+          <Image source={{ uri: media.gifUrl }} style={StyleSheet.absoluteFill} />
+        </View>
       ) : (
         // No animation for this exercise (warm-up, a card's own wording…): a thin dumbbell keeps the row tidy.
         <View style={[styles.thumb, styles.thumbIcon, { backgroundColor: theme.backgroundElement }]}>
-          <Icon name="dumbbellLine" size={22} strokeWidth={1.4} color={theme.textSecondary} />
+          <Icon name="dumbbellLine" size={24} strokeWidth={1.3} color={theme.text} />
         </View>
       )}
-      <View style={{ flex: 1, gap: 2 }}>
-        <ThemedText type="smallBold">{item.name}</ThemedText>
-        {item.subtitle ? (
-          <ThemedText type="caption" themeColor="textSecondary">
-            {item.subtitle}
+      <View style={styles.exerciseTexts}>
+        <ThemedText style={styles.exerciseName} numberOfLines={2}>
+          {item.name}
+        </ThemedText>
+        {dose || rest ? (
+          <ThemedText style={styles.exerciseMeta} themeColor="textSecondary" numberOfLines={dose ? 1 : 4}>
+            {dose ? <ThemedText style={[styles.exerciseMeta, styles.exerciseDose]}>{dose}</ThemedText> : null}
+            {dose && rest ? '  ·  ' : ''}
+            {rest}
           </ThemedText>
         ) : null}
       </View>
-      {item.exerciseId ? (
-        <Pressable onPress={() => setInfoOpen(true)} hitSlop={10} accessibilityRole="button" accessibilityLabel={`Come si esegue: ${item.name}`} style={styles.infoButton}>
-          <Icon name="info" size={20} color={theme.textSecondary} />
-        </Pressable>
-      ) : null}
+      {opensInfo ? <Icon name="chevronRight" size={16} color={theme.textTertiary} /> : null}
+    </>
+  );
 
-      <ExerciseInfoModal
-        visible={infoOpen}
-        exerciseName={item.name}
-        media={media}
-        sets={item.sets ?? 0}
-        reps={item.reps ?? ''}
-        tempo={item.tempo ?? ''}
-        restLabel={item.restLabel ?? ''}
-        programming={item.programming}
-        onClose={() => setInfoOpen(false)}
-      />
+  return (
+    // The same flat surface as the macro-plan box and the meal cards, so the page reads as one set of cards.
+    <FlatCard radius={Radius.large}>
+      {opensInfo ? (
+        <Pressable
+          onPress={() => {
+            hapticTap();
+            setInfoOpen(true);
+          }}
+          accessibilityRole="button"
+          accessibilityLabel={`${item.name}. ${item.subtitle}. Come si esegue`}
+          style={({ pressed }) => [styles.exerciseCard, { opacity: pressed ? 0.75 : 1, transform: [{ scale: pressed ? 0.985 : 1 }] }]}
+        >
+          {body}
+        </Pressable>
+      ) : (
+        <View style={styles.exerciseCard}>{body}</View>
+      )}
+
+      {opensInfo ? (
+        <ExerciseInfoModal
+          visible={infoOpen}
+          exerciseName={item.name}
+          media={media}
+          sets={item.sets ?? 0}
+          reps={item.reps ?? ''}
+          tempo={item.tempo ?? ''}
+          restLabel={item.restLabel ?? ''}
+          programming={item.programming}
+          onClose={() => setInfoOpen(false)}
+        />
+      ) : null}
     </FlatCard>
   );
 }
 
 const round = (n: number) => Math.round(n).toLocaleString('it-IT');
 
+const MEAL_MACROS = [
+  { key: 'protein', letter: 'P', icon: 'protein', name: 'Proteine' },
+  { key: 'carbs', letter: 'C', icon: 'carbs', name: 'Carboidrati' },
+  { key: 'fats', letter: 'G', icon: 'fats', name: 'Grassi' },
+] as const;
+
 /**
- * One meal of the day, as a quiet white card: the dish with its photo and numbers on top, the foods and their
- * quantities as plain rows, and a single button for the recipe. Substitutions open under the food they belong to.
+ * One meal of the day, folded to its summary: the dish photo, the meal and its time, the dish name, and under it the
+ * calories and P/C/G a touch stronger. Tapped, it unfolds in place to the foods and their quantities and the button
+ * for the recipe. Substitutions open under the food they belong to.
  */
 export function MealCard({ meal, onSubstitute }: { meal: PlanMeal; /** Applies a suggested alternative (absent: alternatives are only shown). */ onSubstitute?: (itemIndex: number, foodId: string) => void }) {
   const theme = useTheme();
   const photo = dishImage(meal.recipe?.dishId, meal.items.map((i) => i.name));
   const preparation = recipeForDish(meal.recipe?.dishId);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
   const title = meal.eatOut ? 'Pasto fuori casa' : meal.isFreeMeal ? 'Pasto libero' : (meal.recipe?.name ?? meal.label);
   const when = meal.timeWindow ?? meal.time;
-  const overline = meal.isFreeMeal || meal.recipe ? `${meal.label} · ${when}` : when;
+  const overline = title === meal.label ? when : `${meal.label} · ${when}`;
   const log = meal.freeMealLog;
-  const numbers = meal.isFreeMeal
-    ? log
-      ? [`${round(log.kcal)} kcal ${log.status === 'measured' ? 'registrate' : log.status === 'estimated' ? 'stimate' : 'dichiarate'}`, log.macros ? `P ${round(log.macros.protein)} · C ${round(log.macros.carbs)} · G ${round(log.macros.fats)}${log.status === 'estimated' ? ' (stima)' : ''}` : 'macro non disponibili'].join('  ·  ')
-      : `Circa ${round(meal.totalKcal)} kcal`
-    : [meal.totalKcal > 0 ? `${round(meal.totalKcal)} kcal` : null, meal.macros ? `P ${round(meal.macros.protein)} · C ${round(meal.macros.carbs)} · G ${round(meal.macros.fats)}` : null].filter(Boolean).join('  ·  ');
+  const kcal = meal.isFreeMeal ? (log ? log.kcal : meal.totalKcal) : meal.totalKcal;
+  const macros = meal.isFreeMeal ? log?.macros : meal.macros;
   const hasRecipe = !meal.isFreeMeal && meal.recipe != null;
+  const showPhoto = hasRecipe || meal.isFreeMeal || meal.eatOut != null;
 
-  const header = (
-    <>
-      {hasRecipe ? photo ? <DishPhoto image={photo} size={64} radius={16} /> : <DishPlaceholder size={64} radius={16} /> : null}
-      <View style={styles.mealTexts}>
-        <ThemedText style={styles.overline} themeColor="textSecondary" numberOfLines={1}>
-          {overline}
-        </ThemedText>
-        <ThemedText style={styles.mealTitle} numberOfLines={2}>
-          {title}
-        </ThemedText>
-        {numbers ? (
-          <ThemedText style={styles.mealNumbers} themeColor="textSecondary" numberOfLines={1}>
-            {numbers}
-          </ThemedText>
-        ) : null}
-      </View>
-    </>
-  );
+  // The chevron turns as the card unfolds.
+  const turn = useSharedValue(0);
+  const chevronStyle = useAnimatedStyle(() => ({ transform: [{ rotate: `${turn.value * 180}deg` }] }));
+  const toggle = () => {
+    hapticTap();
+    const next = !expanded;
+    setExpanded(next);
+    turn.set(withTiming(next ? 1 : 0, { duration: 260, easing: Easing.out(Easing.cubic) }));
+  };
 
   return (
-    <FlatCard radius={Radius.medium}>
-      {hasRecipe ? (
-        <Pressable
-          onPress={() => setDetailOpen(true)}
-          accessibilityRole="button"
-          accessibilityLabel={`${meal.label}, ${title}. Apri la ricetta`}
-          style={({ pressed }) => [styles.mealHeader, { opacity: pressed ? 0.6 : 1 }]}
-        >
-          {header}
-        </Pressable>
-      ) : (
-        <View style={styles.mealHeader}>{header}</View>
-      )}
-
-      {meal.eatOut ? (
-        <View style={styles.mealItems}>
-          {meal.eatOut.guidance.map((line, index) => (
-            <ThemedText key={index} style={styles.freeMeal} themeColor="textSecondary">
-              {line}
-            </ThemedText>
-          ))}
+    <FlatCard radius={Radius.large}>
+      <Pressable
+        onPress={toggle}
+        accessibilityRole="button"
+        accessibilityState={{ expanded }}
+        accessibilityLabel={`${meal.label}, ${when}, ${title}, ${Math.round(kcal)} kcal`}
+        style={({ pressed }) => [styles.mealHeader, { opacity: pressed ? 0.7 : 1 }]}
+      >
+        {showPhoto ? photo && hasRecipe ? <DishPhoto image={photo} size={68} radius={18} /> : <DishPlaceholder size={68} radius={18} /> : null}
+        <View style={styles.mealTexts}>
+          <ThemedText style={styles.overline} themeColor="textSecondary" numberOfLines={1}>
+            {overline}
+          </ThemedText>
+          <ThemedText style={styles.mealTitle} numberOfLines={2}>
+            {title}
+          </ThemedText>
+          <View style={styles.mealNumbers}>
+            {kcal > 0 ? (
+              <ThemedText style={[styles.mealKcal, { color: theme.brandGreen }]} numberOfLines={1}>
+                {`${meal.isFreeMeal && !log ? '~' : ''}${round(kcal)} kcal`}
+              </ThemedText>
+            ) : null}
+            {macros
+              ? MEAL_MACROS.map((m) => (
+                  <View key={m.key} style={styles.mealMacro} accessible accessibilityLabel={`${m.name} ${Math.round(macros[m.key])} grammi`}>
+                    <Icon name={m.icon} size={13} color={theme.textSecondary} strokeWidth={1.5} />
+                    <ThemedText style={styles.mealMacroLetter} themeColor="textSecondary">
+                      {m.letter}
+                    </ThemedText>
+                    <ThemedText style={styles.mealMacroValue} numberOfLines={1}>
+                      {round(macros[m.key])}
+                    </ThemedText>
+                  </View>
+                ))
+              : null}
+          </View>
         </View>
-      ) : meal.isFreeMeal ? (
-        <ThemedText style={styles.freeMeal} themeColor="textSecondary">
-          {log
-            ? `${log.description ? `${log.description}. ` : ''}${log.method}`
-            : 'Scegli tu cosa mangiare, senza eccessi e restando vicino alle calorie indicate. Finché non lo registri, i suoi macro non sono disponibili e la giornata risulta osservata solo in parte.'}
-        </ThemedText>
-      ) : (
-        <>
-          <View style={[styles.hairline, { backgroundColor: theme.border }]} />
+        <Animated.View style={chevronStyle}>
+          <Icon name="chevronDown" size={16} color={theme.textTertiary} />
+        </Animated.View>
+      </Pressable>
+
+      <Collapsible open={expanded}>
+        <View style={[styles.hairline, { backgroundColor: theme.border }]} />
+        {meal.eatOut ? (
           <View style={styles.mealItems}>
-            {meal.items.map((item, index) => (
-              <MealItemRow key={index} item={item} onApply={onSubstitute ? (foodId) => onSubstitute(index, foodId) : undefined} />
+            {meal.eatOut.guidance.map((line, index) => (
+              <ThemedText key={index} style={styles.freeMeal} themeColor="textSecondary">
+                {line}
+              </ThemedText>
             ))}
           </View>
-          {meal.recipe && meal.recipe.flavorings.length > 0 ? (
-            <ThemedText style={styles.flavorings} themeColor="textSecondary">
-              Per insaporire: {meal.recipe.flavorings.join(', ')}
-            </ThemedText>
-          ) : null}
-
-          {hasRecipe ? (
-            <Pressable
-              onPress={() => {
-                hapticTap();
-                setDetailOpen(true);
-              }}
-              accessibilityRole="button"
-              accessibilityLabel={`Vedi ricetta: ${title}`}
-              style={({ pressed }) => [styles.recipeButton, { backgroundColor: theme.accentSoft, opacity: pressed ? 0.6 : 1 }]}
-            >
-              <Icon name="utensils" size={16} color={theme.accent} />
-              <ThemedText style={[styles.recipeButtonLabel, { color: theme.accent }]}>Vedi ricetta</ThemedText>
-              {preparation ? <ThemedText style={[styles.recipeButtonMeta, { color: theme.accent }]}>· {preparation.totalMinutes} min</ThemedText> : null}
-            </Pressable>
-          ) : null}
-          <MealRecipeSheet meal={detailOpen ? meal : null} onClose={() => setDetailOpen(false)} />
-        </>
-      )}
+        ) : meal.isFreeMeal ? (
+          <ThemedText style={[styles.freeMeal, styles.freeMealOpen]} themeColor="textSecondary">
+            {log
+              ? `${log.description ? `${log.description}. ` : ''}${log.method}`
+              : 'Scegli tu cosa mangiare, senza eccessi e restando vicino alle calorie indicate.'}
+          </ThemedText>
+        ) : (
+          <>
+            <View style={styles.mealItems}>
+              {meal.items.map((item, index) => (
+                <MealItemRow key={index} item={item} onApply={onSubstitute ? (foodId) => onSubstitute(index, foodId) : undefined} />
+              ))}
+            </View>
+            {hasRecipe ? (
+              <Pressable
+                onPress={() => {
+                  hapticTap();
+                  setDetailOpen(true);
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={`Vedi ricetta: ${title}`}
+                style={({ pressed }) => [styles.recipeButton, { backgroundColor: theme.backgroundElement, opacity: pressed ? 0.6 : 1 }]}
+              >
+                <Icon name="utensils" size={16} color={theme.text} />
+                <ThemedText style={styles.recipeButtonLabel}>Vedi ricetta</ThemedText>
+                {preparation ? (
+                  <ThemedText style={styles.recipeButtonMeta} themeColor="textSecondary">
+                    · {preparation.totalMinutes} min
+                  </ThemedText>
+                ) : null}
+              </Pressable>
+            ) : (
+              <View style={styles.mealItemsEnd} />
+            )}
+          </>
+        )}
+      </Collapsible>
+      {hasRecipe ? <MealRecipeSheet meal={detailOpen ? meal : null} onClose={() => setDetailOpen(false)} /> : null}
     </FlatCard>
   );
 }
@@ -269,15 +331,24 @@ function MealItemRow({ item, onApply }: { item: PlanMeal['items'][number]; onApp
 const CARD_INSET = 14;
 
 const styles = StyleSheet.create({
-  exerciseCard: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, padding: Spacing.three },
-  thumb: { width: 48, height: 48, borderRadius: Radius.medium },
+  exerciseCard: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 12, paddingLeft: 12, paddingRight: 16 },
+  thumb: { width: 56, height: 56, borderRadius: 16, borderCurve: 'continuous', overflow: 'hidden' },
   thumbIcon: { alignItems: 'center', justifyContent: 'center' },
-  infoButton: { padding: 4 },
-  mealHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: CARD_INSET },
+  exerciseTexts: { flex: 1, minWidth: 0, gap: 3 },
+  exerciseName: { fontSize: 16, lineHeight: 21, fontWeight: '600', letterSpacing: -0.3 },
+  exerciseMeta: { fontSize: 13, lineHeight: 18, fontVariant: ['tabular-nums'] },
+  exerciseDose: { fontWeight: '600' },
+  mealHeader: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 12, paddingRight: 16 },
   mealTexts: { flex: 1, minWidth: 0, gap: 2 },
-  overline: { fontSize: 12, lineHeight: 16, fontWeight: '600', letterSpacing: 0.4, textTransform: 'uppercase' },
-  mealTitle: { fontSize: 16, lineHeight: 21, fontWeight: '600', letterSpacing: -0.2 },
-  mealNumbers: { fontSize: 13, lineHeight: 18, fontVariant: ['tabular-nums'] },
+  overline: { fontSize: 11, lineHeight: 15, fontWeight: '600', letterSpacing: 0.6, textTransform: 'uppercase' },
+  mealTitle: { fontSize: 16, lineHeight: 21, fontWeight: '600', letterSpacing: -0.3 },
+  mealNumbers: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', columnGap: 10, rowGap: 2, marginTop: 4 },
+  mealKcal: { fontSize: 14, lineHeight: 19, fontWeight: '700', letterSpacing: -0.2, fontVariant: ['tabular-nums'] },
+  mealMacro: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  mealMacroLetter: { fontSize: 13, lineHeight: 18, fontWeight: '500' },
+  mealMacroValue: { fontSize: 13, lineHeight: 18, fontWeight: '600', fontVariant: ['tabular-nums'] },
+  mealItemsEnd: { height: 8 },
+  freeMealOpen: { paddingTop: 12 },
   hairline: { height: StyleSheet.hairlineWidth, marginLeft: CARD_INSET },
   mealItems: { paddingHorizontal: CARD_INSET, paddingVertical: 4 },
   itemRow: { minHeight: 40, flexDirection: 'row', alignItems: 'center', gap: 8 },
@@ -290,7 +361,6 @@ const styles = StyleSheet.create({
   substituteRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   substituteText: { flex: 1, minWidth: 0, fontSize: 14, lineHeight: 19 },
   substituteQuantity: { fontSize: 14, lineHeight: 19, fontVariant: ['tabular-nums'] },
-  flavorings: { fontSize: 13, lineHeight: 18, paddingHorizontal: CARD_INSET, paddingBottom: 4 },
   freeMeal: { fontSize: 14, lineHeight: 20, paddingHorizontal: CARD_INSET, paddingBottom: CARD_INSET },
   recipeButton: {
     minHeight: 44,
@@ -304,6 +374,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
   },
-  recipeButtonLabel: { fontSize: 15, lineHeight: 20, fontWeight: '600' },
+  recipeButtonLabel: { fontSize: 15, lineHeight: 20, fontWeight: '600', letterSpacing: -0.2 },
   recipeButtonMeta: { fontSize: 15, lineHeight: 20 },
 });
