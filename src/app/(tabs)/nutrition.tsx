@@ -1,12 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { interpolate, useDerivedValue, useSharedValue } from 'react-native-reanimated';
 
 import { openPopup } from '@/lib/open-popup';
 import { FoodSearchModal } from '@/components/nutrition/food-search-modal';
 import { MealCard } from '@/components/nutrition/meal-card';
-import { RecipeDeck } from '@/components/nutrition/recipe-deck';
-import { ModePages, ModeSwitch } from '@/components/mode-pages';
 import { HEADER_LIST_TOP, ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { DayCalendarModal } from '@/components/ui/day-calendar-modal';
@@ -17,13 +15,9 @@ import { ProgressRing } from '@/components/ui/progress-ring';
 import { TickProgressBar } from '@/components/ui/tick-progress-bar';
 import { useEnsurePlan } from '@/hooks/use-ensure-plan';
 import { Layout, Radius } from '@/constants/theme';
-import { useTabBarClearance } from '@/hooks/use-tab-bar-clearance';
 import { useTheme } from '@/hooks/use-theme';
 import { daysAgoISO, isoMondayIndex } from '@/lib/mock/dates';
 import { inMealOrder } from '@/lib/planning/meal-slots';
-import { SLOT_KIND, type SlotKind } from '@/lib/planning/fitlab/catalog';
-import { cachedRecipeBook, type RecipeCard } from '@/lib/planning/fitlab/recipe-book';
-import { useOnboardingStore } from '@/store/onboarding-store';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
 import {
   entriesForSlot,
@@ -50,97 +44,10 @@ function formatKcal(n: number): string {
     .replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 }
 
-type NutritionMode = 'tracking' | 'recipes';
-
-const NUTRITION_MODES = ['tracking', 'recipes'] as const;
-
-/** Nutrizione: two pages behind a switch at the top, the day's calorie tracking and the FitLab recipe book. Both stay
- * mounted (ModePages, Ricette built in the background shortly after the tab opens): switching only changes which one
- * is visible. */
+/** Nutrizione: the day's calorie tracking. The FitLab recipe book (Ricette) is parked for now in
+ * `components/nutrition/recipes-page.tsx`: kept in the repo, not mounted. */
 export default function NutritionScreen() {
-  const [mode, setMode] = useState<NutritionMode>('tracking');
-  return <ModePages value={mode} onChange={setMode} modes={NUTRITION_MODES} render={(m) => (m === 'tracking' ? <CalorieTracking /> : <Recipes />)} />;
-}
-
-const NUTRITION_OPTIONS: { value: NutritionMode; label: string }[] = [
-  { value: 'tracking', label: 'Tracking calorie' },
-  { value: 'recipes', label: 'Ricette' },
-];
-
-/** The switch in each page's header; the pages are built once and never redrawn by it. */
-function Switcher() {
-  return (
-    <View style={styles.modeSwitch}>
-      <ModeSwitch options={NUTRITION_OPTIONS} />
-    </View>
-  );
-}
-
-/** The meal of the person's day a recipe of each kind goes to: the plan's own meals when there is a plan. */
-const DEFAULT_SLOT: Record<SlotKind, MealSlot> = { breakfast: 'colazione', lunch: 'pranzo', dinner: 'cena', snack: 'spuntinoPomeriggio' };
-
-/** Today's targets the recipes are sized on, and what Ricette needs around them. */
-function useRecipeTargets() {
-  const currentUser = useUserStore();
-  const dietPlan = usePlanStore((s) => s.dietPlan);
-  const answers = useOnboardingStore((s) => s.answers);
-  const today = daysAgoISO(0);
-  const month = dietPlan?.months.find((m) => m.monthIndex === (dietPlan ? currentMonthIndex(dietPlan) : 1));
-  const planDay = month?.weeklySplit[isoMondayIndex(today)];
-  const ownKcal = planDay?.calorieTarget ?? month?.calorieTarget ?? currentUser.dailyCalorieTarget;
-  const ownMacros = planDay?.macroTargetsG ?? month?.macroTargetsG ?? currentUser.macroTargetsG;
-  // No targets yet (questionnaire not done): the recipes are shown in a standard 2000 kcal portion.
-  const personal = ownKcal >= 1000 && ownMacros.protein > 0;
-  const kcal = personal ? ownKcal : 2000;
-  const macros = personal ? ownMacros : { protein: 120, carbs: 240, fats: 62 };
-  const daily = useMemo(() => ({ kcal, protein: macros.protein, carbs: macros.carbs, fats: macros.fats }), [kcal, macros.protein, macros.carbs, macros.fats]);
-  return { answers, planDay, personal, daily, today };
-}
-
-function Recipes() {
-  // The page does not scroll: the selector under the card must end above the floating tab bar.
-  const tabClearance = useTabBarClearance();
-  const [viewport, setViewport] = useState(0);
-  const addEntry = useNutritionStore((s) => s.addEntry);
-  const { answers, planDay, personal, daily, today } = useRecipeTargets();
-
-  useEnsurePlan('diet');
-
-  // Every recipe sized on today's targets (the same solver as the plan), rebuilt only when they change.
-  const cards = useMemo(() => cachedRecipeBook(answers, daily), [answers, daily]);
-
-  const slotFor = (kind: SlotKind): { id: MealSlot; label: string } => {
-    const fromPlan = planDay ? inMealOrder(planDay.meals).find((m) => SLOT_KIND[m.slotId as MealSlot] === kind) : undefined;
-    if (fromPlan) return { id: fromPlan.slotId as MealSlot, label: fromPlan.label };
-    const meta = MEAL_SLOTS.find((m) => m.id === DEFAULT_SLOT[kind])!;
-    return { id: meta.id, label: kind === 'snack' ? 'Merenda' : meta.label };
-  };
-
-  const add = (card: RecipeCard) => {
-    const slot = slotFor(card.kind).id;
-    for (const item of card.items) addEntry(slot, item.foodId, item.grams, today);
-  };
-
-  return (
-    <ScreenScroll
-      header={
-        <>
-          <TabHeader title="Nutrizione" />
-          <Switcher />
-        </>
-      }
-      scrollEnabled={false}
-      onLayout={(e) => {
-        const h = Math.round(e.nativeEvent.layout.height);
-        // Hidden behind the switch the page measures 0: keep the last real height.
-        if (h > 0) setViewport((v) => (v === h ? v : h));
-      }}
-      // An explicit height (the visible area under the header), not `flex: 1`: inside a scroll view Safari does
-      // not always resolve a flex height, and the deck then grew past the screen, its selector under the tab bar.
-      contentContainerStyle={[styles.page, viewport ? { height: viewport, flexGrow: 0 } : styles.recipesPage, { paddingBottom: tabClearance }]}>
-      <RecipeDeck cards={cards} portionLabel={personal ? 'Porzione per te' : 'Porzione standard'} slotLabelFor={(kind) => slotFor(kind).label} onAdd={add} />
-    </ScreenScroll>
-  );
+  return <CalorieTracking />;
 }
 
 function CalorieTracking() {
@@ -188,7 +95,7 @@ function CalorieTracking() {
   const mealSlots = planDayForSelectedDate && planDayForSelectedDate.meals.length > 0
     ? inMealOrder(planDayForSelectedDate.meals).map((m) => {
         const meta = MEAL_SLOTS.find((x) => x.id === m.slotId);
-        return { id: m.slotId as MealSlot, label: m.label, time: m.time, icon: meta?.icon ?? ('mealSnack' as const) };
+        return { id: m.slotId as MealSlot, label: m.label, icon: meta?.icon ?? ('mealSnack' as const) };
       })
     : MEAL_SLOTS;
 
@@ -212,10 +119,7 @@ function CalorieTracking() {
     <ScreenScroll
       reveal
       header={
-        <>
-          <TabHeader title="Nutrizione" onCalendarPress={() => openPopup(() => setCalendarOpen(true))} />
-          <Switcher />
-        </>
+        <TabHeader title="Nutrizione" onCalendarPress={() => openPopup(() => setCalendarOpen(true))} />
       }
       pinned={<PinnedMacroRings rings={macroRings} totals={totals} calorieTarget={calorieTarget} />}
       pinnedProgress={pinnedProgress}
@@ -277,7 +181,6 @@ function CalorieTracking() {
             <MealCard
               key={meta.id}
               label={meta.label}
-              time={meta.time}
               icon={meta.icon}
               entries={slotEntries}
               totals={sumMacros(slotEntries)}
@@ -371,17 +274,9 @@ function PinnedMacroRings({
 }
 
 const styles = StyleSheet.create({
-  modeSwitch: {
-    marginTop: -4,
-    marginBottom: 10,
-  },
   page: {
     paddingHorizontal: SCREEN_PADDING,
     gap: 0,
-  },
-  // Ricette fits on one screen: the deck takes the height left between the header and the tab bar.
-  recipesPage: {
-    flex: 1,
   },
   headerRow: {
     flexDirection: 'row',
