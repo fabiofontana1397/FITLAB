@@ -70,7 +70,7 @@ export function MealCard({ label, icon, entries, totals, expanded, onToggle, onE
     <FlatCard radius={24} style={styles.card}>
       <Pressable onPress={onToggle} accessibilityRole="button" accessibilityState={{ expanded }} accessibilityLabel={`${label}, ${Math.round(totals.kcal)} kcal`} style={styles.header}>
         <View style={styles.icon}>
-          <Icon name={icon} size={30} color={theme.text} strokeWidth={1.3} />
+          <Icon name={icon} size={22} color={theme.text} strokeWidth={1.4} />
         </View>
         <View style={styles.titleCol}>
           <ThemedText style={styles.name} numberOfLines={1}>
@@ -164,7 +164,7 @@ const styles = StyleSheet.create({
   },
   // As tall as the two text lines beside it, so the icon sits centred on them.
   icon: {
-    width: 32,
+    width: 24,
     alignSelf: 'stretch',
     alignItems: 'center',
     justifyContent: 'center',
