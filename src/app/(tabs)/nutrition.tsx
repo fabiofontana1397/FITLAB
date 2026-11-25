@@ -110,9 +110,9 @@ function CalorieTracking() {
   const calorieRatio = calorieTarget > 0 ? totals.kcal / calorieTarget : 0;
 
   const macroRings = [
-    { key: 'protein' as const, label: 'Proteine', color: theme.accent, target: macroTargets.protein },
-    { key: 'carbs' as const, label: 'Carboidrati', color: theme.brandGreen, target: macroTargets.carbs },
-    { key: 'fats' as const, label: 'Grassi', color: theme.brandYellow, target: macroTargets.fats },
+    { key: 'protein' as const, label: 'P', color: theme.accent, target: macroTargets.protein },
+    { key: 'carbs' as const, label: 'C', color: theme.brandGreen, target: macroTargets.carbs },
+    { key: 'fats' as const, label: 'G', color: theme.brandYellow, target: macroTargets.fats },
   ];
 
   return (
@@ -128,7 +128,7 @@ function CalorieTracking() {
       <FlatCard radius={CARD_RADIUS} style={styles.calorieCard}>
         <View style={styles.calorieHeadRow}>
           <View style={styles.cardTitleRow}>
-            <Icon name="flame" size={18} color={theme.brandGreen} />
+            <Icon name="flameLine" size={24} color={theme.text} strokeWidth={1.5} />
             <ThemedText style={styles.calorieTitle}>{selectedDate === today ? 'Calorie di oggi' : 'Calorie del giorno'}</ThemedText>
           </View>
           <View style={styles.bigNumberRow}>
@@ -324,8 +324,8 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   bigNumberSuffix: {
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 14,
+    lineHeight: 18,
     fontWeight: '500',
   },
   calorieBar: {
