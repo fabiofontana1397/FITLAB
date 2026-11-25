@@ -114,7 +114,8 @@ export default function ChatScreen() {
             contentContainerStyle={styles.listContent}
             onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
             renderItem={({ item }) => <Bubble message={item} />}
-            ListHeaderComponent={<HealthNotice variant={AI_COACH_ENABLED ? 'ai' : 'health'} style={styles.notice} />}
+            // Only the AI disclosure stays: the generic wellbeing line is gone from every page.
+            ListHeaderComponent={AI_COACH_ENABLED ? <HealthNotice variant="ai" style={styles.notice} /> : null}
           />
 
           {messages.length <= 1 ? (

@@ -4,10 +4,8 @@ import { useMemo, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 
 import { openPopup } from '@/lib/open-popup';
-import { HealthNotice } from '@/components/legal/health-notice';
 import { PressableScale } from '@/components/motion/pressable-scale';
 import { Reveal } from '@/components/motion/reveal';
-import { ModePages, ModeSwitch } from '@/components/mode-pages';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { DayCalendarModal } from '@/components/ui/day-calendar-modal';
@@ -17,26 +15,22 @@ import { TabHeader } from '@/components/tab-header';
 import { LogActivityModal } from '@/components/training/log-activity-modal';
 import { LoggedActivitiesCard } from '@/components/training/logged-activities-card';
 import { MissedWorkoutsCard, type MissedWorkout } from '@/components/training/missed-workouts-card';
-import { SpotWorkoutView } from '@/components/training/spot-workout-view';
 import { SwapSlide } from '@/components/training/swap-slide';
 import { TrainingWeekCard } from '@/components/training/training-week-card';
-import { levelLabel, WorkoutSummaryCard } from '@/components/training/workout-summary-card';
+import { WorkoutSummaryCard } from '@/components/training/workout-summary-card';
 import { WorkoutSessionModal } from '@/components/training/workout-session-modal';
 import { useEnsurePlan } from '@/hooks/use-ensure-plan';
 import { useUserContext } from '@/hooks/use-user-context';
-import { useTabBarClearance } from '@/hooks/use-tab-bar-clearance';
 import { useTheme } from '@/hooks/use-theme';
 import { addDaysISO, currentWeekDates, daysAgoISO, isoMondayIndex } from '@/lib/mock/dates';
 import { sessionKcal as plannedSessionKcal, sessionMinutes as plannedSessionMinutes } from '@/domain/energy';
 import { OnBrand } from '@/constants/theme';
 import { currentMonthIndex } from '@/lib/planning/plan-progress';
-import type { Goal } from '@/lib/mock/types';
 import type { TrainingDayPlan } from '@/lib/planning/types';
 import { useActivityLogStore } from '@/store/activity-log-store';
 import { usePlanStore } from '@/store/plan-store';
 import { isExerciseCompleted, useTrainingProgressStore } from '@/store/training-progress-store';
 import { planIndexFor, useTrainingSwapStore } from '@/store/training-swap-store';
-import { useUserStore } from '@/store/user-store';
 import { savedElapsedMs, useWorkoutSessionStore } from '@/store/workout-session-store';
 
 /** "12:34" for the workout time of a session in progress. */
@@ -47,62 +41,15 @@ function sessionClock(ms: number): string {
   return `${h > 0 ? `${h}:` : ''}${mm}:${String(s % 60).padStart(2, '0')}`;
 }
 
-/** Short label for the user's goal, shown next to the session level. */
-const GOAL_SHORT_LABEL: Record<Goal, string> = {
-  loseFat: 'Definizione',
-  gainMuscle: 'Ipertrofia',
-  maintainImprove: 'Mantenimento',
-  gainStrength: 'Forza',
-  improveEndurance: 'Resistenza',
-  generalHealth: 'Benessere',
-};
-
-type TrainingMode = 'plan' | 'spot';
-
-const TRAINING_MODES = ['plan', 'spot'] as const;
-const TRAINING_OPTIONS: { value: TrainingMode; label: string }[] = [
-  { value: 'plan', label: 'Scheda' },
-  { value: 'spot', label: 'Allenamento veloce' },
-];
-
-/** Allenamento: two pages behind a switch at the top, the weekly card (Scheda) and the one-off quick workouts
- * (Allenamento veloce). Both stay mounted (ModePages): switching only changes which one is visible. */
+/** Allenamento: the weekly card. "Allenamento veloce" (SpotWorkoutView and its deck) is set aside for now: its
+ * components stay in the repo, unmounted, ready to come back behind a selector at the top. */
 export default function TrainingScreen() {
-  const [mode, setMode] = useState<TrainingMode>('plan');
-  return <ModePages value={mode} onChange={setMode} modes={TRAINING_MODES} render={(m) => (m === 'spot' ? <SpotPage /> : <PlanTraining />)} />;
-}
-
-/** The switch in each page's header; the pages are built once and never redrawn by it. */
-function Switcher() {
-  return (
-    <View style={styles.modeSwitch}>
-      <ModeSwitch options={TRAINING_OPTIONS} />
-    </View>
-  );
-}
-
-function SpotPage() {
-  const tabClearance = useTabBarClearance();
-  return (
-    <ScreenScroll
-      testID="training-spot"
-      scrollEnabled={false}
-      contentContainerStyle={[styles.spotPage, { paddingBottom: tabClearance }]}
-      header={
-        <>
-          <TabHeader title="Allenamento" />
-          <Switcher />
-        </>
-      }>
-      <SpotWorkoutView />
-    </ScreenScroll>
-  );
+  return <PlanTraining />;
 }
 
 function PlanTraining() {
   const theme = useTheme();
   const trainingPlan = usePlanStore((s) => s.trainingPlan);
-  const currentUser = useUserStore();
   const ctx = useUserContext();
   const completedExercises = useTrainingProgressStore((s) => s.completed);
   const toggleCompleted = useTrainingProgressStore((s) => s.toggleCompleted);
@@ -181,18 +128,10 @@ function PlanTraining() {
         })
     : [];
 
-  // The sessions from the selected day to the end of the week, one section each,
-  // in calendar order: the selected day whatever it is (a rest day says so), then
-  // every later workout or cardio day. An earlier day is one tap on the week away.
-  // A past day shows only its own session, with how it went.
+  // Only the selected day's session: the days ahead are one tap away on the week, and a day still to come can be
+  // swapped with today from its own box.
   const viewingPast = selectedDate < today;
-  const sectionDates = viewingPast
-    ? [selectedDate]
-    : trainingPlan
-    ? viewedWeekDates.filter(
-        (date) => date === selectedDate || (date > selectedDate && (dayPlanOf(date)?.type === 'workout' || dayPlanOf(date)?.type === 'cardio'))
-      )
-    : [selectedDate];
+  const sectionDates = [selectedDate];
 
   // Mounted (inside a Reveal) only when there is something to catch up on, so an empty card never leaves a gap in the stack.
   const showMissed = !viewingPast && missedWorkouts.length > 0;
@@ -237,7 +176,6 @@ function PlanTraining() {
         header={
           <>
             <TabHeader title="Allenamento" onCalendarPress={() => openPopup(() => setCalendarOpen(true))} />
-            <Switcher />
           </>
         }>
         <Reveal index={0}>
@@ -278,12 +216,8 @@ function PlanTraining() {
 
         {sectionDates.map((date, sectionIndex) => {
           const day = dayPlanOf(date);
-          // Today's section (or the day picked in the week) is the main thing on the page; the days after it keep quiet.
-          const emphasized = date === today || date === selectedDate;
           const done = isDayComplete(date);
           const inProgress = !done && activeSession != null && activeSession.date === date && day?.type === 'workout';
-          const statusLabel = done ? 'Completato' : inProgress ? 'In corso' : date < today ? 'Non completato' : 'In programma';
-          const statusColor = done ? theme.brandGreen : inProgress ? theme.accent : date < today ? theme.danger : theme.accent;
           return (
             <Reveal
               key={date}
@@ -297,15 +231,9 @@ function PlanTraining() {
               }}>
             <View testID={`training-day-${date}`} style={styles.daySection}>
               <View style={styles.dayHeadingRow}>
-                <ThemedText style={emphasized ? styles.sectionTitle : [styles.sectionTitleQuiet, { color: theme.text }]} accessibilityRole="header">
+                <ThemedText style={styles.sectionTitle} accessibilityRole="header">
                   {headingOf(date)}
                 </ThemedText>
-                {/* Days still to come carry no label: only done, in progress or missed days are marked. */}
-                {day?.type === 'workout' && statusLabel !== 'In programma' ? (
-                  <View style={[styles.statusPill, { backgroundColor: statusColor + '1F' }]}>
-                    <ThemedText style={[styles.statusText, { color: statusColor }]}>{statusLabel}</ThemedText>
-                  </View>
-                ) : null}
               </View>
 
               {/* What was logged that day sits in the day's own section: before the planned session while that is still to do, after it once it is done. */}
@@ -324,7 +252,6 @@ function PlanTraining() {
               ) : day?.type === 'workout' ? (
                 <WorkoutSummaryCard
                   title={day.title}
-                  subtitle={GOAL_SHORT_LABEL[currentUser.goal] + ' - ' + levelLabel(currentMonth?.phase)}
                   minutes={plannedSessionMinutes(day, ctx)}
                   kcal={plannedSessionKcal(day, ctx)}
                   onOpen={() => router.push({ pathname: '/workout-detail', params: { date } })}
@@ -374,7 +301,6 @@ function PlanTraining() {
           );
         })}
 
-        <HealthNotice style={{ marginTop: 16 }} />
       </ScreenScroll>
 
       <DayCalendarModal
@@ -410,17 +336,9 @@ function PlanTraining() {
 }
 
 const styles = StyleSheet.create({
-  modeSwitch: {
-    marginTop: -4,
-    marginBottom: 10,
-  },
   // Tighter than the app's section gap: the week, the button and the days read as one list.
   list: {
     gap: 12,
-  },
-  // Allenamento veloce fits on one screen, like Ricette: the deck takes the height left above the tab bar.
-  spotPage: {
-    flex: 1,
   },
   daySection: {
     marginBottom: 0,
@@ -462,13 +380,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: -0.2,
   },
-  // The days after today: dark grey and a size down, so today's workout leads.
-  sectionTitleQuiet: {
-    fontSize: 14,
-    lineHeight: 19,
-    fontWeight: '600',
-    opacity: 0.6,
-  },
   registerButton: {
     marginTop: 0,
     height: 54,
@@ -490,16 +401,6 @@ const styles = StyleSheet.create({
     color: OnBrand.text,
     fontSize: 15,
     lineHeight: 20,
-    fontWeight: '700',
-  },
-  statusPill: {
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 14,
-  },
-  statusText: {
-    fontSize: 13,
-    lineHeight: 17,
     fontWeight: '700',
   },
   trendButton: {

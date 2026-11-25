@@ -37,7 +37,6 @@ const PLAY_SIZE = 56;
 
 export type WorkoutSummaryCardProps = {
   title: string;
-  subtitle: string;
   minutes: number;
   kcal: number;
   /** Opens the session detail (the text and the chevron). */
@@ -46,7 +45,7 @@ export type WorkoutSummaryCardProps = {
   onStart?: () => void;
   /** Moves this session to today and today's here (the switch button on the days ahead). */
   onSwap?: () => void;
-  /** A past day: 'done' gets a green tick, 'missed' is highlighted in red. */
+  /** A past day: 'done' gets a small quiet tick, 'missed' only a Recupera button. No coloured frame, no tag. */
   status?: 'done' | 'missed';
   /** Starts the session on the day it was missed ("Recupera"). */
   onRecover?: () => void;
@@ -56,22 +55,16 @@ export type WorkoutSummaryCardProps = {
   progress?: { done: number; total: number };
 };
 
-/** A day's session: its name, "Forza - Livello base" and its duration + estimated
- * kcal. The whole box opens the session's sheet; today's session also has the
+/** A day's session: its name and its duration + estimated kcal. The whole box opens the session's sheet; today's session also has the
  * "Scorri per iniziare" slider at the bottom, which starts it. */
-export function WorkoutSummaryCard({ title, subtitle, minutes, kcal, onOpen, onStart, onSwap, status, onRecover, resume, progress }: WorkoutSummaryCardProps) {
+export function WorkoutSummaryCard({ title, minutes, kcal, onOpen, onStart, onSwap, status, onRecover, resume, progress }: WorkoutSummaryCardProps) {
   const theme = useTheme();
   const missed = status === 'missed';
   const finished = status === 'done';
   return (
     <FlatCard
       radius={20}
-      style={[
-        styles.card,
-        missed && { borderWidth: 1.5, borderColor: theme.danger, backgroundColor: theme.danger + '14' },
-        finished && { borderWidth: 1.5, borderColor: theme.brandGreen, backgroundColor: theme.brandGreen + '12' },
-        resume && { borderWidth: 1.5, borderColor: theme.accent, backgroundColor: theme.accentSoft },
-      ]}>
+      style={[styles.card, resume && { borderWidth: 1, borderColor: theme.accent }]}>
       <Pressable onPress={onOpen} accessibilityRole="button" accessibilityLabel={`Dettagli: ${title}`} style={StyleSheet.absoluteFill} />
       <View style={styles.row} pointerEvents="box-none">
         {onSwap ? (
@@ -80,11 +73,12 @@ export function WorkoutSummaryCard({ title, subtitle, minutes, kcal, onOpen, onS
               <Icon name="swap" size={24} color={theme.text} />
             </View>
           </PressableScale>
-        ) : status ? (
+        ) : finished ? (
+          // Done: a small tick on a neutral disc, the same weight as the swap button. No green frame, no label.
           <View
-            accessibilityLabel={missed ? 'Non completato' : 'Completato'}
-            style={[styles.play, styles.swap, { width: PLAY_SIZE, height: PLAY_SIZE, borderRadius: PLAY_SIZE / 2, backgroundColor: missed ? theme.danger : theme.brandGreen }]}>
-            <Icon name={missed ? 'close' : 'check'} size={28} color="#FFFFFF" />
+            accessibilityLabel="Fatto"
+            style={[styles.play, styles.swap, styles.doneDisc, { backgroundColor: theme.backgroundElement }]}>
+            <Icon name="check" size={20} strokeWidth={2.4} color={theme.text} />
           </View>
         ) : null}
 
@@ -92,9 +86,6 @@ export function WorkoutSummaryCard({ title, subtitle, minutes, kcal, onOpen, onS
           <View style={styles.textCol}>
             <ThemedText style={styles.title} numberOfLines={1}>
               {title}
-            </ThemedText>
-            <ThemedText style={styles.subtitle} themeColor="textTertiary" numberOfLines={1}>
-              {subtitle}
             </ThemedText>
             <View style={styles.statsRow}>
               <View style={styles.stat}>
@@ -142,9 +133,9 @@ export function WorkoutSummaryCard({ title, subtitle, minutes, kcal, onOpen, onS
           scaleTo={0.97}
           accessibilityRole="button"
           accessibilityLabel={`Recupera ${title}`}
-          style={[styles.recover, { backgroundColor: theme.accentSoft }]}>
-          <Icon name="play" size={13} color={theme.accent} />
-          <ThemedText style={[styles.recoverLabel, { color: theme.accent }]}>Recupera</ThemedText>
+          style={[styles.recover, { backgroundColor: theme.backgroundElement }]}>
+          <Icon name="play" size={13} color={theme.text} />
+          <ThemedText style={[styles.recoverLabel, { color: theme.text }]}>Recupera</ThemedText>
         </PressableScale>
       ) : null}
     </FlatCard>
@@ -153,7 +144,7 @@ export function WorkoutSummaryCard({ title, subtitle, minutes, kcal, onOpen, onS
 
 const styles = StyleSheet.create({
   card: {
-    padding: 12,
+    padding: 16,
   },
   row: {
     flexDirection: 'row',
@@ -173,6 +164,7 @@ const styles = StyleSheet.create({
   },
   // The switch button is a soft orange disc, no ring, and centred as is.
   swap: { borderWidth: 0, paddingLeft: 0 },
+  doneDisc: { width: 40, height: 40, borderRadius: 20 },
   open: {
     flex: 1,
     minWidth: 0,
@@ -187,16 +179,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 17,
     lineHeight: 22,
-    fontWeight: '800',
-  },
-  subtitle: {
-    marginTop: 3,
-    fontSize: 13,
-    lineHeight: 17,
-    fontWeight: '500',
+    fontWeight: '700',
+    letterSpacing: -0.3,
   },
   statsRow: {
-    marginTop: 8,
+    marginTop: 6,
     flexDirection: 'row',
     gap: 14,
   },

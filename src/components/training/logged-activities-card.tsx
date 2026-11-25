@@ -48,27 +48,21 @@ export function LoggedActivitiesCard({ date, title = 'Allenamenti registrati', i
                 accessibilityRole="button"
                 accessibilityLabel={`Dettagli: ${label}`}
                 style={({ pressed }) => [styles.open, pressed && styles.pressed]}>
-                <View style={styles.icon}>
-                  <Icon name={ACTIVITY_ICON[entry.activityType] ?? 'otherSport'} size={24} color={theme.text} />
+                <View style={[styles.icon, { backgroundColor: theme.backgroundElement }]}>
+                  <Icon name={ACTIVITY_ICON[entry.activityType] ?? 'otherSport'} size={22} strokeWidth={1.6} color={theme.text} />
                 </View>
                 <View style={{ flex: 1, gap: 2 }}>
                   <ThemedText style={styles.name} numberOfLines={1}>
                     {label}
                   </ThemedText>
-                  <View style={styles.metaRow}>
-                    <Icon name="clock" size={13} color={theme.textTertiary} />
-                    <ThemedText style={styles.meta} themeColor="textTertiary">
-                      {entry.durationMinutes} min{intensity ? ` · ${intensity}` : ''}
-                    </ThemedText>
-                  </View>
+                  <ThemedText style={styles.meta} themeColor="textTertiary">
+                    {entry.durationMinutes} min{intensity ? ` · ${intensity.toLowerCase()}` : ''}
+                  </ThemedText>
                 </View>
                 <View style={styles.kcalCol}>
-                  <View style={styles.metaRow}>
-                    <Icon name="flame" size={14} color={theme.accent} />
-                    <ThemedText style={styles.kcal}>{Math.round(entry.estimatedKcal)}</ThemedText>
-                  </View>
+                  <ThemedText style={styles.kcal}>{Math.round(entry.estimatedKcal)}</ThemedText>
                   <ThemedText style={styles.meta} themeColor="textTertiary">
-                    kcal stimate
+                    kcal
                   </ThemedText>
                 </View>
               </Pressable>
@@ -105,7 +99,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   card: {
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     paddingVertical: 4,
   },
   row: {
@@ -125,16 +119,17 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   icon: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     alignItems: 'center',
     justifyContent: 'center',
   },
   name: {
-    fontSize: 15,
-    lineHeight: 20,
-    fontWeight: '700',
+    fontSize: 16,
+    lineHeight: 21,
+    fontWeight: '600',
+    letterSpacing: -0.2,
   },
   metaRow: {
     flexDirection: 'row',
@@ -148,12 +143,14 @@ const styles = StyleSheet.create({
   },
   kcalCol: {
     alignItems: 'flex-end',
-    gap: 2,
+    gap: 0,
   },
   kcal: {
-    fontSize: 15,
-    lineHeight: 20,
-    fontWeight: '700',
+    fontSize: 22,
+    lineHeight: 26,
+    fontWeight: '300',
+    letterSpacing: -0.6,
+    fontVariant: ['tabular-nums'],
   },
   trash: {
     padding: 4,

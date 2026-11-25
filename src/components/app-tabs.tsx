@@ -55,7 +55,7 @@ const SpringTab: WithSpringConfig = { damping: 19, mass: 0.7, stiffness: 230 };
 
 const TAB_ITEMS: { name: string; href: Href; label: string; icon: IconName }[] = [
   { name: 'index', href: '/', label: 'Home', icon: 'home' },
-  { name: 'training', href: '/training', label: 'Training', icon: 'training' },
+  { name: 'training', href: '/training', label: 'Allenamento', icon: 'training' },
   { name: 'nutrition', href: '/nutrition', label: 'Nutrizione', icon: 'nutrition' },
   { name: 'plans', href: '/plans', label: 'Piani', icon: 'plans' },
   { name: 'progress', href: '/progress', label: 'Progressi', icon: 'progress' },
@@ -211,7 +211,7 @@ function TabButton({
         </Animated.View>
         {isFocused ? (
           <Animated.View entering={FadeIn.duration(220).delay(60)} exiting={FadeOut.duration(90)}>
-            <ThemedText type="smallBold" style={[styles.tabLabel, { color }]} numberOfLines={1}>
+            <ThemedText type="smallBold" style={[styles.tabLabel, { color }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
               {label}
             </ThemedText>
           </Animated.View>
