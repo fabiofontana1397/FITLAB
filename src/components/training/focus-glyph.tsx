@@ -1,5 +1,6 @@
+import { useId } from 'react';
 import { View } from 'react-native';
-import Svg, { Circle, G, Path, Rect } from 'react-native-svg';
+import Svg, { Circle, Defs, G, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 
 import type { SpotFocus } from '@/lib/planning/training/spot-workouts';
 
@@ -162,14 +163,16 @@ export function hasMappedMuscles(groups: (string | undefined)[]): boolean {
   return groups.some((g) => g != null && g in GROUP_TO_MUSCLES);
 }
 
-/** The body's bounds on the 40×60 drawing, a little loose so the line is never clipped. */
+/** The body's bounds on the 40×60 drawing, a little loose so nothing is clipped. */
 const BODY_BOX = { x: 6.6, y: 1.6, w: 26.8, h: 57.6 };
 
 /**
- * A session's muscles as a tiny body map: front and back figures side by side, line-drawn, with the muscles the
- * session trains filled in the accent. `groups` are the engine's MuscleGroup keys of the session's exercises.
+ * A session's muscles as a tiny body map: front and back figures side by side, drawn as solid soft-toned
+ * silhouettes (no outlines), every muscle a faint relief and the ones the session trains filled with an accent
+ * gradient. `groups` are the engine's MuscleGroup keys of the session's exercises; `tone` is the page's text colour.
  */
-export function BodyMapGlyph({ groups, height = 56, line, accent }: { groups: (string | undefined)[]; height?: number; line: string; accent: string }) {
+export function BodyMapGlyph({ groups, height = 56, tone, accent }: { groups: (string | undefined)[]; height?: number; tone: string; accent: string }) {
+  const uid = useId().replace(/:/g, '');
   const front = new Set<Muscle>();
   const back = new Set<Muscle>();
   for (const g of groups) {
@@ -178,31 +181,39 @@ export function BodyMapGlyph({ groups, height = 56, line, accent }: { groups: (s
     m?.back?.forEach((x) => back.add(x));
   }
   const width = (height * BODY_BOX.w) / BODY_BOX.h;
-  const strokeWidth = (1.1 * BODY_BOX.h) / height;
-  const stroke = { stroke: line, strokeWidth, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
 
   const figure = (muscles: Muscle[], lit: Set<Muscle>, key: string) => (
     <Svg key={key} width={width} height={height} viewBox={`${BODY_BOX.x} ${BODY_BOX.y} ${BODY_BOX.w} ${BODY_BOX.h}`}>
+      <Defs>
+        <LinearGradient id={`body-${uid}`} x1="0" y1="0" x2="0" y2="1">
+          <Stop offset="0" stopColor={tone} stopOpacity={0.2} />
+          <Stop offset="1" stopColor={tone} stopOpacity={0.09} />
+        </LinearGradient>
+        <LinearGradient id={`lit-${uid}`} x1="0" y1="0" x2="0" y2="1">
+          <Stop offset="0" stopColor={accent} stopOpacity={0.72} />
+          <Stop offset="1" stopColor={accent} stopOpacity={1} />
+        </LinearGradient>
+      </Defs>
       {[undefined, MIRROR].map((transform) => (
         <G key={transform ?? 'left'} transform={transform}>
+          <Path d={SILHOUETTE} fill={`url(#body-${uid})`} />
           {muscles.map((m) =>
             MUSCLE[m].map((d, i) =>
               lit.has(m) ? (
-                <Path key={`${m}-${i}`} d={d} fill={accent} />
+                <Path key={`${m}-${i}`} d={d} fill={`url(#lit-${uid})`} />
               ) : (
-                <Path key={`${m}-${i}`} d={d} fill="none" {...stroke} strokeWidth={strokeWidth * 0.8} opacity={CONTOUR_OPACITY * 0.8} />
+                <Path key={`${m}-${i}`} d={d} fill={tone} opacity={0.08} />
               )
             )
           )}
-          <Path d={OUTLINE} fill="none" {...stroke} />
         </G>
       ))}
-      <Circle cx={20} cy={5.6} r={3.3} fill="none" {...stroke} />
+      <Circle cx={20} cy={5.6} r={3.3} fill={`url(#body-${uid})`} />
     </Svg>
   );
 
   return (
-    <View style={{ flexDirection: 'row', gap: 2 }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+    <View style={{ flexDirection: 'row', gap: 3 }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
       {figure(FRONT, front, 'front')}
       {figure(BACK_FULL, back, 'back')}
     </View>

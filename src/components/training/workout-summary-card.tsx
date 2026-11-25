@@ -70,8 +70,8 @@ export function WorkoutSummaryCard({ title, minutes, kcal, onOpen, onStart, onSw
       <View style={styles.row} pointerEvents="box-none">
         {/* The muscles this session trains, lit on a tiny front/back figure. */}
         {showBody ? (
-          <View style={[styles.body, { backgroundColor: theme.backgroundElement }]} pointerEvents="none">
-            <BodyMapGlyph groups={muscleGroups} height={48} line={theme.textSecondary} accent={theme.accent} />
+          <View style={styles.body} pointerEvents="none">
+            <BodyMapGlyph groups={muscleGroups} height={58} tone={theme.text} accent={theme.accent} />
           </View>
         ) : null}
 
@@ -171,7 +171,7 @@ const styles = StyleSheet.create({
   swap: { borderWidth: 0, paddingLeft: 0 },
   doneDisc: { width: 30, height: 30, borderRadius: 15 },
   trailingDisc: { width: 44, height: 44, borderRadius: 22 },
-  body: { width: 64, height: 64, borderRadius: 18, borderCurve: 'continuous', alignItems: 'center', justifyContent: 'center' },
+  body: { alignItems: 'center', justifyContent: 'center', marginVertical: -4 },
   open: {
     flex: 1,
     minWidth: 0,
