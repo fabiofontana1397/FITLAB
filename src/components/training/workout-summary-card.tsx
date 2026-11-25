@@ -2,7 +2,6 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { PressableScale } from '@/components/motion/pressable-scale';
 import { ThemedText } from '@/components/themed-text';
-import { BodyMapGlyph, hasMappedMuscles } from '@/components/training/focus-glyph';
 import { SwipeToStart } from '@/components/training/swipe-to-start';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon } from '@/components/ui/icon';
@@ -51,30 +50,20 @@ export type WorkoutSummaryCardProps = {
   resume?: { elapsedLabel: string; onResume: () => void };
   /** Exercises done out of the session's, shown as a bar while the session is under way. */
   progress?: { done: number; total: number };
-  /** The session's muscle groups (engine keys): drawn as a small front/back body map on the left. */
-  muscleGroups?: (string | undefined)[];
 };
 
 /** A day's session: its name and its duration + estimated kcal. The whole box opens the session's sheet; today's session also has the
  * "Scorri per iniziare" slider at the bottom, which starts it. */
-export function WorkoutSummaryCard({ title, minutes, kcal, onOpen, onStart, onSwap, status, onRecover, resume, progress, muscleGroups }: WorkoutSummaryCardProps) {
+export function WorkoutSummaryCard({ title, minutes, kcal, onOpen, onStart, onSwap, status, onRecover, resume, progress }: WorkoutSummaryCardProps) {
   const theme = useTheme();
   const missed = status === 'missed';
   const finished = status === 'done';
-  const showBody = muscleGroups != null && hasMappedMuscles(muscleGroups);
   return (
     <FlatCard
       radius={20}
       style={[styles.card, resume && { borderWidth: 1, borderColor: theme.accent }]}>
       <Pressable onPress={onOpen} accessibilityRole="button" accessibilityLabel={`Dettagli: ${title}`} style={StyleSheet.absoluteFill} />
       <View style={styles.row} pointerEvents="box-none">
-        {/* The muscles this session trains, lit on a tiny front/back figure. */}
-        {showBody ? (
-          <View style={styles.body} pointerEvents="none">
-            <BodyMapGlyph groups={muscleGroups} height={58} tone={theme.text} accent={theme.accent} />
-          </View>
-        ) : null}
-
         <View style={styles.open} pointerEvents="none">
           <View style={styles.textCol}>
             <ThemedText style={styles.title} numberOfLines={1}>
@@ -171,7 +160,6 @@ const styles = StyleSheet.create({
   swap: { borderWidth: 0, paddingLeft: 0 },
   doneDisc: { width: 30, height: 30, borderRadius: 15 },
   trailingDisc: { width: 44, height: 44, borderRadius: 22 },
-  body: { alignItems: 'center', justifyContent: 'center', marginVertical: -4 },
   open: {
     flex: 1,
     minWidth: 0,

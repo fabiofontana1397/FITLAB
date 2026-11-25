@@ -254,7 +254,6 @@ function PlanTraining() {
                   title={day.title}
                   minutes={plannedSessionMinutes(day, ctx)}
                   kcal={plannedSessionKcal(day, ctx)}
-                  muscleGroups={(day.exercises ?? []).map((ex) => ex.muscleGroup)}
                   onOpen={() => router.push({ pathname: '/workout-detail', params: { date } })}
                   // Only today's session can be started; the days ahead can be brought forward instead.
                   onStart={date === today && !done ? () => setSessionDate(date) : undefined}
