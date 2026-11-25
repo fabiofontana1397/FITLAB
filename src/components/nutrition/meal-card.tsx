@@ -16,7 +16,6 @@ type Totals = { kcal: number; protein: number; carbs: number; fats: number };
 
 export type MealCardProps = {
   label: string;
-  time: string;
   icon: IconName;
   entries: MealFoodEntry[];
   totals: Totals;
@@ -32,20 +31,22 @@ export type MealCardProps = {
 const OPEN_TIMING = { duration: 320, easing: Easing.bezier(0.22, 1, 0.36, 1) };
 const CLOSE_TIMING = { duration: 240, easing: Easing.bezier(0.4, 0, 0.2, 1) };
 
-function countLabel(n: number): string {
-  return n === 0 ? 'Nessun alimento' : n === 1 ? '1 alimento' : `${n} alimenti`;
-}
+/** The meal's macros, each as a thin line glyph and its initial (P · C · G), the same glyphs as everywhere else. */
+const MACROS = [
+  { key: 'protein', letter: 'P', icon: 'protein', name: 'Proteine' },
+  { key: 'carbs', letter: 'C', icon: 'carbs', name: 'Carboidrati' },
+  { key: 'fats', letter: 'G', icon: 'fats', name: 'Grassi' },
+] as const;
 
 /**
  * One meal of the day on Nutrizione, laid out as in the reference:
- * - a plain icon, the meal's name and "09:30 · 5 alimenti" on the left; its
- *   kcal in green on the right;
- * - protein / carbs / fat of the meal on one line;
+ * - a plain icon and the meal's name on the left; its kcal in green on the right;
+ * - P / C / G of the meal on one line, each with its line glyph;
  * - the foods, each with its picture, grams, kcal and P · C · G, separated by
  *   hairlines, then a full-width "+ Aggiungi alimento" outline button.
  * Tapping the header folds the foods away.
  */
-export function MealCard({ label, time, icon, entries, totals, expanded, onToggle, onEditEntry, onDeleteEntry, onAddFood }: MealCardProps) {
+export function MealCard({ label, icon, entries, totals, expanded, onToggle, onEditEntry, onDeleteEntry, onAddFood }: MealCardProps) {
   const theme = useTheme();
   // 0 = folded, 1 = open. The foods stay mounted and the frame's height follows
   // `progress`, so the cards below slide in the same frame instead of jumping.
@@ -75,9 +76,6 @@ export function MealCard({ label, time, icon, entries, totals, expanded, onToggl
           <ThemedText style={styles.name} numberOfLines={1}>
             {label}
           </ThemedText>
-          <ThemedText style={styles.sub} themeColor="textTertiary" numberOfLines={1}>
-            {time} · {countLabel(entries.length)}
-          </ThemedText>
         </View>
         <View style={styles.kcalCol}>
           <ThemedText style={[styles.kcal, { color: theme.brandGreen }]}>{Math.round(totals.kcal)} kcal</ThemedText>
@@ -85,16 +83,16 @@ export function MealCard({ label, time, icon, entries, totals, expanded, onToggl
       </Pressable>
 
       <View style={styles.macroRow}>
-        {(
-          [
-            ['Proteine', totals.protein],
-            ['Carboidrati', totals.carbs],
-            ['Grassi', totals.fats],
-          ] as const
-        ).map(([name, value]) => (
-          <ThemedText key={name} style={styles.macro} themeColor="textSecondary" numberOfLines={1}>
-            {name} <ThemedText style={styles.macroValue}>{Math.round(value)} g</ThemedText>
-          </ThemedText>
+        {MACROS.map((m) => (
+          <View key={m.key} style={styles.macroItem} accessible accessibilityLabel={`${m.name} ${Math.round(totals[m.key])} grammi`}>
+            <Icon name={m.icon} size={15} color={theme.textSecondary} strokeWidth={1.5} />
+            <ThemedText style={styles.macro} themeColor="textSecondary">
+              {m.letter}
+            </ThemedText>
+            <ThemedText style={styles.macroValue} numberOfLines={1}>
+              {Math.round(totals[m.key])} g
+            </ThemedText>
+          </View>
         ))}
       </View>
 
@@ -180,11 +178,6 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     fontWeight: '700',
   },
-  sub: {
-    fontSize: 13,
-    lineHeight: 17,
-    fontWeight: '500',
-  },
   kcalCol: {
     alignItems: 'flex-end',
     flexShrink: 1,
@@ -194,20 +187,26 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     fontWeight: '700',
   },
+  // Three equal columns, so P, C and G line up from one meal to the next.
   macroRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     gap: 8,
-    marginTop: 14,
+    marginTop: 12,
+  },
+  macroItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
   },
   macro: {
     fontSize: 13,
     lineHeight: 17,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   macroValue: {
-    fontSize: 13,
-    lineHeight: 17,
+    fontSize: 14,
+    lineHeight: 18,
     fontWeight: '700',
   },
   frame: {
