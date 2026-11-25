@@ -202,7 +202,6 @@ export function TrainingPlanView({ plan, goal, checkinPendingMonth, onCheckin }:
 
 /** The Piani page for the nutrition plan. */
 export function DietPlanView({ plan, goal, checkinPendingMonth, onCheckin }: PlanActions & { plan: DietPlan; goal: Goal }) {
-  const theme = useTheme();
   const userName = useUserStore((s) => s.name);
   const monthOf = (monthIndex: number) => plan.months.find((m) => m.monthIndex === monthIndex) ?? plan.months[0];
 
@@ -242,10 +241,6 @@ export function DietPlanView({ plan, goal, checkinPendingMonth, onCheckin }: Pla
         if (!day) return null;
         return (
           <>
-            <ThemedText style={styles.dayTitle}>
-              {day.isTrainingDay == null ? 'Menù del giorno' : day.isTrainingDay ? 'Giorno di allenamento' : 'Giorno di riposo'}
-              {day.calorieTarget ? <ThemedText style={[styles.dayTitle, { color: theme.accent }]}>{` · ${day.calorieTarget} kcal`}</ThemedText> : null}
-            </ThemedText>
             {inMealOrder(day.meals).map((meal) => (
               <MealCard
                 key={meal.slotId}

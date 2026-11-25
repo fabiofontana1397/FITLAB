@@ -4,7 +4,7 @@ import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 
 import { CountUpText } from '@/components/energy-guide/count-up-text';
 import { GlassPopup } from '@/components/glass/glass-popup';
-import { MonthTimeline } from '@/components/plans/month-timeline';
+import { MonthTimeline, MonthWeeksProgress } from '@/components/plans/month-timeline';
 import { Reveal } from '@/components/motion/reveal';
 import { ThemedText } from '@/components/themed-text';
 import { CheckinInfoPopup } from '@/components/training/checkin-info-popup';
@@ -18,7 +18,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { hapticSelection, hapticSuccess } from '@/lib/haptics';
 import { mondayIndex } from '@/lib/mock/dates';
 import { WEEKDAY_LABELS } from '@/lib/planning/exercise-library';
-import { currentMonthIndex, monthEndInfo } from '@/lib/planning/plan-progress';
+import { currentMonthIndex, monthEndInfo, monthProgress } from '@/lib/planning/plan-progress';
 import { planMonthName } from '@/lib/planning/targets-plan';
 import type { PlanPhaseKind } from '@/lib/planning/types';
 import { checkinUnlockedThroughMonth, useMonthlyCheckinStore } from '@/store/monthly-checkin-store';
@@ -129,42 +129,26 @@ export function PlanView({ kind, plan, title, description, objective, phaseDetai
       ) : (
       <Reveal index={0}>
         <FlatCard radius={Radius.medium} style={styles.box}>
-          <View>
+          {/* The plan's name; "Come funziona" opens what it is, how it goes on and what it aims at. */}
           <View style={styles.headRow}>
-            <View style={styles.flex}>
-              <ThemedText style={styles.title} numberOfLines={1} accessibilityRole="header">
-                {kind === 'training' ? 'Il tuo piano di allenamento' : 'Il tuo piano alimentare'}
-              </ThemedText>
-              <View style={[styles.strategy, { backgroundColor: theme.accentSoft }]}>
-                <ThemedText style={[styles.strategyText, { color: theme.accent }]} numberOfLines={1}>
-                  {title}
-                </ThemedText>
-              </View>
-            </View>
+            <ThemedText style={[styles.title, styles.flex]} numberOfLines={1} accessibilityRole="header">
+              {kind === 'training' ? 'Il tuo piano di allenamento' : 'Il tuo piano alimentare'}
+            </ThemedText>
             <Pressable
               onPress={() => {
                 hapticSelection();
-                setPlanInfoOpen((v) => !v);
+                setPlanInfoOpen(true);
               }}
-              hitSlop={8}
+              hitSlop={10}
               accessibilityRole="button"
-              accessibilityState={{ expanded: planInfoOpen }}
-              accessibilityLabel="Dettagli del piano"
-              style={({ pressed }) => [styles.iconButton, { backgroundColor: theme.backgroundElement, opacity: pressed ? 0.6 : 1 }]}
+              accessibilityLabel="Come funziona il piano"
+              style={({ pressed }) => [styles.howButton, { opacity: pressed ? 0.5 : 1 }]}
             >
-              <Icon name={planInfoOpen ? 'chevronUp' : 'info'} size={18} color={theme.textSecondary} />
+              <ThemedText style={styles.howLabel} themeColor="textSecondary">
+                Come funziona
+              </ThemedText>
+              <Icon name="chevronRight" size={13} color={theme.textSecondary} />
             </Pressable>
-          </View>
-
-            <Collapsible open={planInfoOpen} contentStyle={styles.info}>
-              <ThemedText style={styles.infoText} themeColor="textSecondary">
-                {description}
-              </ThemedText>
-              <ThemedText style={styles.infoText}>
-                <ThemedText style={[styles.infoText, { color: theme.accent, fontWeight: '700' }]}>Obiettivo · </ThemedText>
-                {objective}
-              </ThemedText>
-            </Collapsible>
           </View>
 
           <MonthTimeline
@@ -210,11 +194,16 @@ export function PlanView({ kind, plan, title, description, objective, phaseDetai
               accessibilityRole="button"
               accessibilityLabel={`Scarica il PDF del Mese ${selectedMonth}`}
               accessibilityState={{ disabled: !unlocked }}
-              style={({ pressed }) => [styles.iconButton, { backgroundColor: theme.backgroundElement, opacity: !unlocked ? 0.4 : pressed ? 0.6 : 1 }]}
+              style={({ pressed }) => [styles.iconButton, { opacity: !unlocked ? 0.35 : pressed ? 0.5 : 1 }]}
             >
-              <Icon name="download" size={17} color={theme.accent} />
+              <Icon name="download" size={22} color={theme.text} />
             </Pressable>
           </Animated.View>
+
+            {/* The chosen month in its four weeks. */}
+            <View style={styles.weeksRow}>
+              <MonthWeeksProgress key={`weeks-${selectedMonth}`} daysElapsed={monthProgress(plan, selectedMonth).fraction * 30} />
+            </View>
 
             <Collapsible open={monthInfoOpen} contentStyle={styles.info}>
               <ThemedText style={styles.infoText} themeColor="textSecondary">
@@ -298,6 +287,34 @@ export function PlanView({ kind, plan, title, description, objective, phaseDetai
         )}
       </Reveal>
 
+      <GlassPopup visible={planInfoOpen} onClose={() => setPlanInfoOpen(false)} style={styles.popup}>
+        <ThemedText type="title" style={styles.center}>
+          Come funziona
+        </ThemedText>
+        <ThemedText style={[styles.popupStrategy, styles.center]} themeColor="textSecondary">
+          {title}
+        </ThemedText>
+        <View style={styles.popupSection}>
+          <ThemedText style={styles.popupHeading}>Il programma</ThemedText>
+          <ThemedText style={styles.infoText} themeColor="textSecondary">
+            {description}
+          </ThemedText>
+        </View>
+        <View style={styles.popupSection}>
+          <ThemedText style={styles.popupHeading}>Obiettivo</ThemedText>
+          <ThemedText style={styles.infoText} themeColor="textSecondary">
+            {objective}
+          </ThemedText>
+        </View>
+        <View style={styles.popupSection}>
+          <ThemedText style={styles.popupHeading}>Come procede</ThemedText>
+          <ThemedText style={styles.infoText} themeColor="textSecondary">
+            {`Il piano dura ${total} ${total === 1 ? 'mese' : 'mesi'}, divisi in settimane. A fine mese fai il check-in: sblocca il mese successivo e lo adatta ai tuoi progressi. I mesi futuri restano bloccati, ma puoi già guardarli.`}
+          </ThemedText>
+        </View>
+        <PrimaryButton label="Ho capito" onPress={() => setPlanInfoOpen(false)} />
+      </GlassPopup>
+
       <CheckinInfoPopup visible={checkinInfoOpen} onClose={() => setCheckinInfoOpen(false)} monthIndex={selectedMonth} daysLeft={daysLeft} endDate={monthEndLabel} />
 
       <GlassPopup visible={downloadOpen} onClose={() => (exporting ? undefined : setDownloadOpen(false))} style={styles.popup}>
@@ -379,9 +396,13 @@ const styles = StyleSheet.create({
   section: { marginTop: 16 },
   center: { textAlign: 'center' },
   box: { padding: 14, gap: 12 },
-  headRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  strategy: { alignSelf: 'flex-start', marginTop: 6, paddingHorizontal: 10, paddingVertical: 3, borderRadius: 12, borderCurve: 'continuous', maxWidth: '100%' },
-  strategyText: { fontSize: 13, lineHeight: 18, fontWeight: '600' },
+  headRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  howButton: { flexDirection: 'row', alignItems: 'center', gap: 2, minHeight: 32 },
+  howLabel: { fontSize: 14, lineHeight: 18, fontWeight: '500' },
+  weeksRow: { marginTop: 10 },
+  popupStrategy: { fontSize: 15, lineHeight: 20, fontWeight: '600', marginTop: -6 },
+  popupSection: { gap: 4 },
+  popupHeading: { fontSize: 15, lineHeight: 20, fontWeight: '700' },
   title: { fontSize: 17, lineHeight: 22, fontWeight: '700', letterSpacing: -0.3 },
   caption: { fontSize: 13, lineHeight: 18 },
   captionStrong: { fontWeight: '700' },
