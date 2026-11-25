@@ -32,9 +32,6 @@ export function WorkoutBadge({ size = 60 }: { size?: number }) {
   );
 }
 
-/** The round status/swap disc on the card's left. 56 pt, comfortably over the HIG's 44 pt touch target. */
-const PLAY_SIZE = 56;
-
 export type WorkoutSummaryCardProps = {
   title: string;
   minutes: number;
@@ -67,21 +64,6 @@ export function WorkoutSummaryCard({ title, minutes, kcal, onOpen, onStart, onSw
       style={[styles.card, resume && { borderWidth: 1, borderColor: theme.accent }]}>
       <Pressable onPress={onOpen} accessibilityRole="button" accessibilityLabel={`Dettagli: ${title}`} style={StyleSheet.absoluteFill} />
       <View style={styles.row} pointerEvents="box-none">
-        {onSwap ? (
-          <PressableScale onPress={onSwap} haptic="press" accessibilityRole="button" accessibilityLabel={`Anticipa a oggi: ${title}`}>
-            <View style={[styles.play, styles.swap, { width: PLAY_SIZE, height: PLAY_SIZE, borderRadius: PLAY_SIZE / 2, backgroundColor: theme.backgroundElement }]}>
-              <Icon name="swap" size={24} color={theme.text} />
-            </View>
-          </PressableScale>
-        ) : finished ? (
-          // Done: a small tick on a neutral disc, the same weight as the swap button. No green frame, no label.
-          <View
-            accessibilityLabel="Fatto"
-            style={[styles.play, styles.swap, styles.doneDisc, { backgroundColor: theme.backgroundElement }]}>
-            <Icon name="check" size={20} strokeWidth={2.4} color={theme.text} />
-          </View>
-        ) : null}
-
         <View style={styles.open} pointerEvents="none">
           <View style={styles.textCol}>
             <ThemedText style={styles.title} numberOfLines={1}>
@@ -108,8 +90,20 @@ export function WorkoutSummaryCard({ title, minutes, kcal, onOpen, onStart, onSw
               </View>
             ) : null}
           </View>
-          <Icon name="chevronRight" size={18} color={theme.textTertiary} />
+          {onSwap || finished ? null : <Icon name="chevronRight" size={18} color={theme.textTertiary} />}
         </View>
+        {onSwap ? (
+          <PressableScale onPress={onSwap} haptic="press" accessibilityRole="button" accessibilityLabel={`Anticipa a oggi: ${title}`}>
+            <View style={[styles.play, styles.swap, styles.trailingDisc, { backgroundColor: theme.backgroundElement }]}>
+              <Icon name="swap" size={20} color={theme.text} />
+            </View>
+          </PressableScale>
+        ) : finished ? (
+          // Done: a green disc with a white tick. No frame, no label.
+          <View accessibilityLabel="Fatto" style={[styles.play, styles.swap, styles.doneDisc, { backgroundColor: theme.brandGreen }]}>
+            <Icon name="check" size={17} strokeWidth={2.6} color="#FFFFFF" />
+          </View>
+        ) : null}
       </View>
       {onStart && !resume ? (
         <SwipeToStart onStart={onStart} accessibilityLabel={`Inizia allenamento: ${title}`} testID="workout-swipe-start" />
@@ -164,7 +158,8 @@ const styles = StyleSheet.create({
   },
   // The switch button is a soft orange disc, no ring, and centred as is.
   swap: { borderWidth: 0, paddingLeft: 0 },
-  doneDisc: { width: 40, height: 40, borderRadius: 20 },
+  doneDisc: { width: 30, height: 30, borderRadius: 15 },
+  trailingDisc: { width: 44, height: 44, borderRadius: 22 },
   open: {
     flex: 1,
     minWidth: 0,
