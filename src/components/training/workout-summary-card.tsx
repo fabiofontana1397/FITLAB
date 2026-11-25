@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { PressableScale } from '@/components/motion/pressable-scale';
 import { ThemedText } from '@/components/themed-text';
+import { BodyMapGlyph, hasMappedMuscles } from '@/components/training/focus-glyph';
 import { SwipeToStart } from '@/components/training/swipe-to-start';
 import { FlatCard } from '@/components/ui/flat-card';
 import { Icon } from '@/components/ui/icon';
@@ -32,9 +33,6 @@ export function WorkoutBadge({ size = 60 }: { size?: number }) {
   );
 }
 
-/** The round status/swap disc on the card's left. 56 pt, comfortably over the HIG's 44 pt touch target. */
-const PLAY_SIZE = 56;
-
 export type WorkoutSummaryCardProps = {
   title: string;
   minutes: number;
@@ -53,32 +51,27 @@ export type WorkoutSummaryCardProps = {
   resume?: { elapsedLabel: string; onResume: () => void };
   /** Exercises done out of the session's, shown as a bar while the session is under way. */
   progress?: { done: number; total: number };
+  /** The session's muscle groups (engine keys): drawn as a small front/back body map on the left. */
+  muscleGroups?: (string | undefined)[];
 };
 
 /** A day's session: its name and its duration + estimated kcal. The whole box opens the session's sheet; today's session also has the
  * "Scorri per iniziare" slider at the bottom, which starts it. */
-export function WorkoutSummaryCard({ title, minutes, kcal, onOpen, onStart, onSwap, status, onRecover, resume, progress }: WorkoutSummaryCardProps) {
+export function WorkoutSummaryCard({ title, minutes, kcal, onOpen, onStart, onSwap, status, onRecover, resume, progress, muscleGroups }: WorkoutSummaryCardProps) {
   const theme = useTheme();
   const missed = status === 'missed';
   const finished = status === 'done';
+  const showBody = muscleGroups != null && hasMappedMuscles(muscleGroups);
   return (
     <FlatCard
       radius={20}
       style={[styles.card, resume && { borderWidth: 1, borderColor: theme.accent }]}>
       <Pressable onPress={onOpen} accessibilityRole="button" accessibilityLabel={`Dettagli: ${title}`} style={StyleSheet.absoluteFill} />
       <View style={styles.row} pointerEvents="box-none">
-        {onSwap ? (
-          <PressableScale onPress={onSwap} haptic="press" accessibilityRole="button" accessibilityLabel={`Anticipa a oggi: ${title}`}>
-            <View style={[styles.play, styles.swap, { width: PLAY_SIZE, height: PLAY_SIZE, borderRadius: PLAY_SIZE / 2, backgroundColor: theme.backgroundElement }]}>
-              <Icon name="swap" size={24} color={theme.text} />
-            </View>
-          </PressableScale>
-        ) : finished ? (
-          // Done: a small tick on a neutral disc, the same weight as the swap button. No green frame, no label.
-          <View
-            accessibilityLabel="Fatto"
-            style={[styles.play, styles.swap, styles.doneDisc, { backgroundColor: theme.backgroundElement }]}>
-            <Icon name="check" size={20} strokeWidth={2.4} color={theme.text} />
+        {/* The muscles this session trains, lit on a tiny front/back figure. */}
+        {showBody ? (
+          <View style={[styles.body, { backgroundColor: theme.backgroundElement }]} pointerEvents="none">
+            <BodyMapGlyph groups={muscleGroups} height={48} line={theme.textSecondary} accent={theme.accent} />
           </View>
         ) : null}
 
@@ -108,8 +101,20 @@ export function WorkoutSummaryCard({ title, minutes, kcal, onOpen, onStart, onSw
               </View>
             ) : null}
           </View>
-          <Icon name="chevronRight" size={18} color={theme.textTertiary} />
+          {onSwap || finished ? null : <Icon name="chevronRight" size={18} color={theme.textTertiary} />}
         </View>
+        {onSwap ? (
+          <PressableScale onPress={onSwap} haptic="press" accessibilityRole="button" accessibilityLabel={`Anticipa a oggi: ${title}`}>
+            <View style={[styles.play, styles.swap, styles.trailingDisc, { backgroundColor: theme.backgroundElement }]}>
+              <Icon name="swap" size={20} color={theme.text} />
+            </View>
+          </PressableScale>
+        ) : finished ? (
+          // Done: a green disc with a white tick. No frame, no label.
+          <View accessibilityLabel="Fatto" style={[styles.play, styles.swap, styles.doneDisc, { backgroundColor: theme.brandGreen }]}>
+            <Icon name="check" size={17} strokeWidth={2.6} color="#FFFFFF" />
+          </View>
+        ) : null}
       </View>
       {onStart && !resume ? (
         <SwipeToStart onStart={onStart} accessibilityLabel={`Inizia allenamento: ${title}`} testID="workout-swipe-start" />
@@ -164,7 +169,9 @@ const styles = StyleSheet.create({
   },
   // The switch button is a soft orange disc, no ring, and centred as is.
   swap: { borderWidth: 0, paddingLeft: 0 },
-  doneDisc: { width: 40, height: 40, borderRadius: 20 },
+  doneDisc: { width: 30, height: 30, borderRadius: 15 },
+  trailingDisc: { width: 44, height: 44, borderRadius: 22 },
+  body: { width: 64, height: 64, borderRadius: 18, borderCurve: 'continuous', alignItems: 'center', justifyContent: 'center' },
   open: {
     flex: 1,
     minWidth: 0,

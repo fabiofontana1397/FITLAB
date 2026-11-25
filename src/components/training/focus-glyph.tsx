@@ -27,7 +27,7 @@ const OUTLINE =
 /** The same half closed along the centre line, to fill the whole figure. */
 const SILHOUETTE = `${OUTLINE}V10.2Z`;
 
-type Muscle = 'traps' | 'delts' | 'pecs' | 'biceps' | 'forearms' | 'abs' | 'obliques' | 'lats' | 'glutes' | 'quads' | 'calves';
+type Muscle = 'traps' | 'delts' | 'pecs' | 'biceps' | 'triceps' | 'forearms' | 'abs' | 'obliques' | 'lats' | 'glutes' | 'quads' | 'hamstrings' | 'calves';
 
 const MUSCLE: Record<Muscle, string[]> = {
   traps: ['M20 10.2C18.6 11.2 16.4 12 14.2 12.6C16.4 13.4 18.4 15 20 18.4Z'],
@@ -46,11 +46,16 @@ const MUSCLE: Record<Muscle, string[]> = {
   glutes: ['M19.8 32.4C18 31.6 15.6 31.8 14.4 33.4C13.8 35.2 14.2 37.4 15.6 38.6C17.2 39.4 18.8 39 19.8 38Z'],
   quads: ['M15.2 36.6C14.4 39.6 14.6 43.4 15.4 46C16.2 47.4 17.4 47.6 18.2 46.6C18.8 43.8 19 40.2 18.6 37.4C17.6 36.2 16 36 15.2 36.6Z'],
   calves: ['M15 50.2C14.6 52 15 53.6 15.8 54.8C16.8 54 17.8 52.2 18 50.4C17.4 49.6 15.8 49.6 15 50.2Z'],
+  // Back view only: the back of the arm and of the thigh sit where biceps and quads sit in front.
+  triceps: ['M11.4 18.8C10.4 19.8 9.8 21.8 9.8 23.8C9.9 25 10.4 25.8 10.9 26C11.4 24.6 11.8 22.6 11.9 20.4C11.9 19.6 11.7 19 11.4 18.8Z'],
+  hamstrings: ['M15.2 39.6C14.6 41.8 14.8 44.4 15.4 46.2C16.2 47.4 17.4 47.6 18.2 46.6C18.7 44.4 18.9 42 18.6 39.8C17.6 39 16 38.9 15.2 39.6Z'],
 };
 
 /** Muscles seen from the front and from the back (the outline is the same). */
 const FRONT: Muscle[] = ['delts', 'pecs', 'biceps', 'forearms', 'abs', 'obliques', 'quads', 'calves'];
 const BACK: Muscle[] = ['traps', 'delts', 'lats', 'forearms', 'glutes', 'calves'];
+/** The full back view of the body map: the same as BACK plus the back of arms and thighs. */
+const BACK_FULL: Muscle[] = ['traps', 'delts', 'triceps', 'lats', 'forearms', 'glutes', 'hamstrings', 'calves'];
 
 const VIEW: Partial<Record<SpotFocus, { muscles: Muscle[]; lit: Muscle[] }>> = {
   chest: { muscles: FRONT, lit: ['pecs'] },
@@ -129,6 +134,77 @@ export function FocusGlyph({ focus, size = 50, line, accent }: { focus: SpotFocu
           </>
         )}
       </Svg>
+    </View>
+  );
+}
+
+/** The training engine's muscle groups (catalog.ts) on the drawing: front, back or both. */
+const GROUP_TO_MUSCLES: Record<string, { front?: Muscle[]; back?: Muscle[] }> = {
+  chest: { front: ['pecs'] },
+  lats: { back: ['lats'] },
+  upperBack: { back: ['traps'] },
+  frontDelts: { front: ['delts'] },
+  sideDelts: { front: ['delts'], back: ['delts'] },
+  rearDelts: { back: ['delts'] },
+  quads: { front: ['quads'] },
+  adductors: { front: ['quads'] },
+  hamstrings: { back: ['hamstrings'] },
+  glutes: { back: ['glutes'] },
+  calves: { front: ['calves'], back: ['calves'] },
+  biceps: { front: ['biceps'] },
+  triceps: { back: ['triceps'] },
+  forearms: { front: ['forearms'], back: ['forearms'] },
+  abs: { front: ['abs', 'obliques'] },
+};
+
+/** Whether any of these groups can be drawn: a loaded plan without muscle data falls back to another icon. */
+export function hasMappedMuscles(groups: (string | undefined)[]): boolean {
+  return groups.some((g) => g != null && g in GROUP_TO_MUSCLES);
+}
+
+/** The body's bounds on the 40×60 drawing, a little loose so the line is never clipped. */
+const BODY_BOX = { x: 6.6, y: 1.6, w: 26.8, h: 57.6 };
+
+/**
+ * A session's muscles as a tiny body map: front and back figures side by side, line-drawn, with the muscles the
+ * session trains filled in the accent. `groups` are the engine's MuscleGroup keys of the session's exercises.
+ */
+export function BodyMapGlyph({ groups, height = 56, line, accent }: { groups: (string | undefined)[]; height?: number; line: string; accent: string }) {
+  const front = new Set<Muscle>();
+  const back = new Set<Muscle>();
+  for (const g of groups) {
+    const m = g ? GROUP_TO_MUSCLES[g] : undefined;
+    m?.front?.forEach((x) => front.add(x));
+    m?.back?.forEach((x) => back.add(x));
+  }
+  const width = (height * BODY_BOX.w) / BODY_BOX.h;
+  const strokeWidth = (1.1 * BODY_BOX.h) / height;
+  const stroke = { stroke: line, strokeWidth, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
+
+  const figure = (muscles: Muscle[], lit: Set<Muscle>, key: string) => (
+    <Svg key={key} width={width} height={height} viewBox={`${BODY_BOX.x} ${BODY_BOX.y} ${BODY_BOX.w} ${BODY_BOX.h}`}>
+      {[undefined, MIRROR].map((transform) => (
+        <G key={transform ?? 'left'} transform={transform}>
+          {muscles.map((m) =>
+            MUSCLE[m].map((d, i) =>
+              lit.has(m) ? (
+                <Path key={`${m}-${i}`} d={d} fill={accent} />
+              ) : (
+                <Path key={`${m}-${i}`} d={d} fill="none" {...stroke} strokeWidth={strokeWidth * 0.8} opacity={CONTOUR_OPACITY * 0.8} />
+              )
+            )
+          )}
+          <Path d={OUTLINE} fill="none" {...stroke} />
+        </G>
+      ))}
+      <Circle cx={20} cy={5.6} r={3.3} fill="none" {...stroke} />
+    </Svg>
+  );
+
+  return (
+    <View style={{ flexDirection: 'row', gap: 2 }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+      {figure(FRONT, front, 'front')}
+      {figure(BACK_FULL, back, 'back')}
     </View>
   );
 }
