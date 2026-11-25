@@ -69,23 +69,14 @@ export function TargetsPlanView({ plan, checkinPendingMonth, onCheckin }: { plan
             Il tuo piano
           </ThemedText>
 
-          <View>
-            <MonthTimeline months={plan.months.map((m) => m.monthIndex)} current={current} selected={selected} elapsedMonths={elapsedMonths} onSelect={setSelected} />
-            <View style={styles.monthLabels} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
-              {plan.months.map((m) => (
-                <ThemedText
-                  key={m.monthIndex}
-                  numberOfLines={1}
-                  style={[
-                    styles.monthLabel,
-                    { color: m.monthIndex === selected ? (m.monthIndex === current ? theme.accent : theme.text) : theme.textTertiary, fontWeight: m.monthIndex === selected ? '700' : '500' },
-                  ]}
-                >
-                  {monthName(m.monthIndex, total > 6 ? 'short' : 'long')}
-                </ThemedText>
-              ))}
-            </View>
-          </View>
+          <MonthTimeline
+            months={plan.months.map((m) => m.monthIndex)}
+            current={current}
+            selected={selected}
+            elapsedMonths={elapsedMonths}
+            onSelect={setSelected}
+            labels={plan.months.map((m) => monthName(m.monthIndex))}
+          />
 
           <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
@@ -163,8 +154,6 @@ const styles = StyleSheet.create({
   stack: { gap: Spacing.four },
   box: { padding: 14, gap: 12 },
   title: { fontSize: 17, lineHeight: 22, fontWeight: '700', letterSpacing: -0.3 },
-  monthLabels: { flexDirection: 'row', marginTop: 2 },
-  monthLabel: { flex: 1, textAlign: 'center', fontSize: 11, lineHeight: 14 },
   divider: { height: StyleSheet.hairlineWidth },
   monthHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' },
   monthTitle: { fontSize: 15, lineHeight: 20, fontWeight: '600', letterSpacing: -0.2 },

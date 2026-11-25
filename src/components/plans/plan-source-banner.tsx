@@ -142,7 +142,8 @@ export function PlanSourceBanner({ kind }: { kind: Kind }) {
   };
 
   const currentOption = OPTIONS[kind].find((o) => o.source === current);
-  const iconColor = theme.accent;
+  // Plain stylised glyphs, no tinted disc: black on the light theme, white on the dark one.
+  const iconColor = theme.text;
 
   return (
     <View>
@@ -159,13 +160,13 @@ export function PlanSourceBanner({ kind }: { kind: Kind }) {
           accessibilityLabel={`${line.title}. ${kind === 'training' ? 'Cambia il tipo di programma' : 'Cambia il tipo di piano'}`}
           style={({ pressed }) => [styles.head, { opacity: pressed ? 0.6 : 1 }]}
         >
-          <View style={[styles.badge, { backgroundColor: theme.accentSoft }]}>
+          <View style={styles.badge}>
             {isGenerating ? (
               <ActivityIndicator size="small" color={iconColor} />
             ) : currentOption?.icon === 'brand' || !currentOption ? (
               <BrandMark height={12} color={iconColor} />
             ) : (
-              <Icon name={currentOption.icon} size={16} color={iconColor} />
+              <Icon name={currentOption.icon} size={18} color={iconColor} />
             )}
           </View>
           <ThemedText style={[styles.flex, styles.title]} numberOfLines={1}>
@@ -188,7 +189,7 @@ export function PlanSourceBanner({ kind }: { kind: Kind }) {
                   style={({ pressed }) => [styles.option, { borderTopColor: theme.border, opacity: pressed ? 0.6 : 1 }]}
                 >
                   <View style={styles.optionIcon}>
-                    {o.icon === 'brand' ? <BrandMark height={13} color={theme.textSecondary} /> : <Icon name={o.icon} size={18} color={theme.textSecondary} />}
+                    {o.icon === 'brand' ? <BrandMark height={13} color={theme.text} /> : <Icon name={o.icon} size={19} color={theme.text} />}
                   </View>
                   <View style={styles.flex}>
                     <ThemedText style={styles.optionTitle}>{o.title}</ThemedText>
@@ -221,7 +222,7 @@ export function PlanSourceBanner({ kind }: { kind: Kind }) {
 const styles = StyleSheet.create({
   dropdown: { overflow: 'hidden' },
   head: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 44, paddingHorizontal: 12, paddingVertical: 6 },
-  badge: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  badge: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center' },
   flex: { flex: 1, minWidth: 0 },
   title: { fontSize: 15, lineHeight: 20, fontWeight: '600', letterSpacing: -0.2 },
   option: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 60, paddingHorizontal: 14, paddingVertical: 10, borderTopWidth: StyleSheet.hairlineWidth },

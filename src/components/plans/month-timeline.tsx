@@ -1,21 +1,29 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
-import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withRepeat, withSequence, withSpring, withTiming } from 'react-native-reanimated';
-import { LinearGradient } from 'expo-linear-gradient';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withDelay,
+  withRepeat,
+  withSequence,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 
-import { usePlayValue } from '@/components/energy-guide/use-play-value';
 import { ThemedText } from '@/components/themed-text';
-import { Icon } from '@/components/ui/icon';
-import { OnBrand } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { hapticSelection } from '@/lib/haptics';
 
-const ROW_HEIGHT = 44;
-const MAX_NODE = 30;
-const MIN_NODE = 18;
-const LINE = 3;
-/** How far the selection ring stands off the node it surrounds. */
-const RING_GAP = 4;
+const TRACK = 4;
+const TRACK_SELECTED = 7;
+const STAGGER_MS = 90;
+const FILL_MS = 750;
+const SHIMMER = 36;
+/** The accent ramp of the app's progress fills. */
+const ACCENT_RAMP = ['#FFA11E', '#FF5A00'] as const;
 
 export type MonthTimelineProps = {
   months: number[];
@@ -25,103 +33,142 @@ export type MonthTimelineProps = {
   /** How far along the plan is, in months (2.4 = 40% into the third month). */
   elapsedMonths: number;
   onSelect: (month: number) => void;
+  /** One label per month (its calendar name), in the same order as `months`. */
+  labels?: string[];
 };
 
 /**
- * The plan as a path: one stop per month on a line that fills as time passes. Months behind are solid with a check,
- * the one being lived is solid and breathes, the ones ahead are quiet numbers. A ring marks the chosen month and
- * slides to the next one when another is tapped. Every month fits the width, so nothing is cut off or scrolled.
+ * The plan as a row of thin capsules, one per month, with the month's name under it. On opening they fill one after
+ * the other from the left: months behind are full, the one being lived fills up to today in the accent colour with a
+ * slow light sweeping across it, the ones ahead stay empty. The chosen month's capsule grows a little thicker and its
+ * name turns bold; everything fits the width, so nothing is cut off or scrolled.
  */
-export function MonthTimeline({ months, current, selected, elapsedMonths, onSelect }: MonthTimelineProps) {
-  const theme = useTheme();
-  const reduceMotion = useReducedMotion();
-  const [width, setWidth] = useState(0);
-  const count = months.length;
-  const cell = count > 0 ? width / count : 0;
-  const node = Math.max(MIN_NODE, Math.min(MAX_NODE, cell - RING_GAP * 2 - 4));
-  const ring = node + RING_GAP * 2;
-  const lineLength = Math.max(0, cell * (count - 1));
-
-  // The line fills from the first stop to where the plan stands today.
-  const fill = usePlayValue(count > 1 ? Math.min(1, Math.max(0, elapsedMonths / (count - 1))) : 0, width > 0, 250);
-  const fillStyle = useAnimatedStyle(() => ({ width: fill.value * lineLength }));
-
-  // The ring glides to the chosen month.
-  const selectedIndex = Math.max(0, months.indexOf(selected));
-  const ringX = useSharedValue(-1);
-  useEffect(() => {
-    if (width === 0) return;
-    const x = selectedIndex * cell + (cell - ring) / 2;
-    ringX.set(ringX.get() < 0 || reduceMotion ? x : withSpring(x, { damping: 19, stiffness: 230, mass: 0.9 }));
-  }, [selectedIndex, cell, ring, width, reduceMotion, ringX]);
-  const ringStyle = useAnimatedStyle(() => ({ opacity: ringX.value < 0 ? 0 : 1, transform: [{ translateX: Math.max(0, ringX.value) }] }));
-
-  // The month being lived breathes: a halo that swells and fades, slowly.
-  const pulse = useSharedValue(0);
-  useEffect(() => {
-    if (reduceMotion) return;
-    pulse.set(withDelay(900, withRepeat(withSequence(withTiming(1, { duration: 1700, easing: Easing.out(Easing.quad) }), withTiming(0, { duration: 0 }), withTiming(0, { duration: 700 })), -1)));
-  }, [reduceMotion, pulse]);
-  const pulseStyle = useAnimatedStyle(() => ({ opacity: 0.38 * (1 - pulse.value), transform: [{ scale: 1 + pulse.value * 0.75 }] }));
-
-  const onLayout = (event: LayoutChangeEvent) => setWidth(event.nativeEvent.layout.width);
-  const selectedIsCurrent = selected === current;
-
+export function MonthTimeline({ months, current, selected, elapsedMonths, onSelect, labels }: MonthTimelineProps) {
+  const short = months.length > 4;
   return (
-    <View style={styles.row} onLayout={onLayout} accessibilityRole="tablist">
-      {width > 0 ? (
-        <>
-          <View style={[styles.line, { left: cell / 2, width: lineLength, backgroundColor: theme.backgroundElement }]}>
-            <Animated.View style={[styles.lineFill, fillStyle]}>
-              <LinearGradient colors={['#FFA11E', '#FF5A00']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />
-            </Animated.View>
-          </View>
-
-          <Animated.View
-            pointerEvents="none"
-            style={[styles.ring, { width: ring, height: ring, borderRadius: ring / 2, top: (ROW_HEIGHT - ring) / 2, borderColor: selectedIsCurrent ? theme.accent : theme.textSecondary, backgroundColor: theme.backgroundElevated }, ringStyle]}
+    <View style={styles.row} accessibilityRole="tablist">
+      {months.map((m, i) => {
+        const fill = Math.min(1, Math.max(0, elapsedMonths - i));
+        const label = labels?.[i] ?? `Mese ${m}`;
+        return (
+          <MonthSegment
+            key={m}
+            index={i}
+            label={short ? label.slice(0, 3) : label}
+            fullLabel={label}
+            fill={m < current ? 1 : m === current ? Math.max(fill, 0.04) : 0}
+            running={m === current}
+            selected={m === selected}
+            state={m < current ? 'concluso' : m === current ? 'in corso' : 'da iniziare'}
+            onPress={() => {
+              hapticSelection();
+              onSelect(m);
+            }}
           />
-
-          {months.map((m) => {
-            const done = m < current;
-            const running = m === current;
-            const solid = done || running;
-            return (
-              <Pressable
-                key={m}
-                onPress={() => {
-                  hapticSelection();
-                  onSelect(m);
-                }}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: m === selected }}
-                accessibilityLabel={`Mese ${m}${done ? ', concluso' : running ? ', in corso' : ', non ancora sbloccato'}`}
-                style={({ pressed }) => [styles.cell, { opacity: pressed ? 0.6 : 1 }]}
-              >
-                {running ? <Animated.View pointerEvents="none" style={[styles.halo, { width: node, height: node, borderRadius: node / 2, backgroundColor: theme.accent }, pulseStyle]} /> : null}
-                <View style={[styles.node, { width: node, height: node, borderRadius: node / 2, backgroundColor: solid ? theme.accent : theme.backgroundElement }]}>
-                  {done ? (
-                    <Icon name="check" size={Math.round(node * 0.5)} color={OnBrand.text} />
-                  ) : (
-                    <ThemedText style={[styles.number, { fontSize: node >= 26 ? 14 : 12, color: running ? OnBrand.text : m === selected ? theme.text : theme.textTertiary }]}>{m}</ThemedText>
-                  )}
-                </View>
-              </Pressable>
-            );
-          })}
-        </>
-      ) : null}
+        );
+      })}
     </View>
   );
 }
 
+function MonthSegment({
+  index,
+  label,
+  fullLabel,
+  fill,
+  running,
+  selected,
+  state,
+  onPress,
+}: {
+  index: number;
+  label: string;
+  fullLabel: string;
+  fill: number;
+  running: boolean;
+  selected: boolean;
+  state: string;
+  onPress: () => void;
+}) {
+  const theme = useTheme();
+  const reduceMotion = useReducedMotion();
+  const [width, setWidth] = useState(0);
+
+  // The capsules fill one after the other, left to right.
+  const progress = useSharedValue(reduceMotion ? fill : 0);
+  useEffect(() => {
+    progress.set(reduceMotion ? fill : withDelay(120 + index * STAGGER_MS, withTiming(fill, { duration: FILL_MS, easing: Easing.out(Easing.cubic) })));
+  }, [fill, index, reduceMotion, progress]);
+  const fillStyle = useAnimatedStyle(() => ({ width: progress.value * width }));
+
+  // The chosen month's capsule thickens with a soft spring.
+  const thick = useSharedValue(selected ? TRACK_SELECTED : TRACK);
+  useEffect(() => {
+    thick.set(reduceMotion ? (selected ? TRACK_SELECTED : TRACK) : withSpring(selected ? TRACK_SELECTED : TRACK, { damping: 16, stiffness: 260 }));
+  }, [selected, reduceMotion, thick]);
+  const trackStyle = useAnimatedStyle(() => ({ height: thick.value, borderRadius: thick.value / 2 }));
+
+  // A slow light sweeps across the month being lived.
+  const sweep = useSharedValue(0);
+  useEffect(() => {
+    if (!running || reduceMotion) return;
+    sweep.set(
+      withDelay(
+        120 + index * STAGGER_MS + FILL_MS,
+        withRepeat(withSequence(withTiming(1, { duration: 1500, easing: Easing.inOut(Easing.quad) }), withTiming(1, { duration: 1400 }), withTiming(0, { duration: 0 })), -1)
+      )
+    );
+  }, [running, reduceMotion, index, sweep]);
+  const sweepStyle = useAnimatedStyle(() => ({
+    opacity: sweep.value > 0 && sweep.value < 1 ? 1 : 0,
+    transform: [{ translateX: -SHIMMER + sweep.value * (progress.value * width + SHIMMER) }],
+  }));
+
+  const onLayout = (e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width);
+
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="tab"
+      accessibilityState={{ selected }}
+      accessibilityLabel={`${fullLabel}, ${state}`}
+      hitSlop={{ top: 10, bottom: 6 }}
+      style={({ pressed }) => [styles.cell, { opacity: pressed ? 0.6 : 1 }]}
+    >
+      <View style={styles.trackSlot} onLayout={onLayout}>
+        <Animated.View style={[styles.track, { backgroundColor: theme.backgroundElement }, trackStyle]}>
+          <Animated.View style={[styles.fill, { backgroundColor: running ? undefined : theme.text }, fillStyle]}>
+            {running ? <LinearGradient colors={ACCENT_RAMP} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} /> : null}
+            {running ? (
+              <Animated.View pointerEvents="none" style={[styles.sweep, sweepStyle]}>
+                <LinearGradient colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.55)', 'rgba(255,255,255,0)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />
+              </Animated.View>
+            ) : null}
+          </Animated.View>
+        </Animated.View>
+      </View>
+      <ThemedText
+        numberOfLines={1}
+        style={[
+          styles.label,
+          {
+            color: selected ? (running ? theme.accent : theme.text) : theme.textTertiary,
+            fontWeight: selected ? '700' : '500',
+          },
+        ]}
+      >
+        {label}
+      </ThemedText>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
-  row: { height: ROW_HEIGHT, flexDirection: 'row', alignItems: 'center' },
-  line: { position: 'absolute', top: (ROW_HEIGHT - LINE) / 2, height: LINE, borderRadius: LINE / 2, overflow: 'hidden' },
-  lineFill: { height: '100%', borderRadius: LINE / 2, overflow: 'hidden' },
-  ring: { position: 'absolute', left: 0, borderWidth: 2 },
-  cell: { flex: 1, height: ROW_HEIGHT, alignItems: 'center', justifyContent: 'center' },
-  halo: { position: 'absolute' },
-  node: { alignItems: 'center', justifyContent: 'center' },
-  number: { lineHeight: 18, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  row: { flexDirection: 'row', gap: 5, paddingTop: 4 },
+  cell: { flex: 1, minWidth: 0, gap: 8 },
+  trackSlot: { height: TRACK_SELECTED, justifyContent: 'center' },
+  track: { width: '100%', overflow: 'hidden' },
+  fill: { height: '100%', overflow: 'hidden' },
+  sweep: { position: 'absolute', top: 0, bottom: 0, left: 0, width: SHIMMER },
+  label: { fontSize: 12, lineHeight: 15, letterSpacing: 0.1, textTransform: 'capitalize' },
 });
