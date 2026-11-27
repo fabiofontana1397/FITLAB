@@ -1,7 +1,7 @@
 import { setStatusBarStyle } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { interpolate, useDerivedValue, useSharedValue } from 'react-native-reanimated';
+import Animated, { interpolate, useAnimatedStyle, useDerivedValue, useSharedValue, type SharedValue } from 'react-native-reanimated';
 
 import { openPopup } from '@/lib/open-popup';
 import { FoodSearchModal } from '@/components/nutrition/food-search-modal';
@@ -74,7 +74,7 @@ function CalorieTracking() {
   const scrollOffset = useSharedValue(0);
   const ringsTop = useSharedValue(1e9);
   const pinnedProgress = useDerivedValue(() =>
-    interpolate(scrollOffset.value, [ringsTop.value - 8, ringsTop.value + 20], [0, 1], 'clamp')
+    interpolate(scrollOffset.value, [ringsTop.value - 30, ringsTop.value + 40], [0, 1], 'clamp')
   );
 
   useEnsurePlan('diet');
@@ -145,6 +145,7 @@ function CalorieTracking() {
           {/* Pulling the page down past the top keeps the black behind the hero, never a light gap. */}
           <View style={[styles.heroOverscroll, { backgroundColor: heroColor }]} />
           <CalorieHero
+            scrollOffset={scrollOffset}
             title={selectedDate === today ? 'Calorie di oggi' : 'Calorie del giorno'}
             totals={totals}
             calorieTarget={calorieTarget}
@@ -280,7 +281,9 @@ function CalorieHero({
   calorieRatio,
   rings,
   onRingsLayout,
+  scrollOffset,
 }: {
+  scrollOffset: SharedValue<number>;
   title: string;
   totals: Record<MacroRing['key'] | 'kcal', number>;
   calorieTarget: number;
@@ -289,9 +292,18 @@ function CalorieHero({
   onRingsLayout: (y: number) => void;
 }) {
   const theme = useTheme();
-  const left = Math.round(calorieTarget - totals.kcal);
+  // As the page scrolls the content drifts down a little slower than the hero and dims, so it sinks under the
+  // header softly instead of being cut by it; pulled past the top it stays put.
+  const [height, setHeight] = useState(260);
+  const parallaxStyle = useAnimatedStyle(() => {
+    const y = Math.max(0, scrollOffset.value);
+    return {
+      opacity: interpolate(y, [0, height * 0.75], [1, 0], 'clamp'),
+      transform: [{ translateY: y * 0.22 }, { scale: interpolate(y, [0, height], [1, 0.97], 'clamp') }],
+    };
+  });
   return (
-    <View>
+    <Animated.View style={parallaxStyle} onLayout={(e) => setHeight(e.nativeEvent.layout.height)}>
       <View style={styles.heroHead}>
         <View style={styles.cardTitleRow}>
           <Icon name="flameLine" size={20} color={theme.textSecondary} strokeWidth={1.5} />
@@ -299,13 +311,6 @@ function CalorieHero({
             {title}
           </ThemedText>
         </View>
-        {calorieTarget > 0 ? (
-          <View style={[styles.heroChip, { backgroundColor: theme.backgroundElement }]}>
-            <ThemedText style={[styles.heroChipText, { color: left >= 0 ? theme.brandGreen : theme.danger }]} numberOfLines={1}>
-              {left >= 0 ? `Mancano ${formatKcal(left)}` : `+${formatKcal(-left)} oltre`}
-            </ThemedText>
-          </View>
-        ) : null}
       </View>
 
       <View style={styles.bigNumberRow}>
@@ -339,7 +344,7 @@ function CalorieHero({
           </View>
         ))}
       </View>
-    </View>
+    </Animated.View>
   );
 }
 
@@ -389,17 +394,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 20,
     fontWeight: '500',
-  },
-  heroChip: {
-    paddingHorizontal: 11,
-    paddingVertical: 4,
-    borderRadius: 999,
-  },
-  heroChipText: {
-    fontSize: 13,
-    lineHeight: 17,
-    fontWeight: '700',
-    fontVariant: ['tabular-nums'],
   },
   cardTitleRow: {
     flexDirection: 'row',
