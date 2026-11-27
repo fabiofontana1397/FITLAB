@@ -308,7 +308,8 @@ function CalorieHero({
   const parallaxStyle = useAnimatedStyle(() => {
     const y = Math.max(0, scrollOffset.value);
     return {
-      opacity: interpolate(y, [0, height * 0.75], [1, 0], 'clamp'),
+      // Gone a little before the box reaches the pinned strip, whose content fades in only after it.
+      opacity: interpolate(y, [0, height * 0.45], [1, 0], 'clamp'),
       transform: [{ translateY: y * 0.22 }, { scale: interpolate(y, [0, height], [1, 0.97], 'clamp') }],
     };
   });

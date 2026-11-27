@@ -28,6 +28,10 @@ import { useTheme } from '@/hooks/use-theme';
 const TOP_FADE_SCROLL = 24;
 /** With a fixed `header`: the height of the fade under it. */
 export const HEADER_FADE_HEIGHT = 18;
+/** Gradient hero: extra height above the shrinking box, in its top colour, for pulling the page down past the top. */
+const SLAB_EXTRA = 800;
+/** Gradient hero: the last stretch of the shrink (px) over which the pinned strip's content fades in. */
+const SHRINK_CONTENT_FADE = 44;
 /** …and the list's own top padding in that mode (the header already ends with its margin). */
 export const HEADER_LIST_TOP = 4;
 
@@ -109,9 +113,19 @@ export const ScreenScroll = forwardRef<ScrollView, ScreenScrollProps>(function S
     if (scrollOffset) scrollOffset.value = e.contentOffset.y;
   });
 
+  // With a gradient hero (see `topSurfaceGradient`) the strip's progress comes from the box itself: its content
+  // fades in over the last stretch of the shrink, once the hero's own content has gone, so the two never overlap.
+  const noHeroHeight = useSharedValue(0);
+  const heroH = heroHeight ?? noHeroHeight;
+  const shrink = Boolean(topSurfaceGradient && heroHeight && pinned && header);
+  const pinnedHeight = useSharedValue(120);
+  const shrinkP = useDerivedValue(() =>
+    heroH.value > 0 ? interpolate(heroH.value - scrollY.value, [pinnedHeight.value + SHRINK_CONTENT_FADE, pinnedHeight.value], [0, 1], 'clamp') : 0
+  );
+
   // The pinned strip under the header: shown by the screen's own 0→1 progress; it only takes touches once visible.
   const noPinnedProgress = useSharedValue(0);
-  const pinnedP = pinnedProgress ?? noPinnedProgress;
+  const pinnedP = shrink ? shrinkP : (pinnedProgress ?? noPinnedProgress);
   const [pinnedActive, setPinnedActive] = useState(false);
   useAnimatedReaction(
     () => pinnedP.value > 0.5,
@@ -121,11 +135,10 @@ export const ScreenScroll = forwardRef<ScrollView, ScreenScrollProps>(function S
   );
   // On a coloured top surface the strip is a solid slab that slides out from under the header (never a see-through
   // ghost), following the scroll frame by frame; only its content fades in, in the second half of the slide.
-  const pinnedHeight = useSharedValue(120);
   const surfaceSlideStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: -(1 - pinnedP.value) * (pinnedHeight.value + 24) }],
   }));
-  const surfaceContentOpacity = useDerivedValue(() => interpolate(pinnedP.value, [0.45, 1], [0, 1], 'clamp'));
+  const surfaceContentOpacity = useDerivedValue(() => (shrink ? pinnedP.value : interpolate(pinnedP.value, [0.45, 1], [0, 1], 'clamp')));
   const surfaceContentStyle = useAnimatedStyle(() => ({ opacity: surfaceContentOpacity.value }));
 
   // With a gradient hero the box itself shrinks instead: one slab under the header whose bottom edge follows the
@@ -133,15 +146,37 @@ export const ScreenScroll = forwardRef<ScrollView, ScreenScrollProps>(function S
   // The copy behind the list paints the hero (the hero draws no background of its own); the copy in front takes
   // over at the very frame it stops shrinking, so the cards scrolling on pass under it. Same size, same gradient:
   // the switch is invisible.
-  const noHeroHeight = useSharedValue(0);
-  const heroH = heroHeight ?? noHeroHeight;
-  const shrink = Boolean(topSurfaceGradient && heroHeight && pinned && header);
-  const slabHeight = useDerivedValue(() => (heroH.value > 0 ? Math.max(heroH.value - scrollY.value, pinnedHeight.value) : 0));
-  const backSlabStyle = useAnimatedStyle(() => ({ height: slabHeight.value }));
+  // Only transforms move per frame (no height, so no layout pass while scrolling): the slab is a fixed-size frame
+  // with the rounded bottom, slid up so its bottom edge sits at the box's current height, and the gradient inside
+  // is scaled vertically from that bottom edge. Above the gradient the frame carries the top colour, which is what
+  // shows if the page is pulled down past the top.
+  const slabTransform = (): { opacity?: number; transform: ({ translateY: number } | { scaleY: number })[] } => {
+    'worklet';
+    const H = heroH.value;
+    if (H <= 0) return { transform: [{ translateY: -(SLAB_EXTRA + 2000) }] };
+    const h = Math.max(H - scrollY.value, pinnedHeight.value);
+    return { transform: [{ translateY: h - (H + SLAB_EXTRA) }] };
+  };
+  const slabGradientStyle = useAnimatedStyle(() => {
+    const H = heroH.value;
+    const h = H > 0 ? Math.max(H - scrollY.value, pinnedHeight.value) : 0;
+    const k = H > 0 ? h / H : 1;
+    return { height: H, transform: [{ translateY: (H * (1 - k)) / 2 }, { scaleY: k }] };
+  });
+  const slabFrameStyle = useAnimatedStyle(() => ({ height: heroH.value + SLAB_EXTRA, ...slabTransform() }));
   const frontSlabStyle = useAnimatedStyle(() => ({
-    height: slabHeight.value,
-    opacity: heroH.value > 0 && heroH.value - scrollY.value <= pinnedHeight.value ? 1 : 0,
+    height: heroH.value + SLAB_EXTRA,
+    ...slabTransform(),
+    opacity: heroH.value > 0 && heroH.value - scrollY.value <= pinnedHeight.value + 0.5 ? 1 : 0,
   }));
+  // Stopping half-way through the shrink settles to the nearer end (full box or strip), like iOS's large titles.
+  const [collapseAt, setCollapseAt] = useState(0);
+  useAnimatedReaction(
+    () => (shrink && heroH.value > 0 ? Math.round(heroH.value - pinnedHeight.value) : 0),
+    (v, prev) => {
+      if (v !== prev) runOnJS(setCollapseAt)(v);
+    }
+  );
   const pinnedStyle = useAnimatedStyle(() => ({
     opacity: pinnedP.value,
     transform: [{ translateY: reduceMotion ? 0 : (1 - pinnedP.value) * -10 }],
@@ -217,8 +252,10 @@ export const ScreenScroll = forwardRef<ScrollView, ScreenScrollProps>(function S
       ) : null}
       <View style={[styles.region, topSurface ? styles.regionClipped : null]} onLayout={header ? (e) => setRegionTop(e.nativeEvent.layout.y) : undefined}>
       {shrink && topSurfaceGradient ? (
-        <Animated.View style={[styles.slab, { pointerEvents: 'none' }, backSlabStyle]}>
-          <LinearGradient colors={topSurfaceGradient.colors} locations={topSurfaceGradient.locations} style={StyleSheet.absoluteFill} />
+        <Animated.View style={[styles.slab, { backgroundColor: topSurfaceGradient.colors[0], pointerEvents: 'none' }, slabFrameStyle]}>
+          <Animated.View style={[styles.slabGradient, slabGradientStyle]}>
+            <LinearGradient colors={topSurfaceGradient.colors} locations={topSurfaceGradient.locations} style={StyleSheet.absoluteFill} />
+          </Animated.View>
         </Animated.View>
       ) : null}
       <ScrollRevealContext.Provider value={revealContext}>
@@ -228,6 +265,7 @@ export const ScreenScroll = forwardRef<ScrollView, ScreenScrollProps>(function S
           style={styles.scrollView}
           contentContainerStyle={{ flexGrow: 1, alignItems: 'center' }}
           {...ScrollDefaults}
+          {...(shrink && collapseAt > 0 ? { snapToOffsets: [0, collapseAt], snapToEnd: false } : null)}
           {...rest}
           onScroll={onScroll}
           onLayout={(e) => {
@@ -258,8 +296,10 @@ export const ScreenScroll = forwardRef<ScrollView, ScreenScrollProps>(function S
       ) : null}
       {shrink && topSurfaceGradient ? (
         <>
-          <Animated.View style={[styles.slab, { pointerEvents: 'none' }, frontSlabStyle]}>
-            <LinearGradient colors={topSurfaceGradient.colors} locations={topSurfaceGradient.locations} style={StyleSheet.absoluteFill} />
+          <Animated.View style={[styles.slab, { backgroundColor: topSurfaceGradient.colors[0], pointerEvents: 'none' }, frontSlabStyle]}>
+            <Animated.View style={[styles.slabGradient, slabGradientStyle]}>
+              <LinearGradient colors={topSurfaceGradient.colors} locations={topSurfaceGradient.locations} style={StyleSheet.absoluteFill} />
+            </Animated.View>
           </Animated.View>
           <Animated.View
             testID="screen-pinned"
@@ -378,6 +418,12 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 32,
     borderCurve: 'continuous',
     overflow: 'hidden',
+  },
+  slabGradient: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   pinned: {
     position: 'absolute',
