@@ -9,6 +9,7 @@ import { GlassSurface } from '@/components/glass/glass-surface';
 import { ThemedText } from '@/components/themed-text';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { Radius, Spacing } from '@/constants/theme';
+import { ColorSchemeOverride } from '@/hooks/color-scheme-override';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { hapticSoft, hapticTap } from '@/lib/haptics';
@@ -59,7 +60,10 @@ export function HeaderMenu({ size = 40 }: { size?: number }) {
           <MenuGlyph width={Math.round(size * 0.42)} color={theme.text} />
         </LiquidGlassButton>
       </View>
-      <MenuPanel anchor={anchor} visible={open} onClose={() => setOpen(false)} />
+      {/* The menu follows the app's own scheme even when the button sits on a forced-dark hero. */}
+      <ColorSchemeOverride.Provider value={null}>
+        <MenuPanel anchor={anchor} visible={open} onClose={() => setOpen(false)} />
+      </ColorSchemeOverride.Provider>
     </>
   );
 }

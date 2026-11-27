@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { setStatusBarStyle } from 'expo-status-bar';
+import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { interpolate, useDerivedValue, useSharedValue } from 'react-native-reanimated';
 
@@ -8,13 +9,15 @@ import { MealCard } from '@/components/nutrition/meal-card';
 import { HEADER_LIST_TOP, ScreenScroll } from '@/components/screen-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { DayCalendarModal } from '@/components/ui/day-calendar-modal';
-import { FlatCard } from '@/components/ui/flat-card';
 import { Icon } from '@/components/ui/icon';
 import { TabHeader } from '@/components/tab-header';
 import { ProgressRing } from '@/components/ui/progress-ring';
 import { TickProgressBar } from '@/components/ui/tick-progress-bar';
 import { useEnsurePlan } from '@/hooks/use-ensure-plan';
-import { Layout, Radius } from '@/constants/theme';
+import { Colors, Layout } from '@/constants/theme';
+import { ColorSchemeOverride } from '@/hooks/color-scheme-override';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useIsSelectedTab } from '@/hooks/use-is-selected-tab';
 import { useTheme } from '@/hooks/use-theme';
 import { daysAgoISO, isoMondayIndex } from '@/lib/mock/dates';
 import { inMealOrder } from '@/lib/planning/meal-slots';
@@ -32,8 +35,10 @@ import { useUserStore } from '@/store/user-store';
 import { hapticSelection } from '@/lib/haptics';
 
 const SCREEN_PADDING = Layout.screenGutter;
-const CARD_RADIUS = Radius.large;
-const CARD_PADDING = 14;
+/** The hero's black: deep black on the light page, a lifted near-black on the black page so it still reads as a box. */
+const HERO_LIGHT = '#111214';
+const HERO_DARK = '#1A1B1F';
+const HERO_PADDING_TOP = 6;
 
 /** Italian thousands-separated magnitude ("2.254"), hand-rolled for the
  * same reason as Home's: toLocaleString('it-IT') doesn't reliably group on
@@ -51,7 +56,6 @@ export default function NutritionScreen() {
 }
 
 function CalorieTracking() {
-  const theme = useTheme();
   const currentUser = useUserStore();
   const entries = useNutritionStore((s) => s.entries);
   const removeEntry = useNutritionStore((s) => s.removeEntry);
@@ -109,66 +113,47 @@ function CalorieTracking() {
   const totals = sumMacros(dayEntries);
   const calorieRatio = calorieTarget > 0 ? totals.kcal / calorieTarget : 0;
 
+  // Macro colours from the dark palette: they sit on the black hero in both schemes.
   const macroRings = [
-    { key: 'protein' as const, label: 'P', color: theme.accent, target: macroTargets.protein },
-    { key: 'carbs' as const, label: 'C', color: theme.brandGreen, target: macroTargets.carbs },
-    { key: 'fats' as const, label: 'G', color: theme.brandYellow, target: macroTargets.fats },
+    { key: 'protein' as const, label: 'P', color: Colors.dark.accent, target: macroTargets.protein },
+    { key: 'carbs' as const, label: 'C', color: Colors.dark.brandGreen, target: macroTargets.carbs },
+    { key: 'fats' as const, label: 'G', color: Colors.dark.brandYellow, target: macroTargets.fats },
   ];
+  const heroColor = useColorScheme() === 'dark' ? HERO_DARK : HERO_LIGHT;
+  useHeroStatusBar();
 
   return (
     <ScreenScroll
       reveal
       header={
-        <TabHeader title="Nutrizione" onCalendarPress={() => openPopup(() => setCalendarOpen(true))} />
+        <ColorSchemeOverride.Provider value="dark">
+          <TabHeader title="Nutrizione" onCalendarPress={() => openPopup(() => setCalendarOpen(true))} />
+        </ColorSchemeOverride.Provider>
       }
-      pinned={<PinnedMacroRings rings={macroRings} totals={totals} calorieTarget={calorieTarget} />}
+      topSurface={heroColor}
+      pinned={
+        <ColorSchemeOverride.Provider value="dark">
+          <PinnedMacroRings rings={macroRings} totals={totals} calorieTarget={calorieTarget} />
+        </ColorSchemeOverride.Provider>
+      }
       pinnedProgress={pinnedProgress}
       scrollOffset={scrollOffset}
       contentContainerStyle={styles.page}>
-      <FlatCard radius={CARD_RADIUS} style={styles.calorieCard}>
-        <View style={styles.calorieHeadRow}>
-          <View style={styles.cardTitleRow}>
-            <Icon name="flameLine" size={24} color={theme.text} strokeWidth={1.5} />
-            <ThemedText style={styles.calorieTitle}>{selectedDate === today ? 'Calorie di oggi' : 'Calorie del giorno'}</ThemedText>
-          </View>
-          <View style={styles.bigNumberRow}>
-            <ThemedText style={styles.bigNumber}>{formatKcal(totals.kcal)}</ThemedText>
-            <ThemedText style={styles.bigNumberSuffix} themeColor="textTertiary">
-              / {formatKcal(calorieTarget)} kcal
-            </ThemedText>
-          </View>
+      {/* The day's calories and macros on a full-width black hero that runs up under the header to the top edge. */}
+      <ColorSchemeOverride.Provider value="dark">
+        <View style={[styles.hero, { backgroundColor: heroColor }]}>
+          {/* Pulling the page down past the top keeps the black behind the hero, never a light gap. */}
+          <View style={[styles.heroOverscroll, { backgroundColor: heroColor }]} />
+          <CalorieHero
+            title={selectedDate === today ? 'Calorie di oggi' : 'Calorie del giorno'}
+            totals={totals}
+            calorieTarget={calorieTarget}
+            calorieRatio={calorieRatio}
+            rings={macroRings}
+            onRingsLayout={(y) => ringsTop.set(HERO_PADDING_TOP + y)}
+          />
         </View>
-
-        <View style={styles.calorieBar}>
-          <TickProgressBar progress={calorieRatio} height={9} ticks={false} color={theme.brandGreen} />
-        </View>
-
-        <View
-          style={styles.ringsRow}
-          onLayout={(e) => {
-            // The card is the page's first section: its top sits at the list's top padding (+ its 1px border).
-            ringsTop.set(HEADER_LIST_TOP + 1 + e.nativeEvent.layout.y);
-          }}>
-          {macroRings.map((macro) => (
-            <View key={macro.key} style={styles.ringCol}>
-              <ProgressRing
-                size={66}
-                strokeWidth={5}
-                progress={macro.target > 0 ? totals[macro.key] / macro.target : 0}
-                color={macro.color}
-                trackColor={theme.backgroundElement}>
-                <ThemedText style={styles.ringValue}>{Math.round(totals[macro.key])} g</ThemedText>
-              </ProgressRing>
-              <ThemedText style={styles.ringLabel}>
-                {macro.label}{' '}
-                <ThemedText style={styles.ringTarget} themeColor="textSecondary">
-                  / {Math.round(macro.target)} g
-                </ThemedText>
-              </ThemedText>
-            </View>
-          ))}
-        </View>
-      </FlatCard>
+      </ColorSchemeOverride.Provider>
 
       <View style={styles.mealsHeader}>
         <ThemedText style={styles.sectionTitle}>{mealsHeading}</ThemedText>
@@ -242,7 +227,7 @@ function PinnedMacroRings({
 }) {
   const theme = useTheme();
   return (
-    <FlatCard radius={CARD_RADIUS} style={styles.pinnedCard}>
+    <View style={styles.pinnedCard}>
       <View style={styles.pinnedKcalRow}>
         <ThemedText style={styles.pinnedKcal}>
           {formatKcal(totals.kcal)}
@@ -269,7 +254,92 @@ function PinnedMacroRings({
           </View>
         ))}
       </View>
-    </FlatCard>
+    </View>
+  );
+}
+
+/** While Nutrizione is the open tab the status bar is drawn in white, over the black header, in both schemes. */
+function useHeroStatusBar() {
+  const focused = useIsSelectedTab();
+  const scheme = useColorScheme();
+  useEffect(() => {
+    if (!focused) return;
+    setStatusBarStyle('light', true);
+    return () => setStatusBarStyle(scheme === 'dark' ? 'light' : 'dark', true);
+  }, [focused, scheme]);
+}
+
+/**
+ * The hero's content, drawn with the dark palette: the day's calories large on the left with the goal beside them,
+ * the green bar, and the three macro rings.
+ */
+function CalorieHero({
+  title,
+  totals,
+  calorieTarget,
+  calorieRatio,
+  rings,
+  onRingsLayout,
+}: {
+  title: string;
+  totals: Record<MacroRing['key'] | 'kcal', number>;
+  calorieTarget: number;
+  calorieRatio: number;
+  rings: MacroRing[];
+  onRingsLayout: (y: number) => void;
+}) {
+  const theme = useTheme();
+  const left = Math.round(calorieTarget - totals.kcal);
+  return (
+    <View>
+      <View style={styles.heroHead}>
+        <View style={styles.cardTitleRow}>
+          <Icon name="flameLine" size={20} color={theme.textSecondary} strokeWidth={1.5} />
+          <ThemedText style={styles.heroLabel} themeColor="textSecondary">
+            {title}
+          </ThemedText>
+        </View>
+        {calorieTarget > 0 ? (
+          <View style={[styles.heroChip, { backgroundColor: theme.backgroundElement }]}>
+            <ThemedText style={[styles.heroChipText, { color: left >= 0 ? theme.brandGreen : theme.danger }]} numberOfLines={1}>
+              {left >= 0 ? `Mancano ${formatKcal(left)}` : `+${formatKcal(-left)} oltre`}
+            </ThemedText>
+          </View>
+        ) : null}
+      </View>
+
+      <View style={styles.bigNumberRow}>
+        <ThemedText style={styles.bigNumber}>{formatKcal(totals.kcal)}</ThemedText>
+        <ThemedText style={styles.bigNumberSuffix} themeColor="textSecondary">
+          / {formatKcal(calorieTarget)} kcal
+        </ThemedText>
+      </View>
+
+      <View style={styles.calorieBar}>
+        <TickProgressBar progress={calorieRatio} height={8} ticks={false} color={theme.brandGreen} />
+      </View>
+
+      <View style={styles.ringsRow} onLayout={(e) => onRingsLayout(e.nativeEvent.layout.y)}>
+        {rings.map((macro) => (
+          <View key={macro.key} style={styles.ringCol}>
+            <ProgressRing
+              size={66}
+              strokeWidth={5}
+              progress={macro.target > 0 ? totals[macro.key] / macro.target : 0}
+              color={macro.color}
+              trackColor={theme.backgroundElement}>
+              <ThemedText style={styles.ringValue}>{Math.round(totals[macro.key])} g</ThemedText>
+            </ProgressRing>
+            <ThemedText style={styles.ringLabel}>
+              {macro.label}{' '}
+              <ThemedText style={styles.ringTarget} themeColor="textSecondary">
+                / {Math.round(macro.target)} g
+              </ThemedText>
+            </ThemedText>
+          </View>
+        ))}
+      </View>
+    </View>
   );
 }
 
@@ -291,50 +361,76 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: -0.5,
   },
-  calorieCard: {
-    paddingHorizontal: CARD_PADDING,
-    paddingTop: 14,
-    paddingBottom: 12,
+  // Full width: it steps out of the page gutter and up to meet the header, which shares its colour.
+  hero: {
+    marginHorizontal: -SCREEN_PADDING,
+    marginTop: -HEADER_LIST_TOP,
+    paddingHorizontal: SCREEN_PADDING + 4,
+    paddingTop: HERO_PADDING_TOP,
+    paddingBottom: 22,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+    borderCurve: 'continuous',
   },
-  calorieHeadRow: {
+  heroOverscroll: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: -800,
+    height: 800,
+  },
+  heroHead: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 8,
+  },
+  heroLabel: {
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: '500',
+  },
+  heroChip: {
+    paddingHorizontal: 11,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  heroChipText: {
+    fontSize: 13,
+    lineHeight: 17,
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
   },
   cardTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
   },
-  calorieTitle: {
-    fontSize: 16,
-    lineHeight: 21,
-    fontWeight: '700',
-  },
   bigNumberRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    gap: 4,
+    gap: 6,
+    marginTop: 6,
   },
   bigNumber: {
-    fontSize: 24,
-    lineHeight: 30,
+    fontSize: 56,
+    lineHeight: 62,
     fontWeight: '800',
-    letterSpacing: -0.5,
+    letterSpacing: -2,
+    fontVariant: ['tabular-nums'],
   },
   bigNumberSuffix: {
-    fontSize: 14,
-    lineHeight: 18,
+    fontSize: 17,
+    lineHeight: 22,
     fontWeight: '500',
+    fontVariant: ['tabular-nums'],
   },
   calorieBar: {
-    marginTop: 10,
+    marginTop: 12,
   },
   ringsRow: {
     flexDirection: 'row',
-    marginTop: 14,
-    marginHorizontal: -CARD_PADDING,
+    marginTop: 18,
   },
   ringCol: {
     flex: 1,
@@ -357,8 +453,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   pinnedCard: {
-    paddingHorizontal: CARD_PADDING,
-    paddingVertical: 11,
+    paddingHorizontal: 4,
     gap: 8,
   },
   pinnedKcalRow: {
@@ -381,7 +476,6 @@ const styles = StyleSheet.create({
   },
   pinnedRingsRow: {
     flexDirection: 'row',
-    marginHorizontal: -CARD_PADDING,
   },
   pinnedRingCol: {
     flex: 1,
@@ -401,7 +495,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   mealsHeader: {
-    marginTop: 14,
+    marginTop: 18,
     marginBottom: 8,
     flexDirection: 'row',
     alignItems: 'center',
