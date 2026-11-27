@@ -55,7 +55,7 @@ export function washColorAt(top: string, middle: string, bottom: string, t: numb
 }
 
 export const ScreenScroll = forwardRef<ScrollView, ScreenScrollProps>(function ScreenScroll(
-  { children, contentContainerStyle, reveal = false, header, topSurface, pinned, pinnedProgress, scrollOffset, onLayout, enterOnMount: enterOnMountProp, active: activeProp, ...rest },
+  { children, contentContainerStyle, reveal = false, header, topSurface, topSurfaceGradient, heroHeight, pinned, pinnedProgress, scrollOffset, onLayout, enterOnMount: enterOnMountProp, active: activeProp, ...rest },
   ref
 ) {
   // Behind a switch (ModePages) the page's state comes from there, so the page itself is never redrawn by a switch.
@@ -127,6 +127,21 @@ export const ScreenScroll = forwardRef<ScrollView, ScreenScrollProps>(function S
   }));
   const surfaceContentOpacity = useDerivedValue(() => interpolate(pinnedP.value, [0.45, 1], [0, 1], 'clamp'));
   const surfaceContentStyle = useAnimatedStyle(() => ({ opacity: surfaceContentOpacity.value }));
+
+  // With a gradient hero the box itself shrinks instead: one slab under the header whose bottom edge follows the
+  // hero's bottom as it scrolls up and stops at the pinned strip's height, with the whole gradient squeezed into it.
+  // The copy behind the list paints the hero (the hero draws no background of its own); the copy in front takes
+  // over at the very frame it stops shrinking, so the cards scrolling on pass under it. Same size, same gradient:
+  // the switch is invisible.
+  const noHeroHeight = useSharedValue(0);
+  const heroH = heroHeight ?? noHeroHeight;
+  const shrink = Boolean(topSurfaceGradient && heroHeight && pinned && header);
+  const slabHeight = useDerivedValue(() => (heroH.value > 0 ? Math.max(heroH.value - scrollY.value, pinnedHeight.value) : 0));
+  const backSlabStyle = useAnimatedStyle(() => ({ height: slabHeight.value }));
+  const frontSlabStyle = useAnimatedStyle(() => ({
+    height: slabHeight.value,
+    opacity: heroH.value > 0 && heroH.value - scrollY.value <= pinnedHeight.value ? 1 : 0,
+  }));
   const pinnedStyle = useAnimatedStyle(() => ({
     opacity: pinnedP.value,
     transform: [{ translateY: reduceMotion ? 0 : (1 - pinnedP.value) * -10 }],
@@ -201,6 +216,11 @@ export const ScreenScroll = forwardRef<ScrollView, ScreenScrollProps>(function S
         </View>
       ) : null}
       <View style={[styles.region, topSurface ? styles.regionClipped : null]} onLayout={header ? (e) => setRegionTop(e.nativeEvent.layout.y) : undefined}>
+      {shrink && topSurfaceGradient ? (
+        <Animated.View style={[styles.slab, { pointerEvents: 'none' }, backSlabStyle]}>
+          <LinearGradient colors={topSurfaceGradient.colors} locations={topSurfaceGradient.locations} style={StyleSheet.absoluteFill} />
+        </Animated.View>
+      ) : null}
       <ScrollRevealContext.Provider value={revealContext}>
         <Animated.ScrollView
           ref={ref}
@@ -236,7 +256,22 @@ export const ScreenScroll = forwardRef<ScrollView, ScreenScrollProps>(function S
           <LinearGradient colors={[headerFadeColor, `${headerFadeColor}00`]} style={StyleSheet.absoluteFill} />
         </Animated.View>
       ) : null}
-      {header && pinned && topSurface ? (
+      {shrink && topSurfaceGradient ? (
+        <>
+          <Animated.View style={[styles.slab, { pointerEvents: 'none' }, frontSlabStyle]}>
+            <LinearGradient colors={topSurfaceGradient.colors} locations={topSurfaceGradient.locations} style={StyleSheet.absoluteFill} />
+          </Animated.View>
+          <Animated.View
+            testID="screen-pinned"
+            style={[styles.pinned, styles.pinnedInner, styles.pinnedInnerSurface, { pointerEvents: pinnedActive ? 'box-none' : 'none' }, surfaceContentStyle]}
+            onLayout={(e) => {
+              pinnedHeight.value = e.nativeEvent.layout.height;
+            }}>
+            <FadeLayer opacity={surfaceContentOpacity}>{pinned}</FadeLayer>
+          </Animated.View>
+        </>
+      ) : null}
+      {header && pinned && topSurface && !shrink ? (
         <Animated.View testID="screen-pinned" style={[styles.pinned, { pointerEvents: pinnedActive ? 'box-none' : 'none' }, surfaceSlideStyle]}>
           <View
             style={[styles.pinnedSurface, { backgroundColor: topSurface }]}
@@ -279,6 +314,12 @@ type ScreenScrollProps = ScrollViewProps & {
    * hero of the same colour: the hero slides under the header seamlessly, and the pinned strip comes out of it in
    * that colour with rounded bottom corners. The page draws the hero itself. */
   topSurface?: string;
+  /** With `topSurface`, `heroHeight` and `pinned`: the hero's background as a vertical gradient that the page no
+   * longer draws itself. It shrinks with the scroll down to the pinned strip, squeezing the gradient, so the strip
+   * reads as the same box getting smaller rather than a second one sliding out. */
+  topSurfaceGradient?: { colors: readonly [string, string, ...string[]]; locations?: readonly [number, number, ...number[]] };
+  /** The hero's height (first section, starting at the top of the list), measured by the page. */
+  heroHeight?: SharedValue<number>;
   /** With a `header`: a strip pinned right under it (e.g. a compact summary of a box that has scrolled away),
    * shown as `pinnedProgress` goes 0→1. */
   pinned?: ReactNode;
@@ -327,6 +368,16 @@ const styles = StyleSheet.create({
     maxWidth: MaxContentWidth,
     paddingHorizontal: Layout.screenGutter,
     gap: Layout.sectionGap,
+  },
+  slab: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+    borderCurve: 'continuous',
+    overflow: 'hidden',
   },
   pinned: {
     position: 'absolute',
