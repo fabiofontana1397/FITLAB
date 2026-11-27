@@ -1,4 +1,3 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { setStatusBarStyle } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -82,6 +81,7 @@ function CalorieTracking() {
   // reach the header, so they read as staying put.
   const scrollOffset = useSharedValue(0);
   const ringsTop = useSharedValue(1e9);
+  const heroHeight = useSharedValue(0);
   const pinnedProgress = useDerivedValue(() =>
     interpolate(scrollOffset.value, [ringsTop.value - 30, ringsTop.value + 40], [0, 1], 'clamp')
   );
@@ -140,6 +140,8 @@ function CalorieTracking() {
         </ColorSchemeOverride.Provider>
       }
       topSurface={heroColor}
+      topSurfaceGradient={{ colors: [heroColor, ...HERO_EMBER], locations: HERO_EMBER_LOCATIONS }}
+      heroHeight={heroHeight}
       pinned={
         <ColorSchemeOverride.Provider value="dark">
           <PinnedMacroRings rings={macroRings} totals={totals} calorieTarget={calorieTarget} />
@@ -150,16 +152,9 @@ function CalorieTracking() {
       contentContainerStyle={styles.page}>
       {/* The day's calories and macros on a full-width black-to-orange hero that runs up under the header to the top edge. */}
       <ColorSchemeOverride.Provider value="dark">
-        <View style={[styles.hero, { backgroundColor: heroColor }]}>
-          {/* Pulling the page down past the top keeps the black behind the hero, never a light gap. */}
-          <View style={[styles.heroOverscroll, { backgroundColor: heroColor }]} />
-          <LinearGradient
-            colors={[heroColor, ...HERO_EMBER]}
-            locations={HERO_EMBER_LOCATIONS}
-            start={{ x: 0.5, y: 0 }}
-            end={{ x: 0.5, y: 1 }}
-            style={styles.heroGradient}
-          />
+        {/* The hero draws no background: ScreenScroll paints the gradient behind it, as a box that shrinks into the
+            pinned strip as the page scrolls. Clipped, so its content never spills past the box's bottom edge. */}
+        <View style={styles.hero} onLayout={(e) => heroHeight.set(e.nativeEvent.layout.height)}>
           <CalorieHero
             scrollOffset={scrollOffset}
             title={selectedDate === today ? 'Calorie di oggi' : 'Calorie del giorno'}
@@ -242,7 +237,6 @@ function PinnedMacroRings({
   totals: Record<MacroRing['key'] | 'kcal', number>;
   calorieTarget: number;
 }) {
-  const theme = useTheme();
   return (
     <View style={styles.pinnedCard}>
       <View style={styles.pinnedKcalRow}>
@@ -253,7 +247,7 @@ function PinnedMacroRings({
           </ThemedText>
         </ThemedText>
         <View style={styles.pinnedKcalBar}>
-          <TickProgressBar progress={calorieTarget > 0 ? totals.kcal / calorieTarget : 0} height={7} ticks={false} color={theme.brandGreen} />
+          <TickProgressBar progress={calorieTarget > 0 ? totals.kcal / calorieTarget : 0} height={7} ticks={false} color={HERO_CALORIE_BAR} />
         </View>
       </View>
       <View style={styles.pinnedRingsRow}>
@@ -264,7 +258,7 @@ function PinnedMacroRings({
               strokeWidth={4}
               progress={macro.target > 0 ? totals[macro.key] / macro.target : 0}
               color={macro.color}
-              trackColor={theme.backgroundElement}>
+              trackColor={HERO_RING_TRACK}>
               <ThemedText style={styles.pinnedRingValue}>{Math.round(totals[macro.key])}</ThemedText>
             </ProgressRing>
             <ThemedText style={styles.pinnedRingLabel}>{macro.label}</ThemedText>
@@ -392,23 +386,7 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
     borderCurve: 'continuous',
-  },
-  heroGradient: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
-    borderCurve: 'continuous',
-  },
-  heroOverscroll: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: -800,
-    height: 800,
+    overflow: 'hidden',
   },
   heroHead: {
     flexDirection: 'row',
