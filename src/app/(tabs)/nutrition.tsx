@@ -1,3 +1,4 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { setStatusBarStyle } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -14,7 +15,7 @@ import { TabHeader } from '@/components/tab-header';
 import { ProgressRing } from '@/components/ui/progress-ring';
 import { TickProgressBar } from '@/components/ui/tick-progress-bar';
 import { useEnsurePlan } from '@/hooks/use-ensure-plan';
-import { Colors, Layout } from '@/constants/theme';
+import { Layout } from '@/constants/theme';
 import { ColorSchemeOverride } from '@/hooks/color-scheme-override';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useIsSelectedTab } from '@/hooks/use-is-selected-tab';
@@ -38,6 +39,12 @@ const SCREEN_PADDING = Layout.screenGutter;
 /** The hero's black: deep black on the light page, a lifted near-black on the black page so it still reads as a box. */
 const HERO_LIGHT = '#111214';
 const HERO_DARK = '#1A1B1F';
+/** "Brace": the hero starts in the black above and glows into FitLab orange at its bottom edge. */
+const HERO_EMBER = ['#3A1A08', '#C24E12', '#FF7A1A'] as const;
+const HERO_EMBER_LOCATIONS = [0, 0.45, 0.85, 1] as const;
+/** Brighter macro colours and a light track, so the rings still read where the hero turns orange. */
+const HERO_RING_TRACK = 'rgba(255,255,255,0.16)';
+const HERO_CALORIE_BAR = '#FF8F2A';
 const HERO_PADDING_TOP = 6;
 
 /** Italian thousands-separated magnitude ("2.254"), hand-rolled for the
@@ -115,9 +122,9 @@ function CalorieTracking() {
 
   // Macro colours from the dark palette: they sit on the black hero in both schemes.
   const macroRings = [
-    { key: 'protein' as const, label: 'P', color: Colors.dark.accent, target: macroTargets.protein },
-    { key: 'carbs' as const, label: 'C', color: Colors.dark.brandGreen, target: macroTargets.carbs },
-    { key: 'fats' as const, label: 'G', color: Colors.dark.brandYellow, target: macroTargets.fats },
+    { key: 'protein' as const, label: 'P', color: '#FF9A3D', target: macroTargets.protein },
+    { key: 'carbs' as const, label: 'C', color: '#22D46E', target: macroTargets.carbs },
+    { key: 'fats' as const, label: 'G', color: '#FFC93C', target: macroTargets.fats },
   ];
   const heroColor = useColorScheme() === 'dark' ? HERO_DARK : HERO_LIGHT;
   useHeroStatusBar();
@@ -139,11 +146,18 @@ function CalorieTracking() {
       pinnedProgress={pinnedProgress}
       scrollOffset={scrollOffset}
       contentContainerStyle={styles.page}>
-      {/* The day's calories and macros on a full-width black hero that runs up under the header to the top edge. */}
+      {/* The day's calories and macros on a full-width black-to-orange hero that runs up under the header to the top edge. */}
       <ColorSchemeOverride.Provider value="dark">
         <View style={[styles.hero, { backgroundColor: heroColor }]}>
           {/* Pulling the page down past the top keeps the black behind the hero, never a light gap. */}
           <View style={[styles.heroOverscroll, { backgroundColor: heroColor }]} />
+          <LinearGradient
+            colors={[heroColor, ...HERO_EMBER]}
+            locations={HERO_EMBER_LOCATIONS}
+            start={{ x: 0.4, y: 0 }}
+            end={{ x: 0.6, y: 1 }}
+            style={styles.heroGradient}
+          />
           <CalorieHero
             scrollOffset={scrollOffset}
             title={selectedDate === today ? 'Calorie di oggi' : 'Calorie del giorno'}
@@ -321,7 +335,7 @@ function CalorieHero({
       </View>
 
       <View style={styles.calorieBar}>
-        <TickProgressBar progress={calorieRatio} height={8} ticks={false} color={theme.brandGreen} />
+        <TickProgressBar progress={calorieRatio} height={8} ticks={false} color={HERO_CALORIE_BAR} />
       </View>
 
       <View style={styles.ringsRow} onLayout={(e) => onRingsLayout(e.nativeEvent.layout.y)}>
@@ -332,7 +346,7 @@ function CalorieHero({
               strokeWidth={5}
               progress={macro.target > 0 ? totals[macro.key] / macro.target : 0}
               color={macro.color}
-              trackColor={theme.backgroundElement}>
+              trackColor={HERO_RING_TRACK}>
               <ThemedText style={styles.ringValue}>{Math.round(totals[macro.key])} g</ThemedText>
             </ProgressRing>
             <ThemedText style={styles.ringLabel}>
@@ -373,6 +387,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: SCREEN_PADDING + 4,
     paddingTop: HERO_PADDING_TOP,
     paddingBottom: 22,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+    borderCurve: 'continuous',
+  },
+  heroGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
     borderCurve: 'continuous',
