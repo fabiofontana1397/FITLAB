@@ -119,10 +119,17 @@ export const ScreenScroll = forwardRef<ScrollView, ScreenScrollProps>(function S
       if (active !== previous) runOnJS(setPinnedActive)(active);
     }
   );
+  // On a coloured top surface the strip is a solid slab that slides out from under the header (never a see-through
+  // ghost), following the scroll frame by frame; only its content fades in, in the second half of the slide.
+  const pinnedHeight = useSharedValue(120);
+  const surfaceSlideStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: -(1 - pinnedP.value) * (pinnedHeight.value + 24) }],
+  }));
+  const surfaceContentOpacity = useDerivedValue(() => interpolate(pinnedP.value, [0.45, 1], [0, 1], 'clamp'));
+  const surfaceContentStyle = useAnimatedStyle(() => ({ opacity: surfaceContentOpacity.value }));
   const pinnedStyle = useAnimatedStyle(() => ({
     opacity: pinnedP.value,
-    // On a coloured top surface the strip slides out from under the header, as if the hero folded into it.
-    transform: [{ translateY: reduceMotion ? 0 : (1 - pinnedP.value) * (topSurface ? -28 : -10) }],
+    transform: [{ translateY: reduceMotion ? 0 : (1 - pinnedP.value) * -10 }],
   }));
 
   // A short while after the scrolling stops the sections check themselves against where they really are, so one
@@ -230,11 +237,15 @@ export const ScreenScroll = forwardRef<ScrollView, ScreenScrollProps>(function S
         </Animated.View>
       ) : null}
       {header && pinned && topSurface ? (
-        <Animated.View testID="screen-pinned" style={[styles.pinned, { pointerEvents: pinnedActive ? 'box-none' : 'none' }, pinnedStyle]}>
-          <View style={[styles.pinnedSurface, { backgroundColor: topSurface }]}>
-            <View style={[styles.pinnedInner, styles.pinnedInnerSurface]}>
-              <FadeLayer opacity={pinnedP}>{pinned}</FadeLayer>
-            </View>
+        <Animated.View testID="screen-pinned" style={[styles.pinned, { pointerEvents: pinnedActive ? 'box-none' : 'none' }, surfaceSlideStyle]}>
+          <View
+            style={[styles.pinnedSurface, { backgroundColor: topSurface }]}
+            onLayout={(e) => {
+              pinnedHeight.value = e.nativeEvent.layout.height;
+            }}>
+            <Animated.View style={[styles.pinnedInner, styles.pinnedInnerSurface, surfaceContentStyle]}>
+              <FadeLayer opacity={surfaceContentOpacity}>{pinned}</FadeLayer>
+            </Animated.View>
           </View>
         </Animated.View>
       ) : null}
