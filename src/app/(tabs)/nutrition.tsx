@@ -40,8 +40,10 @@ const SCREEN_PADDING = Layout.screenGutter;
 const HERO_LIGHT = '#111214';
 const HERO_DARK = '#1A1B1F';
 /** "Brace": the hero starts in the black above and glows into FitLab orange at its bottom edge. */
-const HERO_EMBER = ['#3A1A08', '#C24E12', '#FF7A1A'] as const;
-const HERO_EMBER_LOCATIONS = [0, 0.45, 0.85, 1] as const;
+// Many close stops along an eased curve (dark held at the top, orange building toward the bottom), so the ramp
+// has no visible kinks or bands; it runs straight down so the top edge meets the header's black with no seam.
+const HERO_EMBER = ['#141210', '#1C140D', '#28160B', '#36190B', '#4D220D', '#6B2E0F', '#8B3B11', '#B24C15', '#DA6018', '#FF7A1A'] as const;
+const HERO_EMBER_LOCATIONS = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1] as const;
 /** Brighter macro colours and a light track, so the rings still read where the hero turns orange. */
 const HERO_RING_TRACK = 'rgba(255,255,255,0.16)';
 const HERO_CALORIE_BAR = '#FF8F2A';
@@ -154,8 +156,8 @@ function CalorieTracking() {
           <LinearGradient
             colors={[heroColor, ...HERO_EMBER]}
             locations={HERO_EMBER_LOCATIONS}
-            start={{ x: 0.4, y: 0 }}
-            end={{ x: 0.6, y: 1 }}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.5, y: 1 }}
             style={styles.heroGradient}
           />
           <CalorieHero
