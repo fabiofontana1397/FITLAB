@@ -55,7 +55,7 @@ export function washColorAt(top: string, middle: string, bottom: string, t: numb
 }
 
 export const ScreenScroll = forwardRef<ScrollView, ScreenScrollProps>(function ScreenScroll(
-  { children, contentContainerStyle, reveal = false, header, pinned, pinnedProgress, scrollOffset, onLayout, enterOnMount: enterOnMountProp, active: activeProp, ...rest },
+  { children, contentContainerStyle, reveal = false, header, topSurface, pinned, pinnedProgress, scrollOffset, onLayout, enterOnMount: enterOnMountProp, active: activeProp, ...rest },
   ref
 ) {
   // Behind a switch (ModePages) the page's state comes from there, so the page itself is never redrawn by a switch.
@@ -121,7 +121,8 @@ export const ScreenScroll = forwardRef<ScrollView, ScreenScrollProps>(function S
   );
   const pinnedStyle = useAnimatedStyle(() => ({
     opacity: pinnedP.value,
-    transform: [{ translateY: reduceMotion ? 0 : (1 - pinnedP.value) * -10 }],
+    // On a coloured top surface the strip slides out from under the header, as if the hero folded into it.
+    transform: [{ translateY: reduceMotion ? 0 : (1 - pinnedP.value) * (topSurface ? -28 : -10) }],
   }));
 
   // A short while after the scrolling stops the sections check themselves against where they really are, so one
@@ -188,11 +189,11 @@ export const ScreenScroll = forwardRef<ScrollView, ScreenScrollProps>(function S
         />
       ) : null}
       {header ? (
-        <View style={[styles.fixedHeader, { paddingTop: insets.top + Platform.select({ web: Spacing.five, default: Spacing.two }) }]}>
+        <View style={[styles.fixedHeader, topSurface ? { backgroundColor: topSurface, zIndex: 2 } : null, { paddingTop: insets.top + Platform.select({ web: Spacing.five, default: Spacing.two }) }]}>
           <View style={styles.headerInner}>{header}</View>
         </View>
       ) : null}
-      <View style={styles.region} onLayout={header ? (e) => setRegionTop(e.nativeEvent.layout.y) : undefined}>
+      <View style={[styles.region, topSurface ? styles.regionClipped : null]} onLayout={header ? (e) => setRegionTop(e.nativeEvent.layout.y) : undefined}>
       <ScrollRevealContext.Provider value={revealContext}>
         <Animated.ScrollView
           ref={ref}
@@ -223,12 +224,21 @@ export const ScreenScroll = forwardRef<ScrollView, ScreenScrollProps>(function S
       {/* Content scrolling up dissolves under the fixed header (or, without
           one, under the status bar / top edge) instead of being sliced off
           by it; invisible while at the top. */}
-      {header ? (
+      {header && !topSurface ? (
         <Animated.View testID="screen-top-fade" style={[styles.topFade, { height: HEADER_FADE_HEIGHT, pointerEvents: 'none' }, topFadeStyle]}>
           <LinearGradient colors={[headerFadeColor, `${headerFadeColor}00`]} style={StyleSheet.absoluteFill} />
         </Animated.View>
       ) : null}
-      {header && pinned ? (
+      {header && pinned && topSurface ? (
+        <Animated.View testID="screen-pinned" style={[styles.pinned, { pointerEvents: pinnedActive ? 'box-none' : 'none' }, pinnedStyle]}>
+          <View style={[styles.pinnedSurface, { backgroundColor: topSurface }]}>
+            <View style={[styles.pinnedInner, styles.pinnedInnerSurface]}>
+              <FadeLayer opacity={pinnedP}>{pinned}</FadeLayer>
+            </View>
+          </View>
+        </Animated.View>
+      ) : null}
+      {header && pinned && !topSurface ? (
         <Animated.View testID="screen-pinned" style={[styles.pinned, { pointerEvents: pinnedActive ? 'box-none' : 'none' }, pinnedStyle]}>
           <View style={{ backgroundColor: headerFadeColor }}>
             <View style={styles.pinnedInner}>
@@ -254,6 +264,10 @@ type ScreenScrollProps = ScrollViewProps & {
   /** Stagger the top-level sections in on first paint and reveal the ones
    * below the fold as they scroll into view (see the note on `content`). */
   reveal?: boolean;
+  /** A solid colour behind the fixed header (status bar included), for a page whose first section is a full-width
+   * hero of the same colour: the hero slides under the header seamlessly, and the pinned strip comes out of it in
+   * that colour with rounded bottom corners. The page draws the hero itself. */
+  topSurface?: string;
   /** With a `header`: a strip pinned right under it (e.g. a compact summary of a box that has scrolled away),
    * shown as `pinnedProgress` goes 0→1. */
   pinned?: ReactNode;
@@ -283,6 +297,19 @@ const styles = StyleSheet.create({
   },
   region: {
     flex: 1,
+  },
+  regionClipped: {
+    overflow: 'hidden',
+  },
+  pinnedSurface: {
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+    borderCurve: 'continuous',
+    overflow: 'hidden',
+  },
+  pinnedInnerSurface: {
+    paddingTop: 2,
+    paddingBottom: 14,
   },
   inner: {
     width: '100%',
